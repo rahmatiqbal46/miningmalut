@@ -1,0 +1,2887 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="terang">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speed Watcher V.2</title>
+<style>
+/* ============================================================================
+   Palet: teal pinus sebagai bidang tenang, oranye sebagai penarik perhatian.
+   Merah disimpan khusus untuk pelanggaran, supaya tidak tertukar dengan oranye
+   yang dipakai untuk data janggal.
+   ========================================================================== */
+:root{
+  --bg:#EDF2F1; --surface:#FFFFFF; --surface-2:#F5F9F8; --surface-3:#EAF1F0;
+  --line:#DBE6E4; --line-2:#EBF1F0;
+  --ink:#0F2E2B; --ink-2:#4C6764; --ink-3:#849A97;
+  --teal:#1E7B73; --teal-2:#17605A; --teal-soft:#DEEDEB;
+  --orange:#E9903F; --orange-soft:#FDF1E3;
+  --danger:#C62F1F; --danger-soft:#FCE8E5;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SFMono-Regular","SF Mono",Menlo,Consolas,monospace;
+  --sh:0 1px 2px rgba(15,46,43,.06),0 4px 14px rgba(15,46,43,.05);
+  --sh-lg:0 12px 40px rgba(9,35,32,.18);
+}
+html[data-theme="gelap"]{
+  --bg:#0C2422; --surface:#123330; --surface-2:#17403B; --surface-3:#1B4741;
+  --line:#20504A; --line-2:#193F3A;
+  --ink:#E9F2F0; --ink-2:#A5BCB9; --ink-3:#6F8B87;
+  --teal:#35A79A; --teal-2:#2A8C81; --teal-soft:#153F3A;
+  --orange:#F0A055; --orange-soft:#3A2A19;
+  --danger:#FF6E57; --danger-soft:#3D201B;
+  --sh:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.22);
+  --sh-lg:0 12px 40px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+::selection{background:var(--orange);color:#231202}
+
+/* ------------------------------------------------------------- kepala ---- */
+.topbar{display:flex;align-items:center;gap:12px;padding:11px 18px;background:var(--teal);color:#fff;flex-wrap:wrap}
+.brand b{font-size:17px;font-weight:600;letter-spacing:-.02em;display:block}
+.brand b i{font-style:normal;color:var(--orange)}
+.brand span{font-size:11px;font-style:italic;opacity:.75;display:block;margin-top:-1px}
+.tchip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:500;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.14);white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.tchip.on{color:#BEEFE6} .tchip.warn{color:#FFD9AE} .tchip.err{color:#FFC9BF;background:rgba(255,120,95,.24)}
+.live .dot{animation:blip 1.7s ease-in-out infinite}
+@keyframes blip{50%{opacity:.25}}
+.tright{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.clock{font-family:var(--mono);font-size:13.5px;opacity:.9}
+.ibtn{appearance:none;border:0;background:rgba(255,255,255,.14);color:#fff;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:15px;display:grid;place-items:center}
+.ibtn:hover{background:rgba(255,255,255,.26)}
+.ibtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.ibtn.wide{width:auto;padding:0 14px;font-size:12.5px;font-weight:500;gap:7px}
+
+/* -------------------------------------------------------------- bidang --- */
+.split{display:grid;grid-template-columns:minmax(0,1fr) 428px;gap:14px;padding:14px;height:calc(100vh - 58px)}
+.split.luas{grid-template-columns:minmax(0,1fr) 0}
+.split.luas .pane-list{display:none}
+.pane{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pane-head{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.pane-head h2{margin:0;font-size:13.5px;font-weight:600}
+.pane-body{flex:1;min-height:0;overflow-y:auto}
+.meta{font-size:11px;color:var(--ink-3);margin-left:auto}
+
+/* ----------------------------------------------------------------- peta -- */
+#siteMap{display:block;width:100%;height:100%;cursor:grab;touch-action:none;background:var(--surface-2)}
+#siteMap.geser{cursor:grabbing}
+.pane-map .pane-body{padding:0}
+.z-road{fill:none;stroke:var(--teal);stroke-linecap:round;stroke-linejoin:round}
+.z-road-inti{fill:none;stroke:var(--teal-2);stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linecap:round}
+.z-dump{fill:var(--teal);fill-opacity:.2;stroke:var(--teal);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.z-load{fill:var(--orange);fill-opacity:.24;stroke:var(--orange);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.z-lain{fill:var(--ink-3);fill-opacity:.16;stroke:var(--ink-3);stroke-width:1.1;vector-effect:non-scaling-stroke}
+.z-teks{fill:var(--ink-2);font-family:var(--sans);font-weight:500;paint-order:stroke;stroke:var(--surface-2);stroke-width:3.5px;stroke-linejoin:round}
+.m-unit{fill:var(--teal);stroke:var(--surface);stroke-width:2.2;vector-effect:non-scaling-stroke}
+.m-unit.alarm{fill:var(--danger)} .m-unit.stale{fill:var(--ink-3)}
+.m-teks{fill:var(--ink);font-family:var(--sans);font-weight:600;paint-order:stroke;stroke:var(--surface-2);stroke-width:3.5px;stroke-linejoin:round}
+.m-event{fill:none;stroke:var(--danger);stroke-width:2.2;vector-effect:non-scaling-stroke}
+.m-event-inti{fill:var(--danger)}
+
+/* -------------------------------------------------------------- ruas UI -- */
+.seg{display:flex;gap:3px;padding:3px;background:var(--surface-3);border-radius:11px;margin:11px 12px 0}
+.seg button{flex:1;border:0;background:transparent;padding:8px 4px;border-radius:9px;font:inherit;font-size:12.5px;font-weight:500;color:var(--ink-2);cursor:pointer}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--teal);font-weight:600;box-shadow:0 1px 3px rgba(15,46,43,.1)}
+.seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.toolrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:11px 12px 4px}
+.view[hidden]{display:none}
+
+/* ------------------------------------------------------------ baris unit - */
+.urow{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:11px;align-items:center;padding:10px 13px;border-bottom:1px solid var(--line-2)}
+.urow:last-child{border-bottom:0}
+.urow.alarm{background:var(--danger-soft)}
+.urow.suspect{background:var(--orange-soft)}
+.urow.stale{opacity:.55}
+.dial{position:relative;width:46px;height:46px}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial-track{fill:none;stroke:var(--line);stroke-width:7}
+.dial-arc{fill:none;stroke:var(--teal);stroke-width:7;stroke-linecap:round}
+.urow.alarm .dial-arc{stroke:var(--danger)}
+.dial-limit{stroke:var(--danger);stroke-width:2.4}
+.dial-read{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:-.04em}
+.urow.alarm .dial-read{color:var(--danger)}
+.uname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uzone{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.uzone b{font-weight:600;color:var(--teal);font-style:italic}
+.usub{font-size:10.5px;color:var(--ink-3);margin-top:2px;font-family:var(--mono)}
+.uright{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.chip{display:inline-block;font-size:10px;font-weight:600;padding:3px 9px;border-radius:7px;white-space:nowrap}
+.chip.alarm{background:var(--danger);color:#fff}
+.chip.warn{background:var(--orange);color:#2E1A05}
+.chip.ok{background:var(--teal-soft);color:var(--teal)}
+.chip.mute{background:var(--surface-3);color:var(--ink-3)}
+.spark{display:flex;align-items:flex-end;gap:1.5px;height:14px;width:88px}
+.spark i{flex:1;min-width:1.5px;background:var(--ink-3);opacity:.4;border-radius:1px}
+.spark i.over{background:var(--danger);opacity:1}
+.spark i.bad{background:transparent;box-shadow:inset 0 0 0 1.2px var(--orange);opacity:.95}
+
+/* ---------------------------------------------------------------- tabel -- */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{position:sticky;top:0;background:var(--surface);text-align:left;padding:9px 12px;font-size:10.5px;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line);white-space:nowrap;z-index:2}
+td{padding:9px 12px;border-bottom:1px solid var(--line-2);color:var(--ink-2);vertical-align:top}
+tbody tr:hover td{background:var(--surface-2)}
+td.n{font-family:var(--mono);white-space:nowrap;color:var(--ink)}
+td.strong{color:var(--ink);font-weight:600}
+td a{color:var(--teal);text-decoration:none}
+td a:hover{text-decoration:underline}
+.empty{padding:38px 22px;text-align:center;color:var(--ink-3);font-size:12.5px;line-height:1.6}
+.empty b{display:block;color:var(--ink-2);font-size:13.5px;margin-bottom:5px;font-weight:600}
+
+/* -------------------------------------------------------------- kendali -- */
+input,select{width:100%;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-family:var(--sans);font-size:13px}
+input:focus,select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+input::placeholder{color:var(--ink-3)}
+select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);background-position:calc(100% - 16px) 18px,calc(100% - 11px) 18px;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+select option{background:var(--surface);color:var(--ink)}
+input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--teal)}
+input[type=file]{padding:8px;font-size:11.5px;cursor:pointer}
+input[type=checkbox]{appearance:none;flex:0 0 auto;width:38px;height:22px;border-radius:11px;background:var(--line);border:0;position:relative;cursor:pointer;padding:0;transition:background .18s}
+input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s}
+input[type=checkbox]:checked{background:var(--teal)}
+input[type=checkbox]:checked::after{transform:translateX(16px)}
+input[type=checkbox]:focus-visible{box-shadow:0 0 0 3px var(--teal-soft)}
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);padding:9px 14px;border-radius:10px;cursor:pointer;font-family:var(--sans);font-size:12.5px;font-weight:500}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.primary:hover{background:var(--teal-2);border-color:var(--teal-2);color:#fff}
+.btn.accent{background:var(--orange);border-color:var(--orange);color:#2E1A05}
+.btn.accent:hover{filter:brightness(1.06);color:#2E1A05}
+.btn.wide{width:100%}
+.btn.sm{padding:6px 10px;font-size:11.5px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ----------------------------------------------------------------- laci -- */
+.scrim{position:fixed;inset:0;background:rgba(8,32,29,.5);opacity:0;pointer-events:none;transition:opacity .22s;z-index:55}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;width:392px;max-width:94vw;height:100vh;background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--sh-lg);transform:translateX(102%);transition:transform .26s cubic-bezier(.3,.9,.3,1);z-index:60;display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line-2)}
+.drawer-head h2{margin:0;font-size:15px;font-weight:600}
+.drawer-body{flex:1;overflow-y:auto}
+.drawer-foot{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line-2);background:var(--surface-2)}
+.xbtn{appearance:none;border:0;background:var(--surface-3);color:var(--ink-2);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px;margin-left:auto}
+.xbtn:hover{color:var(--ink)}
+
+.grp{border-bottom:1px solid var(--line-2)}
+.grp>summary{cursor:pointer;list-style:none;padding:14px 18px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;user-select:none}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:2px solid var(--ink-3);border-bottom:2px solid var(--ink-3);transform:rotate(45deg) translateY(-2px);transition:transform .2s}
+.grp[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+.grp>summary:hover{background:var(--surface-2)}
+.grp>summary:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.grp-body{padding:2px 18px 18px}
+.grp .tag{font-size:10.5px;font-weight:500;color:var(--ink-3);background:var(--surface-3);padding:2px 8px;border-radius:6px}
+
+.field{margin-bottom:13px}
+.field label{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sw{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.sw span{flex:1}
+
+/* -------------------------------------------------- keterangan ikon "i" -- */
+.info{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-3);font-size:10px;font-weight:700;font-style:italic;cursor:help;position:relative;flex:0 0 auto}
+.info:hover,.info:focus{border-color:var(--teal);color:var(--teal);outline:none}
+.info::after{content:attr(data-tip);position:absolute;top:22px;right:-4px;width:248px;background:var(--ink);color:var(--surface);font-family:var(--sans);font-size:11.5px;font-weight:400;font-style:normal;line-height:1.5;padding:9px 11px;border-radius:9px;box-shadow:var(--sh-lg);opacity:0;pointer-events:none;transition:opacity .15s;z-index:20;text-align:left}
+.info:hover::after,.info:focus::after{opacity:1}
+.info.kiri::after{right:auto;left:-4px}
+
+/* ------------------------------------------------------------- daftar ---- */
+.list{max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}
+.lrow{display:flex;align-items:center;gap:9px;padding:7px 10px;border-bottom:1px solid var(--line-2)}
+.lrow:last-child{border-bottom:0}
+.lrow:hover{background:var(--surface-3)}
+.lrow label{flex:1;font-size:12.5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow input[type=number]{width:54px;padding:4px 6px;font-size:11.5px;text-align:right;border-radius:7px}
+.lrow input[type=checkbox]{width:32px;height:19px}
+.lrow input[type=checkbox]::after{width:13px;height:13px}
+.lrow input[type=checkbox]:checked::after{transform:translateX(13px)}
+.lrow .unit{font-size:9.5px;color:var(--ink-3);font-weight:600;width:34px;flex:0 0 auto}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;padding:11px 12px}
+.stat{background:var(--surface-2);border-radius:11px;padding:9px 11px}
+.stat b{display:block;font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:-.03em}
+.stat span{font-size:10px;color:var(--ink-3);font-weight:500}
+.stat.alarm b{color:var(--danger)} .stat.warn b{color:var(--orange)} .stat.ok b{color:var(--teal)}
+
+.log{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;line-height:1.65;max-height:150px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.log b{color:var(--ink-2);font-weight:400}
+.log .e{color:var(--danger)}
+.hint{font-size:11px;color:var(--ink-3);line-height:1.5;margin:6px 0 0}
+.hint code{font-family:var(--mono);font-size:10.5px;color:var(--teal);background:var(--teal-soft);padding:1px 5px;border-radius:5px}
+.note{font-size:12px;color:var(--ink-3);line-height:1.6;margin:0 0 12px;padding:0 12px}
+
+.toasts{position:fixed;right:20px;bottom:20px;z-index:70;display:flex;flex-direction:column;gap:10px;max-width:370px}
+.toast{background:var(--surface);border:1px solid var(--danger);border-left:5px solid var(--danger);border-radius:13px;padding:13px 15px;box-shadow:var(--sh-lg);animation:masuk .28s cubic-bezier(.2,.9,.3,1)}
+.toast h4{margin:0 0 4px;font-size:13px;font-weight:600;color:var(--danger)}
+.toast p{margin:0;font-size:11.5px;color:var(--ink-2);font-family:var(--mono);line-height:1.6}
+@keyframes masuk{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+@media (max-width:1080px){
+  .split{grid-template-columns:1fr;height:auto;grid-template-rows:52vh auto}
+  .split.luas{grid-template-rows:78vh auto}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAPDUlEQVR4nO2bfbBcZX3Hv7/nOWd3zzl7du9LAonQWEehYYJQMUVrZ8SUSp1WhakkFBG4KWCVktrWjq1QuPfSoJQ6ldGqpVCTNETxRt6k1dLW3svUii2JWG0wgsNLykDI3bt397zu7jnP8+sfuxtuNhsITe5LnPOZOTP37nnezu/tPM/veQ6QkZGRkZGRkZGRkZGRkZGRkZGRkZGRkbGYMDMt9hgyMhaeuZY/315gzGfjJxLMLLp/E5GuhPW/BZNLRJf23jue/Z4wCugI4WisURMRv8a2qStYZhazvn++Yl4PAmaC2nsA/POc+/Ra2z/hmc8w0LXu2Sj4XCXwrgKAauj9sBLUf2fGr10yE9T3dH67thr6t82tczxY8h4wMTEhiUhVguoVJae83g+jBGAJEBhzFMNaO5ZtRo34C8PF8jeZWRKReqW2u2VmQ+8iwzA2qWbzf6dDb0YzBoad0tcAqGrkf7oS1K9g4CYpxUkV3/8XIvrXo2n/hIeZaZRZ1Gq1oWrkzzIzt5g56bla3GY28qPpMHwdj46Ko/GariXPBPUfT/v1D1Uj78ZWmjRnQu/ubplK6O1IleJq6G86EHjXVELv+3Pr/kzDzBIAKmH9VsXMFb/eqAT1tM/VSFjztFe7tlPvqIU/7XmrZ0Kvsm/fPmvG99cwM1dC/w937dplMrNRDbw/TbTiSlg59bnac4MzoX+gGkWr5rZxLCzZENR5OD0bx28QxJv8RqRByBER9ZTTdsHKeVG4d5lbvouZCdtX2ADCV+sCAAjqDNb8zKpVq2IAe2bCuqdT9eTatWsTAKh4s0/VQu/55e6y5wGgGtb2s26tAbCv28axsGQVAICISB/wa2PDxbI9G3opEfUbL5vSFDFFNxFRiydY+tq7v77Nva50hf8UxkA0jsOmjvsB+0X/RYcN+5cECWMmqP8GAyeztFIp1MaK770LAgAZZwhh5qqhv0mDn9eGVRLMaw8EwQ/2Ax6ACMegiCUZx5hZEki/FFTPLpi5y+pxoIlI9imnirYja0H9P4esz94LCAQN97fck8S7odTvE4Gx5vCpKzNL0/dfnyPrHKrsPkAvfOt+KYRDzA359FdvEfW9DwtJjwuix6W39wHxzN23gTBDRKbcd99WzD5ek0jPcnz/534m3wXd2H/Ar30jYeZpv5bOhB73udI4TXjanz2fAdo3sd6qbbGebH7VTqPtduxtKa5mBvHokQ0tuB1X1r+Ind3/63fgR8FtuODg/c/gvd4deHzO/Ue8v8LFx+tZl5z2utO7auS9s2jZ76tHnhZC9LV+1y7KII7+abk7+G2C4FL0D1eVi+K0OIay8lTQ0Dcf0QsmzzOYWfDQsiYcdzUzS548b0AU3F9QK4ZWMLNkZqmXD67kfPGNT35zU56ZBRVKK7FsiJlZ8OR5xxzCl5wC0ImnSutPSSEB7h9fiYiarZaGaN3IDKrtWDMoCdc3mswkYPgR60IOHwj/3nobbYDiCRyqxKlHNBFpUzZ3Q6crMEXk79u9sjigTah4CESaiBR0c7hUYvfU6TtPxk7KMycDpgp3E5HG1CPHnJZYUgroWL+eDr0Ly477K34UqH6xX2utyrYrGq3Gg8ud5buIBHPzp39QdMTKZguaAMEMzhkkkhS39OuLxqF5FKJwmf8UATP1Z5wNWuv1KaAIeAt1X6yEs1MBJEwf8GL7UjAOWBubz/IoRL+X+2tlySigM3dnZjYIvFkpzdQn9cNgllJS3GokEnqUmSnYfurKnEEfi2PWRO1nIoL0I1ZFS5xf22pf0NcLXg5NNxRyvIPAH/FfwpUMOo8nYPEELADnRtM8AsYncwJ/B4lP9tQ9JpaMAqampiQR6ZnQu3zQLp0ZNEINwmHWD4YqW0URt5o7htyhHxFJVqoyZheo3ErBdJjWGMS4hUchsOfQcEYboHgUorQxvreZ8p3M2Dz04XAHAUkQORf5ofXrBCTla6JtQohbkxR/Xb4ifohHIWgDjksaYkns+HSsn17AC4V86D5RyOVWNVpNJiLRU44NaTCABqO1ZuDW2/fR+M26tqXwUNkW7/UiVtSjNGaokkOyHqvfHriy8TWegOwVHjOIqK0cHoXwf956Pwh/g/Yb6Dp3JL7v4P05ZY8HS8IDpgBJRNqK3JEhx3193GzoXuF3UKWCLVoq+dKgNfjsnvUwAIYkcUOjxUqIPgZFoCRlhhY38wRy2ANmPrQcEZhHIXgUAmNAaWP8ADN9F8D/lDbG92KsPZXlUYjjKfz28BaZrvU/PTvrDlnmHkMar2u2Wn2t3zRNaK2rsuCsdoGZsbExGlszTrQBqrbF3l4u0oe8kFPqWeFrhioXSfqhvrY0En+JR2HQONK+42mnWYGdMBFCYARNEEDHIe3Qj6XgAYKIdMmUfzRQKJ7SaDb7Wj8zazdnUarUrSWiytTUlBwfH9cHLZrUWNzg2BAQ3CMsIlCjyQzgRr5r2B0DdK8XHCwLMBGYNqBFG9EgAs+X8Dv9LR6dZTyHCFekDewlEsUkTahfwq2Qy1MzaT3Xst0zVwAxAO7uTHXjev3L9udKLm3yAk6JerxAQ5Vdkl7AnyhvjP7ylbyg3WdbNsc75PSy2B5ARMSRn9xQKjilJE10r/ABgAG2zDwx880riUK0veZlwXS8wDD5tijmQEpI7lnACQGKG8xS8Cd4mzuMsfYM6MgDa3vC8XzYfiyaArrp5locvymfy11db4Qa6DPtBJRTsEQ18p4Ydkp3d+odMouhcWjshHAuj59PU2xxLKLeMgBEkkI5jljmqfSPicBTi2+AizoAIiJuJY3xYt7OK6X6Wz8zTGkQKbqJiJJuvcNaWw8eHR0VzObtUcwNISBxeOyWUcTaMOi6cLt16rtexQsWgkXp/OBebBCcY+ULl9Ri/xXSzUVZC4NHh133PmYWRKSYmSbayTJjcnLSAAAi6PHxcT1wVf3pVOG+okXEvZ5CoFRB2xYVU0U3HilRt5AslvYZAFJObinkCpKVZvSfEBBrDUPSn3WsXnaUxxuIFBGl69atSwGgWq2WK5WfnMLMBVb82WYCUJ/nI4IMItamxIi3pbgaG9o5oXl92ldgwTvuJtxmY/9dRct5Tz30NPVLN2tWZccVQRw8PGi5/9apl3Q8wKmE9bf7rXiT32rcVW/Gn0LBfJ9hnbwSlb3mwNXxrkZT/6Nrk9B82LuAlAJbecpp6D8nLK4XLHjHnTCipwPvP0q2844jZTwB6LyZQ5qot5VtezcAzPj+6nwh93Gl0ncXCtaqRqMxA6aPwbK+NUBUBdoLKQLY3+qcZRi8O1UQnSll77PqnAk0Ev7lgZH4v/qlKBaCBfWArvVXQ+/CslN8hx/3Fz4zp2XbFXGruXPAcXYREU+H0ytI4jHHzF+lmVcJDdZaPTxg2zsGiKqdDRRzbJSJJyDdkfCHjRbfU7RIMCM5vI92upoYmwG8vCW2wCycBzATt/sTlbD+/aLlnBlGEZM4POUgpGSDRNJEcvayfOlJAFQBHAq8qeFi6ZyZ0NMgQj6XE9D8oFb8F2XbfvRgG7vuMPHW09n7yvvfYGr1pGUC9RgMtPcKuhlTZminAOE36NcGN4bfXgwvWDAP4E7KYSb0Lhtyym8O4kj3Ch9or3oHCo5opsmdywvln3TGSMuAMClG7/Rb8RfyZi4hgJrNJhdyhQtJ0ndrjXByNg42+swn0drfTYjWpeXL/KeaaeHqlMXjOQkqF0lKAdIaqrNQYxBAzJuZQVg//wuvXhbEA7oJt/3791tmydlTyOVXNZqNIyXcmLWuy5TPKBaLFbQVlwDAi75/kmPKEQA3pVrZWmsA0ACk67gQIITNeEYIepi1+kows3fylFPWRgDQ2oq3ptL+MIBLrQK5YcRINRQBKDkkg0hd4o40JhbaCxZKAZKI1Ixf//hgsfSZmaCu+m20a63VcLEsq6F/47JiaXP393qjcRoRfxTMI27eGpyNAzBzbx8KAEzTlHbOQqJTtFqtvRLqISHlfY617HtQMWpbS2/MifQ6ErimkCPHizgp5CDjJv/0gBefdVoVCcbnNwE3l3lXQPeYoOd5Q8qUPzakWJakKaMn/DGztvIF0Wg19w/Z7qlEpGabwS8KMn4PSn3QLdi214yQJElf5XXbAKCYWTqOIywyoAA0Ws1Hk5Z//cCui79D6/49BTS8LcXVOUOPmSZdEjUZdp4QNvRHSiPxHa+WqDueLIQCJBGpab9+y3CxdH31yCfclFtwEETRlUT0hJkzr09VepFbsI16I4BWOkV746Y3U8rMrIlI2LZNeTLgxWECwvdA/KCA+Y1yofDUy+VBU2OQ6zoCDrdaFwuJzxdsscKv87NuMXoz9iDC2MIk4+b1aGI34VYJw1MMgev8Ztw34cbMbBiG9OPAB3CFNMwLCmYO9aSJalBXRCR6lcbMmpk5l8vJYs6SsWohaSU/SJHsVKl+YFmp9ERPeSKirlBTHoXAGhBtiL/+wl2Fx8rgL7sr6VdrL9jXDo5Ht022ZTPvXjCvHtC1/kpQ/+KQU/roK1h/ezBEcCwHQRSAWSsicchXMdwO/JqZRbFYpBwkglY8LUjcz9B3u6b1nYN7BO3QJ9H+YuaIx0e64WZyFMa5p1vbSNMlLWEuL3+wXjvSudLjyXx/ecIVzzs9nzf/W7E2lVKHbbb0QaEz9ZzTFgNQQkqjVHDQ1AlUkj6mmbfLVE+4rvvSnLIGXkXoh421vRfMROBou/31VHG9NBJftRAzonlbB+zETiIiZqlvsvKWmaZpirb1qle5uuFFMbPSWqt8Pk+DTskQQBw2ont0S51fKtjnDljO513XfYmZ5QRPSAAgovS1fkjXtXKegLQvj9ZrhhFss9/SPbYyD+KZXya6H1bU629XzNxk/f+6WsycMnO9Ge/zk+bmWhy/aW4/k5OTxtF8jHG0jHaEPbsFA/Wt9kaeQG6+FTAvIejgzCfw/qRkOb/px0GCuS9fOrRj7mTQAIH2TLJNLpdvaKXu13HznqGhoXq3bQCYr++zukcO69vcYa2FGtxYr3UTfPPR3wnDJE8aC3UW/0gnJk5ImFkcy3W8w8xRj3sJnJnKyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyFja/B9U/Uga6gnHswAAAABJRU5ErkJggg=="><script src="https://hst-api.wialon.com/wsdk/script/wialon.js"></script><style id="theme-override">
+:root{--teal:#0d4a42;--teal-2:#0a332e;--teal-soft:#e7f0ec;--orange:#E8920A;--orange-2:#b06f00;--orange-soft:#fdf0dc;}
+*{-webkit-font-smoothing:antialiased}
+button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,filter .14s}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#0a332e2e;border-radius:6px}::-webkit-scrollbar-thumb:hover{background:#0a332e4d}
+#swGate{position:fixed;inset:0;z-index:99999;background:#06211de8;display:none;align-items:center;justify-content:center;padding:20px}
+#swGate.on{display:flex}
+.swg-card{background:#fff;border-radius:16px;width:344px;max-width:100%;padding:24px;box-shadow:0 30px 80px #000a}
+.swg-h{font-size:16px;font-weight:800;color:#0f2e2b;margin-bottom:4px}
+.swg-stat{font-family:var(--mono);font-size:10.5px;color:#849a97;margin:0 0 15px;display:flex;align-items:center;gap:7px}
+.swg-stat::before{content:"";width:7px;height:7px;border-radius:50%;background:#849a97;flex:0 0 auto}
+#swGate.err .swg-stat::before{background:#c62f1f}#swGate.ok .swg-stat::before{background:#1f9d6b}
+.swg-card label{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:#849a97;display:block;margin-bottom:6px}
+.swg-card input{width:100%;font:inherit;font-size:14px;padding:11px 12px;border:1px solid #cdd8d5;border-radius:9px;outline:none}
+.swg-card input:focus{border-color:#0d4a42}
+.swg-links{margin:10px 0 2px}.swg-links a{font-size:11.5px;font-weight:700;color:#b06f00;text-decoration:underline;cursor:pointer}
+#swgConnect{width:100%;margin-top:12px;border:0;background:linear-gradient(180deg,#0d4a42,#0a332e);color:#fff;font:inherit;font-weight:800;font-size:14px;padding:12px;border-radius:10px;cursor:pointer}
+#swgConnect:hover{filter:brightness(1.1)}
+.swg-note{font-size:11px;color:#5b6b66;margin-top:14px;line-height:1.5;background:#f2f7f5;border:1px solid #e2ece9;border-radius:8px;padding:10px 11px}
+#swGuide{position:fixed;inset:0;z-index:100000;background:#06211dcc;display:none;align-items:center;justify-content:center;padding:20px}
+#swGuide.on{display:flex}
+.swgd-card{background:#fff;border-radius:14px;max-width:440px;width:100%;padding:22px;box-shadow:0 30px 80px #000a}
+.swgd-card h3{font-size:16px;font-weight:800;color:#0f2e2b}
+.swgd-sub{font-family:var(--mono);font-size:10px;color:#849a97;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 14px}
+.swgd-card ol{margin:0 0 4px 18px;padding:0}.swgd-card li{font-size:13px;line-height:1.6;margin-bottom:8px;color:#233}
+.swgd-copy{border:1px solid #cdd8d5;background:#fff;color:#0d4a42;font:inherit;font-weight:700;font-size:12px;padding:8px 12px;border-radius:8px;cursor:pointer;margin:6px 0}
+.swgd-code{background:#0a332e;color:#cfe;font-family:var(--mono);font-size:10.5px;line-height:1.45;padding:11px;border-radius:8px;overflow:auto;max-height:150px;white-space:pre-wrap;word-break:break-word;margin:6px 0}
+.swgd-note{font-size:11.5px;color:#33413c;background:#f2f7f5;border:1px solid #e2ece9;border-radius:8px;padding:9px 11px;margin-top:8px;line-height:1.5}
+.swgd-close{margin-top:14px;width:100%;border:0;background:linear-gradient(180deg,#0d4a42,#0a332e);color:#fff;font:inherit;font-weight:700;font-size:13px;padding:10px;border-radius:9px;cursor:pointer}
+</style></head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <b>Speed Watcher <i>V.2</i></b>
+    <span>created by M. Ariqsyah Rahman &mdash; Dispatch Engineer</span>
+  </div>
+  <div class="tright">
+    <span class="tchip" id="connPill"><span class="dot"></span><span id="connText">Belum terhubung</span></span>
+    <span class="tchip" id="pollPill"><span class="dot"></span><span id="pollText">Berhenti</span></span>
+    <span class="clock" id="clock">--:--:--</span>
+    <button class="ibtn" id="shiftToggle" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap">◐</button>
+    <button class="ibtn wide" id="openDrawer" aria-label="Buka setelan">⚙ Setelan</button>
+  </div>
+</header>
+
+<div class="split" id="split">
+
+  <!-- ============================ PETA ============================ -->
+  <section class="pane pane-map">
+    <div class="pane-head">
+      <h2>Peta lokasi</h2>
+      <span class="info" tabindex="0" data-tip="Digambar dari bentuk geofence di Wialon Anda. Seret untuk menggeser, putar roda tetikus untuk memperbesar. Biru untuk RD_, hijau untuk SP -, oranye untuk LP_.">i</span>
+      <select id="mapFocus" style="width:auto;min-width:150px;padding:6px 28px 6px 10px;font-size:12px"><option value="">Semua unit</option></select>
+      <button class="btn sm" id="mapFit">Muat semua</button>
+      <button class="btn sm" id="mapFitUnit">Fokus unit</button>
+      <button class="btn sm" id="mapZoomIn" aria-label="Perbesar">+</button>
+      <button class="btn sm" id="mapZoomOut" aria-label="Perkecil">−</button>
+      <button class="btn sm" id="mapWide">Lebarkan</button>
+      <span class="meta" id="mapMeta"></span>
+    </div>
+    <div class="pane-body">
+      <svg id="siteMap" xmlns="http://www.w3.org/2000/svg">
+        <image id="mapBase" visibility="hidden" preserveAspectRatio="none" />
+        <g id="mapLayer"></g>
+      </svg>
+    </div>
+    <div class="toolrow" style="border-top:1px solid var(--line-2);padding:9px 12px">
+      <label class="sw" style="margin:0"><input type="checkbox" id="mapLabels" checked><span style="flex:0 0 auto">Nama ruas</span></label>
+      <label class="sw" style="margin:0"><input type="checkbox" id="mapPelanggaran" checked><span style="flex:0 0 auto">Titik pelanggaran</span></label>
+    </div>
+  </section>
+
+  <!-- ============================ DAFTAR ============================ -->
+  <section class="pane pane-list">
+    <div class="seg" role="tablist">
+      <button role="tab" id="tab-live" aria-selected="true" aria-controls="view-live">Armada</button>
+      <button role="tab" id="tab-events" aria-selected="false" aria-controls="view-events">Kejadian</button>
+      <button role="tab" id="tab-reject" aria-selected="false" aria-controls="view-reject">Ditolak</button>
+      <button role="tab" id="tab-history" aria-selected="false" aria-controls="view-history">Riwayat</button>
+    </div>
+
+    <div class="pane-body">
+
+      <!-- ---------- ARMADA ---------- -->
+      <div class="view" id="view-live" role="tabpanel" aria-labelledby="tab-live">
+        <div class="stats">
+          <div class="stat"><b class="num" id="sUnits">0</b><span>Dipantau</span></div>
+          <div class="stat alarm"><b class="num" id="sActive">0</b><span>Melanggar</span></div>
+          <div class="stat alarm"><b class="num" id="sEvents">0</b><span>Hari ini</span></div>
+          <div class="stat ok"><b class="num" id="sValid">0</b><span>Data sah</span></div>
+          <div class="stat warn"><b class="num" id="sReject">0</b><span>Dibuang</span></div>
+          <div class="stat"><b class="num" id="sPoll">—</b><span>Ambil</span></div>
+        </div>
+        <div class="toolrow">
+          <select id="unitSort" style="flex:1;min-width:150px;padding:7px 28px 7px 10px;font-size:12px">
+            <option value="alarm">Pelanggaran dulu</option>
+            <option value="speed">Tercepat</option>
+            <option value="name">Nama A–Z</option>
+            <option value="updated">Terbaru</option>
+            <option value="events">Sering melanggar</option>
+            <option value="reject">Data dibuang</option>
+          </select>
+          <span class="meta" id="fleetMeta"></span>
+        </div>
+        <div id="fleet"></div>
+        <div class="toolrow" style="border-top:1px solid var(--line-2);margin-top:6px">
+          <h2 style="margin:0;font-size:12.5px;font-weight:600">Kejadian terakhir</h2>
+          <button class="btn sm" id="btnExportLive" style="margin-left:auto">Unduh CSV</button>
+        </div>
+        <table><tbody id="liveEvents"></tbody></table>
+      </div>
+
+      <!-- ---------- KEJADIAN ---------- -->
+      <div class="view" id="view-events" role="tabpanel" aria-labelledby="tab-events" hidden>
+        <div class="toolrow">
+          <select id="evUnitFilter" style="flex:1;min-width:130px;padding:7px 28px 7px 10px;font-size:12px"><option value="">Semua unit</option></select>
+          <input id="evMinSpeed" type="number" placeholder="Kec. min" style="width:92px;padding:7px 10px;font-size:12px">
+          <button class="btn sm" id="btnExportEvents">CSV</button>
+          <button class="btn sm" id="btnClearEvents">Bersihkan</button>
+        </div>
+        <table>
+          <thead><tr><th>Mulai</th><th>Unit</th><th>Maks</th><th>Batas</th><th>Durasi</th><th>Ruas</th></tr></thead>
+          <tbody id="allEvents"></tbody>
+        </table>
+      </div>
+
+      <!-- ---------- DITOLAK ---------- -->
+      <div class="view" id="view-reject" role="tabpanel" aria-labelledby="tab-reject" hidden>
+        <p class="note">Pembacaan yang gagal uji kewajaran dicatat di sini beserta alasannya, jadi tidak ada data yang hilang diam-diam.</p>
+        <div class="toolrow">
+          <select id="rjUnitFilter" style="flex:1;min-width:120px;padding:7px 28px 7px 10px;font-size:12px"><option value="">Semua unit</option></select>
+          <select id="rjReasonFilter" style="flex:1;min-width:120px;padding:7px 28px 7px 10px;font-size:12px"><option value="">Semua alasan</option></select>
+          <button class="btn sm" id="btnExportRejects">CSV</button>
+          <button class="btn sm" id="btnClearRejects">Bersihkan</button>
+        </div>
+        <table>
+          <thead><tr><th>Waktu</th><th>Unit</th><th>Lapor</th><th>Hitung</th><th>Alasan</th></tr></thead>
+          <tbody id="rejectRows"></tbody>
+        </table>
+      </div>
+
+      <!-- ---------- RIWAYAT ---------- -->
+      <div class="view" id="view-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <p class="note">Menarik seluruh pesan GPS satu unit pada rentang waktu tertentu, lalu menjalankan validasi dan deteksi yang sama seperti pemantauan langsung.</p>
+        <div class="toolrow" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <select id="hUnit" style="grid-column:1/-1;padding:8px 28px 8px 10px;font-size:12px"><option value="">Pilih unit…</option></select>
+          <input id="hFrom" type="datetime-local" style="font-size:12px;padding:8px 10px">
+          <input id="hTo" type="datetime-local" style="font-size:12px;padding:8px 10px">
+          <input id="hLimit" type="number" value="60" title="Batas kecepatan" style="font-size:12px;padding:8px 10px">
+          <button class="btn primary" id="btnRunHistory">Jalankan</button>
+          <button class="btn sm" id="btnExportHistory" style="grid-column:1/-1">Unduh CSV</button>
+        </div>
+        <div class="stats" id="hStats" hidden>
+          <div class="stat"><b class="num" id="hMsg">0</b><span>Pesan</span></div>
+          <div class="stat ok"><b class="num" id="hValid">0</b><span>Sah</span></div>
+          <div class="stat warn"><b class="num" id="hReject">0</b><span>Dibuang</span></div>
+          <div class="stat alarm"><b class="num" id="hEvents">0</b><span>Kejadian</span></div>
+          <div class="stat alarm"><b class="num" id="hMax">0</b><span>Tertinggi</span></div>
+          <div class="stat"><b class="num" id="hDur">0</b><span>Menit</span></div>
+        </div>
+        <table>
+          <thead><tr><th>Mulai</th><th>Maks</th><th>Lebih</th><th>Durasi</th><th>Ruas</th></tr></thead>
+          <tbody id="historyRows"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<!-- ============================ LACI SETELAN ============================ -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Setelan">
+  <div class="drawer-head">
+    <h2>Setelan</h2>
+    <button class="xbtn" id="closeDrawer" aria-label="Tutup setelan">✕</button>
+  </div>
+
+  <div class="drawer-body">
+
+    <details class="grp" open>
+      <summary>Koneksi
+        <span class="info" tabindex="0" data-tip="Situs tempat Anda login berbeda dari server data. Alamat server data terisi sendiri setelah login berhasil.">i</span>
+      </summary>
+      <div class="grp-body">
+        <div class="field">
+          <label for="host">Situs tempat Anda login</label>
+          <select id="host">
+            <option value="__custom">Situs penyedia saya sendiri…</option>
+            <option value="https://hosting.wialon.com">hosting.wialon.com</option>
+            <option value="https://hosting.wialon.us">hosting.wialon.us</option>
+          </select>
+        </div>
+        <div class="field" id="hostCustomWrap">
+          <label for="hostCustom">Alamat situs</label>
+          <input id="hostCustom" type="text" placeholder="https://lite.minervasuite.app" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="apiHost">Alamat server data
+            <span class="info" tabindex="0" data-tip="Diambil dari nilai wialon_sdk_url pada alamat yang Anda tempel. Isi manual hanya bila pengisian otomatis gagal.">i</span>
+          </label>
+          <input id="apiHost" type="text" placeholder="Terisi sendiri setelah login" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="pasteUrl">Tempel alamat hasil login
+            <span class="info" tabindex="0" data-tip="Setelah muncul tulisan Authorized successfully, klik kolom alamat browser, tekan Ctrl+A lalu Ctrl+C, dan tempel di sini.">i</span>
+          </label>
+          <input id="pasteUrl" type="text" placeholder="Tempel seluruh isi kolom alamat" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="btn accent wide" id="btnParseUrl" style="margin-bottom:9px">Ambil dan hubungkan</button>
+        <div class="btnrow" style="margin-bottom:11px">
+          <button class="btn" id="btnOauth" style="flex:1">Masuk lewat jendela</button>
+          <button class="btn" id="btnDisconnect" disabled>Putuskan</button>
+        </div>
+        <div class="field">
+          <label for="token">Token akses <span style="color:var(--ink-3)">(opsional)</span></label>
+          <input id="token" type="password" placeholder="Kosongkan bila memakai tombol di atas" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="btn wide" id="btnConnect" style="margin-bottom:11px">Hubungkan pakai token</button>
+
+        <div id="manualBox" hidden style="background:var(--orange-soft);border-radius:11px;padding:12px;margin-bottom:11px">
+          <b style="font-size:12px;color:var(--orange)">Ambil token baru</b>
+          <ol class="hint" style="margin:6px 0 9px;padding-left:16px;line-height:1.6">
+            <li>Buka salah satu tautan, lalu login seperti biasa.</li>
+            <li>Setelah muncul <b>Authorized successfully</b>, salin seluruh alamat dengan Ctrl+A lalu Ctrl+C.</li>
+            <li>Tempel ke kolom di atas, tekan Ambil dan hubungkan.</li>
+          </ol>
+          <a id="manualLink" class="btn wide" style="display:block;text-align:center;text-decoration:none;margin-bottom:7px" target="_blank" rel="noopener">Token berlaku 1 tahun</a>
+          <a id="manualLinkPolos" class="btn wide" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener">Login polos</a>
+        </div>
+
+        <div id="tokenBox" hidden style="background:var(--teal-soft);border-radius:11px;padding:12px;margin-bottom:11px">
+          <b style="font-size:12px;color:var(--teal)">Kunci untuk mode otomatis</b>
+          <p class="hint" style="margin:5px 0 7px">Tersimpan di browser ini. Jangan dibagikan.</p>
+          <input id="tokenOut" type="text" readonly style="font-size:10.5px">
+          <button class="btn wide sm" id="btnCopyToken" style="margin-top:7px">Salin kunci</button>
+        </div>
+
+        <label class="sw"><input type="checkbox" id="demoMode"><span>Mode simulasi — 5 unit contoh tanpa token</span></label>
+      </div>
+    </details>
+
+    <details class="grp" open>
+      <summary>Batas &amp; pengambilan
+        <span class="info" tabindex="0" data-tip="Alarm berbunyi setelah beberapa pembacaan sah berturut-turut melewati batas, bukan satu lonjakan tunggal.">i</span>
+      </summary>
+      <div class="grp-body">
+        <div class="row2">
+          <div class="field"><label for="cfgLimit">Batas umum (km/jam)</label><input id="cfgLimit" type="number" min="1" max="300" value="60"></div>
+          <div class="field"><label for="cfgInterval">Ambil tiap (detik)</label><input id="cfgInterval" type="number" min="2" max="600" value="10"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="cfgConfirm">Sampel penegasan <span class="info kiri" tabindex="0" data-tip="Berapa pembacaan sah berturut-turut di atas batas sebelum alarm dibunyikan. Nilai 2 sudah cukup meredam lonjakan palsu.">i</span></label><input id="cfgConfirm" type="number" min="1" max="10" value="2"></div>
+          <div class="field"><label for="cfgHyst">Selisih reda <span class="info kiri" tabindex="0" data-tip="Berapa km/jam di bawah batas agar kejadian dinyatakan selesai. Mencegah alarm berkedip saat kecepatan bergoyang di sekitar batas.">i</span></label><input id="cfgHyst" type="number" min="0" max="30" value="5"></div>
+        </div>
+        <label class="sw"><input type="checkbox" id="cfgSmooth" checked><span>Haluskan dengan median 3 pembacaan</span></label>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Ruas jalan <span class="tag" id="zoneCount">0</span>
+        <span class="info" tabindex="0" data-tip="Batas per ruas diambil dari geofence Wialon. Bila unit berada di ruas berbatas, yang berlaku adalah angka terendah antara batas ruas, batas unit, dan batas umum.">i</span>
+      </summary>
+      <div class="grp-body">
+        <label class="sw"><input type="checkbox" id="cfgZones" checked><span>Pakai geofence sebagai nama lokasi dan batas</span></label>
+        <div class="field"><input id="zoneFilter" type="text" placeholder="Cari ruas jalan…" autocomplete="off"></div>
+        <div class="list" id="zoneList"></div>
+        <p class="hint">Isi angka di kanan tiap ruas untuk batas khusus. Yang dikosongkan memakai batas umum.</p>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Unit dipantau <span class="tag" id="unitCount">0</span></summary>
+      <div class="grp-body">
+        <div class="field"><input id="unitFilter" type="text" placeholder="Cari unit…" autocomplete="off"></div>
+        <div class="btnrow" style="margin-bottom:9px">
+          <button class="btn sm" id="btnSelAll">Pilih semua</button>
+          <button class="btn sm" id="btnSelNone">Kosongkan</button>
+        </div>
+        <div class="list" id="unitList"></div>
+        <p class="hint">Angka di kanan tiap unit adalah batas khusus unit itu.</p>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Validasi data GPS
+        <span class="info" tabindex="0" data-tip="Menyaring pembacaan yang tidak masuk akal: posisi meloncat saat sinyal buruk, kecepatan mustahil, atau data bertanggal mundur.">i</span>
+      </summary>
+      <div class="grp-body">
+        <div class="row2">
+          <div class="field"><label for="vMaxSpeed">Kecepatan wajar maks. <span class="info kiri" tabindex="0" data-tip="km/jam. Pembacaan di atas ini dianggap galat sensor dan dibuang.">i</span></label><input id="vMaxSpeed" type="number" min="20" max="400" step="5" value="150"></div>
+          <div class="field"><label for="vSats">Satelit minimum <span class="info kiri" tabindex="0" data-tip="Isi 0 untuk mengabaikan pemeriksaan ini. Perangkat dengan sedikit satelit sering melaporkan posisi yang meleset jauh.">i</span></label><input id="vSats" type="number" min="0" max="20" value="4"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="vJumpDist">Lompatan maks. (m) <span class="info kiri" tabindex="0" data-tip="Perpindahan lebih jauh dari ini dalam jendela waktu singkat dianggap lompatan GPS, bukan gerakan sungguhan.">i</span></label><input id="vJumpDist" type="number" min="10" max="5000" step="10" value="150"></div>
+          <div class="field"><label for="vJumpDt">Jendela singkat (dtk)</label><input id="vJumpDt" type="number" min="1" max="120" value="5"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="vAccel">Percepatan maks. <span class="info kiri" tabindex="0" data-tip="m/s². Lonjakan kecepatan lebih tajam dari ini ditandai janggal karena kendaraan berat tidak mampu melakukannya.">i</span></label><input id="vAccel" type="number" min="1" max="30" step="0.5" value="6"></div>
+          <div class="field"><label for="vAge">Umur data maks. (dtk)</label><input id="vAge" type="number" min="30" max="7200" step="30" value="600"></div>
+        </div>
+        <div class="field">
+          <label for="vMismatch">Selisih lapor vs hitung <span class="info kiri" tabindex="0" data-tip="km/jam. Membandingkan kecepatan yang dilaporkan GPS dengan hasil hitung jarak dibagi waktu. Selisih besar menandakan data tidak konsisten.">i</span></label>
+          <input id="vMismatch" type="number" min="5" max="120" step="5" value="35">
+        </div>
+        <label class="sw"><input type="checkbox" id="vStrict"><span>Tolak juga data yang ditandai janggal</span></label>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Peta dasar
+        <span class="info" tabindex="0" data-tip="Citra site sebagai latar peta. Keempat koordinat tepi yang menempelkan gambar ke posisi sebenarnya — ambil dari berkas -tepi.txt hasil skrip siapkan-peta.">i</span>
+      </summary>
+      <div class="grp-body">
+        <label class="sw"><input type="checkbox" id="baseOn" checked><span>Tampilkan citra site</span></label>
+        <div class="field"><label for="baseFile">Ambil gambar dari komputer</label><input id="baseFile" type="file" accept="image/*"></div>
+        <div class="field">
+          <label for="baseUrl">Atau nama berkas <span class="info kiri" tabindex="0" data-tip="Taruh gambar di folder yang sama dengan berkas HTML ini, lalu tulis namanya saja. Cara ini bertahan setelah halaman dimuat ulang.">i</span></label>
+          <input id="baseUrl" type="text" placeholder="peta-site-web.jpg" autocomplete="off">
+        </div>
+        <div class="row2">
+          <div class="field"><label for="baseNorth">Tepi utara</label><input id="baseNorth" type="number" step="0.000001" placeholder="-0.7300"></div>
+          <div class="field"><label for="baseSouth">Tepi selatan</label><input id="baseSouth" type="number" step="0.000001" placeholder="-0.8100"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="baseWest">Tepi barat</label><input id="baseWest" type="number" step="0.000001" placeholder="127.3500"></div>
+          <div class="field"><label for="baseEast">Tepi timur</label><input id="baseEast" type="number" step="0.000001" placeholder="127.4600"></div>
+        </div>
+        <div class="field"><label for="baseOpacity">Ketebalan tampilan</label><input id="baseOpacity" type="range" min="10" max="100" step="5" value="85"></div>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Notifikasi</summary>
+      <div class="grp-body">
+        <label class="sw"><input type="checkbox" id="nBrowser" checked><span>Notifikasi browser</span></label>
+        <label class="sw"><input type="checkbox" id="nSound" checked><span>Nada peringatan</span></label>
+        <label class="sw"><input type="checkbox" id="nToast" checked><span>Kartu peringatan di layar</span></label>
+        <label class="sw"><input type="checkbox" id="nGeo" checked><span>Terjemahkan koordinat jadi nama lokasi</span></label>
+        <button class="btn wide sm" id="btnTestNotif">Uji notifikasi</button>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Penyimpanan setelan
+        <span class="info" tabindex="0" data-tip="Setelan tersimpan sendiri di browser ini setiap kali diubah. Ekspor menghasilkan berkas kecil untuk disalin ke komputer dispatcher lain.">i</span>
+      </summary>
+      <div class="grp-body">
+        <label class="sw"><input type="checkbox" id="simpanToken"><span>Simpan token juga <span class="info kiri" tabindex="0" data-tip="Kalau dinyalakan, layar ini tersambung sendiri setiap dibuka. Siapa pun yang bisa membuka komputer ini juga bisa mengambil tokennya, jadi pakai akun Wialon berhak lihat saja.">i</span></span></label>
+        <div class="btnrow">
+          <button class="btn sm" id="btnExportCfg">Ekspor berkas</button>
+          <button class="btn sm" id="btnImportCfg">Impor berkas</button>
+          <button class="btn sm" id="btnResetCfg">Hapus semua</button>
+        </div>
+        <input id="fileImportCfg" type="file" accept="application/json,.json" hidden>
+        <p class="hint" id="simpanKabar">Setelan tersimpan otomatis.</p>
+      </div>
+    </details>
+
+    <details class="grp">
+      <summary>Catatan sistem</summary>
+      <div class="grp-body"><div class="log" id="sysLog"></div></div>
+    </details>
+
+  </div>
+
+  <div class="drawer-foot">
+    <button class="btn primary wide" id="closeDrawer2">Selesai</button>
+  </div>
+</aside>
+
+<div class="toasts" id="toasts"></div>
+<script>
+/* ============================================================================
+   PEMANTAU OVERSPEED — mesin aplikasi
+   Alur: ambil data berkala → validasi kewajaran → deteksi overspeed → notifikasi
+   ========================================================================== */
+"use strict";
+
+/* ############################################################################
+   #  KONFIGURASI OPERASI OTOMATIS
+   #  Isi bagian ini kalau layar ini mau dijalankan terus-menerus di komputer
+   #  dispatcher tanpa perlu diisi ulang setiap kali dibuka.
+   #  Kalau enabled dibiarkan false, aplikasi tetap bekerja manual seperti biasa.
+   ########################################################################## */
+const AUTO = {
+  enabled: false,                          // true = sambung dan mulai memantau sendiri
+
+  host: "",                                // situs tempat login, misal https://lite.minervasuite.app
+  apiHost: "",                             // alamat server data (wialon_sdk_url); kosongkan bila sama
+  token: "",                               // token 72 karakter dari Wialon
+
+  units: "*",                              // "*" = semua unit, atau daftar pola:
+                                           // ["DT-*", "LV-013", "*Fuel*"]
+  limit: 60,                               // batas umum, km/jam
+  limitPerUnit: {                          // batas khusus per pola nama unit
+    // "LV-*": 70,
+    // "FT-*": 50,
+  },
+  interval: 10,                            // ambil data tiap sekian detik
+
+  reloadAt: "05:00",                       // muat ulang halaman tiap hari jam ini ("" = tidak pernah)
+  exportBeforeReload: true,                // unduh CSV kejadian sebelum muat ulang
+  keepAwake: true,                         // cegah layar tidur
+
+  // Peta dasar untuk layar yang menyala terus. Taruh gambar di folder yang
+  // sama dengan berkas ini, lalu isi nama berkas dan keempat tepinya.
+  petaDasar: { url: "", north: null, south: null, west: null, east: null, opacity: 0.85 },
+  retryAfter: 30,                          // coba sambung lagi setelah sekian detik bila gagal
+};
+
+
+/* ---------------------------------------------------------------- keadaan */
+const App = {
+  cfg: {},
+  units: new Map(),      // id -> objek unit
+  events: [],            // kejadian overspeed (terbaru di depan)
+  rejects: [],           // sampel yang dibuang validasi
+  history: [],           // hasil analisa riwayat
+  zones: [],             // geofence dari peta: ruas jalan dan areanya
+  connected: false,
+  demo: false,
+  timer: null,
+  lastPoll: 0,
+  seq: 0,
+  sdkReady: false,
+};
+
+const MAX_HIST = 80;     // sampel disimpan per unit
+const MAX_REJECT = 600;  // batas baris audit di memori
+const KEEP_SPARK = 26;   // batang pada sparkline
+
+/* ------------------------------------------------------------- pertolongan */
+const $ = id => document.getElementById(id);
+const num = (v, d = 0) => { const n = parseFloat(v); return isFinite(n) ? n : d; };
+const pad = n => String(n).padStart(2, "0");
+
+function fmtClock(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()); }
+function fmtTime(sec) {
+  if (!sec) return "—";
+  const d = new Date(sec * 1000);
+  return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + " " + fmtClock(d);
+}
+function fmtDur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  if (sec < 60) return sec + " dtk";
+  const m = Math.floor(sec / 60), s = sec % 60;
+  if (m < 60) return m + "m " + pad(s) + "s";
+  return Math.floor(m / 60) + "j " + pad(m % 60) + "m";
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/** Jarak dua koordinat dalam meter (haversine). */
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a, b) => a - b), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function validCoord(lat, lon) {
+  return typeof lat === "number" && typeof lon === "number" &&
+         isFinite(lat) && isFinite(lon) &&
+         Math.abs(lat) <= 90 && Math.abs(lon) <= 180 &&
+         !(Math.abs(lat) < 0.0001 && Math.abs(lon) < 0.0001); // titik nol = perangkat belum fix
+}
+
+function log(msg, isErr) {
+  const el = $("sysLog");
+  const line = document.createElement("div");
+  line.innerHTML = "<b>" + fmtClock(new Date()) + "</b> " +
+                   (isErr ? '<span class="e">' + esc(msg) + "</span>" : esc(msg));
+  el.insertBefore(line, el.firstChild);
+  while (el.childNodes.length > 120) el.removeChild(el.lastChild);
+}
+
+/* ------------------------------------------------------ baca pengaturan UI */
+function readConfig() {
+  App.cfg = {
+    limit:      num($("cfgLimit").value, 60),
+    interval:   Math.max(2, num($("cfgInterval").value, 10)),
+    confirm:    Math.max(1, num($("cfgConfirm").value, 2)),
+    hyst:       num($("cfgHyst").value, 5),
+    smooth:     $("cfgSmooth").checked,
+    useZones:   $("cfgZones").checked,
+    maxSpeed:   num($("vMaxSpeed").value, 150),
+    minSats:    num($("vSats").value, 4),
+    jumpDist:   num($("vJumpDist").value, 150),
+    jumpDt:     num($("vJumpDt").value, 5),
+    maxAccel:   num($("vAccel").value, 6),
+    maxAge:     num($("vAge").value, 600),
+    mismatch:   num($("vMismatch").value, 35),
+    strict:     $("vStrict").checked,
+    nBrowser:   $("nBrowser").checked,
+    nSound:     $("nSound").checked,
+    nToast:     $("nToast").checked,
+    nGeo:       $("nGeo").checked,
+  };
+  return App.cfg;
+}
+
+/* ==========================================================================
+   VALIDASI
+   Data GPS bisa meleset saat sinyal buruk: posisi meloncat, kecepatan
+   melonjak, atau perangkat mengirim ulang data lama. Sampel dinilai
+   terhadap sampel valid sebelumnya sebelum boleh memicu alarm.
+   ========================================================================== */
+const REASON = {
+  NO_FIX:     "Koordinat tidak sah",
+  OLD:        "Data lebih lama dari sampel sebelumnya",
+  STALE:      "Data kedaluwarsa",
+  SATS:       "Satelit kurang",
+  SPEED:      "Kecepatan di luar batas wajar",
+  JUMP:       "Posisi meloncat",
+  TELEPORT:   "Perpindahan terlalu cepat",
+  ACCEL:      "Percepatan tidak masuk akal",
+  MISMATCH:   "Kecepatan lapor beda jauh dari hitungan",
+  FROZEN:     "Posisi diam tapi kecepatan besar",
+};
+
+/**
+ * Menilai satu sampel terhadap sampel valid terakhir.
+ * @returns {{ok:boolean, hard:string[], soft:string[], dt:number, dist:number, implied:number, accel:number}}
+ */
+function validateSample(s, prev, cfg, now) {
+  const hard = [], soft = [];
+  let dt = null, dist = null, implied = null, accel = null;
+
+  if (!validCoord(s.lat, s.lon)) hard.push(REASON.NO_FIX);
+  if (!isFinite(s.speed) || s.speed < 0 || s.speed > cfg.maxSpeed) hard.push(REASON.SPEED);
+  if (cfg.minSats > 0 && s.sats != null && s.sats < cfg.minSats) hard.push(REASON.SATS);
+  if (cfg.maxAge > 0 && now - s.t > cfg.maxAge) hard.push(REASON.STALE);
+
+  if (prev) {
+    dt = s.t - prev.t;
+    if (dt <= 0) {
+      hard.push(REASON.OLD);
+    } else if (validCoord(s.lat, s.lon) && validCoord(prev.lat, prev.lon)) {
+      dist = haversine(prev.lat, prev.lon, s.lat, s.lon);
+      implied = (dist / dt) * 3.6;                       // km/jam hasil hitung jarak÷waktu
+
+      // Loncatan: pindah jauh dalam waktu sangat singkat.
+      if (dt <= cfg.jumpDt && dist > cfg.jumpDist) hard.push(REASON.JUMP);
+      // Perpindahan yang menuntut kecepatan mustahil.
+      if (implied > cfg.maxSpeed) hard.push(REASON.TELEPORT);
+
+      accel = Math.abs(s.speed - prev.speed) / 3.6 / dt; // m/s²
+      if (dt <= 60 && accel > cfg.maxAccel) soft.push(REASON.ACCEL);
+
+      // Kecepatan dari GPS vs hasil hitung tidak sejalan.
+      if (dt <= 60 && Math.abs(s.speed - implied) > cfg.mismatch) soft.push(REASON.MISMATCH);
+
+      // Posisi tidak bergerak padahal melaporkan kecepatan besar → posisi membeku.
+      if (dt >= 30 && dist < 10 && s.speed > 20) soft.push(REASON.FROZEN);
+    }
+  }
+
+  const ok = hard.length === 0 && !(cfg.strict && soft.length > 0);
+  return { ok, hard, soft, dt, dist, implied, accel };
+}
+
+/* ==========================================================================
+   GEOFENCE — nama ruas jalan dan batas kecepatannya
+   Bentuk zona diambil dari peta Wialon, lalu diuji di sini secara lokal
+   supaya tiap pembacaan tidak perlu bertanya ke server.
+   Wialon memakai tiga bentuk: 1 = garis (ruas jalan), 2 = poligon, 3 = lingkaran.
+   Koordinat zona memakai x untuk bujur dan y untuk lintang.
+   ========================================================================== */
+function degScale(lat) {
+  return { x: 111320 * Math.cos(lat * Math.PI / 180), y: 110540 };
+}
+
+/** Jarak titik ke ruas garis, dalam meter. */
+function distToSegment(lon, lat, ax, ay, bx, by) {
+  const m = degScale(lat);
+  const px = (lon - ax) * m.x, py = (lat - ay) * m.y;
+  const bxm = (bx - ax) * m.x, bym = (by - ay) * m.y;
+  const len2 = bxm * bxm + bym * bym;
+  let t = len2 ? (px * bxm + py * bym) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const dx = px - t * bxm, dy = py - t * bym;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/** Jarak titik ke garis berliku (rangkaian ruas), dalam meter. */
+function distToPolyline(lon, lat, pts) {
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = distToSegment(lon, lat, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+    if (d < best) best = d;
+  }
+  if (pts.length === 1) {
+    const m = degScale(lat);
+    best = Math.hypot((lon - pts[0].x) * m.x, (lat - pts[0].y) * m.y);
+  }
+  return best;
+}
+
+/** Uji titik di dalam poligon dengan metode lemparan sinar. */
+function inPolygon(lon, lat, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, yi = pts[i].y, xj = pts[j].x, yj = pts[j].y;
+    if (((yi > lat) !== (yj > lat)) &&
+        (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInZone(lat, lon, z) {
+  if (!z || !z.points || !z.points.length) return false;
+
+  // Saringan awal memakai kotak batas supaya pemeriksaan berat dilewati.
+  if (z.bounds) {
+    const pad = (z.width || 0) / 100000 + 0.0005;
+    if (lon < z.bounds.min_x - pad || lon > z.bounds.max_x + pad ||
+        lat < z.bounds.min_y - pad || lat > z.bounds.max_y + pad) return false;
+  }
+
+  if (z.type === 3) {                                  // lingkaran
+    const m = degScale(lat);
+    const d = Math.hypot((lon - z.points[0].x) * m.x, (lat - z.points[0].y) * m.y);
+    return d <= (z.points[0].r || z.width || 0);
+  }
+  if (z.type === 1) {                                  // garis: ruas jalan
+    return distToPolyline(lon, lat, z.points) <= (z.width || 0) / 2;
+  }
+  return inPolygon(lon, lat, z.points);                 // poligon
+}
+
+/** Semua ruas yang memuat titik ini. */
+function zonesAt(lat, lon) {
+  if (!App.zones || !App.zones.length) return [];
+  return App.zones.filter(z => pointInZone(lat, lon, z));
+}
+
+/**
+ * Batas yang berlaku untuk sebuah pembacaan.
+ * Bila unit berada di ruas berbatas, yang dipakai adalah angka terendah antara
+ * batas ruas dan batas unit — pilihan paling aman untuk alat keselamatan.
+ */
+function limitFor(u, s, cfg) {
+  let limit = unitLimit(u, cfg);
+  let zone = null;
+
+  if (cfg.useZones && s && validCoord(s.lat, s.lon)) {
+    const hits = zonesAt(s.lat, s.lon);
+    if (hits.length) {
+      zone = hits[0].name;
+      const berbatas = hits.filter(z => z.limit > 0).sort((a, b) => a.limit - b.limit);
+      if (berbatas.length) {
+        limit = Math.min(limit, berbatas[0].limit);
+        zone = berbatas[0].name;
+      }
+    }
+  }
+  return { limit, zone };
+}
+
+/* ==========================================================================
+   MESIN DETEKSI OVERSPEED
+   Satu kejadian dibuka setelah beberapa sampel valid berturut-turut melewati
+   batas, lalu ditutup setelah kecepatan turun cukup jauh di bawah batas.
+   ========================================================================== */
+function newUnit(id, name, extra) {
+  return Object.assign({
+    id, name,
+    monitored: false,
+    limitOverride: null,
+    samples: [],        // riwayat sampel (valid & ditolak) untuk sparkline
+    lastValid: null,
+    lastRaw: null,
+    countValid: 0,
+    countReject: 0,
+    eventCount: 0,
+    overStreak: 0,
+    underStreak: 0,
+    active: null,       // kejadian yang sedang berjalan
+    lastSuspect: null,
+    zone: null,
+    status: "IDLE",
+  }, extra || {});
+}
+
+function unitLimit(u, cfg) {
+  return u.limitOverride && u.limitOverride > 0 ? u.limitOverride : cfg.limit;
+}
+
+/** Kecepatan yang dipakai untuk menilai: median 3 sampel valid terakhir bila dihaluskan. */
+function assessedSpeed(u, s, cfg) {
+  if (!cfg.smooth) return s.speed;
+  const last = u.samples.filter(x => x.valid).slice(-3).map(x => x.speed);
+  return last.length >= 3 ? median(last) : s.speed;
+}
+
+/**
+ * Memasukkan satu pembacaan mentah ke unit. Mengembalikan sampel yang sudah dinilai,
+ * atau null bila data tidak baru.
+ */
+function pushSample(u, raw, cfg, now, opts) {
+  opts = opts || {};
+  const s = {
+    t: raw.t, lat: raw.lat, lon: raw.lon,
+    speed: raw.speed, sats: raw.sats == null ? null : raw.sats,
+    course: raw.course, seq: ++App.seq,
+  };
+
+  // Tidak ada data baru dari perangkat — bukan kesalahan, cukup dilewati.
+  if (u.lastRaw && s.t === u.lastRaw.t && s.speed === u.lastRaw.speed &&
+      s.lat === u.lastRaw.lat && s.lon === u.lastRaw.lon) {
+    u.status = "SAMA";
+    return null;
+  }
+  u.lastRaw = s;
+
+  const v = validateSample(s, u.lastValid, cfg, now);
+  s.valid = v.ok; s.hard = v.hard; s.soft = v.soft;
+  s.dt = v.dt; s.dist = v.dist; s.implied = v.implied; s.accel = v.accel;
+  s.over = false;
+
+  u.samples.push(s);
+  if (u.samples.length > MAX_HIST) u.samples.shift();
+
+  if (!v.ok) {
+    u.countReject++;
+    u.status = "DITOLAK";
+    const reasons = v.hard.concat(cfg.strict ? v.soft : []);
+    const rec = {
+      t: s.t, unit: u.name, unitId: u.id, speed: s.speed, implied: s.implied,
+      dist: s.dist, dt: s.dt, sats: s.sats, lat: s.lat, lon: s.lon,
+      reason: reasons.join("; "),
+    };
+    if (!opts.silent) {
+      App.rejects.unshift(rec);
+      if (App.rejects.length > MAX_REJECT) App.rejects.pop();
+    }
+    // Sampel buruk tidak boleh mengunci kejadian yang sedang berjalan
+    // maupun memutus hitungan; ia hanya diabaikan.
+    return s;
+  }
+
+  u.countValid++;
+  u.lastValid = s;
+  u.lastSuspect = v.soft.length ? v.soft.join("; ") : null;
+
+  evaluateSpeed(u, s, cfg, opts);
+  return s;
+}
+
+function evaluateSpeed(u, s, cfg, opts) {
+  const res = limitFor(u, s, cfg);
+  const limit = res.limit;
+  s.zone = res.zone;
+  s.limit = limit;
+  u.zone = res.zone;
+  const shown = assessedSpeed(u, s, cfg);
+  s.assessed = shown;
+  s.over = shown > limit;
+
+  if (s.over) {
+    u.overStreak++;
+    u.underStreak = 0;
+
+    if (!u.active && u.overStreak >= cfg.confirm) {
+      // Kejadian dibuka mundur ke sampel pertama yang melewati batas,
+      // supaya waktu mulai dan kecepatan puncak tidak terpotong.
+      const first = u.samples.filter(x => x.valid).slice(-u.overStreak)[0] || s;
+      u.active = {
+        id: "EV" + (++App.seq),
+        unitId: u.id, unitName: u.name, limit,
+        tStart: first.t, tEnd: s.t,
+        maxSpeed: 0, sumSpeed: 0, n: 0,
+        lat: first.lat, lon: first.lon, location: res.zone || null, zone: res.zone || null,
+        open: true, source: opts && opts.source ? opts.source : "live",
+      };
+      u.samples.filter(x => x.valid).slice(-u.overStreak).forEach(x => {
+        u.active.maxSpeed = Math.max(u.active.maxSpeed, x.speed);
+        u.active.sumSpeed += x.speed; u.active.n++;
+      });
+      u.status = "OVERSPEED";
+      onEventOpen(u, u.active, opts);
+    } else if (u.active) {
+      u.active.tEnd = s.t;
+      u.active.maxSpeed = Math.max(u.active.maxSpeed, s.speed);
+      u.active.sumSpeed += s.speed; u.active.n++;
+      if (s.speed >= u.active.maxSpeed) { u.active.lat = s.lat; u.active.lon = s.lon; }
+    }
+  } else {
+    u.overStreak = 0;
+    if (u.active) {
+      if (shown <= limit - cfg.hyst) {
+        u.underStreak++;
+        if (u.underStreak >= cfg.confirm) closeEvent(u, s, opts);
+      }
+    } else {
+      u.status = shown > 0 ? "JALAN" : "DIAM";
+    }
+  }
+}
+
+function closeEvent(u, s, opts) {
+  const ev = u.active;
+  if (!ev) return;
+  ev.open = false;
+  // tEnd sudah menunjuk pembacaan terakhir yang melewati batas; sampel penutup
+  // berada di bawah batas sehingga tidak dihitung sebagai durasi pelanggaran.
+  ev.duration = Math.max(0, ev.tEnd - ev.tStart);
+  ev.avgSpeed = ev.n ? ev.sumSpeed / ev.n : ev.maxSpeed;
+  u.active = null;
+  u.underStreak = 0;
+  u.status = "JALAN";
+  if (!opts || !opts.silent) render();
+}
+
+/* ------------------------------------------------ pemberitahuan & lokasi */
+function onEventOpen(u, ev, opts) {
+  ev.duration = 0;
+  ev.avgSpeed = ev.n ? ev.sumSpeed / ev.n : ev.maxSpeed;
+
+  if (opts && opts.collect) { opts.collect.push(ev); return; }
+
+  App.events.unshift(ev);
+  const pemilik = App.units.get(ev.unitId);
+  if (pemilik) pemilik.eventCount = (pemilik.eventCount || 0) + 1;
+  notify(ev);
+  if (App.cfg.nGeo && !ev.zone) resolveLocation(ev);
+}
+
+function notify(ev) {
+  const cfg = App.cfg;
+  const title = "Overspeed — " + ev.unitName;
+  const body = Math.round(ev.maxSpeed) + " km/jam (batas " + ev.limit + ") · " +
+               fmtTime(ev.tStart) + " · " + ev.lat.toFixed(5) + ", " + ev.lon.toFixed(5);
+
+  log("Overspeed " + ev.unitName + " — " + Math.round(ev.maxSpeed) + " km/jam", true);
+
+  if (cfg.nToast) {
+    const t = document.createElement("div");
+    t.className = "toast";
+    t.innerHTML = "<h4>Overspeed — " + esc(ev.unitName) + "</h4><p>" +
+      Math.round(ev.maxSpeed) + " km/jam · batas " + ev.limit + "<br>" +
+      fmtTime(ev.tStart) + "<br><span data-loc>" +
+      ev.lat.toFixed(5) + ", " + ev.lon.toFixed(5) + "</span></p>";
+    $("toasts").appendChild(t);
+    ev._toast = t;
+    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 400); }, 12000);
+  }
+  if (cfg.nSound) beep();
+  if (cfg.nBrowser && "Notification" in window && Notification.permission === "granted") {
+    try {
+      const n = new Notification(title, { body, tag: ev.id, requireInteraction: false });
+      setTimeout(() => n.close(), 15000);
+    } catch (e) { /* beberapa browser melarang di luar konteks aman */ }
+  }
+}
+
+let audioCtx = null;
+function beep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    [0, 0.22].forEach((off, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = "square"; o.frequency.value = i ? 660 : 880;
+      g.gain.setValueAtTime(0.0001, t0 + off);
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + off + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.18);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t0 + off); o.stop(t0 + off + 0.2);
+    });
+  } catch (e) { /* audio tidak tersedia */ }
+}
+</script>
+<script>
+/* ==========================================================================
+   SUMBER DATA — WIALON
+   Memakai SDK resmi Wialon, dimuat dari server yang dipilih agar tidak
+   terhalang CORS. Untuk server lokal, SDK diambil dari alamat server itu.
+   ========================================================================== */
+/** Situs tempat pengguna login — di sinilah halaman login.html berada. */
+function loginHost() {
+  const v = $("host").value;
+  return v === "__custom" ? ($("hostCustom").value || "").trim().replace(/\/+$/, "") : v;
+}
+
+/* Wialon memisahkan situs login dari server data. Pemetaan ini hanya untuk
+   Wialon pusat; untuk penyedia lain alamatnya diambil dari wialon_sdk_url
+   yang dikirim balik saat login. */
+const API_BAWAAN = {
+  "https://hosting.wialon.com": "https://hst-api.wialon.com",
+  "https://hosting.wialon.us":  "https://hst-api.wialon.us",
+};
+
+/** Alamat server data: isian manual, lalu pemetaan bawaan, lalu situs login. */
+function apiHost() {
+  const manual = ($("apiHost").value || "").trim().replace(/\/+$/, "");
+  if (manual) return manual;
+  const lh = loginHost();
+  return API_BAWAAN[lh] || lh;
+}
+
+/** Menyimpan alamat server data yang disebutkan Wialon saat login. */
+function noteSdkUrl(url) {
+  if (!url) return;
+  const clean = String(url).trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(clean)) return;
+  $("apiHost").value = clean;
+  log("Server data dikenali: " + clean);
+}
+
+function extractSdkUrl(data) {
+  if (!data) return null;
+  try {
+    if (typeof data === "object") return data.wialon_sdk_url || null;
+    const m = String(data).match(/wialon_sdk_url["'=:\s]+(https?[^&"'\s]+)/i);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (e) { return null; }
+}
+
+function loadSdk(host) {
+  return new Promise((resolve, reject) => {
+    if (window.wialon && window.wialon.core) { App.sdkReady = true; return resolve(); }
+    const sc = document.createElement("script");
+    sc.src = host + "/wsdk/script/wialon.js";
+    sc.onload = () => { App.sdkReady = true; resolve(); };
+    sc.onerror = () => reject(new Error("SDK Wialon tidak bisa dimuat dari " + host));
+    document.head.appendChild(sc);
+  });
+}
+
+function sess() { return window.wialon.core.Session.getInstance(); }
+
+/* Arti kode galat Wialon dalam bahasa yang bisa ditindaklanjuti. */
+const ARTI_KODE = {
+  1:    ["Sesi tidak berlaku lagi", "Sesi di server sudah ditutup. Ambil token baru lalu masuk lagi."],
+  4:    ["Masukan tidak sah", "Ada nilai yang tidak diterima server. Periksa alamat server data."],
+  5:    ["Server gagal memproses", "Coba lagi beberapa saat. Bila berulang, hubungi penyedia."],
+  7:    ["Akses ditolak", "Token sudah kedaluwarsa, dicabut, atau haknya kurang. Ambil token baru."],
+  8:    ["Nama pengguna atau kata sandi salah", "Periksa akun Anda di halaman login penyedia."],
+  9:    ["Server otorisasi sedang tidak tersedia", "Masalah di sisi penyedia. Coba lagi nanti."],
+  10:   ["Terlalu banyak permintaan bersamaan", "Perpanjang selang pengambilan data, misalnya jadi 15 detik."],
+  14:   ["Masalah penagihan pada akun", "Hubungi penyedia layanan Anda."],
+  1011: ["Alamat IP berubah atau sesi kedaluwarsa", "Sering terjadi bila jaringan berpindah, misalnya dari wifi ke kabel, atau setelah komputer tidur. Ambil token baru lalu masuk lagi."],
+};
+
+function jelaskanKode(code) {
+  const a = ARTI_KODE[code];
+  let teks = "";
+  try { teks = window.wialon.core.Errors.getErrorText(code) || ""; } catch (e) {}
+  if (a) return a[0] + " (kode " + code + "). " + a[1];
+  return (teks || "Galat tidak dikenal") + " (kode " + code + ").";
+}
+
+async function connect() {
+  const host = apiHost();
+  const token = $("token").value.trim();
+  if (!host) { log("Alamat server belum diisi.", true); return; }
+  if (!token) { log("Token belum diisi. Buat token di Wialon lalu tempel di kolom Token akses.", true); return; }
+
+  setConn("warn", "Menghubungkan…");
+  $("btnConnect").disabled = true;
+  try {
+    await loadSdk(host);
+  } catch (e) {
+    setConn("err", "SDK gagal dimuat");
+    log(e.message + ". Kemungkinan alamat server data salah — periksa nilai wialon_sdk_url pada alamat browser setelah login.", true);
+    $("btnConnect").disabled = false;
+    scheduleReconnect("SDK tidak bisa dimuat");
+    return;
+  }
+
+  sess().initSession(host);
+  sess().loginToken(token, "", code => {
+    if (code) {
+      setConn("err", "Gagal masuk");
+      log("Gagal masuk. " + jelaskanKode(code), true);
+      if (code === 7 || code === 1 || code === 1011) {
+        log("Token lama tidak bisa dipakai lagi. Gunakan tautan di kotak kuning di " +
+            "panel kiri untuk mengambil token baru.", true);
+        $("token").value = "";
+        $("tokenBox").hidden = true;
+      }
+      showManualHelp(loginHost());
+      $("btnConnect").disabled = false;
+      scheduleReconnect("login ditolak");
+      return;
+    }
+    App.connected = true;
+    App.demo = false;
+    $("demoMode").checked = false;
+    $("btnDisconnect").disabled = false;
+    setConn("on", "Terhubung · " + (sess().getCurrUser() ? sess().getCurrUser().getName() : "aktif"));
+    log("Berhasil masuk ke " + host);
+    loadUnits();
+  });
+}
+
+function loadUnits() {
+  const W = window.wialon;
+  const flags = W.item.Item.dataFlag.base | W.item.Unit.dataFlag.lastMessage;
+  sess().loadLibrary("itemIcon");
+  sess().loadLibrary("unitSensors");
+  sess().updateDataFlags([{ type: "type", data: "avl_unit", flags: flags, mode: 0 }], code => {
+    if (code) {
+      log("Daftar unit gagal diambil. " + jelaskanKode(code), true);
+      return;
+    }
+    const items = sess().getItems("avl_unit") || [];
+    App.units.clear();
+    items.forEach(it => {
+      App.units.set(it.getId(), newUnit(it.getId(), it.getName(), { wialon: it }));
+    });
+    log("Ditemukan " + items.length + " unit.");
+    sessionFails = 0;
+    loadZones();
+    terapkanSetelanUnit();
+    renderUnitList();
+    if (AUTO.enabled) autoPickUnits();
+    render();
+    startPolling();
+  });
+}
+
+/** Mengambil bentuk semua geofence dari peta Wialon. */
+function loadZones() {
+  const W = window.wialon;
+  /* Nilai bendera zona berbeda antar versi SDK. Bila SDK tidak menyebutkannya,
+     minta seluruh data sumber daya saja — lebih berat sedikit, tapi pasti
+     memuat geofence. Menebak nilainya justru membuat zona sunyi tidak terbaca. */
+  const flag = (W.item.Resource.dataFlag && W.item.Resource.dataFlag.zones) || 0xFFFFFFFF;
+  sess().loadLibrary("resourceZones");
+  sess().updateDataFlags([{ type: "type", data: "avl_resource", flags: flag, mode: 0 }], code => {
+    if (code) {
+      log("Geofence tidak bisa dibaca: " + W.core.Errors.getErrorText(code) +
+          ". Batas per ruas jalan tidak aktif.", true);
+      return;
+    }
+    const res = sess().getItems("avl_resource") || [];
+    const list = [];
+    let tanpaTitik = 0, titikBuruk = 0;
+
+    res.forEach(r => {
+      let zs = {};
+      try { zs = r.getZones() || {}; } catch (e) { return; }
+      Object.keys(zs).forEach(k => {
+        const z = zs[k];
+        if (!z) return;
+        const mentah = Array.isArray(z.p) ? z.p : (z.p ? Object.keys(z.p).map(i => z.p[i]) : []);
+
+        // Titik yang tidak masuk akal dibuang di sini. Satu titik nyasar saja
+        // sudah cukup membuat seluruh peta menciut jadi setitik.
+        const pts = mentah.filter(pt => pt && validCoord(pt.y, pt.x));
+        titikBuruk += mentah.length - pts.length;
+        if (!pts.length) { tanpaTitik++; return; }
+
+        list.push({
+          key: r.getId() + ":" + z.id,
+          name: z.n || ("Zona " + z.id),
+          type: z.t, width: z.w || 0,
+          points: pts, bounds: z.b || null, limit: null,
+        });
+      });
+    });
+
+    App.zones = list.sort((a, b) => a.name.localeCompare(b.name, "id"));
+    terapkanSetelanZona();
+    log("Geofence terbaca: " + list.length + " dari " + res.length + " sumber daya." +
+        (tanpaTitik ? " " + tanpaTitik + " zona dilewati karena tanpa koordinat sah." : "") +
+        (titikBuruk ? " " + titikBuruk + " titik nyasar dibuang." : ""));
+    if (!list.length) {
+      log("Tidak ada geofence yang bisa dibaca. Periksa apakah akun Anda punya hak lihat " +
+          "terhadap sumber daya tempat geofence disimpan.", true);
+    }
+    App.map.vb = null;
+    renderZoneList();
+    render();
+  });
+}
+
+function disconnect() {
+  stopPolling();
+  if (App.connected && window.wialon) { try { sess().logout(() => {}); } catch (e) {} }
+  App.connected = false;
+  App.units.clear();
+  App.zones = [];
+  setConn("", "Belum terhubung");
+  $("btnConnect").disabled = false;
+  $("btnDisconnect").disabled = true;
+  renderUnitList(); render();
+  log("Koneksi diputus.");
+}
+
+/** Membaca posisi terakhir satu unit dari SDK. */
+function readWialonPosition(u) {
+  if (!u.wialon) return null;
+  const p = u.wialon.getPosition();
+  if (!p) return null;
+  return {
+    t: p.t, lat: p.y, lon: p.x,
+    speed: p.s == null ? 0 : p.s,
+    course: p.c, sats: p.sc == null ? null : p.sc,
+  };
+}
+
+/* ---------------------------------------------------- nama lokasi (opsional) */
+function resolveLocation(ev) {
+  if (App.demo) {
+    ev.location = "Simulasi · Jalan Hauling KM " + (Math.abs(Math.round(ev.lat * 137)) % 40 + 1);
+    render(); return;
+  }
+  if (!window.wialon || !window.wialon.util || !window.wialon.util.Gis) return;
+  try {
+    window.wialon.util.Gis.getLocations([{ lon: ev.lon, lat: ev.lat }], (code, addr) => {
+      if (!code && addr && addr[0]) {
+        ev.location = addr[0];
+        if (ev._toast) {
+          const el = ev._toast.querySelector("[data-loc]");
+          if (el) el.textContent = addr[0];
+        }
+        render();
+      }
+    });
+  } catch (e) { /* layanan geocoding tidak tersedia */ }
+}
+
+/* ==========================================================================
+   MODE SIMULASI
+   Lima unit dengan pola kecepatan berbeda, ditambah lonjakan GPS buatan
+   supaya lapisan validasi bisa dilihat bekerja.
+   ========================================================================== */
+const DEMO_UNITS = [
+  { id: 9001, name: "DT-114 · Hino 500", base: 42, amp: 26, per: 95, jump: 0.05 },
+  { id: 9002, name: "DT-207 · Scania P360", base: 35, amp: 14, per: 140, jump: 0.02 },
+  { id: 9003, name: "LV-013 · Hilux DC", base: 55, amp: 30, per: 70, jump: 0.10 },
+  { id: 9004, name: "DT-331 · Hino 500", base: 18, amp: 10, per: 200, jump: 0.01 },
+  { id: 9005, name: "FT-002 · Fuel Truck", base: 30, amp: 22, per: 110, jump: 0.16 },
+];
+
+/* Ruas contoh, dipasang di sekitar jalur unit simulasi supaya fiturnya
+   bisa dilihat bekerja tanpa perlu tersambung ke Wialon. */
+const DEMO_ZONES = [
+  { key: "d1", name: "RD_Alur 1", type: 1, width: 700, limit: 25,
+    points: [{x:127.382,y:-0.788},{x:127.400,y:-0.768},{x:127.418,y:-0.752}],
+    bounds: {min_x:127.382,max_x:127.418,min_y:-0.788,max_y:-0.752} },
+  { key: "d2", name: "RD_Subaim", type: 1, width: 600, limit: null,
+    points: [{x:127.392,y:-0.756},{x:127.420,y:-0.778}],
+    bounds: {min_x:127.392,max_x:127.420,min_y:-0.778,max_y:-0.756} },
+  { key: "d3", name: "LP_EXC07", type: 3, width: 800, limit: 10,
+    points: [{x:127.396,y:-0.7735,r:800}],
+    bounds: {min_x:127.388,max_x:127.404,min_y:-0.781,max_y:-0.766} },
+  { key: "d4", name: "SP - Waste Dump Mafa", type: 2, width: 0, limit: 15,
+    points: [{x:127.404,y:-0.766},{x:127.419,y:-0.766},{x:127.419,y:-0.755},{x:127.404,y:-0.755}],
+    bounds: {min_x:127.404,max_x:127.419,min_y:-0.766,max_y:-0.755} },
+];
+
+function startDemo() {
+  if (App.connected) disconnect();
+  App.demo = true;
+  App.units.clear();
+  DEMO_UNITS.forEach(d => {
+    const u = newUnit(d.id, d.name, {
+      demo: d,
+      lat: -0.78 + Math.random() * 0.05,
+      lon: 127.38 + Math.random() * 0.05,
+      phase: Math.random() * 1000,
+    });
+    u.monitored = true;
+    App.units.set(d.id, u);
+  });
+  App.zones = DEMO_ZONES.map(z => Object.assign({}, z));
+  terapkanSetelanZona();
+  setConn("warn", "Mode simulasi");
+  log("Mode simulasi menyala — 5 unit contoh dan " + App.zones.length + " ruas contoh.");
+  renderUnitList();
+  renderZoneList();
+  render();
+  startPolling();
+}
+
+function demoPosition(u, now) {
+  const d = u.demo;
+  const t = now + u.phase;
+  let speed = d.base + d.amp * Math.sin(t / d.per) + (Math.random() - 0.5) * 6;
+  speed = Math.max(0, speed);
+
+  // Gerak wajar mengikuti kecepatan.
+  const step = (speed / 3.6) * App.cfg.interval / 111320;
+  u.lat += step * Math.cos(t / 40);
+  u.lon += step * Math.sin(t / 40);
+
+  let sats = 7 + Math.floor(Math.random() * 5);
+
+  // Gangguan buatan: sesekali unit "meloncat" dan satelit turun drastis.
+  if (Math.random() < d.jump) {
+    u.lat += (Math.random() - 0.5) * 0.03;   // ± 1,6 km seketika
+    u.lon += (Math.random() - 0.5) * 0.03;
+    sats = 2;
+    speed = speed + 80 + Math.random() * 60;
+  }
+  return { t: Math.round(now), lat: u.lat, lon: u.lon, speed: speed, course: 0, sats: sats };
+}
+
+/* ==========================================================================
+   PENGAMBILAN DATA BERKALA
+   ========================================================================== */
+function startPolling() {
+  stopPolling();
+  readConfig();
+  App.timer = setInterval(tick, App.cfg.interval * 1000);
+  setPoll("on live", "Mengambil tiap " + App.cfg.interval + " dtk");
+  tick();
+}
+function stopPolling() {
+  if (App.timer) clearInterval(App.timer);
+  App.timer = null;
+  setPoll("", "Berhenti");
+}
+
+let idleTicks = 0;
+function tick() {
+  const cfg = readConfig();
+  const now = Date.now() / 1000;
+  let fresh = 0, monitored = 0;
+
+  App.units.forEach(u => {
+    if (!u.monitored) return;
+    monitored++;
+    const raw = App.demo ? demoPosition(u, now) : readWialonPosition(u);
+    if (!raw || !raw.t) { u.status = "TANPA DATA"; return; }
+    if (pushSample(u, raw, cfg, now)) fresh++;
+  });
+
+  // Kalau tidak ada satu pun data baru selama beberapa siklus, langganan data
+  // ke server diminta ulang — biasanya sesi SDK berhenti menyegarkan sendiri.
+  if (App.connected && monitored > 0) {
+    idleTicks = fresh ? 0 : idleTicks + 1;
+    if (idleTicks >= 4) { idleTicks = 0; refreshDataFlags(); }
+  }
+
+  App.lastPoll = Date.now();
+  render();
+}
+
+function refreshDataFlags() {
+  if (!App.connected || !window.wialon) return;
+  const W = window.wialon;
+  const flags = W.item.Item.dataFlag.base | W.item.Unit.dataFlag.lastMessage;
+  sess().updateDataFlags([{ type: "type", data: "avl_unit", flags: flags, mode: 0 }], code => {
+    if (code) {
+      log("Langganan data gagal disegarkan. " + jelaskanKode(code), true);
+      onSessionError(code);
+    } else {
+      sessionFails = 0;
+      log("Langganan data disegarkan ulang.");
+    }
+  });
+}
+
+/* ==========================================================================
+   ANALISA RIWAYAT — tarik pesan satu unit pada rentang waktu tertentu
+   ========================================================================== */
+function runHistory() {
+  const cfg = readConfig();
+  const id = parseInt($("hUnit").value, 10);
+  const u = App.units.get(id);
+  if (!u) { log("Pilih unit dulu untuk analisa riwayat.", true); return; }
+
+  const from = Math.floor(new Date($("hFrom").value).getTime() / 1000);
+  const to = Math.floor(new Date($("hTo").value).getTime() / 1000);
+  if (!isFinite(from) || !isFinite(to) || to <= from) {
+    log("Rentang waktu belum benar — waktu selesai harus setelah waktu mulai.", true);
+    return;
+  }
+
+  $("btnRunHistory").disabled = true;
+  $("historyRows").innerHTML = '<tr><td colspan="5"><div class="empty"><b>Sedang mengambil data…</b>Menarik pesan dari rentang yang dipilih.</div></td></tr>';
+
+  const done = msgs => {
+    $("btnRunHistory").disabled = false;
+    analyzeHistory(u, msgs, num($("hLimit").value, cfg.limit), cfg);
+  };
+
+  if (App.demo) {
+    // Bangkitkan deret pesan tiruan setiap 10 detik pada rentang tersebut.
+    const msgs = [];
+    const tmp = { demo: u.demo, lat: u.lat, lon: u.lon, phase: u.phase || 0 };
+    for (let t = from; t <= to; t += 10) {
+      const p = demoPosition(tmp, t);
+      msgs.push({ t: t, pos: { y: p.lat, x: p.lon, s: p.speed, c: 0, sc: p.sats } });
+    }
+    setTimeout(() => done(msgs), 300);
+    return;
+  }
+
+  if (!App.connected) { $("btnRunHistory").disabled = false; log("Hubungkan ke Wialon dulu.", true); return; }
+
+  const W = window.wialon;
+  sess().loadLibrary("messagesLoader");
+  const ml = sess().getMessagesLoader();
+  ml.loadInterval(id, from, to, 0, 0, 0xffffffff, (code, data) => {
+    if (code) {
+      $("btnRunHistory").disabled = false;
+      log("Gagal menarik pesan: " + W.core.Errors.getErrorText(code), true);
+      return;
+    }
+    const count = data && data.count ? data.count : 0;
+    if (!count) { done([]); return; }
+    ml.getMessages(0, count, (c2, msgs) => {
+      if (c2) {
+        $("btnRunHistory").disabled = false;
+        log("Gagal membaca pesan: " + W.core.Errors.getErrorText(c2), true);
+        return;
+      }
+      done(msgs || []);
+    });
+  });
+}
+
+function analyzeHistory(u, msgs, limit, cfg) {
+  const probe = newUnit(u.id, u.name);
+  probe.limitOverride = limit;
+  const collected = [];
+  const rejects = [];
+  let valid = 0, rejected = 0, maxSpeed = 0;
+  const hcfg = Object.assign({}, cfg, { maxAge: 0 }); // data lama memang wajar di sini
+
+  msgs.forEach(m => {
+    const p = m.pos;
+    if (!p) return;
+    const raw = { t: m.t, lat: p.y, lon: p.x, speed: p.s == null ? 0 : p.s, course: p.c, sats: p.sc == null ? null : p.sc };
+    const s = pushSample(probe, raw, hcfg, m.t, { silent: true, collect: collected, source: "riwayat" });
+    if (!s) return;
+    if (s.valid) { valid++; maxSpeed = Math.max(maxSpeed, s.speed); }
+    else {
+      rejected++;
+      if (rejects.length < 400) rejects.push({
+        t: s.t, unit: u.name, unitId: u.id, speed: s.speed, implied: s.implied,
+        dist: s.dist, dt: s.dt, sats: s.sats, lat: s.lat, lon: s.lon,
+        reason: s.hard.concat(hcfg.strict ? s.soft : []).join("; "),
+      });
+    }
+  });
+  if (probe.active) closeEvent(probe, probe.lastValid, { silent: true });
+
+  collected.forEach(ev => {
+    if (ev.open) { ev.open = false; ev.duration = Math.max(0, ev.tEnd - ev.tStart); }
+    ev.avgSpeed = ev.n ? ev.sumSpeed / ev.n : ev.maxSpeed;
+  });
+
+  App.history = collected;
+  App.rejects = rejects.concat(App.rejects).slice(0, MAX_REJECT);
+
+  $("hStats").hidden = false;
+  $("hMsg").textContent = msgs.length;
+  $("hValid").textContent = valid;
+  $("hReject").textContent = rejected;
+  $("hEvents").textContent = collected.length;
+  $("hMax").textContent = Math.round(maxSpeed);
+  $("hDur").textContent = Math.round(collected.reduce((a, e) => a + (e.duration || 0), 0) / 60);
+
+  log("Analisa riwayat " + u.name + ": " + msgs.length + " pesan, " +
+      rejected + " ditolak, " + collected.length + " kejadian.");
+
+  if (cfg.nGeo) collected.slice(0, 12).filter(ev => !ev.zone).forEach(ev => resolveLocation(ev));
+  renderHistory();
+  renderRejects();
+}
+
+/* ==========================================================================
+   TAMPILAN
+   ========================================================================== */
+function setConn(cls, text) {
+  $("connPill").className = "pill " + cls;
+  $("connText").textContent = text;
+}
+function setPoll(cls, text) {
+  $("pollPill").className = "pill " + cls;
+  $("pollText").textContent = text;
+}
+
+/* ------------------------------------------------------- pengurutan unit */
+const URUT = {
+  alarm:  (a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || kec(b) - kec(a),
+  speed:  (a, b) => kec(b) - kec(a),
+  name:   (a, b) => a.name.localeCompare(b.name, "id", { numeric: true }),
+  updated:(a, b) => (b.lastValid ? b.lastValid.t : 0) - (a.lastValid ? a.lastValid.t : 0),
+  events: (a, b) => (b.eventCount || 0) - (a.eventCount || 0) || kec(b) - kec(a),
+  reject: (a, b) => b.countReject - a.countReject,
+};
+function kec(u) { return u.lastValid ? u.lastValid.speed : -1; }
+
+function sortUnits(list) {
+  const mode = $("unitSort").value || "alarm";
+  return list.slice().sort(URUT[mode] || URUT.alarm);
+}
+
+function renderUnitList() {
+  const q = ($("unitFilter").value || "").toLowerCase();
+  const list = $("unitList");
+  const units = sortUnits([...App.units.values()].filter(u => !q || u.name.toLowerCase().includes(q)));
+  if (!units.length) {
+    list.innerHTML = '<div class="empty" style="padding:20px 12px"><b>Belum ada unit</b>Hubungkan ke Wialon atau nyalakan mode simulasi.</div>';
+  } else {
+    list.innerHTML = units.map(u =>
+      '<div class="lrow">' +
+        '<input type="checkbox" data-mon="' + u.id + '"' + (u.monitored ? " checked" : "") + '>' +
+        '<label>' + esc(u.name) + '</label>' +
+        '<input type="number" min="1" max="300" placeholder="—" data-lim="' + u.id + '" value="' +
+          (u.limitOverride || "") + '" title="Batas khusus unit ini">' +
+        '<span class="unit">KM/J</span>' +
+      "</div>").join("");
+  }
+  $("unitCount").textContent = App.units.size;
+  // isi dropdown unit
+  const opts = '<option value="">Semua unit</option>' +
+    [...App.units.values()].map(u => '<option value="' + u.id + '">' + esc(u.name) + "</option>").join("");
+  $("evUnitFilter").innerHTML = opts;
+  $("rjUnitFilter").innerHTML = opts;
+  $("mapFocus").innerHTML = '<option value="">Semua unit</option>' +
+    [...App.units.values()].map(u => '<option value="' + u.id + '">' + esc(u.name) + "</option>").join("");
+  $("hUnit").innerHTML = '<option value="">Pilih unit…</option>' +
+    [...App.units.values()].map(u => '<option value="' + u.id + '">' + esc(u.name) + "</option>").join("");
+}
+
+function renderZoneList() {
+  const q = ($("zoneFilter").value || "").toLowerCase();
+  const el = $("zoneList");
+  const zs = App.zones.filter(z => !q || z.name.toLowerCase().includes(q));
+
+  if (!zs.length) {
+    el.innerHTML = '<div class="empty" style="padding:22px 12px"><b>' +
+      (App.zones.length ? "Tidak ada yang cocok" : "Belum ada geofence") + "</b>" +
+      (App.zones.length ? "Coba kata kunci lain."
+        : "Geofence dari peta Wialon akan muncul di sini setelah tersambung.") + "</div>";
+    return;
+  }
+  const bentuk = { 1: "Ruas", 2: "Area", 3: "Bulat" };
+  el.innerHTML = zs.map(z =>
+    '<div class="lrow">' +
+      '<span class="unit">' + (bentuk[z.type] || "Zona") + "</span>" +
+      "<label>" + esc(z.name) + "</label>" +
+      '<input type="number" min="1" max="300" placeholder="—" data-zlim="' + esc(z.key) + '" value="' +
+        (z.limit || "") + '" title="Batas khusus ruas ini">' +
+      '<span class="unit">KM/J</span>' +
+    "</div>").join("");
+}
+
+function statusBadge(u) {
+  if (u.active) return '<span class="chip alarm">Overspeed</span>';
+  if (u.status === "TANPA DATA") return '<span class="chip mute">Tanpa data</span>';
+  if (u.status === "DITOLAK") return '<span class="chip warn">Data ditolak</span>';
+  if (u.lastSuspect) return '<span class="chip warn">Data janggal</span>';
+  if (u.status === "DIAM") return '<span class="chip mute">Diam</span>';
+  if (u.status === "SAMA") return '<span class="chip mute">Tak berubah</span>';
+  return '<span class="chip ok">Normal</span>';
+}
+
+const DIAL_R = 44, DIAL_C = 2 * Math.PI * DIAL_R;
+
+/** Menggambar cincin kecepatan satu unit. */
+function dialSvg(speed, limit, scale) {
+  const frac = Math.max(0, Math.min(1, speed / scale));
+  const off = DIAL_C * (1 - frac);
+  const lf = Math.max(0, Math.min(1, limit / scale));
+  const th = lf * 2 * Math.PI;
+  const x1 = (50 + 37 * Math.cos(th)).toFixed(2), y1 = (50 + 37 * Math.sin(th)).toFixed(2);
+  const x2 = (50 + 51 * Math.cos(th)).toFixed(2), y2 = (50 + 51 * Math.sin(th)).toFixed(2);
+  return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+    '<circle class="dial-track" cx="50" cy="50" r="' + DIAL_R + '"></circle>' +
+    '<circle class="dial-arc" cx="50" cy="50" r="' + DIAL_R +
+      '" stroke-dasharray="' + DIAL_C.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"></circle>' +
+    '<line class="dial-limit" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"></line>' +
+  "</svg>";
+}
+
+function renderFleet() {
+  const cfg = App.cfg;
+  const el = $("fleet");
+  const units = [...App.units.values()].filter(u => u.monitored);
+
+  if (!units.length) {
+    el.innerHTML = '<div class="empty"><b>Belum ada unit dipantau</b>' +
+      "Buka Setelan, hubungkan ke server, lalu nyalakan sakelar unit yang mau diawasi. " +
+      "Untuk melihat cara kerjanya lebih dulu, nyalakan mode simulasi.</div>";
+    return;
+  }
+
+  el.innerHTML = sortUnits(units).map(u => {
+    const s = u.lastValid;
+    const eff = limitFor(u, s, cfg);
+    const limit = eff.limit;
+    const speed = s ? (s.assessed != null ? s.assessed : s.speed) : 0;
+    const scale = Math.max(limit * 1.6, 80);
+    const age = s ? Math.round(Date.now() / 1000 - s.t) : null;
+    const stale = age != null && cfg.maxAge > 0 && age > cfg.maxAge;
+
+    const bars = u.samples.slice(-KEEP_SPARK).map(x => {
+      const h = Math.max(10, Math.min(100, (x.speed / scale) * 100));
+      const cls = !x.valid ? "bad" : (x.over ? "over" : "");
+      const why = !x.valid ? x.hard.concat(x.soft).join("; ") : Math.round(x.speed) + " km/jam";
+      return '<i class="' + cls + '" style="height:' + h + '%" title="' + esc(fmtTime(x.t) + " \u00b7 " + why) + '"></i>';
+    }).join("");
+
+    const cls = "urow" + (u.active ? " alarm" : "") +
+      (!u.active && u.lastSuspect ? " suspect" : "") + (stale ? " stale" : "");
+
+    const lokasi = eff.zone
+      ? "<b>" + esc(eff.zone) + "</b>"
+      : (cfg.useZones ? "Di luar ruas terdaftar" : "Ruas tidak dipakai");
+
+    return '<div class="' + cls + '" title="' + esc(u.name) + '">' +
+      '<div class="dial">' + dialSvg(speed, limit, scale) +
+        '<div class="dial-read">' + (s ? speed.toFixed(0) : "\u2013") + "</div></div>" +
+      "<div>" +
+        '<div class="uname">' + esc(u.name) + "</div>" +
+        '<div class="uzone">' + lokasi + " \u00b7 batas " + limit + "</div>" +
+        '<div class="usub">' + (s ? fmtTime(s.t) + (age != null ? " \u00b7 " + fmtDur(age) + " lalu" : "") : "belum ada data") +
+          (s && s.sats != null ? " \u00b7 " + s.sats + " sat" : "") + "</div>" +
+      "</div>" +
+      '<div class="uright">' + statusBadge(u) + '<div class="spark">' + (bars || "") + "</div></div>" +
+    "</div>";
+  }).join("");
+}
+
+function eventRow(ev, compact) {
+  const map = '<a href="https://www.google.com/maps?q=' + ev.lat + "," + ev.lon +
+    '" target="_blank" rel="noopener">' + ev.lat.toFixed(4) + ", " + ev.lon.toFixed(4) + "</a>";
+  const ruas = ev.zone ? esc(ev.zone) : (ev.location ? esc(ev.location) : map);
+  if (compact) {
+    return "<tr><td class='n'>" + fmtTime(ev.tStart) + "</td><td class='strong'>" + esc(ev.unitName) + "</td>" +
+      "<td class='n' style='color:var(--danger)'>" + Math.round(ev.maxSpeed) + "</td>" +
+      "<td class='n'>" + ev.limit + "</td><td class='n'>" + fmtDur(ev.duration || 0) + "</td>" +
+      "<td>" + ruas + "</td></tr>";
+  }
+  return "<tr><td class='n'>" + fmtTime(ev.tStart) + "</td><td class='strong'>" + esc(ev.unitName) + "</td>" +
+    "<td class='n' style='color:var(--danger)'>" + Math.round(ev.maxSpeed) + "</td>" +
+    "<td class='n'>" + ev.limit + "</td><td class='n'>" + fmtDur(ev.duration || 0) + "</td>" +
+    "<td>" + ruas + "</td></tr>";
+}
+
+function renderEvents() {
+  const live = App.events.slice(0, 25);
+  $("liveEvents").innerHTML = live.length
+    ? live.map(ev => eventRow(ev, true)).join("")
+    : '<tr><td colspan="6"><div class="empty"><b>Belum ada pelanggaran</b>Kejadian overspeed yang lolos validasi akan tampil di sini.</div></td></tr>';
+
+  const fu = $("evUnitFilter").value, fs = num($("evMinSpeed").value, 0);
+  const rows = App.events.filter(ev => (!fu || String(ev.unitId) === fu) && ev.maxSpeed >= fs);
+  $("allEvents").innerHTML = rows.length
+    ? rows.map(ev => eventRow(ev, false)).join("")
+    : '<tr><td colspan="6"><div class="empty"><b>Daftar masih kosong</b>Belum ada kejadian yang cocok dengan saringan.</div></td></tr>';
+}
+
+function renderRejects() {
+  const fu = $("rjUnitFilter").value, fr = $("rjReasonFilter").value;
+  const reasons = [...new Set(App.rejects.map(r => r.reason))].sort();
+  const cur = $("rjReasonFilter").value;
+  $("rjReasonFilter").innerHTML = '<option value="">Semua alasan</option>' +
+    reasons.map(r => '<option value="' + esc(r) + '"' + (r === cur ? " selected" : "") + ">" + esc(r) + "</option>").join("");
+
+  const rows = App.rejects.filter(r => (!fu || String(r.unitId) === fu) && (!fr || r.reason === fr)).slice(0, 300);
+  $("rejectRows").innerHTML = rows.length ? rows.map(r =>
+    "<tr><td class='n'>" + fmtTime(r.t) + "</td><td class='strong'>" + esc(r.unit) + "</td>" +
+    "<td class='n'>" + (r.speed == null ? "\u2013" : Math.round(r.speed)) + "</td>" +
+    "<td class='n'>" + (r.implied == null ? "\u2013" : Math.round(r.implied)) + "</td>" +
+    '<td><span class="chip warn">' + esc(r.reason) + "</span></td></tr>"
+  ).join("") : '<tr><td colspan="5"><div class="empty"><b>Semua data lolos</b>Belum ada pembacaan yang perlu dibuang.</div></td></tr>';
+}
+
+function renderHistory() {
+  $("historyRows").innerHTML = App.history.length ? App.history.map(ev =>
+    "<tr><td class='n'>" + fmtTime(ev.tStart) + "</td>" +
+    "<td class='n' style='color:var(--danger)'>" + Math.round(ev.maxSpeed) + "</td>" +
+    "<td class='n'>+" + Math.round(ev.maxSpeed - ev.limit) + "</td>" +
+    "<td class='n'>" + fmtDur(ev.duration || 0) + "</td>" +
+    "<td>" + (ev.zone ? esc(ev.zone) : (ev.location ? esc(ev.location) : "\u2013")) + "</td></tr>"
+  ).join("") : '<tr><td colspan="5"><div class="empty"><b>Tidak ada overspeed</b>Semua data sah pada rentang itu berada di bawah batas.</div></td></tr>';
+}
+
+/* ==========================================================================
+   PETA LOKASI
+   Digambar dari bentuk geofence Wialon, tanpa layanan peta luar, supaya
+   tetap jalan di jaringan tertutup. Koordinat diproyeksikan ke meter
+   terhadap satu titik acuan di tengah lokasi.
+   ========================================================================== */
+App.map = { vb: null, ref: null, drag: null };
+App.baseMap = { url: "", north: null, south: null, west: null, east: null, opacity: .85, on: true };
+
+/** Peta dasar hanya dipakai bila gambar dan keempat tepinya lengkap dan masuk akal. */
+function baseMapSiap() {
+  const b = App.baseMap;
+  return !!(b.on && b.url &&
+    isFinite(b.north) && isFinite(b.south) && isFinite(b.west) && isFinite(b.east) &&
+    b.north > b.south && b.east > b.west &&
+    validCoord(b.north, b.west) && validCoord(b.south, b.east));
+}
+
+function bacaPetaDasar() {
+  const b = App.baseMap;
+  b.on = $("baseOn").checked;
+  b.north = parseFloat($("baseNorth").value);
+  b.south = parseFloat($("baseSouth").value);
+  b.west = parseFloat($("baseWest").value);
+  b.east = parseFloat($("baseEast").value);
+  b.opacity = num($("baseOpacity").value, 85) / 100;
+  const alamat = ($("baseUrl").value || "").trim();
+  if (alamat && alamat !== b.urlBerkas) { b.url = alamat; b.urlBerkas = alamat; }
+  App.map.vb = null;          // bingkai dihitung ulang agar gambar termuat
+  diagnosaPetaDasar();
+  renderMap();
+}
+
+function proj(lat, lon, ref) {
+  return {
+    x: (lon - ref.lon) * Math.cos(ref.lat * Math.PI / 180) * 111320,
+    y: -(lat - ref.lat) * 110540,
+  };
+}
+
+function jenisZona(nama) {
+  const n = (nama || "").toUpperCase();
+  if (n.startsWith("RD")) return "road";
+  if (n.startsWith("SP")) return "dump";
+  if (n.startsWith("LP")) return "load";
+  return "lain";
+}
+
+/** Semua titik yang perlu masuk bingkai peta. */
+function titikPeta(mode) {
+  const out = [];
+  const tambah = (lat, lon) => { if (validCoord(lat, lon)) out.push({ lat, lon }); };
+
+  if (mode !== "unit" && baseMapSiap()) {
+    const b = App.baseMap;
+    tambah(b.north, b.west); tambah(b.south, b.east);
+  }
+  if (mode !== "unit") App.zones.forEach(z => z.points.forEach(p => tambah(p.y, p.x)));
+  App.units.forEach(u => { if (u.monitored && u.lastValid) tambah(u.lastValid.lat, u.lastValid.lon); });
+  if (mode !== "unit") App.events.forEach(e => tambah(e.lat, e.lon));
+  return out;
+}
+
+function kuantil(arr, q) {
+  const s = arr.slice().sort((a, b) => a - b);
+  const i = (s.length - 1) * q;
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (i - lo);
+}
+
+/**
+ * Menyesuaikan bingkai peta. Bila rentangnya sampai ratusan kilometer —
+ * biasanya karena ada satu geofence nyasar jauh dari lokasi — bingkai
+ * dihitung ulang memakai kuantil supaya lokasi kerja tetap terlihat.
+ */
+function fitMap(mode) {
+  const pts = titikPeta(mode);
+  if (!pts.length) { App.map.vb = null; return; }
+
+  const lats = pts.map(p => p.lat), lons = pts.map(p => p.lon);
+  App.map.ref = { lat: (Math.min(...lats) + Math.max(...lats)) / 2,
+                  lon: (Math.min(...lons) + Math.max(...lons)) / 2 };
+
+  const xs = [], ys = [];
+  pts.forEach(p => { const q = proj(p.lat, p.lon, App.map.ref); xs.push(q.x); ys.push(q.y); });
+
+  let minX = Math.min(...xs), maxX = Math.max(...xs);
+  let minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bentangKm = Math.max(maxX - minX, maxY - minY) / 1000;
+
+  if (bentangKm > 150 && pts.length > 12 && mode !== "penuh") {
+    minX = kuantil(xs, 0.02); maxX = kuantil(xs, 0.98);
+    minY = kuantil(ys, 0.02); maxY = kuantil(ys, 0.98);
+    log("Sebaran geofence mencapai " + Math.round(bentangKm) + " km. Peta difokuskan ke " +
+        "kumpulan terpadat; tekan Muat semua bila memang ingin melihat seluruhnya.", true);
+  }
+
+  const w = Math.max(400, maxX - minX), h = Math.max(400, maxY - minY);
+  const pad = Math.max(w, h) * 0.09;
+  App.map.vb = { x: minX - pad, y: minY - pad, w: w + pad * 2, h: h + pad * 2 };
+}
+
+function zoomMap(f) {
+  const vb = App.map.vb;
+  if (!vb) return;
+  const cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2;
+  vb.w *= f; vb.h *= f;
+  vb.x = cx - vb.w / 2; vb.y = cy - vb.h / 2;
+  renderMap();
+}
+
+/**
+ * Memasang citra site sebagai satu elemen tetap. Alamat gambar hanya
+ * disetel ulang bila benar-benar berganti — kalau ikut digambar ulang
+ * setiap denyut data, browser sibuk membongkar ulang berkasnya dan
+ * gambarnya tidak pernah sempat muncul.
+ */
+function pasangPetaDasar(ref) {
+  const el = $("mapBase"), b = App.baseMap;
+
+  if (!baseMapSiap()) { el.setAttribute("visibility", "hidden"); return; }
+
+  if (el.getAttribute("data-url") !== b.url) {
+    el.setAttribute("href", b.url);
+    try { el.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", b.url); } catch (e) {}
+    el.setAttribute("data-url", b.url);
+  }
+
+  const ba = proj(b.north, b.west, ref);   // sudut barat laut
+  const td = proj(b.south, b.east, ref);   // sudut tenggara
+  el.setAttribute("x", ba.x.toFixed(1));
+  el.setAttribute("y", ba.y.toFixed(1));
+  el.setAttribute("width", Math.max(1, td.x - ba.x).toFixed(1));
+  el.setAttribute("height", Math.max(1, td.y - ba.y).toFixed(1));
+  el.setAttribute("opacity", b.opacity.toFixed(2));
+  el.setAttribute("visibility", "visible");
+}
+
+/** Menjelaskan mengapa citra site belum tampil, satu sebab yang paling menentukan. */
+function diagnosaPetaDasar() {
+  const b = App.baseMap;
+  if (!b.on) { log("Peta dasar sedang dimatikan lewat sakelar di panel kiri."); return; }
+  if (!b.url) { log("Gambar peta dasar belum dipilih.", true); return; }
+
+  const kosong = ["north", "south", "west", "east"].filter(k => !isFinite(b[k]));
+  if (kosong.length) {
+    log("Koordinat tepi belum lengkap: " + kosong.length + " kolom masih kosong. " +
+        "Keempatnya harus diisi dari berkas -tepi.txt.", true);
+    return;
+  }
+  if (b.north <= b.south) {
+    log("Lintang utara harus lebih besar daripada lintang selatan. " +
+        "Untuk lokasi di selatan khatulistiwa keduanya negatif, jadi utara adalah yang " +
+        "angkanya lebih dekat ke nol, misalnya -0.7300 di utara dan -0.8100 di selatan.", true);
+    return;
+  }
+  if (b.east <= b.west) {
+    log("Bujur timur harus lebih besar daripada bujur barat. Periksa jangan sampai tertukar.", true);
+    return;
+  }
+  if (!validCoord(b.north, b.west) || !validCoord(b.south, b.east)) {
+    log("Koordinat tepi di luar jangkauan yang wajar. Pastikan angkanya dalam derajat " +
+        "lintang-bujur, bukan meter UTM.", true);
+    return;
+  }
+  log("Peta dasar siap ditampilkan.");
+}
+
+function renderMap() {
+  const svg = $("siteMap");
+  if (!svg) return;
+  if (!App.map.vb) fitMap();
+  const vb = App.map.vb, ref = App.map.ref;
+
+  if (!vb) {
+    svg.removeAttribute("viewBox");
+    const sebab = App.zones.length === 0 && !App.units.size
+      ? "Belum tersambung ke server."
+      : App.zones.length === 0
+        ? "Geofence belum terbaca, dan belum ada unit yang mengirim posisi sah."
+        : "Geofence terbaca tetapi koordinatnya tidak sah.";
+    $("mapBase").setAttribute("visibility", "hidden");
+    $("mapLayer").innerHTML = '<text x="50%" y="46%" text-anchor="middle" class="m-teks" font-size="16">' +
+      "Peta belum bisa digambar</text>" +
+      '<text x="50%" y="54%" text-anchor="middle" class="z-teks" font-size="13">' + esc(sebab) + "</text>";
+    $("mapMeta").textContent = App.zones.length + " geofence · " + App.units.size + " unit";
+    return;
+  }
+
+  svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+  const fs = vb.w / 62;                       // ukuran huruf mengikuti tingkat perbesaran
+  const rUnit = Math.max(vb.w / 150, 3);
+  const tampilNama = $("mapLabels").checked;
+  const tampilEvent = $("mapPelanggaran").checked;
+  const fokus = $("mapFocus").value;
+  let bagian = [];
+  pasangPetaDasar(ref);
+
+  // ---- geofence ----
+  App.zones.forEach(z => {
+    const jenis = jenisZona(z.name);
+    const pts = z.points.map(p => proj(p.y, p.x, ref));
+    const judul = "<title>" + esc(z.name + (z.limit ? " — batas " + z.limit + " km/jam" : "")) + "</title>";
+
+    if (z.type === 1) {
+      const d = pts.map((p, i) => (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ");
+      bagian.push('<path class="z-road" d="' + d + '" stroke-width="' + (z.width || 20) +
+        '" stroke-opacity=".28">' + judul + "</path>");
+      bagian.push('<path class="z-road-inti" d="' + d + '">' + judul + "</path>");
+    } else if (z.type === 3) {
+      const c = pts[0], r = z.points[0].r || z.width || 50;
+      bagian.push('<circle class="z-' + (jenis === "road" ? "lain" : jenis) + '" cx="' + c.x.toFixed(1) +
+        '" cy="' + c.y.toFixed(1) + '" r="' + r + '">' + judul + "</circle>");
+    } else {
+      const d = pts.map((p, i) => (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ") + " Z";
+      bagian.push('<path class="z-' + (jenis === "road" ? "lain" : jenis) + '" d="' + d + '">' + judul + "</path>");
+    }
+
+    if (tampilNama) {
+      const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      bagian.push('<text class="z-teks" x="' + cx.toFixed(1) + '" y="' + cy.toFixed(1) +
+        '" font-size="' + fs.toFixed(1) + '" text-anchor="middle">' + esc(z.name) +
+        (z.limit ? " (" + z.limit + ")" : "") + "</text>");
+    }
+  });
+
+  // ---- titik pelanggaran ----
+  let jumlahEvent = 0;
+  if (tampilEvent) {
+    App.events.slice(0, 120).forEach(ev => {
+      if (fokus && String(ev.unitId) !== fokus) return;
+      if (!validCoord(ev.lat, ev.lon)) return;
+      jumlahEvent++;
+      const q = proj(ev.lat, ev.lon, ref);
+      const judul = "<title>" + esc(ev.unitName + " — " + Math.round(ev.maxSpeed) + " km/jam (batas " +
+        ev.limit + ") pada " + fmtTime(ev.tStart) + (ev.zone ? " di " + ev.zone : "")) + "</title>";
+      bagian.push('<circle class="m-event" cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
+        '" r="' + (rUnit * 1.9).toFixed(1) + '">' + judul + "</circle>");
+      bagian.push('<circle class="m-event-inti" cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
+        '" r="' + (rUnit * 0.62).toFixed(1) + '">' + judul + "</circle>");
+    });
+  }
+
+  // ---- posisi unit ----
+  let jumlahUnit = 0;
+  App.units.forEach(u => {
+    if (!u.monitored || !u.lastValid) return;
+    if (fokus && String(u.id) !== fokus) return;
+    jumlahUnit++;
+    const s = u.lastValid;
+    const q = proj(s.lat, s.lon, ref);
+    const umur = Math.round(Date.now() / 1000 - s.t);
+    const basi = App.cfg.maxAge > 0 && umur > App.cfg.maxAge;
+    const cls = "m-unit" + (u.active ? " alarm" : basi ? " stale" : "");
+    const judul = "<title>" + esc(u.name + " — " + Math.round(s.speed) + " km/jam" +
+      (u.zone ? " di " + u.zone : "") + " · " + fmtTime(s.t)) + "</title>";
+    bagian.push('<circle class="' + cls + '" cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) +
+      '" r="' + rUnit.toFixed(1) + '">' + judul + "</circle>");
+    bagian.push('<text class="m-teks" x="' + (q.x + rUnit * 1.5).toFixed(1) + '" y="' +
+      (q.y - rUnit).toFixed(1) + '" font-size="' + (fs * 0.95).toFixed(1) + '">' +
+      esc(u.name.split(" ")[0]) + " " + Math.round(s.speed) + "</text>");
+  });
+
+  $("mapLayer").innerHTML = bagian.join("");
+  const lebarKm = vb.w / 1000;
+  $("mapMeta").textContent = App.zones.length + " geofence · " + jumlahUnit + " unit" +
+    (tampilEvent ? " · " + jumlahEvent + " pelanggaran" : "") +
+    " · lebar " + (lebarKm < 10 ? lebarKm.toFixed(1) : Math.round(lebarKm)) + " km";
+}
+
+/* geser dan perbesar */
+(function petaDasarKabar() {
+  const el = $("mapBase");
+  el.addEventListener("error", () => {
+    const u = App.baseMap.url || "";
+    log("Gambar peta dasar gagal dimuat" + (u.startsWith("data:") ? "." :
+        ": " + u + ". Pastikan berkasnya ada di folder yang sama dengan halaman ini, " +
+        "namanya persis sama termasuk huruf besar-kecil, dan halaman dibuka lewat alamat http."), true);
+  });
+  el.addEventListener("load", () => log("Citra site tampil di peta."));
+})();
+
+(function mapControls() {
+  const svg = $("siteMap");
+  const kePeta = e => {
+    const r = svg.getBoundingClientRect(), vb = App.map.vb;
+    if (!vb) return null;
+    const skala = Math.max(vb.w / r.width, vb.h / r.height);
+    return { x: (e.clientX - r.left) * skala, y: (e.clientY - r.top) * skala, skala };
+  };
+  svg.addEventListener("pointerdown", e => {
+    const p = kePeta(e); if (!p) return;
+    App.map.drag = { x: e.clientX, y: e.clientY, vx: App.map.vb.x, vy: App.map.vb.y, skala: p.skala };
+    svg.classList.add("geser"); svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener("pointermove", e => {
+    const d = App.map.drag; if (!d) return;
+    App.map.vb.x = d.vx - (e.clientX - d.x) * d.skala;
+    App.map.vb.y = d.vy - (e.clientY - d.y) * d.skala;
+    renderMap();
+  });
+  const lepas = e => { App.map.drag = null; svg.classList.remove("geser"); };
+  svg.addEventListener("pointerup", lepas);
+  svg.addEventListener("pointercancel", lepas);
+  svg.addEventListener("wheel", e => {
+    if (!App.map.vb) return;
+    e.preventDefault();
+    zoomMap(e.deltaY > 0 ? 1.15 : 0.87);
+  }, { passive: false });
+})();
+
+function renderStats() {
+  const mon = [...App.units.values()].filter(u => u.monitored);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const t0 = today.getTime() / 1000;
+  $("sUnits").textContent = mon.length;
+  $("sActive").textContent = mon.filter(u => u.active).length;
+  $("sEvents").textContent = App.events.filter(e => e.tStart >= t0).length;
+  $("sValid").textContent = mon.reduce((a, u) => a + u.countValid, 0);
+  $("sReject").textContent = mon.reduce((a, u) => a + u.countReject, 0);
+  $("sPoll").textContent = App.lastPoll ? fmtClock(new Date(App.lastPoll)) : "—";
+  $("fleetMeta").textContent = mon.length ? mon.length + " unit · batas umum " + App.cfg.limit + " km/jam" : "";
+}
+
+let renderQueued = false;
+function render() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderStats(); renderFleet(); renderEvents(); renderRejects(); renderMap();
+  });
+}
+
+/* ==========================================================================
+   UNDUH CSV
+   ========================================================================== */
+function toCsv(rows) {
+  return rows.map(r => r.map(c => {
+    const v = c == null ? "" : String(c);
+    return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }).join(";")).join("\r\n");
+}
+function download(name, text) {
+  const blob = new Blob(["\ufeff" + text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function exportEvents(list, name) {
+  if (!list.length) { log("Tidak ada baris untuk diunduh.", true); return; }
+  const rows = [["Mulai", "Selesai", "Unit", "Kec maks (km/jam)", "Kec rata2", "Batas", "Kelebihan", "Durasi (dtk)", "Sampel", "Ruas jalan", "Lokasi", "Lintang", "Bujur"]];
+  list.forEach(ev => rows.push([
+    fmtTime(ev.tStart), fmtTime(ev.tEnd), ev.unitName || "", Math.round(ev.maxSpeed),
+    Math.round(ev.avgSpeed || 0), ev.limit, Math.round(ev.maxSpeed - ev.limit),
+    Math.round(ev.duration || 0), ev.n || 0, ev.zone || "", ev.location || "", ev.lat, ev.lon,
+  ]));
+  download(name, toCsv(rows));
+}
+
+
+/* ==========================================================================
+   PENYIMPANAN SETELAN
+   Setelan disimpan di browser ini setiap kali diubah, ditambah ekspor
+   dan impor berupa berkas kecil untuk disalin antar komputer.
+   ========================================================================== */
+const KUNCI_SIMPAN = "speedwatcher.v2";
+const ID_SIMPAN = [
+  "host", "hostCustom", "apiHost", "cfgLimit", "cfgInterval", "cfgConfirm", "cfgHyst",
+  "cfgSmooth", "cfgZones", "vMaxSpeed", "vSats", "vJumpDist", "vJumpDt", "vAccel",
+  "vAge", "vMismatch", "vStrict", "nBrowser", "nSound", "nToast", "nGeo", "unitSort",
+  "baseOn", "baseUrl", "baseNorth", "baseSouth", "baseWest", "baseEast", "baseOpacity",
+  "mapLabels", "mapPelanggaran", "hLimit", "simpanToken",
+];
+
+function gudang() {
+  try {
+    const t = window.localStorage;
+    t.setItem("__uji", "1"); t.removeItem("__uji");
+    return t;
+  } catch (e) { return null; }
+}
+
+function kumpulkanSetelan() {
+  const isian = {};
+  ID_SIMPAN.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    isian[id] = el.type === "checkbox" ? el.checked : el.value;
+  });
+  if ($("simpanToken").checked) isian.token = $("token").value;
+
+  const unit = {};
+  App.units.forEach(u => {
+    if (u.monitored || u.limitOverride) unit[u.id] = { p: !!u.monitored, b: u.limitOverride || null };
+  });
+  const ruas = {};
+  App.zones.forEach(z => { if (z.limit) ruas[z.key] = z.limit; });
+
+  return { v: 2, waktu: Date.now(), tema: document.documentElement.dataset.theme || "terang", isian, unit, ruas };
+}
+
+function pasangSetelan(data) {
+  if (!data || !data.isian) return false;
+  Object.keys(data.isian).forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    if (el.type === "checkbox") el.checked = !!data.isian[id];
+    else el.value = data.isian[id];
+  });
+  if (data.isian.token) $("token").value = data.isian.token;
+  if (data.tema) {
+    document.documentElement.dataset.theme = data.tema;
+    $("shiftToggle").textContent = data.tema === "gelap" ? "☀" : "◐";
+  }
+  App.tersimpan = { unit: data.unit || {}, ruas: data.ruas || {} };
+  $("hostCustomWrap").hidden = $("host").value !== "__custom";
+  readConfig();
+  return true;
+}
+
+let simpanTimer = null;
+function jadwalSimpan() {
+  clearTimeout(simpanTimer);
+  simpanTimer = setTimeout(simpanSetelan, 400);
+}
+
+function simpanSetelan() {
+  const g = gudang();
+  if (!g) { $("simpanKabar").textContent = "Browser ini menolak penyimpanan. Pakai Ekspor berkas."; return; }
+  try {
+    g.setItem(KUNCI_SIMPAN, JSON.stringify(kumpulkanSetelan()));
+    $("simpanKabar").textContent = "Tersimpan " + fmtClock(new Date()) + ".";
+  } catch (e) {
+    $("simpanKabar").textContent = "Gagal menyimpan: " + e.message;
+  }
+}
+
+function muatSetelan() {
+  const g = gudang();
+  if (!g) { $("simpanKabar").textContent = "Browser ini menolak penyimpanan. Pakai Ekspor berkas."; return; }
+  try {
+    const mentah = g.getItem(KUNCI_SIMPAN);
+    if (!mentah) return;
+    if (pasangSetelan(JSON.parse(mentah))) log("Setelan sebelumnya dimuat kembali.");
+  } catch (e) {
+    log("Setelan tersimpan tidak terbaca: " + e.message, true);
+  }
+}
+
+/** Setelan per unit dipasang setelah daftar unit selesai dimuat. */
+function terapkanSetelanUnit() {
+  const t = App.tersimpan && App.tersimpan.unit;
+  if (!t) return 0;
+  let kena = 0;
+  App.units.forEach(u => {
+    const p = t[u.id];
+    if (!p) return;
+    u.monitored = !!p.p;
+    u.limitOverride = p.b || null;
+    kena++;
+  });
+  if (kena) log("Pilihan " + kena + " unit dipulihkan.");
+  return kena;
+}
+
+/** Batas per ruas dipasang setelah geofence selesai dimuat. */
+function terapkanSetelanZona() {
+  const t = App.tersimpan && App.tersimpan.ruas;
+  if (!t) return 0;
+  let kena = 0;
+  App.zones.forEach(z => { if (t[z.key]) { z.limit = t[z.key]; kena++; } });
+  if (kena) log("Batas " + kena + " ruas jalan dipulihkan.");
+  return kena;
+}
+
+function eksporSetelan() {
+  const teks = JSON.stringify(kumpulkanSetelan(), null, 2);
+  const blob = new Blob([teks], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "speed-watcher-setelan.json";
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  log("Setelan diekspor.");
+}
+
+/* ==========================================================================
+   LACI SETELAN
+   ========================================================================== */
+function bukaLaci(buka) {
+  $("drawer").classList.toggle("open", buka);
+  $("scrim").classList.toggle("on", buka);
+  if (buka) $("closeDrawer").focus();
+}
+
+/* ==========================================================================
+   PENGIKATAN ANTARMUKA
+   ========================================================================== */
+function switchTab(id) {
+  ["live", "events", "reject", "history"].forEach(k => {
+    const sel = k === id;
+    $("tab-" + k).setAttribute("aria-selected", sel ? "true" : "false");
+    $("view-" + k).hidden = !sel;
+  });
+}
+["live", "events", "reject", "history"].forEach(k =>
+  $("tab-" + k).addEventListener("click", () => switchTab(k)));
+
+$("host").addEventListener("change", e => {
+  $("hostCustomWrap").hidden = e.target.value !== "__custom";
+});
+$("btnConnect").addEventListener("click", connect);
+$("btnOauth").addEventListener("click", oauthLogin);
+
+$("openDrawer").addEventListener("click", () => bukaLaci(true));
+$("closeDrawer").addEventListener("click", () => bukaLaci(false));
+$("closeDrawer2").addEventListener("click", () => bukaLaci(false));
+$("scrim").addEventListener("click", () => bukaLaci(false));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("drawer").classList.contains("open")) bukaLaci(false);
+});
+
+$("mapWide").addEventListener("click", () => {
+  const luas = $("split").classList.toggle("luas");
+  $("mapWide").textContent = luas ? "Perkecil" : "Lebarkan";
+  setTimeout(renderMap, 60);
+});
+
+$("btnExportCfg").addEventListener("click", eksporSetelan);
+$("btnImportCfg").addEventListener("click", () => $("fileImportCfg").click());
+$("fileImportCfg").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      if (pasangSetelan(JSON.parse(r.result))) {
+        terapkanSetelanUnit(); terapkanSetelanZona();
+        renderUnitList(); renderZoneList(); bacaPetaDasar(); simpanSetelan(); render();
+        log("Setelan diimpor dari " + f.name + ".");
+      }
+    } catch (err) { log("Berkas setelan tidak terbaca: " + err.message, true); }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+});
+$("btnResetCfg").addEventListener("click", () => {
+  const g = gudang();
+  if (g) { try { g.removeItem(KUNCI_SIMPAN); } catch (e) {} }
+  App.tersimpan = null;
+  $("simpanKabar").textContent = "Setelan tersimpan dihapus. Muat ulang halaman untuk mulai bersih.";
+  log("Setelan tersimpan dihapus.");
+});
+
+["change", "input"].forEach(ev => {
+  $("drawer").addEventListener(ev, jadwalSimpan);
+  $("split").addEventListener(ev, jadwalSimpan);
+});
+
+$("btnParseUrl").addEventListener("click", () => {
+  const raw = ($("pasteUrl").value || "").trim();
+  if (!raw) { log("Kolom alamat masih kosong. Salin dulu alamat dari browser setelah login.", true); return; }
+
+  const tok = extractToken(raw);
+  const sdk = extractSdkUrl(raw);
+
+  if (!tok) {
+    log("Tidak ada access_token pada alamat itu. Pastikan Anda menyalin seluruh isi kolom alamat " +
+        "setelah muncul tulisan Authorized successfully.", true);
+    return;
+  }
+
+  $("token").value = tok;
+  showCapturedToken(tok);
+  noteSdkUrl(sdk);
+
+  // Alamat situs login bisa ikut disimpulkan dari alamat yang ditempel.
+  try {
+    const u = new URL(raw);
+    if (!loginHost()) setHostField(u.origin);
+  } catch (e) { /* bukan alamat utuh, tidak masalah */ }
+
+  $("pasteUrl").value = "";
+  $("manualBox").hidden = true;
+  log("Token terbaca" + (sdk ? " beserta alamat server data" : "") + ". Menyambung…");
+
+  if (!sdk && !$("apiHost").value) {
+    log("Alamat server data tidak tercantum. Aplikasi akan mencoba memakai alamat situs login.", true);
+  }
+  connect();
+});
+$("shiftToggle").addEventListener("click", () => {
+  const gelap = document.documentElement.dataset.theme === "gelap";
+  document.documentElement.dataset.theme = gelap ? "terang" : "gelap";
+  $("shiftToggle").textContent = gelap ? "◐" : "☀";
+  jadwalSimpan();
+  renderMap();
+});
+$("btnCopyToken").addEventListener("click", () => {
+  const el = $("tokenOut");
+  el.select(); el.setSelectionRange(0, 99999);
+  try { document.execCommand("copy"); log("Kunci disalin ke papan klip."); }
+  catch (e) { log("Salin manual: pilih teksnya lalu tekan Ctrl+C.", true); }
+});
+$("btnDisconnect").addEventListener("click", disconnect);
+
+$("demoMode").addEventListener("change", e => {
+  if (e.target.checked) startDemo();
+  else { stopPolling(); App.demo = false; App.units.clear(); setConn("", "Belum terhubung"); renderUnitList(); render(); }
+});
+
+$("unitList").addEventListener("change", e => {
+  const mon = e.target.getAttribute("data-mon"), lim = e.target.getAttribute("data-lim");
+  if (mon) {
+    const u = App.units.get(parseInt(mon, 10));
+    if (u) u.monitored = e.target.checked;
+    render();
+  }
+  if (lim) {
+    const u = App.units.get(parseInt(lim, 10));
+    if (u) u.limitOverride = e.target.value ? num(e.target.value, null) : null;
+    render();
+  }
+});
+$("unitFilter").addEventListener("input", renderUnitList);
+$("zoneFilter").addEventListener("input", renderZoneList);
+$("unitSort").addEventListener("change", () => { renderUnitList(); render(); });
+$("mapFit").addEventListener("click", () => { fitMap("penuh"); renderMap(); });
+$("mapFitUnit").addEventListener("click", () => { fitMap("unit"); renderMap(); });
+$("mapZoomIn").addEventListener("click", () => zoomMap(0.75));
+$("mapZoomOut").addEventListener("click", () => zoomMap(1.33));
+$("mapLabels").addEventListener("change", renderMap);
+["baseOn","baseNorth","baseSouth","baseWest","baseEast","baseUrl"]
+  .forEach(k => $(k).addEventListener("change", bacaPetaDasar));
+$("baseOpacity").addEventListener("input", () => {
+  App.baseMap.opacity = num($("baseOpacity").value, 85) / 100;
+  renderMap();
+});
+$("baseFile").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (f.size > 40 * 1024 * 1024) {
+    log("Gambar " + Math.round(f.size / 1048576) + " MB terlalu besar untuk dimuat di browser. " +
+        "Perkecil dulu jadi di bawah 40 MB.", true);
+    return;
+  }
+  const r = new FileReader();
+  r.onload = () => {
+    App.baseMap.url = r.result;
+    log("Peta dasar dimuat: " + f.name + " (" + Math.round(f.size / 1024) + " KB).");
+    bacaPetaDasar();
+  };
+  r.onerror = () => log("Gambar gagal dibaca.", true);
+  r.readAsDataURL(f);
+});
+$("mapPelanggaran").addEventListener("change", renderMap);
+$("mapFocus").addEventListener("change", renderMap);
+$("zoneList").addEventListener("change", e => {
+  const key = e.target.getAttribute("data-zlim");
+  if (!key) return;
+  const z = App.zones.find(x => x.key === key);
+  if (z) z.limit = e.target.value ? num(e.target.value, null) : null;
+  render();
+});
+$("cfgZones").addEventListener("change", () => { readConfig(); render(); });
+$("btnSelAll").addEventListener("click", () => { App.units.forEach(u => u.monitored = true); renderUnitList(); render(); });
+$("btnSelNone").addEventListener("click", () => { App.units.forEach(u => u.monitored = false); renderUnitList(); render(); });
+
+["cfgLimit", "cfgConfirm", "cfgHyst", "cfgSmooth", "vMaxSpeed", "vSats", "vJumpDist", "vJumpDt",
+ "vAccel", "vAge", "vMismatch", "vStrict", "nBrowser", "nSound", "nToast", "nGeo"]
+  .forEach(k => $(k).addEventListener("change", () => { readConfig(); render(); }));
+
+$("cfgInterval").addEventListener("change", () => { if (App.timer) startPolling(); });
+
+$("btnTestNotif").addEventListener("click", () => {
+  readConfig();
+  if (App.cfg.nBrowser && "Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().then(p => log("Izin notifikasi: " + p));
+  }
+  notify({
+    id: "TEST", unitName: "Uji coba", limit: App.cfg.limit,
+    maxSpeed: App.cfg.limit + 18, avgSpeed: App.cfg.limit + 12,
+    tStart: Date.now() / 1000, tEnd: Date.now() / 1000, duration: 0, n: 2,
+    lat: -0.7893, lon: 127.3861, location: "Contoh lokasi",
+  });
+});
+
+$("evUnitFilter").addEventListener("change", renderEvents);
+$("evMinSpeed").addEventListener("input", renderEvents);
+$("rjUnitFilter").addEventListener("change", renderRejects);
+$("rjReasonFilter").addEventListener("change", renderRejects);
+$("btnClearEvents").addEventListener("click", () => { App.events = []; render(); });
+$("btnClearRejects").addEventListener("click", () => { App.rejects = []; render(); });
+$("btnExportLive").addEventListener("click", () => exportEvents(App.events, "overspeed-langsung.csv"));
+$("btnExportEvents").addEventListener("click", () => exportEvents(App.events, "overspeed-kejadian.csv"));
+$("btnExportHistory").addEventListener("click", () => exportEvents(App.history, "overspeed-riwayat.csv"));
+$("btnExportRejects").addEventListener("click", () => {
+  if (!App.rejects.length) { log("Tidak ada baris untuk diunduh.", true); return; }
+  const rows = [["Waktu data", "Unit", "Kec lapor", "Kec hitung", "Jarak (m)", "Selang (dtk)", "Satelit", "Alasan", "Lintang", "Bujur"]];
+  App.rejects.forEach(r => rows.push([fmtTime(r.t), r.unit, r.speed, r.implied == null ? "" : Math.round(r.implied),
+    r.dist == null ? "" : Math.round(r.dist), r.dt == null ? "" : r.dt, r.sats == null ? "" : r.sats, r.reason, r.lat, r.lon]));
+  download("data-ditolak.csv", toCsv(rows));
+});
+$("btnRunHistory").addEventListener("click", runHistory);
+
+
+/* ==========================================================================
+   OPERASI OTOMATIS
+   Menyalakan sendiri, memilih unit sendiri, dan menyambung ulang sendiri.
+   ========================================================================== */
+
+/** Pola sederhana bergaya nama berkas: "DT-*" cocok dengan "DT-114 · Hino". */
+function globMatch(pattern, text) {
+  if (pattern === "*") return true;
+  const rx = new RegExp("^" + pattern.split("*").map(x =>
+    x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$", "i");
+  return rx.test(text);
+}
+
+function autoPickUnits() {
+  const want = AUTO.units;
+  let picked = 0;
+  App.units.forEach(u => {
+    const match = want === "*" ? true :
+      (Array.isArray(want) ? want.some(p => globMatch(p, u.name)) : globMatch(String(want), u.name));
+    u.monitored = match;
+    if (match) picked++;
+    for (const pat in AUTO.limitPerUnit) {
+      if (globMatch(pat, u.name)) { u.limitOverride = AUTO.limitPerUnit[pat]; break; }
+    }
+  });
+  log("Pemilihan otomatis: " + picked + " dari " + App.units.size + " unit dipantau.");
+  renderUnitList();
+  render();
+}
+
+/* --- sambung ulang otomatis ------------------------------------------- */
+let reconnectTimer = null;
+let sessionFails = 0;
+
+function scheduleReconnect(why) {
+  if (!AUTO.enabled || reconnectTimer) return;
+  const wait = Math.max(10, AUTO.retryAfter);
+  log("Menyambung ulang dalam " + wait + " detik — " + why, true);
+  setConn("err", "Menyambung ulang…");
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    App.connected = false;
+    $("btnConnect").disabled = false;
+    connect();
+  }, wait * 1000);
+}
+
+/** Dipanggil dari pengawas data bila server menolak permintaan. */
+function onSessionError(code) {
+  sessionFails++;
+  if (sessionFails >= 2) { sessionFails = 0; stopPolling(); scheduleReconnect("sesi Wialon terputus (kode " + code + ")"); }
+}
+
+/* --- layar tetap menyala ----------------------------------------------- */
+let wakeLock = null;
+async function keepAwake() {
+  if (!AUTO.keepAwake || !("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } catch (e) { /* butuh https dan tab yang terlihat */ }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !wakeLock) keepAwake();
+});
+
+/* --- muat ulang harian -------------------------------------------------- */
+function scheduleDailyReload() {
+  if (!AUTO.enabled || !AUTO.reloadAt) return;
+  setInterval(() => {
+    const d = new Date();
+    if (pad(d.getHours()) + ":" + pad(d.getMinutes()) !== AUTO.reloadAt) return;
+    if (AUTO.exportBeforeReload && App.events.length) {
+      exportEvents(App.events, "overspeed-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + ".csv");
+      setTimeout(() => location.reload(), 4000);
+    } else {
+      location.reload();
+    }
+  }, 60000);
+}
+
+/* --- masuk lewat halaman login Wialon ----------------------------------
+   Pengguna mengetik nama pengguna dan kata sandi di halaman resmi Wialon,
+   lalu dikembalikan ke halaman ini membawa kunci akses. Kata sandi tidak
+   pernah melewati aplikasi ini.
+   ---------------------------------------------------------------------- */
+const OAUTH_DURATION = 31536000;   // satu tahun dalam detik, agar token tidak cepat kedaluwarsa
+const OAUTH_ACCESS   = "256";      // hak pantau saja (0x100), ditulis desimal sesuai contoh resmi
+
+let oauthWin = null, oauthWatch = null;
+
+/* Semua nilai ditulis desimal dan flags=0, mengikuti contoh resmi Wialon.
+   Nilai bergaya heksadesimal seperti 0x1 ditolak sebagian pemasangan dan
+   membuat halaman login gagal tampil. */
+function manualTokenUrl(host) {
+  return host + "/login.html?client_id=SpeedWatcherV2&access_type=" + OAUTH_ACCESS +
+         "&activation_time=0&duration=" + OAUTH_DURATION + "&lang=en&flags=0";
+}
+
+function showManualHelp(host) {
+  if (!host) return;
+  $("manualLink").href = manualTokenUrl(host);
+  $("manualLinkPolos").href = host + "/login.html";
+  $("manualBox").hidden = false;
+}
+
+/**
+ * Membuka halaman login Wialon di jendela kecil. Alamat kembalinya diarahkan ke
+ * halaman milik Wialon sendiri, karena Wialon menolak mengembalikan pengguna ke
+ * alamat luar seperti localhost. Jendela kecil itu yang meneruskan token ke sini.
+ */
+function oauthLogin() {
+  const host = loginHost();
+  if (!host) { log("Isi dulu alamat situs tempat Anda login.", true); return; }
+  if (location.protocol === "file:") {
+    log("Halaman ini harus dibuka lewat alamat http, bukan dengan klik ganda pada berkas.", true);
+    return;
+  }
+
+  const url = manualTokenUrl(host) + "&response_type=token" +
+              "&redirect_uri=" + encodeURIComponent(host + "/post_token.html");
+
+  oauthWin = window.open(url, "wialonLogin",
+    "width=540,height=700,left=" + Math.max(0, (screen.width - 540) / 2) +
+    ",top=" + Math.max(0, (screen.height - 700) / 2));
+
+  if (!oauthWin) {
+    log("Jendela login diblokir browser. Izinkan pop-up untuk halaman ini, atau pakai cara manual di bawah.", true);
+    showManualHelp(host);
+    return;
+  }
+
+  setConn("warn", "Menunggu login…");
+  clearInterval(oauthWatch);
+  oauthWatch = setInterval(() => {
+    if (!oauthWin || !oauthWin.closed) return;
+    clearInterval(oauthWatch);
+    if (!App.connected && !$("token").value) {
+      log("Jendela login tertutup tanpa mengirim token. Pakai cara manual di bawah.", true);
+      setConn("", "Belum terhubung");
+      showManualHelp(host);
+    }
+  }, 700);
+}
+
+/** Menyaring token dari pesan yang dikirim jendela login, apa pun bentuknya. */
+function extractToken(data) {
+  if (!data) return null;
+  try {
+    if (typeof data === "object") {
+      return data.access_token || (data.data && data.data.access_token) || null;
+    }
+    const str = String(data);
+    const m = str.match(/access_token["'=:\s]+([0-9a-zA-Z]{40,90})/);
+    if (m) return m[1];
+    if (/^[0-9a-zA-Z]{60,90}$/.test(str.trim())) return str.trim();
+    const j = JSON.parse(str);
+    return j.access_token || null;
+  } catch (e) { return null; }
+}
+
+window.addEventListener("message", ev => {
+  let sameHost = false;
+  try { sameHost = ev.origin === new URL(loginHost()).origin; } catch (e) {}
+  if (!sameHost) return;
+
+  const tok = extractToken(ev.data);
+  if (!tok) return;
+  noteSdkUrl(extractSdkUrl(ev.data));
+
+  clearInterval(oauthWatch);
+  try { if (oauthWin && !oauthWin.closed) oauthWin.close(); } catch (e) {}
+  $("manualBox").hidden = true;
+  $("token").value = tok;
+  showCapturedToken(tok);
+  log("Login berhasil lewat jendela Wialon.");
+  connect();
+});
+
+/** Sebagian server menyambung parameter dengan "?" kedua; ini merapikannya. */
+function pageParams() {
+  const raw = location.search.replace(/\?/g, "&").replace(/^&/, "?");
+  return new URLSearchParams(raw);
+}
+
+function setHostField(host) {
+  const known = [...$("host").options].some(o => o.value === host);
+  if (known) { $("host").value = host; $("hostCustomWrap").hidden = true; }
+  else { $("host").value = "__custom"; $("hostCustomWrap").hidden = false; $("hostCustom").value = host; }
+}
+
+function showCapturedToken(tok) {
+  $("tokenBox").hidden = false;
+  $("tokenOut").value = tok;
+}
+
+/* --- penyalaan otomatis ------------------------------------------------- */
+function bootstrap() {
+  const q = pageParams();
+
+  // Nilai dari alamat halaman menimpa isi blok AUTO, berguna untuk pintasan kiosk.
+  if (q.get("auto")) AUTO.enabled = q.get("auto") === "1";
+  if (q.get("host")) AUTO.host = q.get("host");
+  if (q.get("token")) AUTO.token = q.get("token");
+  if (q.get("units")) AUTO.units = q.get("units").split(",");
+  if (q.get("limit")) AUTO.limit = num(q.get("limit"), AUTO.limit);
+  if (q.get("interval")) AUTO.interval = num(q.get("interval"), AUTO.interval);
+
+  // Kembali dari halaman login Wialon.
+  const fresh = q.get("access_token");
+  if (fresh) {
+    AUTO.token = fresh;
+    if (q.get("h")) AUTO.host = q.get("h");
+    if (q.get("wialon_sdk_url")) AUTO.apiHost = q.get("wialon_sdk_url");
+    if (q.get("user_name")) log("Masuk sebagai " + q.get("user_name") + ".");
+    showCapturedToken(fresh);
+    history.replaceState({}, "", location.pathname);   // kunci dihapus dari alamat halaman
+  } else if (q.get("svc_error")) {
+    log("Login di halaman Wialon gagal (kode " + q.get("svc_error") + "). Coba lagi.", true);
+    history.replaceState({}, "", location.pathname);
+  }
+
+  if (!AUTO.enabled && !fresh) return;
+
+  if (AUTO.host) setHostField(AUTO.host);
+  if (AUTO.apiHost) $("apiHost").value = AUTO.apiHost;
+  if (AUTO.token) $("token").value = AUTO.token;
+
+  const pd = AUTO.petaDasar;
+  if (pd && pd.url) {
+    $("baseUrl").value = pd.url;
+    if (pd.north != null) $("baseNorth").value = pd.north;
+    if (pd.south != null) $("baseSouth").value = pd.south;
+    if (pd.west != null) $("baseWest").value = pd.west;
+    if (pd.east != null) $("baseEast").value = pd.east;
+    if (pd.opacity != null) $("baseOpacity").value = Math.round(pd.opacity * 100);
+    bacaPetaDasar();
+  }
+
+  if (AUTO.enabled) {
+    $("cfgLimit").value = AUTO.limit;
+    $("cfgInterval").value = AUTO.interval;
+    readConfig();
+    keepAwake();
+    scheduleDailyReload();
+    log("Mode otomatis aktif — menyambung ke " + AUTO.host);
+  }
+
+  if (AUTO.token) connect();
+  else log("Mode otomatis menyala tapi kunci akses belum diisi. Tekan tombol masuk.", true);
+}
+
+/* ------------------------------------------------------------- penyalaan */
+(function init() {
+  App.tersimpan = null;
+  muatSetelan();
+  readConfig();
+  setInterval(() => { $("clock").textContent = fmtClock(new Date()); }, 1000);
+  $("clock").textContent = fmtClock(new Date());
+
+  const now = new Date(), earlier = new Date(now.getTime() - 6 * 3600 * 1000);
+  const iso = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+                   "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  $("hFrom").value = iso(earlier);
+  $("hTo").value = iso(now);
+  $("hLimit").value = App.cfg.limit;
+
+  try {
+    if ("Notification" in window && Notification.permission === "default") {
+      const p = Notification.requestPermission(() => {});
+      if (p && p.catch) p.catch(() => {});
+    }
+  } catch (e) { /* diblokir di konteks tidak aman, notifikasi layar tetap jalan */ }
+  renderZoneList();
+  renderUnitList();
+  bacaPetaDasar();
+  log("Siap. Buka Setelan untuk menghubungkan, atau nyalakan mode simulasi untuk mencoba.");
+  render();
+  bootstrap();
+  if (!App.connected && !App.demo && !$("token").value) bukaLaci(true);
+})();
+</script>
+<div id="swGate"><div class="swg-card">
+  <div class="swg-h">Sambungkan Speed Watcher</div>
+  <div class="swg-stat" id="swgStat">Belum tersambung</div>
+  <label>Token Wialon</label>
+  <input id="swgTok" type="text" placeholder="Tempel token di sini" autocomplete="off" spellcheck="false">
+  <div class="swg-links"><a id="swgGuide">Cara dapat token</a></div>
+  <button id="swgConnect">Connect</button>
+  <div class="swg-note">Cukup token — semua unit terpantau &amp; ruas/peta otomatis dari data Wialon (AMORA). Token sama dengan Real Time Unit Position.</div>
+</div></div>
+<div id="swGuide"><div class="swgd-card">
+  <h3>Cara mendapatkan token Wialon</h3>
+  <div class="swgd-sub">Lewat Inspect · token permanen · tersimpan di browser Anda</div>
+  <ol>
+   <li>Buka <b>lite.minervasuite.app</b>, login, buka <b>Monitoring</b> sampai daftar unit muncul.</li>
+   <li>Tekan <b>F12</b> → buka tab <b>Console</b>.</li>
+   <li>Klik <b>Salin skrip</b>, tempel ke Console, tekan <b>Enter</b>, tunggu.</li>
+   <li>Di Console muncul <b>TOKEN ANDA</b> — salin barisnya.</li>
+   <li>Kembali ke sini → tempel token → <b>Connect</b>.</li>
+  </ol>
+  <button class="swgd-copy" id="swgdCopy">Salin skrip</button>
+  <pre class="swgd-code" id="swgdCode"></pre>
+  <div class="swgd-note">Token dipakai bersama RTUP &amp; Speed Watcher — cukup buat sekali.</div>
+  <button class="swgd-close" id="swgdClose">Mengerti</button>
+</div></div>
+<script type="text/plain" id="swgdSnippet">
+(function(){
+  if(!(window.wialon && wialon.core && wialon.core.Remote)){ console.log('GAGAL: SDK Wialon tidak ada di halaman ini. Jalankan di halaman Monitoring lite.minervasuite.app.'); return; }
+  var params={callMode:'create',app:'MiningMalut RTUP',at:0,dur:0,fl:-1,p:'{}',items:[]};
+  wialon.core.Remote.getInstance().remoteCall('token/update',params,function(code,data){
+    if(code){ console.log('GAGAL membuat token, kode:',code,(wialon.core.Errors?wialon.core.Errors.getErrorText(code):'')); return; }
+    console.log('%cTOKEN ANDA (salin baris di bawah ini):','font-weight:bold;color:#0a7');
+    console.log(data && data.h ? data.h : data);
+  });
+})();
+</script><script id="sw-gate">
+(function(){
+  var SHARED='rtup_wialon_token';
+  function el(id){return document.getElementById(id);}
+  function gate(){return el('swGate');}
+  function setG(cls,msg){var g=gate();if(!g)return;g.classList.remove('ok','err');if(cls)g.classList.add(cls);var s=el('swgStat');if(s)s.textContent=msg;}
+  function connected(){var p=el('connPill');if(p&&/(^|\s)ok(\s|$)/.test(p.className))return true;var mm=el('mapMeta');if(mm&&/([1-9]\d*)\s*unit/.test(mm.textContent))return true;return false;}
+  function closeDrawer(){var d=el('drawer');if(d)d.classList.remove('open');var s=el('scrim');if(s)s.classList.remove('on');}
+  function watchAll(){var list=el('unitList');if(!list)return;var cbs=list.querySelectorAll('input[data-mon]');cbs.forEach(function(cb){if(!cb.checked){cb.checked=true;cb.dispatchEvent(new Event('change',{bubbles:true}));}});}
+  function doConnect(){var v=(el('swgTok').value||'').trim();if(!v){setG('err','Token masih kosong');return;}try{localStorage.setItem(SHARED,v);}catch(e){}var api=el('apiHost');if(api&&!api.value)api.value='https://hst-api.wialon.com';if(el('token'))el('token').value=v;setG('','Menyambungkan…');if(el('btnConnect'))el('btnConnect').click();try{if(window.Notification&&Notification.requestPermission)Notification.requestPermission();}catch(e){}}
+  // guide modal
+  function openGuide(){var g=el('swGuide');if(g)g.classList.add('on');}
+  function closeGuide(){var g=el('swGuide');if(g)g.classList.remove('on');}
+  document.addEventListener('DOMContentLoaded',function(){
+    if(el('swgConnect'))el('swgConnect').addEventListener('click',doConnect);
+    if(el('swgTok'))el('swgTok').addEventListener('keydown',function(e){if(e.key==='Enter')doConnect();});
+    if(el('swgGuide'))el('swgGuide').addEventListener('click',function(e){e.preventDefault();openGuide();});
+    if(el('swgdClose'))el('swgdClose').addEventListener('click',closeGuide);
+    var sn=el('swgdSnippet');if(sn&&el('swgdCode'))el('swgdCode').textContent=sn.textContent.trim();
+    if(el('swgdCopy'))el('swgdCopy').addEventListener('click',function(){var c=el('swgdCopy');try{navigator.clipboard.writeText(el('swgdCode').textContent);c.textContent='Tersalin ✓';setTimeout(function(){c.textContent='Salin skrip';},1500);}catch(e){var r=document.createRange();r.selectNode(el('swgdCode'));getSelection().removeAllRanges();getSelection().addRange(r);document.execCommand('copy');c.textContent='Tersalin ✓';setTimeout(function(){c.textContent='Salin skrip';},1500);}});
+    var g=el('swGuide');if(g)g.addEventListener('click',function(e){if(e.target===g)closeGuide();});
+  });
+  window.addEventListener('load',function(){
+    closeDrawer();
+    var api=el('apiHost');if(api&&!api.value)api.value='https://hst-api.wialon.com';
+    var shared=null;try{shared=localStorage.getItem(SHARED);}catch(e){}
+    if(shared){if(el('token'))el('token').value=shared;if(el('swgTok'))el('swgTok').value=shared;setTimeout(function(){if(el('btnConnect'))el('btnConnect').click();try{if(window.Notification&&Notification.requestPermission)Notification.requestPermission();}catch(e){}},300);}
+    else if(gate()){gate().classList.add('on');}
+    // gate close on connect + pantau semua unit
+    setInterval(function(){if(connected()){if(gate())gate().classList.remove('on');closeDrawer();watchAll();var tk=el('token');if(tk&&tk.value){try{localStorage.setItem(SHARED,tk.value.trim());}catch(e){}}}},700);
+    setInterval(function(){var p=el('connPill');if(p&&/(^|\s)err(\s|$)/.test(p.className)&&!connected()&&gate()){if(!gate().classList.contains('on'))gate().classList.add('on');setG('err','Token salah / gagal. Coba lagi.');}},1600);
+    // teruskan notifikasi pelanggaran ke shell (agar muncul di halaman lain)
+    var le=el('liveEvents'), lastTop='';
+    if(le){ new MutationObserver(function(){var row=le.querySelector('tr');if(!row)return;var sig=row.textContent.replace(/\s+/g,' ').trim();if(sig&&sig!==lastTop&&!/belum ada|tidak ada|akan tampil/i.test(sig)){lastTop=sig;try{window.parent.postMessage({type:'sw-notif',text:sig.slice(0,160)},'*');}catch(e){}}}).observe(le,{childList:true,subtree:true}); }
+  });
+})();
+</script></body>
+</html>

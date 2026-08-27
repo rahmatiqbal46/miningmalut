@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<script>(function(){try{var _emb=false;try{_emb=window.self!==window.top;}catch(e){_emb=true;}if(!_emb&&localStorage.getItem('pakal_auth_required')==='1'){var a=null;try{a=JSON.parse(localStorage.getItem('pakal_auth')||'null');}catch(e){}var ok=a&&a.access_token&&(!a.expires_at||a.expires_at*1000>Date.now());if(!ok){location.replace('./index.html');}}}catch(e){}})();</script>
+<style id="embed-css">
+html.embedded,html.embedded body{background:transparent!important}
+html.embedded .side{display:none!important}
+html.embedded .app{display:block!important}
+html.embedded main{width:100%!important;min-height:100vh}
+html.embedded #embtabs{display:flex;gap:8px;padding:12px 16px 2px;flex-wrap:wrap;position:sticky;top:0;z-index:5;background:var(--bg,#f6f8f7)}
+html.embedded #embtabs button{font:inherit;font-size:12px;padding:7px 12px;border:1px solid #d6e0dd;border-radius:8px;background:#fff;color:#12201d;cursor:pointer}
+html.embedded #embtabs button.on{background:#0f6e63;color:#fff;border-color:#0f6e63}
+html.embedded #embtabs button.adm{border-style:dashed}
+html[data-peran="viewer"] #embtabs button.adm,html[data-peran="editor"] #embtabs button.adm{display:none}
+</style>
+<script>(function(){
+ var inFrame=true;try{inFrame=window.self!==window.top;}catch(e){}
+ if(!inFrame)return;
+ document.documentElement.classList.add('embedded');
+ var pending=null;
+ function syncEmb(v){var t=document.getElementById('embtabs');if(!t)return;for(var i=0;i<t.children.length;i++){var c=t.children[i];c.classList.toggle('on',c.getAttribute('data-v')===v);}}
+ function setTab(v){var b=document.querySelector('.side [data-v="'+v+'"]');if(b){b.click();syncEmb(v);}else{pending=v;}}
+ window.addEventListener('message',function(e){var d=e.data||{};if(d.jadwalTab)setTab(d.jadwalTab);});
+ function build(){
+   var main=document.querySelector('main');if(!main||document.getElementById('embtabs'))return;
+   var bar=document.createElement('div');bar.id='embtabs';
+   [['ringkas','Ringkasan Beban'],['timeline','Timeline Harian'],['slot','Cari Slot Kosong'],['kegiatan','Kegiatan Rutin'],['personel','Personel & Roster'],['__roster','Impor Roster']].forEach(function(p){
+     var b=document.createElement('button');b.textContent=p[1];b.setAttribute('data-v',p[0]);
+     if(p[0]==='__roster'){b.className='adm';b.onclick=function(){if(window.bukaRoster)window.bukaRoster();};}
+     else b.onclick=function(){setTab(p[0]);};
+     bar.appendChild(b);});
+   main.insertBefore(bar,main.firstChild);
+   var start=pending||'ringkas';syncEmb(start);if(pending){setTab(pending);pending=null;}
+ }
+ if(document.readyState!=='loading')build();else document.addEventListener('DOMContentLoaded',build);
+})();</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistem Jadwal Biro Mining — ANTAM UBPN Maluku Utara</title>
+<style>
+:root{
+  --brand:#00713C; --brand-d:#004E29; --brand-l:#E8F1EC;
+  --ink:#0F1D18; --ink-2:#3C4B45; --mute:#77877F;
+  --line:#DCE4E0; --line-2:#EDF2EF; --bg:#F2F5F3; --surf:#FFFFFF;
+  --ds:#B5811A; --ns:#33478F; --off:#9AA8A1; --ovr:#0F6E80;
+  --free:#0E9F6E; --warn:#A32C2C; --gold:#C8891B;
+  --r:6px; --sh:0 1px 2px rgba(15,29,24,.06), 0 1px 8px rgba(15,29,24,.04);
+  --nav:236px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.012em}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- kerangka ---------- */
+.app{display:grid;grid-template-columns:var(--nav) 1fr;min-height:100vh}
+nav.side{background:var(--brand-d);color:#DCE9E1;display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh}
+.mark{padding:18px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.mark .org{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#8FB9A3;font-weight:650}
+.mark .nm{font-size:14.5px;font-weight:650;color:#fff;margin-top:3px;letter-spacing:-.01em}
+.mark .site{font-size:11px;color:#8FB9A3;margin-top:1px}
+.menu{padding:12px 10px;display:flex;flex-direction:column;gap:1px}
+.menu>span{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#6F9A82;
+  padding:12px 8px 5px;font-weight:650}
+.menu button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  background:none;border:0;padding:8px 9px;border-radius:var(--r);color:#C9DCD2;cursor:pointer;
+  font-size:13px;font-weight:520;transition:background .14s}
+.menu button:hover{background:rgba(255,255,255,.07);color:#fff}
+.menu button.on{background:var(--brand);color:#fff;font-weight:620}
+.menu button svg{width:15px;height:15px;flex:none;stroke-width:1.7}
+.side .kaki{margin-top:auto;padding:12px 14px 16px;border-top:1px solid rgba(255,255,255,.1);
+  display:flex;flex-wrap:wrap;gap:6px 12px}
+.side .kaki button{background:none;border:0;color:#7FA893;font-size:11.5px;cursor:pointer;padding:2px 0}
+.side .kaki button:hover{color:#fff;text-decoration:underline}
+.side .kaki .v{width:100%;font-size:10.5px;color:#5D8770;margin-top:5px}
+
+main{min-width:0}
+header.bar{background:var(--surf);border-bottom:1px solid var(--line);padding:13px 24px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+header.bar h1{font-size:16px}
+header.bar .ket{font-size:12px;color:var(--mute)}
+.kontrol{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.isi{padding:20px 24px 56px;max-width:1440px}
+
+/* ---------- elemen ---------- */
+label.fl{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mute);font-weight:650;margin-bottom:4px}
+select,input[type=date],input[type=time],input[type=text]{
+  padding:6px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--surf);
+  font-size:12.5px;min-height:32px}
+select{cursor:pointer}
+.btn{padding:6px 12px;min-height:32px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--surf);cursor:pointer;font-size:12.5px;font-weight:560;transition:.14s}
+.btn:hover{border-color:var(--brand);color:var(--brand)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
+.btn.xs{padding:3px 8px;min-height:26px;font-size:11.5px}
+.btn.danger:hover{border-color:var(--warn);color:var(--warn)}
+
+.panel{background:var(--surf);border:1px solid var(--line);border-radius:8px;box-shadow:var(--sh);
+  margin-bottom:16px;overflow:hidden}
+.panel>hgroup{padding:14px 16px;border-bottom:1px solid var(--line-2);display:flex;
+  align-items:center;gap:12px;flex-wrap:wrap}
+.panel>hgroup h2{font-size:13px;letter-spacing:.02em}
+.panel>hgroup p{margin:2px 0 0;font-size:11.5px;color:var(--mute)}
+.panel>.body{padding:16px}
+.panel>.body.rapat{padding:0}
+.kanan{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(154px,1fr));gap:1px;
+  background:var(--line-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.stat>div{background:var(--surf);padding:13px 15px}
+.stat .n{font-size:23px;font-weight:660;letter-spacing:-.03em;line-height:1.2}
+.stat .n small{font-size:12px;color:var(--mute);font-weight:500;letter-spacing:0}
+.stat .l{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);font-weight:640;margin-top:2px}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);
+  font-weight:650;padding:9px 14px;border-bottom:1px solid var(--line);background:#FAFCFB;white-space:nowrap}
+td{padding:8px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#FAFCFB}
+td.num{text-align:right}
+.chip{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10.5px;font-weight:620;
+  letter-spacing:.02em;border:1px solid transparent;white-space:nowrap}
+.chip.ds{background:#FBF2DF;color:#8A6212}.chip.ns{background:#E7EAF7;color:#2A3B78}
+.chip.off{background:#F0F3F1;color:#5E6E67}.chip.ovr{background:#DFF0F2;color:#0B5866}
+.chip.brand{background:var(--brand-l);color:var(--brand-d)}
+.chip.netral{background:#F0F3F1;color:#48574F}
+.chip.buli{background:#EDEBF7;color:#453B85}.chip.pakal{background:#E9F1EC;color:#1D5E3C}
+
+/* ---------- kalender beban ---------- */
+.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.hm .dw{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);
+  text-align:center;font-weight:650;padding-bottom:3px}
+.hm .sel{border:1px solid var(--line);border-radius:4px;min-height:52px;padding:5px 6px;cursor:pointer;
+  display:flex;flex-direction:column;background:var(--surf);transition:.12s;position:relative}
+.hm .sel:hover{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-l)}
+.hm .sel.void{border:0;background:none;cursor:default}
+.hm .sel.now{outline:2px solid var(--brand);outline-offset:-2px}
+.hm .d{font-size:12px;font-weight:620}
+.hm .j{margin-top:auto;font-size:10px;color:var(--ink-2);font-weight:600}
+.hm .sel.lib .d{color:var(--warn)}
+.skala{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--mute);margin-top:10px}
+.skala i{width:16px;height:9px;border-radius:2px;border:1px solid var(--line)}
+
+.prof{display:flex;flex-direction:column;gap:7px}
+.prof .r{display:grid;grid-template-columns:34px 1fr 52px;align-items:center;gap:9px;font-size:11.5px}
+.prof .lbl{color:var(--ink-2);font-weight:600}
+.prof .tr{background:var(--line-2);border-radius:3px;height:14px;overflow:hidden}
+.prof .bar{height:100%;background:var(--brand);border-radius:3px;transition:width .3s ease-out}
+.prof .vl{text-align:right;color:var(--ink-2);font-weight:600}
+
+/* ---------- timeline ---------- */
+.tlw{overflow-x:auto}
+.tlg{min-width:840px}
+.tlhead{display:grid;grid-template-columns:var(--lane,214px) 1fr;margin-bottom:5px;align-items:end}
+.tlhead .jm{display:flex}
+.tlhead .jm i{flex:1;font-size:9.5px;color:var(--mute);border-left:1px solid var(--line);
+  padding-left:3px;font-style:normal;font-weight:600}
+.grp{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:680;
+  padding:11px 0 5px;border-bottom:1px solid var(--line-2);margin-bottom:6px}
+.tlr{display:grid;grid-template-columns:var(--lane,214px) 1fr;align-items:center;margin-bottom:4px}
+.tln{padding-right:12px;line-height:1.3;min-width:0}
+.tln b{font-size:12px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tln s{display:block;font-size:10.5px;color:var(--mute);text-decoration:none}
+.lane{position:relative;height:26px;border-radius:4px;background:#F7FAF8;
+  border:1px solid var(--line-2);overflow:hidden}
+.lane .grid{position:absolute;inset:0;display:flex;pointer-events:none}
+.lane .grid i{flex:1;border-left:1px solid #EEF3F0}
+.blk{position:absolute;top:3px;bottom:3px;border-radius:3px;font-size:10px;font-weight:640;color:#fff;
+  padding:0 5px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:default}
+.blk.sh{top:0;bottom:0;border-radius:0;opacity:.16;color:transparent}
+.gap{position:absolute;top:3px;bottom:3px;border:1px dashed var(--free);border-radius:3px;
+  background:rgba(14,159,110,.09);font-size:10px;font-weight:650;color:#07724F;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.leg{display:flex;gap:15px;flex-wrap:wrap;font-size:11px;color:var(--mute);margin-top:12px;
+  padding-top:11px;border-top:1px solid var(--line-2)}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* ---------- bentrok ---------- */
+.bt{border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:6px;
+  padding:13px 15px;margin-bottom:10px;background:#FDFAFA}
+.bt .hd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:3px}
+.bt .hd b{font-size:13px;font-weight:640}
+.bt .sub{font-size:11.5px;color:var(--ink-2);margin-bottom:9px}
+.bt .vis{position:relative;height:34px;margin:9px 0 8px;background:#F7FAF8;border:1px solid var(--line-2);
+  border-radius:4px;overflow:hidden}
+.bt .vis .b{position:absolute;height:12px;border-radius:2px;font-size:9.5px;color:#fff;font-weight:640;
+  padding:0 4px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
+.bt .vis .ov{position:absolute;top:0;bottom:0;background:rgba(163,44,44,.13);
+  border-left:1px solid var(--warn);border-right:1px solid var(--warn)}
+.bt .vis .tk{position:absolute;bottom:1px;font-size:9px;color:var(--mute)}
+.bt .who{font-size:11.5px;color:var(--ink-2);line-height:1.6}
+.bt .who em{font-style:normal;color:var(--mute)}
+
+/* ---------- slot ---------- */
+.hari{border:1px solid var(--line);border-radius:6px;margin-bottom:12px;overflow:hidden}
+.hari>.h{padding:9px 14px;background:#FAFCFB;border-bottom:1px solid var(--line-2);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hari>.h b{font-size:12.5px}
+.hari>.h .n{font-size:11.5px;color:var(--mute)}
+.hari>.h .pilih{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.hari>.b{padding:12px 14px}
+.slotpil{padding:3px 9px;border-radius:99px;border:1px solid var(--free);background:rgba(14,159,110,.08);
+  color:#07724F;font-size:11.5px;font-weight:640;cursor:pointer}
+.slotpil:hover{background:rgba(14,159,110,.18)}
+
+.kosong{padding:26px 14px;text-align:center;color:var(--mute);font-size:12.5px}
+.catat{background:#FCFAF3;border:1px solid #EADFC0;color:#6A5316;border-radius:6px;
+  padding:9px 13px;font-size:11.5px;margin-bottom:14px}
+
+/* ---------- modal ---------- */
+.mod{position:fixed;inset:0;background:rgba(15,29,24,.5);display:none;align-items:flex-start;
+  justify-content:center;padding:32px 16px;overflow-y:auto;z-index:100}
+.mod.on{display:flex}
+.mod .box{background:var(--surf);border-radius:8px;max-width:620px;width:100%;box-shadow:0 18px 48px rgba(0,0,0,.22)}
+.mod .box>h3{padding:15px 18px;border-bottom:1px solid var(--line-2);font-size:14px}
+.mod .box>.f{padding:18px}
+.mod .box>.a{padding:13px 18px;border-top:1px solid var(--line-2);display:flex;gap:8px;background:#FAFCFB}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.span{grid-column:1/-1}
+.box2{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;max-height:132px;overflow-y:auto}
+.box2 label{display:flex;gap:7px;align-items:center;font-size:12.5px;padding:2.5px 0;cursor:pointer}
+.hint{font-size:11px;color:var(--mute);margin-top:4px}
+.hari-pil{display:flex;gap:4px;flex-wrap:wrap}
+.hari-pil label{display:flex;gap:5px;align-items:center;font-size:12px;border:1px solid var(--line);
+  border-radius:var(--r);padding:5px 9px;cursor:pointer}
+.hari-pil label:has(input:checked){border-color:var(--brand);background:var(--brand-l);color:var(--brand-d);font-weight:600}
+
+.sparkl{display:flex;gap:1px}
+.sparkl i{width:5px;height:13px;border-radius:1px}
+
+@media(max-width:960px){
+  .app{grid-template-columns:1fr}
+  nav.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .mark{border:0;padding:12px 16px}
+  .menu{flex-direction:row;padding:8px;flex-wrap:wrap}
+  .menu>span{display:none}
+  .side .kaki{margin:0;border:0;padding:8px 16px}
+  .isi{padding:16px}
+  header.bar{padding:11px 16px}
+}
+</style>
+<link rel="icon" type="image/png" href="data:image/png;base64,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"><style id="theme-override">:root{--brand:#0d4a42;--brand-d:#06211d;--brand-l:#e7f0ec;--gold:#E8920A;--ds:#b06f00;--ovr:#0f6e63;}*{-webkit-font-smoothing:antialiased}button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#0a332e2e;border-radius:6px}::-webkit-scrollbar-thumb:hover{background:#0a332e4d}</style></head>
+<body>
+<div class="app">
+
+<nav class="side">
+  <div class="mark">
+    <div class="org">ANTAM · UBPN Maluku Utara</div>
+    <div class="nm">Sistem Jadwal Biro Mining</div>
+    <div class="site">Site Pakal &amp; Kantor Buli</div>
+  </div>
+  <div class="menu" id="menu">
+    <span>Pemantauan</span>
+    <button data-v="ringkas" class="on">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Ringkasan Beban</button>
+    <button data-v="timeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h10M4 12h16M4 18h7"/><circle cx="17" cy="6" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+      Timeline Harian</button>
+    <button data-v="slot">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M11 8v3l2 1M20 20l-3.5-3.5"/></svg>
+      Cari Slot Kosong</button>
+    <span>Data Induk</span>
+    <button data-v="kegiatan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Kegiatan Rutin</button>
+    <button data-v="personel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M17 11.5a2.6 2.6 0 100-5.2M18.5 20c0-2.4-.9-4-2.3-4.9"/></svg>
+      Personel &amp; Roster</button>
+  </div>
+  <div class="kaki">
+    <button onclick="eksporData()">Unduh data</button>
+    <button onclick="document.getElementById('imp').click()">Muat data</button>
+    <button onclick="resetData()">Reset</button>
+    <input type="file" id="imp" accept=".json" hidden onchange="imporData(this)">
+    <div class="v">Prototipe v0.3 · data tersimpan di perangkat ini</div>
+  </div>
+</nav>
+
+<main>
+  <header class="bar">
+    <div><h1 id="jdl">Ringkasan Beban</h1><div class="ket" id="ket"></div></div>
+    <div class="kontrol" id="ktr"></div>
+  </header>
+  <div class="isi">
+
+  <!-- ============ RINGKASAN ============ -->
+  <section id="v-ringkas">
+    <div class="stat" id="stat"></div>
+    <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:16px" id="ringkasGrid">
+      <div class="panel">
+        <hgroup><div><h2>Peta beban jadwal</h2><p id="hmKet"></p></div>
+          <div class="kanan"><button class="btn xs" onclick="geserBulan(-1)">‹</button>
+          <span id="lblBulan" style="font-size:12px;font-weight:620;min-width:104px;text-align:center"></span>
+          <button class="btn xs" onclick="geserBulan(1)">›</button></div></hgroup>
+        <div class="body"><div class="hm" id="hm"></div>
+          <div class="skala">Beban jam kerja 07.00–17.00
+            <i style="background:#fff"></i><i style="background:#D6E9DE"></i><i style="background:#9CCDB2"></i>
+            <i style="background:#57AB80"></i><i style="background:#00713C"></i>
+            <span>ringan → padat</span></div></div>
+      </div>
+      <div class="panel">
+        <hgroup><div><h2>Beban rata-rata per hari</h2><p>Jam terpakai dalam sehari kerja</p></div></hgroup>
+        <div class="body"><div class="prof" id="prof"></div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);font-size:11.5px;color:var(--ink-2)"
+               id="profKet"></div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <hgroup><div><h2 id="jdlHari">Rincian hari</h2><p>Sesi yang berjalan beserta peserta yang benar-benar bisa hadir</p></div></hgroup>
+      <div class="body rapat" id="rincian"></div>
+    </div>
+    <div class="panel">
+      <hgroup><div><h2>Tabrakan jadwal</h2><p id="btKet"></p></div></hgroup>
+      <div class="body" id="bentrok"></div>
+    </div>
+  </section>
+
+  <!-- ============ TIMELINE ============ -->
+  <section id="v-timeline" hidden>
+    <div class="panel">
+      <hgroup><div><h2 id="tlJdl">Timeline</h2><p>Kelompok disusun menurut level jabatan, lalu satuan kerja. Atasan dan bawahannya berdiri di baris terpisah karena jadwalnya memang berbeda.</p></div></hgroup>
+      <div class="body">
+        <div class="tlw"><div class="tlg" id="tl"></div></div>
+        <div class="leg">
+          <span><i style="background:var(--brand)"></i>Rapat rutin</span>
+          <span><i style="background:#2A4B8D"></i>Koordinasi shift</span>
+          <span><i style="background:#A8621B"></i>Inspeksi lapangan</span>
+          <span><i style="background:#B02A2A"></i>Safety</span>
+          <span><i style="background:var(--ds);opacity:.3"></i>Blok shift kerja</span>
+          <span><i style="border:1px dashed var(--free);background:rgba(14,159,110,.09)"></i>Kosong</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SLOT ============ -->
+  <section id="v-slot" hidden>
+    <div class="panel">
+      <hgroup><div><h2>Parameter pencarian</h2><p>Sistem menyisir roster dan seluruh kegiatan rutin, lalu menyisakan waktu yang benar-benar bebas.</p></div></hgroup>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
+          <div><label class="fl">Dari tanggal</label><input type="date" id="sDari" style="width:100%"></div>
+          <div><label class="fl">Sampai tanggal</label><input type="date" id="sSampai" style="width:100%"></div>
+          <div><label class="fl">Sasaran</label><select id="sSasaran" style="width:100%"></select></div>
+          <div><label class="fl">Durasi</label><select id="sDurasi" style="width:100%">
+            <option value="30">30 menit</option><option value="60" selected>60 menit</option>
+            <option value="90">90 menit</option><option value="120">2 jam</option><option value="180">3 jam</option>
+          </select></div>
+          <div><label class="fl">Jam kerja</label>
+            <div style="display:flex;gap:5px"><input type="time" id="sJ1" value="07:00" style="flex:1;min-width:0">
+            <input type="time" id="sJ2" value="17:00" style="flex:1;min-width:0"></div></div>
+          <div><label class="fl">Syarat kehadiran</label><select id="sMode" style="width:100%">
+            <option value="semua">Semua sasaran harus bebas</option>
+            <option value="mayoritas">Cukup mayoritas bebas</option></select></div>
+          <div><button class="btn pri" style="width:100%" onclick="cariSlot()">Cari slot</button></div>
+        </div>
+        <div class="hint" style="margin-top:9px">Orang yang sedang OFF atau masuk shift malam tidak dihitung sebagai sasaran slot siang.</div>
+      </div>
+    </div>
+    <div id="hasilSlot"></div>
+  </section>
+
+  <!-- ============ KEGIATAN ============ -->
+  <section id="v-kegiatan" hidden>
+    <div class="panel">
+      <hgroup><div><h2>Kegiatan rutin</h2><p id="kegKet"></p></div>
+        <div class="kanan"><button class="btn pri" onclick="formKeg()">Tambah kegiatan</button></div></hgroup>
+      <div class="body rapat"><table><thead><tr>
+        <th>Kegiatan</th><th>Pengulangan</th><th>Waktu</th><th>Sasaran</th><th>Roster</th><th></th>
+      </tr></thead><tbody id="tKeg"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============ PERSONEL ============ -->
+  <section id="v-personel" hidden>
+    <div class="stat" id="statOrg"></div>
+    <div class="panel">
+      <hgroup><div><h2>Daftar personel</h2><p id="orgKet"></p></div>
+        <div class="kanan">
+          <select id="fLok"><option value="">Semua lokasi</option><option>Pakal</option><option>Kantor Buli</option></select>
+          <select id="fSK"></select>
+          <button class="btn pri" onclick="formOrg()">Tambah orang</button></div></hgroup>
+      <div class="body rapat" style="overflow-x:auto"><table><thead><tr>
+        <th>Nama</th><th>Jabatan</th><th>Satuan kerja</th><th>Level</th>
+        <th>Lokasi kerja</th><th>Roster</th><th>Pola shift</th><th></th>
+      </tr></thead><tbody id="tOrg"></tbody></table></div>
+    </div>
+  </section>
+
+  </div>
+</main>
+</div>
+
+<!-- modal kegiatan -->
+<div class="mod" id="mKeg"><div class="box">
+  <h3 id="mKegJdl">Tambah kegiatan</h3>
+  <div class="f">
+    <input type="hidden" id="kId">
+    <div class="g2">
+      <div class="span"><label class="fl">Nama kegiatan</label><input type="text" id="kNama" style="width:100%" placeholder="Rapat Evaluasi Produksi"></div>
+      <div><label class="fl">Pengulangan</label><select id="kTipe" style="width:100%" onchange="ubahTipe()">
+        <option value="mingguan">Mingguan / hari tertentu</option><option value="dua_mingguan">Dua mingguan</option>
+        <option value="bulanan">Bulanan</option><option value="sekali">Sekali jalan</option>
+        <option value="roster">Mengikuti roster shift</option></select></div>
+      <div><label class="fl">Kategori</label><select id="kKat" style="width:100%">
+        <option>Rapat rutin</option><option>Koordinasi shift</option><option>Inspeksi lapangan</option>
+        <option>Safety</option><option>Jadwal kerja</option><option>Lainnya</option></select></div>
+      <div class="span" id="wHari"><label class="fl">Hari</label><div class="hari-pil" id="kHari"></div></div>
+      <div id="wAnchor"><label class="fl">Pelaksanaan terakhir</label><input type="date" id="kAnchor" style="width:100%"></div>
+      <div id="wTgl"><label class="fl">Tanggal pelaksanaan</label><input type="date" id="kTgl" style="width:100%"></div>
+      <div><label class="fl">Jam mulai</label><input type="time" id="kM1" value="08:00" style="width:100%"></div>
+      <div><label class="fl">Jam selesai</label><input type="time" id="kM2" value="09:00" style="width:100%"></div>
+      <div class="span"><label class="fl">Sasaran — level jabatan</label><div class="box2" id="kLvl"></div></div>
+      <div><label class="fl">Sasaran — satuan kerja</label><div class="box2" id="kSK"></div></div>
+      <div><label class="fl">Sasaran — peran</label><div class="box2" id="kPrn"></div></div>
+      <div class="span"><label class="fl">Aturan roster</label><select id="kShift" style="width:100%">
+        <option value="onsite">Hanya yang sedang di site (bukan OFF)</option>
+        <option value="sesuai">Hanya yang sesuai shift sesi</option>
+        <option value="abaikan">Abaikan roster</option></select></div>
+      <div class="span"><label style="display:flex;gap:8px;align-items:center;font-size:12.5px">
+        <input type="checkbox" id="kMirror"> Gandakan untuk shift malam (jam sama + 12 jam)</label></div>
+    </div>
+  </div>
+  <div class="a"><button class="btn pri" onclick="simpanKeg()">Simpan</button>
+  <button class="btn" onclick="tutup('mKeg')">Batal</button></div>
+</div></div>
+
+<!-- modal orang -->
+<div class="mod" id="mOrg"><div class="box">
+  <h3 id="mOrgJdl">Tambah orang</h3>
+  <div class="f"><input type="hidden" id="oId">
+    <div class="g2">
+      <div><label class="fl">Nama</label><input type="text" id="oNama" style="width:100%"></div>
+      <div><label class="fl">Jabatan</label><input type="text" id="oJab" style="width:100%"></div>
+      <div><label class="fl">Satuan kerja</label><select id="oSK" style="width:100%"></select></div>
+      <div><label class="fl">Level</label><select id="oLvl" style="width:100%">
+        <option value="manager">Manager</option><option value="departemen">Departemen</option>
+        <option value="supervisor">Supervisor</option></select></div>
+      <div><label class="fl">Peran</label><select id="oPrn" style="width:100%">
+        <option value="-">—</option><option value="teamhead">Team Head</option><option value="anggota">Anggota</option></select></div>
+      <div><label class="fl">Lokasi kerja</label><select id="oLok" style="width:100%">
+        <option>Pakal</option><option>Kantor Buli</option></select></div>
+      <div><label class="fl">Roster</label><input type="text" id="oRos" style="width:100%" placeholder="8-3"></div>
+      <div class="span"><label class="fl">Pola shift bulan ini</label>
+        <input type="text" id="oShift" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace" placeholder="DDNNOOV…">
+        <div class="hint">31 huruf untuk tanggal 1–31. D = siang, N = malam, O = off, V = overshift. Kosongkan bila bekerja jam kantor.</div></div>
+    </div>
+  </div>
+  <div class="a"><button class="btn pri" onclick="simpanOrg()">Simpan</button>
+  <button class="btn" onclick="tutup('mOrg')">Batal</button></div>
+</div></div>
+
+<script>
+/* =====================================================================
+   DATA INDUK
+   ===================================================================== */
+const SATKER=[
+ {id:'SK0',n:'Bureau Head',                   s:'Bureau Head'},
+ {id:'SK1',n:'Mine Development & Production', s:'Mine Dev & Prod'},
+ {id:'SK2',n:'Mine Plan & Survey',            s:'Mine Plan & Survey'},
+ {id:'SK3',n:'Mine Monitoring',               s:'Mine Monitoring'},
+ {id:'SK4',n:'Mining & Geotech',              s:'Mining & Geotech'},
+ {id:'SK5',n:'Dispatch Engineer',             s:'Dispatch Engineer'}];
+const LEVEL=[{id:'manager',n:'Level Manager'},{id:'departemen',n:'Level Departemen'},{id:'supervisor',n:'Level Supervisor'}];
+const HARI=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+const HARIP=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+const BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const WARNA={'Rapat rutin':'#00713C','Koordinasi shift':'#2A4B8D','Inspeksi lapangan':'#A8621B',
+             'Safety':'#B02A2A','Jadwal kerja':'#9AA8A1','Lainnya':'#6D4AA8'};
+/* Cut-off shift WIT: Day 06.30–18.30, Night 18.30–06.30 */
+const JS={D:[390,1110],N:[1110,1830],V:[390,1110],K:[420,1020]};
+const T0=360,T1=1440;          // jendela timeline 06.00–24.00
+const KJ1=420,KJ2=1020;        // jam kerja acuan 07.00–17.00
+
+/* Personel. Kolom shift = 31 huruf untuk 1–31 Agustus 2026,
+   ditarik dari PLAN POLA KERJA DINAMIS 2026 AGUSTUS. */
+const ORANG0=[
+['P00','Dani Suryawan','Mining Bureau Head','SK0','manager','-','Kantor Buli','6-3',''],
+['P43','Anjas Setyawan','Mine Development & Production Work Unit Head','SK1','departemen','-','Kantor Buli','7-3',''],
+['P44','Reza','Mine Plan & Survey Work Unit Head','SK2','departemen','-','Kantor Buli','7-3',''],
+['P45','Rahmat Iqbal','Mine Monitoring Project Engineer','SK3','departemen','-','Kantor Buli','10-2',''],
+['P47','Dedek','Mine Monitoring Engineer','SK3','departemen','-','Kantor Buli','7-3',''],
+['P46','Raihan Nashwan','Mining & Geotech Engineer','SK4','departemen','-','Kantor Buli','10-2',''],
+['P01','Mohammad Fathur Rozi','Dispatch Engineer','SK5','departemen','-','Pakal','10-2','DVNNNNNNVDDDDDDVNNNNNNVDDDDDDVD'],
+['P02','Ajhie Kurnia Wiratama','Dispatch Engineer','SK5','departemen','-','Pakal','10-2','VDDDDDDVNNNNNNVOOOOOOOOOOOOOODD'],
+['P03','Shanneta Lukman','Dispatch Engineer','SK5','departemen','-','Pakal','10-2','NNNNNNVDDDDDDVNNNNNNVDDDDDDVNNN'],
+['P04','Muhammad Ariqsyah Rahman','Dispatch Engineer','SK5','departemen','-','Pakal','10-2','DDDDDVNNNNNNVDDDDDDVNNNNNNVDDDD'],
+['P05','Randy Caesario Simangunsong','Dispatch Engineer','SK5','departemen','-','Pakal','10-2','NNNNVDDDDDDVNNNNNNVDDDDNNVNNNNN'],
+['P06','Desta','Dispatch Engineer','SK5','departemen','-','Pakal','10-2','DDDVNNNNNNVDDDDDDVOOOOOOOOOOOOO'],
+['P07','Teddy Djawa','Spv Produksi','SK1','supervisor','teamhead','Pakal','8-3','NNNNVDDDDDDDNNNNNNNVDDDDDDDDNNN'],
+['P08','Bahrin Haedar','Spv Produksi','SK1','supervisor','teamhead','Pakal','8-3','DDDDDNNNNNNNVDDDOOOOOOOOOOOOOOO'],
+['P09','Irwan Tjan','Spv Produksi','SK1','supervisor','teamhead','Pakal','8-3','DDDDNNNNNNNVDDDDDDDNNNNNNNVOOOO'],
+['P10','Men Pinge','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','NNVDDDDDDDNNNNNNNVDDDDDDDNNNNNN'],
+['P11','Aziz Ahmad','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','NNNNNVDDDDDDDDNNNNNOOOOOOOOOOOO'],
+['P12','Sukardi','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','NNNNNNNVDDDDDDDNNNOOOOOOOOOOOOO'],
+['P13','Bahtiar Wahid','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','NNNVDDDDDDDDDNNNNNNVDDDDDDDDDNN'],
+['P14','Jonatan Radja','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','OOOOOOOOONNNNNNNVDDDDDDDNNNNNNN'],
+['P15','Ismail Anwar','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3',''],
+['P16','Mikanor Togo','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3',''],
+['P17','Hendra Lingko','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','DDDDDDNNNNNNNVDDDDDDDNNNNNNNVDD'],
+['P18','Marselinus Untung','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','DDNNNNNNNVDDDDDDDNNNNNNNVDDDDDD'],
+['P19','Musa Hi Medo','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','DNNNNNNNVDDOOOOOOOOOOOOOOOOOOOO'],
+['P20','Silfon Kiy','Officer Produksi','SK1','supervisor','anggota','Pakal','8-3','VDDDDDDDNNNNNNNVDDDDDDDNNNNNVDD'],
+['P21','Ronaldo Wassaleruay','Spv Minedev','SK1','supervisor','teamhead','Pakal','8-3','DDDDDDNNNNNNVDDDDDDNNNNNNNNNVDD'],
+['P22','Enrico Tatepa','Spv Minedev','SK1','supervisor','teamhead','Pakal','8-3','OOOOOOOOOOOOOOOOOOOOODDDDDDDDNN'],
+['P23','Donal Wararag','Officer MPD','SK1','supervisor','anggota','Pakal','8-3','NNNNNNVDDDDDDDNNNNNNNVDDDDDDDDD'],
+['P24','Iwan Saleh','Officer MPD','SK1','supervisor','anggota','Pakal','8-3','DDDDDDDNNNNNNNVDDDDOOOOOOOOOOOO'],
+['P25','Nirwan Askari','Spv Mineplan','SK2','supervisor','teamhead','Pakal','8-3','NNNNNVDDDDDDDNNNNNNVDDDDDDDNNNN'],
+['P26','Baso Syamsuddin','Spv Mineplan','SK2','supervisor','teamhead','Pakal','8-3','DDDDDDNNNNNNVDDDDDDDNNNNNNVOOOO'],
+['P27','Afif Al Fathur Rahman','Shortterm Plan & Control','SK2','departemen','-','Pakal','9-2','NNVDDDDOOOOOOOOOODDDDDDDNNNNNNV'],
+['P28','Danyel Barbakem','Officer MPD (Plan)','SK2','supervisor','anggota','Pakal','8-3','NNNNNNVDDDNNNNNNNNNNVDDDDDDDNNN'],
+['P29','Dominggus Barbakem','Officer MPD (Plan)','SK2','supervisor','anggota','Pakal','8-3','DDDNNNNNNVDDDDDNNNNOOOOOOOOOOOO'],
+['P30','Abdullah A. Djafar','Officer MPD (Plan)','SK2','supervisor','anggota','Pakal','8-3','OOOOOOOOOOOOOODDDDDDDNNNNNNVDDD'],
+['P31','Wasbir Kamah','Database Control & Reporting','SK2','departemen','-','Pakal','9-2','NVDDDDDDNNNNNNNVDDDDDDDNNNNNNVD'],
+['P32','Nofriadi','Database Control & Reporting','SK2','departemen','-','Pakal','9-2','DDNNNNNNVDDDDDDDNNNNNNVDDDDDDDN'],
+['P33','Siti Jusita Masud','DRA Analyzer & Control','SK2','departemen','-','Pakal','9-2','DDNNNNNVDDDDOOOOOOOOOOOOOODDDDD'],
+['P34','Sugeng Rianto','Mine Survey','SK2','supervisor','teamhead','Pakal','8-3','DNNNVDDDDDDDDDDNNNVDDDDDDDOOOOO'],
+['P35','Rifandi Hi Adam','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','DDDDDDDDDNNNVDDDDDDDDDDNNNVDDDD'],
+['P36','Musa Hi Karim','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','DDDDDDDDDDNNNVDDDDDDDDDDNNNVDDD'],
+['P37','Festus Kumai','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','DDDDDDNNNVDDDDDDDDDDNNNVDDDDDDD'],
+['P38','Iswan Marsaoly','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','DDDDDDDNNOOOOOOOOOOOOOOOOOOOOOD'],
+['P39','Marcelino Malage','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','NNVDDDDDDDDDDNNNVDDDDDDDDDDNNNV'],
+['P40','Srifat Muhammad','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','OOOOOOODDDDDDDNNNVDDDDDDDDDDNNN'],
+['P41','Agus Salim','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','DDNNNNVDDDDDDDDDDNNNVDDDDDDDDDD'],
+['P42','Nanang Abubakar','Mine Survey','SK2','supervisor','anggota','Pakal','8-3','DDDDNNNVDDDDDDDDDOOOOOOOOOOOOOO']
+].map(a=>({id:a[0],nama:a[1],jab:a[2],sk:a[3],lvl:a[4],prn:a[5],lok:a[6],ros:a[7],sh:a[8],shBln:'2026-08'}));
+
+const KEG0=[
+{id:'K01',nama:'Daily Checkin',kat:'Rapat rutin',m1:'08:10',m2:'09:00',
+ pola:{t:'mingguan',hari:[2,3,4,5]},sas:{lvl:['manager','departemen'],sk:[],prn:[]},shift:'onsite',mirror:false,aktif:true},
+{id:'K02',nama:'Daily Staging Plan',kat:'Koordinasi shift',m1:'08:15',m2:'08:30',
+ pola:{t:'mingguan',hari:[1,2,3,4,5,6,7]},sas:{lvl:['supervisor'],sk:['SK5'],prn:[]},shift:'sesuai',mirror:true,aktif:true},
+{id:'K03',nama:'Rapat Weekly PCM',kat:'Rapat rutin',m1:'09:00',m2:'11:00',
+ pola:{t:'mingguan',hari:[1]},sas:{lvl:['manager','departemen'],sk:[],prn:['teamhead']},shift:'sesuai',mirror:false,aktif:true},
+{id:'K04',nama:'Rapat Weekly SMR',kat:'Rapat rutin',m1:'11:00',m2:'12:00',
+ pola:{t:'mingguan',hari:[1]},sas:{lvl:['manager','departemen'],sk:[],prn:['teamhead']},shift:'sesuai',mirror:false,aktif:true},
+{id:'K05',nama:'1on1 OE',kat:'Rapat rutin',m1:'16:30',m2:'17:30',
+ pola:{t:'mingguan',hari:[1]},sas:{lvl:['manager','departemen'],sk:[],prn:[]},shift:'onsite',mirror:false,aktif:true},
+{id:'K06',nama:'Half Shift Meeting',kat:'Koordinasi shift',m1:'11:30',m2:'12:00',
+ pola:{t:'mingguan',hari:[1,2,3,4,5,6,7]},sas:{lvl:['supervisor'],sk:['SK5'],prn:[]},shift:'sesuai',mirror:true,aktif:true},
+{id:'K07',nama:'Shift kerja lapangan',kat:'Jadwal kerja',m1:'06:30',m2:'18:30',
+ pola:{t:'roster'},sas:{lvl:['supervisor'],sk:['SK5'],prn:[]},shift:'sesuai',mirror:false,aktif:true},
+{id:'K08',nama:'Rapat Weekly Digitalisasi PTRO',kat:'Rapat rutin',m1:'10:00',m2:'11:00',
+ pola:{t:'mingguan',hari:[5]},sas:{lvl:['manager','departemen'],sk:[],prn:[]},shift:'onsite',mirror:false,aktif:true},
+{id:'K09',nama:'Rapat Weekly Internal Mining',kat:'Rapat rutin',m1:'09:00',m2:'11:00',
+ pola:{t:'mingguan',hari:[6]},sas:{lvl:['manager','departemen'],sk:[],prn:['teamhead']},shift:'sesuai',mirror:false,aktif:true},
+{id:'K10',nama:'Rapat Weekly Champion',kat:'Rapat rutin',m1:'10:00',m2:'12:00',
+ pola:{t:'mingguan',hari:[6]},sas:{lvl:['manager','departemen'],sk:[],prn:[]},shift:'onsite',mirror:false,aktif:true},
+{id:'K11',nama:'General Safety Talk',kat:'Safety',m1:'06:30',m2:'06:45',
+ pola:{t:'mingguan',hari:[1]},sas:{lvl:['manager','departemen','supervisor'],sk:[],prn:[]},shift:'sesuai',mirror:false,aktif:true},
+{id:'K12',nama:'Biweekly Road Inspection',kat:'Inspeksi lapangan',m1:'08:45',m2:'11:00',
+ pola:{t:'dua_mingguan',hari:3,anchor:'2026-07-29'},sas:{lvl:['supervisor'],sk:['SK5'],prn:[]},shift:'sesuai',mirror:false,aktif:true},
+{id:'K13',nama:'MOSSA',kat:'Rapat rutin',m1:'08:00',m2:'12:00',
+ pola:{t:'bulanan',tgl:['2026-08-28']},sas:{lvl:['manager','departemen'],sk:[],prn:['teamhead']},shift:'sesuai',mirror:false,aktif:true}];
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const KUNCI='jadwalMining_v3';
+let db=muat(), bln={y:2026,m:8}, tglAktif='2026-08-11', tampil='ringkas';
+let fSasaran='all';                      // saringan ringkasan
+let tlTanggal='2026-08-11', tlRinci=false, tlGap=60;
+
+function muat(){try{const s=localStorage.getItem(KUNCI);if(s)return JSON.parse(s)}catch(e){}
+  return{orang:JSON.parse(JSON.stringify(ORANG0)),keg:JSON.parse(JSON.stringify(KEG0))}}
+function tulis(){try{localStorage.setItem(KUNCI,JSON.stringify(db))}catch(e){}}
+function resetData(){if(confirm('Kembalikan seluruh data ke kondisi awal? Perubahan yang belum diunduh akan hilang.')){
+  db={orang:JSON.parse(JSON.stringify(ORANG0)),keg:JSON.parse(JSON.stringify(KEG0))};tulis();gambar()}}
+function eksporData(){const b=new Blob([JSON.stringify(db,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='jadwal-biro-mining.json';a.click()}
+function imporData(el){const f=el.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.orang||!d.keg)throw 0;db=d;tulis();gambar();
+    alert('Data berhasil dimuat.')}catch(e){alert('Berkas tidak dikenali. Gunakan hasil tombol Unduh data.')}};
+  r.readAsText(f);el.value=''}
+
+/* =====================================================================
+   TANGGAL & WAKTU
+   ===================================================================== */
+const p2=n=>String(n).padStart(2,'0');
+const iso=(y,m,d)=>y+'-'+p2(m)+'-'+p2(d);
+const urai=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const dow=s=>{const d=urai(s).getDay();return d===0?7:d};
+const mnt=s=>{const[h,m]=s.split(':').map(Number);return h*60+m};
+const jam=m=>{m=((m%1440)+1440)%1440;return p2(Math.floor(m/60))+'.'+p2(m%60)};
+const beda=(a,b)=>Math.round((urai(b)-urai(a))/864e5);
+const tglPjg=s=>{const d=urai(s);return HARIP[dow(s)-1]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear()};
+const tglPdk=s=>{const d=urai(s);return HARI[dow(s)-1]+' '+d.getDate()+' '+BULAN[d.getMonth()].slice(0,3)};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const jamDes=m=>(Math.round(m/6)/10).toFixed(1).replace('.',',');
+
+function shiftHari(o,t){
+  if(!o.sh) return 'K';
+  const[y,m]=t.split('-').map(Number);
+  if(y+'-'+p2(m)!==(o.shBln||'2026-08')) return '?';
+  const c=o.sh[Number(t.slice(8,10))-1];
+  return (c&&c!=='-')?c:'?';
+}
+const diSite=s=>s==='D'||s==='N'||s==='V'||s==='K'||s==='?';
+const siang=s=>s==='D'||s==='V'||s==='K'||s==='?';
+
+/* =====================================================================
+   MESIN JADWAL
+   ===================================================================== */
+function jalanHariIni(k,t){
+  const p=k.pola;
+  if(p.t==='roster')return true;
+  if(p.t==='mingguan')return p.hari.includes(dow(t));
+  if(p.t==='dua_mingguan'){if(dow(t)!==p.hari)return false;const d=beda(p.anchor,t);return d>=0&&d%14===0}
+  if(p.t==='bulanan')return (p.tgl||[]).includes(t);
+  if(p.t==='sekali')return p.tgl===t;
+  return false;
+}
+function sasaranCocok(k,o){
+  const s=k.sas, ada=(s.lvl&&s.lvl.length)||(s.sk&&s.sk.length)||(s.prn&&s.prn.length)||(s.org&&s.org.length);
+  if(!ada)return true;
+  if(s.org&&s.org.includes(o.id))return true;
+  if(s.lvl&&s.lvl.includes(o.lvl))return true;
+  if(s.sk&&s.sk.includes(o.sk))return true;
+  if(s.prn&&s.prn.includes(o.prn))return true;
+  return false;
+}
+const cacheSesi={};
+function sesiHari(t){
+  if(cacheSesi[t])return cacheSesi[t];
+  const out=[];
+  db.keg.filter(k=>k.aktif&&jalanHariIni(k,t)).forEach(k=>{
+    const kand=db.orang.filter(o=>sasaranCocok(k,o));
+    if(k.pola.t==='roster'){
+      kand.forEach(o=>{const st=shiftHari(o,t);if(st==='O'||st==='?')return;
+        const[a,b]=JS[st==='K'?'K':st];
+        out.push({k,nama:st==='N'?'Shift Malam':(st==='K'?'Jam Kantor':'Shift Siang'),
+                  a,b,sesi:st==='N'?'NS':'DS',org:[o],blok:true})});
+      return;
+    }
+    const buat=(a,b,sesi)=>{
+      const org=kand.filter(o=>{const st=shiftHari(o,t);
+        if(k.shift==='abaikan')return true;
+        if(!diSite(st))return false;
+        if(k.shift==='onsite')return true;
+        if(st==='K'||st==='?')return sesi==='DS';
+        return sesi==='DS'?(st==='D'||st==='V'):(st==='N')});
+      if(org.length)out.push({k,nama:k.nama,a,b,sesi,org});
+    };
+    buat(mnt(k.m1),mnt(k.m2),'DS');
+    if(k.mirror)buat(mnt(k.m1)+720,mnt(k.m2)+720,'NS');
+  });
+  out.sort((x,y)=>x.a-y.a);
+  cacheSesi[t]=out; return out;
+}
+const bersihkanCache=()=>{for(const k in cacheSesi)delete cacheSesi[k]};
+
+function gabung(iv){const s=iv.slice().sort((a,b)=>a[0]-b[0]),o=[];
+  s.forEach(x=>{const t=o[o.length-1];if(t&&x[0]<=t[1])t[1]=Math.max(t[1],x[1]);else o.push([...x])});return o}
+
+function sibukGrup(t,grup,j1,j2,ambang){
+  const id=new Set(grup.map(o=>o.id));
+  return gabung(sesiHari(t).filter(s=>!s.blok)
+    .filter(s=>s.org.filter(o=>id.has(o.id)).length>=(ambang||1))
+    .map(s=>[Math.max(s.a,j1),Math.min(s.b,j2)]).filter(x=>x[1]>x[0]));
+}
+function slotKosong(t,grup,j1,j2,dur,mode){
+  const hadir=grup.filter(o=>siang(shiftHari(o,t)));
+  if(!hadir.length)return{slot:[],hadir:0,total:grup.length,sibuk:[]};
+  const ambang=mode==='semua'?1:Math.ceil(hadir.length/2);
+  const sb=sibukGrup(t,hadir,j1,j2,ambang);
+  const slot=[];let k=j1;
+  sb.forEach(x=>{if(x[0]-k>=dur)slot.push([k,x[0]]);k=Math.max(k,x[1])});
+  if(j2-k>=dur)slot.push([k,j2]);
+  return{slot,hadir:hadir.length,total:grup.length,sibuk:sb};
+}
+function bebanHari(t,grup){
+  const hadir=grup.filter(o=>siang(shiftHari(o,t)));
+  if(!hadir.length)return{menit:0,sesi:0,hadir:0};
+  const sb=sibukGrup(t,hadir,KJ1,KJ2,1);
+  return{menit:sb.reduce((a,x)=>a+x[1]-x[0],0),
+         sesi:sesiHari(t).filter(s=>!s.blok&&s.org.some(o=>hadir.some(h=>h.id===o.id))).length,
+         hadir:hadir.length};
+}
+function grup(v){
+  if(v==='all')return db.orang;
+  if(v.startsWith('sk:'))return db.orang.filter(o=>o.sk===v.slice(3));
+  if(v.startsWith('lv:'))return db.orang.filter(o=>o.lvl===v.slice(3));
+  if(v.startsWith('pr:'))return db.orang.filter(o=>o.prn===v.slice(3));
+  if(v.startsWith('lk:'))return db.orang.filter(o=>o.lok===v.slice(3));
+  return db.orang;
+}
+const namaGrup=v=>v==='all'?'Seluruh Biro Mining':
+  v.startsWith('sk:')?(SATKER.find(s=>s.id===v.slice(3))||{}).n:
+  v.startsWith('lv:')?(LEVEL.find(s=>s.id===v.slice(3))||{}).n:
+  v.startsWith('pr:')?'Team Head':v.slice(3);
+
+function tabrakan(y,m){
+  const n=new Date(y,m,0).getDate(),peta={};
+  for(let d=1;d<=n;d++){
+    const t=iso(y,m,d),s=sesiHari(t).filter(x=>!x.blok);
+    for(let i=0;i<s.length;i++)for(let j=i+1;j<s.length;j++){
+      if(s[i].a>=s[j].b||s[j].a>=s[i].b)continue;
+      const sama=s[i].org.filter(a=>s[j].org.some(b=>b.id===a.id));
+      if(!sama.length)continue;
+      const key=[s[i].k.id,s[j].k.id].sort().join('|');
+      const iv=[Math.max(s[i].a,s[j].a),Math.min(s[i].b,s[j].b)];
+      peta[key]=peta[key]||{a:s[i],b:s[j],n:0,tgl:[],org:new Map(),irisan:iv[1]-iv[0],iv};
+      peta[key].n++; peta[key].tgl.push(t);
+      sama.forEach(o=>peta[key].org.set(o.id,o));
+    }
+  }
+  return Object.values(peta).map(x=>({...x,orang:[...x.org.values()],
+    bobot:x.irisan*x.n*x.org.size})).sort((a,b)=>b.bobot-a.bobot);
+}
+
+/* =====================================================================
+   POTONGAN TAMPILAN
+   ===================================================================== */
+function lajur(sesiList,opt){
+  const {t0=T0,t1=T1,gapMin=0,label=true,tinggi}=opt||{};
+  const sp=t1-t0, ps=m=>((Math.max(m,t0)-t0)/sp*100), lb=(a,b)=>((Math.min(b,t1)-Math.max(a,t0))/sp*100);
+  let h='<div class="grid">'+Array.from({length:Math.round(sp/60)},()=>'<i></i>').join('')+'</div>';
+  sesiList.filter(s=>s.blok&&s.b>t0&&s.a<t1).forEach(s=>{
+    h+=`<div class="blk sh" style="left:${ps(s.a)}%;width:${lb(s.a,s.b)}%;background:${
+      s.sesi==='NS'?'var(--ns)':'var(--ds)'}" title="${esc(s.nama)}"></div>`;});
+  const rapat=sesiList.filter(s=>!s.blok&&s.b>t0&&s.a<t1);
+  if(gapMin){
+    const sb=gabung(rapat.map(s=>[Math.max(s.a,KJ1),Math.min(s.b,KJ2)]).filter(x=>x[1]>x[0]));
+    let k=KJ1;const gp=[];
+    sb.forEach(x=>{if(x[0]-k>=gapMin)gp.push([k,x[0]]);k=Math.max(k,x[1])});
+    if(KJ2-k>=gapMin)gp.push([k,KJ2]);
+    gp.forEach(g=>{h+=`<div class="gap" style="left:${ps(g[0])}%;width:${lb(g[0],g[1])}%">${
+      (g[1]-g[0])>=75?jam(g[0])+'–'+jam(g[1]):''}</div>`});
+  }
+  rapat.forEach(s=>{
+    const w=lb(s.a,s.b);
+    h+=`<div class="blk" style="left:${ps(s.a)}%;width:${w}%;background:${WARNA[s.k.kat]||'#00713C'}"
+      title="${esc(s.nama)} · ${jam(s.a)}–${jam(s.b)} · ${s.org.length} orang">${
+      label&&w>7?esc(s.nama):''}</div>`;});
+  return `<div class="lane"${tinggi?` style="height:${tinggi}px"`:''}>${h}</div>`;
+}
+function kepalaJam(t0,t1){
+  let h='<div class="jm">';
+  for(let j=t0/60;j<t1/60;j++)h+=`<i>${p2(j)}</i>`;
+  return h+'</div>';
+}
+
+/* kelompok baris: level → satuan kerja */
+function kelompokBaris(list){
+  const out=[];
+  LEVEL.forEach(L=>{
+    const org=list.filter(o=>o.lvl===L.id);
+    if(!org.length)return;
+    const anak=[];
+    SATKER.forEach(S=>{
+      const g=org.filter(o=>o.sk===S.id);
+      if(g.length)anak.push({nama:S.n,sub:g.length===1?g[0].nama:g.length+' orang',org:g});
+    });
+    out.push({level:L.n,anak});
+  });
+  return out;
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function gambar(){bersihkanCache();tulis();
+  isiOpsi();bar();
+  if(tampil==='ringkas')vRingkas();
+  if(tampil==='timeline')vTimeline();
+  if(tampil==='slot'){}
+  if(tampil==='kegiatan')vKegiatan();
+  if(tampil==='personel')vPersonel();
+}
+function isiOpsi(){
+  const oSK=SATKER.map(s=>`<option value="${s.id}">${s.n}</option>`).join('');
+  const sel=document.getElementById('oSK'); if(!sel.children.length)sel.innerHTML=oSK;
+  const fs=document.getElementById('fSK');
+  if(!fs.children.length)fs.innerHTML='<option value="">Semua satuan kerja</option>'+oSK;
+  const ss=document.getElementById('sSasaran');
+  if(!ss.children.length)ss.innerHTML='<option value="all">Seluruh Biro Mining</option>'+
+    '<optgroup label="Satuan kerja">'+SATKER.map(s=>`<option value="sk:${s.id}">${s.n}</option>`).join('')+'</optgroup>'+
+    '<optgroup label="Level jabatan">'+LEVEL.map(s=>`<option value="lv:${s.id}">${s.n}</option>`).join('')+
+    '<option value="pr:teamhead">Team Head saja</option></optgroup>'+
+    '<optgroup label="Lokasi"><option value="lk:Pakal">Site Pakal</option>'+
+    '<option value="lk:Kantor Buli">Kantor Buli</option></optgroup>';
+}
+const OPSI_SASARAN=()=>'<option value="all">Seluruh Biro Mining</option>'+
+  SATKER.map(s=>`<option value="sk:${s.id}">${s.n}</option>`).join('')+
+  LEVEL.map(s=>`<option value="lv:${s.id}">${s.n}</option>`).join('')+
+  '<option value="pr:teamhead">Team Head saja</option>';
+
+function bar(){
+  const j={ringkas:'Ringkasan Beban',timeline:'Timeline Harian',slot:'Cari Slot Kosong',
+           kegiatan:'Kegiatan Rutin',personel:'Personel & Roster'}[tampil];
+  document.getElementById('jdl').textContent=j;
+  const ket=document.getElementById('ket'),ktr=document.getElementById('ktr');
+  if(tampil==='ringkas'){
+    ket.textContent=BULAN[bln.m-1]+' '+bln.y+' · '+namaGrup(fSasaran);
+    ktr.innerHTML=`<label class="fl" style="margin:0 4px 0 0">Sasaran</label>
+      <select id="cSas" onchange="fSasaran=this.value;gambar()">${OPSI_SASARAN()}</select>`;
+    document.getElementById('cSas').value=fSasaran;
+  }else if(tampil==='timeline'){
+    ket.textContent=tglPjg(tlTanggal);
+    ktr.innerHTML=`<input type="date" id="cTgl" value="${tlTanggal}" onchange="tlTanggal=this.value;gambar()">
+      <select id="cRinci" onchange="tlRinci=this.value==='1';gambar()">
+        <option value="0">Ringkas per satuan kerja</option><option value="1">Rinci per orang</option></select>
+      <select id="cGap" onchange="tlGap=+this.value;gambar()">
+        <option value="30">Kosong ≥ 30 menit</option><option value="60">Kosong ≥ 60 menit</option>
+        <option value="90">Kosong ≥ 90 menit</option><option value="120">Kosong ≥ 2 jam</option></select>`;
+    document.getElementById('cRinci').value=tlRinci?'1':'0';
+    document.getElementById('cGap').value=String(tlGap);
+  }else if(tampil==='personel'){
+    ket.textContent=db.orang.length+' orang terdaftar';ktr.innerHTML='';
+  }else if(tampil==='kegiatan'){
+    ket.textContent=db.keg.filter(k=>k.aktif).length+' kegiatan aktif dari '+db.keg.length+' terdaftar';ktr.innerHTML='';
+  }else{ket.textContent='';ktr.innerHTML=''}
+}
+
+/* ---------------- RINGKASAN ---------------- */
+function vRingkas(){
+  const g=grup(fSasaran), n=new Date(bln.y,bln.m,0).getDate();
+  let totMenit=0,totSesi=0,hariAda=0,puncak={m:-1};
+  const perDow=Array.from({length:7},()=>({m:0,n:0}));
+  const beban={};
+  for(let d=1;d<=n;d++){
+    const t=iso(bln.y,bln.m,d),b=bebanHari(t,g);beban[t]=b;
+    totMenit+=b.menit;totSesi+=b.sesi;if(b.menit)hariAda++;
+    if(b.menit>puncak.m)puncak={m:b.menit,t};
+    const k=perDow[dow(t)-1];k.m+=b.menit;k.n++;
+  }
+  const maks=Math.max(...Object.values(beban).map(b=>b.menit),1);
+
+  document.getElementById('stat').innerHTML=`
+   <div><div class="n">${g.length}</div><div class="l">Personel sasaran</div></div>
+   <div><div class="n">${db.keg.filter(k=>k.aktif).length}</div><div class="l">Kegiatan rutin aktif</div></div>
+   <div><div class="n">${totSesi}</div><div class="l">Sesi bulan ini</div></div>
+   <div><div class="n">${jamDes(totMenit)}<small> jam</small></div><div class="l">Waktu kerja terpakai</div></div>
+   <div><div class="n">${hariAda?jamDes(totMenit/hariAda):'0'}<small> jam/hari</small></div><div class="l">Rata-rata hari aktif</div></div>
+   <div><div class="n">${tabrakan(bln.y,bln.m).length}</div><div class="l">Pasangan bertabrakan</div></div>`;
+
+  document.getElementById('lblBulan').textContent=BULAN[bln.m-1]+' '+bln.y;
+  document.getElementById('hmKet').textContent='Makin gelap makin padat. Klik tanggal untuk rinciannya.';
+  let h=HARI.map(x=>`<div class="dw">${x}</div>`).join('');
+  for(let i=1;i<dow(iso(bln.y,bln.m,1));i++)h+='<div class="sel void"></div>';
+  for(let d=1;d<=n;d++){
+    const t=iso(bln.y,bln.m,d),b=beban[t],r=b.menit/maks;
+    const bg=b.menit===0?'#fff':`rgba(0,113,60,${(0.10+r*0.80).toFixed(2)})`;
+    const fg=r>0.55?'#fff':'var(--ink)';
+    h+=`<div class="sel ${t===tglAktif?'now':''} ${dow(t)===7?'lib':''}" style="background:${bg};color:${fg}"
+         onclick="tglAktif='${t}';tlTanggal='${t}';gambar()" tabindex="0"
+         title="${tglPjg(t)} · ${jamDes(b.menit)} jam · ${b.sesi} sesi">
+        <div class="d">${d}</div><div class="j" style="color:${fg};opacity:${b.menit?.85:.4}">${
+          b.menit?jamDes(b.menit)+' j':'–'}</div></div>`;
+  }
+  document.getElementById('hm').innerHTML=h;
+
+  const mx=Math.max(...perDow.map(x=>x.n?x.m/x.n:0),1);
+  document.getElementById('prof').innerHTML=perDow.map((x,i)=>{
+    const v=x.n?x.m/x.n:0;
+    return `<div class="r"><span class="lbl">${HARI[i]}</span>
+      <span class="tr"><span class="bar" style="width:${(v/mx*100).toFixed(1)}%;
+        background:${v/mx>0.75?'var(--warn)':'var(--brand)'}"></span></span>
+      <span class="vl">${jamDes(v)} j</span></div>`}).join('');
+  const urut=perDow.map((x,i)=>({i,v:x.n?x.m/x.n:0})).sort((a,b)=>b.v-a.v);
+  document.getElementById('profKet').innerHTML=
+    `Hari terpadat <b>${HARIP[urut[0].i]}</b> dengan ${jamDes(urut[0].v)} jam terpakai, sementara
+     <b>${HARIP[urut[urut.length-1].i]}</b> paling longgar di ${jamDes(urut[urut.length-1].v)} jam.
+     Puncak bulan ini jatuh pada ${tglPdk(puncak.t)} dengan ${jamDes(puncak.m)} jam.`;
+
+  /* rincian hari */
+  const s=sesiHari(tglAktif).filter(x=>!x.blok);
+  document.getElementById('jdlHari').textContent=tglPjg(tglAktif);
+  const el=document.getElementById('rincian');
+  if(!s.length){el.innerHTML='<div class="kosong">Tidak ada kegiatan rutin pada tanggal ini.</div>'}
+  else{
+    el.innerHTML='<table><thead><tr><th style="width:96px">Waktu</th><th>Kegiatan</th><th style="width:56px">Sesi</th>'+
+      '<th style="width:74px" class="num">Peserta</th><th>Siapa saja</th></tr></thead><tbody>'+
+      s.map(x=>{
+        const perLvl=LEVEL.map(L=>{const c=x.org.filter(o=>o.lvl===L.id).length;
+          return c?`<span class="chip netral">${L.n.replace('Level ','')} ${c}</span>`:''}).join(' ');
+        return `<tr><td style="white-space:nowrap"><b>${jam(x.a)}–${jam(x.b)}</b></td>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${
+          WARNA[x.k.kat]};margin-right:7px"></span>${esc(x.nama)}</td>
+        <td><span class="chip ${x.sesi==='NS'?'ns':'ds'}">${x.sesi}</span></td>
+        <td class="num"><b>${x.org.length}</b></td><td>${perLvl}</td></tr>`}).join('')+'</tbody></table>';
+  }
+
+  /* tabrakan */
+  const tb=tabrakan(bln.y,bln.m);
+  document.getElementById('btKet').textContent=tb.length?
+    tb.length+' pasangan kegiatan beririsan waktu dengan peserta yang sama':'Tidak ada irisan bulan ini';
+  const bl=document.getElementById('bentrok');
+  if(!tb.length){bl.innerHTML='<div class="kosong">Seluruh kegiatan berjalan tanpa tabrakan.</div>'}
+  else bl.innerHTML=tb.slice(0,6).map(x=>{
+    const t0=Math.min(x.a.a,x.b.a)-20,t1=Math.max(x.a.b,x.b.b)+20,sp=t1-t0;
+    const ps=m=>((m-t0)/sp*100),lb=(a,b)=>((b-a)/sp*100);
+    const orgJam=Math.round(x.irisan*x.n*x.orang.length/60);
+    const nm=x.orang.slice(0,6).map(o=>esc(o.nama)).join(', ');
+    return `<div class="bt">
+      <div class="hd"><b>${esc(x.a.k.nama)}</b><span style="color:var(--mute)">bertabrakan dengan</span><b>${esc(x.b.k.nama)}</b></div>
+      <div class="sub">${HARIP[dow(x.tgl[0])-1]}, irisan ${jam(x.iv[0])}–${jam(x.iv[1])}
+        selama ${x.irisan} menit · terjadi ${x.n}× bulan ini · ${x.orang.length} orang terkena ganda
+        · setara ${orgJam} orang-jam</div>
+      <div class="vis">
+        <div class="ov" style="left:${ps(x.iv[0])}%;width:${lb(x.iv[0],x.iv[1])}%"></div>
+        <div class="b" style="top:5px;left:${ps(x.a.a)}%;width:${lb(x.a.a,x.a.b)}%;background:${WARNA[x.a.k.kat]}">${jam(x.a.a)}–${jam(x.a.b)}</div>
+        <div class="b" style="top:19px;left:${ps(x.b.a)}%;width:${lb(x.b.a,x.b.b)}%;background:${WARNA[x.b.k.kat]}">${jam(x.b.a)}–${jam(x.b.b)}</div>
+      </div>
+      <div class="who"><em>Terkena:</em> ${nm}${x.orang.length>6?` <em>dan ${x.orang.length-6} lainnya</em>`:''}
+        <br><em>Tanggal:</em> ${x.tgl.map(t=>tglPdk(t)).join(' · ')}</div></div>`}).join('')+
+    (tb.length>6?`<div class="hint">${tb.length-6} pasangan lain dengan dampak lebih kecil tidak ditampilkan.</div>`:'');
+}
+
+/* ---------------- TIMELINE ---------------- */
+function vTimeline(){
+  const t=tlTanggal, sesi=sesiHari(t);
+  document.getElementById('tlJdl').textContent='Timeline '+tglPjg(t);
+  let h=`<div class="tlhead"><div></div>${kepalaJam(T0,T1)}</div>`;
+  kelompokBaris(db.orang).forEach(L=>{
+    h+=`<div class="grp">${L.level}</div>`;
+    L.anak.forEach(a=>{
+      const baris = tlRinci ? a.org.map(o=>({nm:o.nama,sb:o.jab+' · '+a.nama,org:[o],
+                                             bd:shiftHari(o,t)}))
+                            : [{nm:a.nama,sb:a.sub,org:a.org}];
+      baris.forEach(b=>{
+        const id=new Set(b.org.map(o=>o.id));
+        const s=sesi.filter(x=>x.org.some(o=>id.has(o.id)));
+        const cip=b.bd?` <span class="chip ${({D:'ds',N:'ns',O:'off',V:'ovr'})[b.bd]||'netral'}">${
+          ({D:'DS',N:'NS',O:'OFF',V:'OVR',K:'Kantor','?':'—'})[b.bd]}</span>`:'';
+        h+=`<div class="tlr"><div class="tln"><b>${esc(b.nm)}${cip}</b><s>${esc(b.sb)}</s></div>
+            ${lajur(s,{gapMin:tlGap})}</div>`;
+      });
+    });
+  });
+  document.getElementById('tl').innerHTML=h;
+}
+
+/* ---------------- SLOT ---------------- */
+function cariSlot(){
+  const d1=document.getElementById('sDari').value,d2=document.getElementById('sSampai').value;
+  if(!d1||!d2||d2<d1){alert('Rentang tanggal belum benar.');return}
+  const v=document.getElementById('sSasaran').value,g=grup(v);
+  const j1=mnt(document.getElementById('sJ1').value),j2=mnt(document.getElementById('sJ2').value);
+  const dur=+document.getElementById('sDurasi').value,mode=document.getElementById('sMode').value;
+  const sesiIds=new Set(g.map(o=>o.id));
+  let html='',n=0,hariKetemu=0;
+  for(let t=d1;t<=d2;){
+    const r=slotKosong(t,g,j1,j2,dur,mode);
+    if(r.slot.length){
+      hariKetemu++;n+=r.slot.length;
+      const sesi=sesiHari(t).filter(s=>!s.blok&&s.org.some(o=>sesiIds.has(o.id)));
+      const sp=j2-j1,ps=m=>((Math.max(m,j1)-j1)/sp*100),lb=(a,b)=>((Math.min(b,j2)-Math.max(a,j1))/sp*100);
+      /* lajur gabungan */
+      let atas='<div class="grid">'+Array.from({length:Math.max(1,Math.round(sp/60))},()=>'<i></i>').join('')+'</div>';
+      r.slot.forEach(s=>{atas+=`<div class="gap" style="left:${ps(s[0])}%;width:${lb(s[0],s[1])}%">${
+        (s[1]-s[0])>=60?jam(s[0])+'–'+jam(s[1]):''}</div>`});
+      sesi.forEach(s=>{const w=lb(s.a,s.b);if(w<=0)return;
+        atas+=`<div class="blk" style="left:${ps(s.a)}%;width:${w}%;background:${WARNA[s.k.kat]}"
+          title="${esc(s.nama)} ${jam(s.a)}–${jam(s.b)}">${w>9?esc(s.nama):''}</div>`});
+      /* lajur per kelompok */
+      let bawah='';
+      kelompokBaris(g).forEach(L=>{
+        L.anak.forEach(a=>{
+          const id=new Set(a.org.map(o=>o.id));
+          const ss=sesiHari(t).filter(x=>!x.blok&&x.org.some(o=>id.has(o.id)));
+          const hadir=a.org.filter(o=>siang(shiftHari(o,t))).length;
+          bawah+=`<div class="tlr" style="--lane:186px"><div class="tln">
+            <b style="font-size:11.5px">${esc(a.nama)}</b>
+            <s>${L.level.replace('Level ','')} · ${hadir} dari ${a.org.length} siap</s></div>
+            ${lajur(ss,{t0:j1,t1:j2,label:false,tinggi:20})}</div>`;
+        });
+      });
+      html+=`<div class="hari"><div class="h"><b>${tglPjg(t)}</b>
+        <span class="n">${r.hadir} dari ${r.total} sasaran ada di site siang ini</span>
+        <span class="pilih">${r.slot.map(s=>`<button class="slotpil"
+          onclick="pakaiSlot('${t}','${jam(s[0]).replace('.',':')}','${jam(Math.min(s[0]+dur,s[1])).replace('.',':')}')">
+          ${jam(s[0])}–${jam(s[1])} · ${jamDes(s[1]-s[0])} j</button>`).join('')}</span></div>
+        <div class="b">
+          <div class="tlw"><div class="tlg" style="min-width:640px">
+            <div class="tlhead" style="--lane:0px"><div></div>${(()=>{let x='<div class="jm">';
+              for(let j=Math.floor(j1/60);j<Math.ceil(j2/60);j++)x+=`<i>${p2(j)}</i>`;return x+'</div>'})()}</div>
+            <div class="tlr" style="--lane:0px"><div></div><div class="lane" style="height:30px">${atas}</div></div>
+            <div class="grp" style="padding-top:12px">Jadwal masing-masing kelompok</div>
+            ${bawah}
+          </div></div>
+        </div></div>`;
+    }
+    const nx=urai(t);nx.setDate(nx.getDate()+1);t=iso(nx.getFullYear(),nx.getMonth()+1,nx.getDate());
+  }
+  document.getElementById('hasilSlot').innerHTML=
+    `<div class="panel"><hgroup><div><h2>Hasil pencarian</h2><p>${
+      n?`${n} slot pada ${hariKetemu} hari untuk ${namaGrup(v)}, durasi minimal ${dur} menit`
+       :'Tidak ada slot yang memenuhi. Longgarkan durasi, jam kerja, atau syarat kehadiran.'}</p></div></hgroup>
+      <div class="body">${html||'<div class="kosong">Tidak ada slot kosong pada rentang ini.</div>'}</div></div>`;
+}
+function pakaiSlot(t,m1,m2){
+  formKeg();
+  document.getElementById('kTipe').value='sekali';ubahTipe();
+  document.getElementById('kTgl').value=t;
+  document.getElementById('kM1').value=m1;document.getElementById('kM2').value=m2;
+  const v=document.getElementById('sSasaran').value;
+  if(v.startsWith('sk:'))[...document.querySelectorAll('#kSK input')].forEach(c=>c.checked=c.value===v.slice(3));
+  if(v.startsWith('lv:'))[...document.querySelectorAll('#kLvl input')].forEach(c=>c.checked=c.value===v.slice(3));
+  if(v.startsWith('pr:'))[...document.querySelectorAll('#kPrn input')].forEach(c=>c.checked=c.value==='teamhead');
+}
+
+/* ---------------- KEGIATAN ---------------- */
+function vKegiatan(){
+  document.getElementById('kegKet').textContent='Seluruh kalender dihitung dari daftar ini.';
+  document.getElementById('tKeg').innerHTML=db.keg.map(k=>{
+    let pl;const p=k.pola;
+    if(p.t==='mingguan')pl=p.hari.length===7?'Setiap hari':'Setiap '+p.hari.map(d=>HARI[d-1]).join(', ');
+    else if(p.t==='dua_mingguan')pl=HARIP[p.hari-1]+', dua mingguan<br><span style="color:var(--mute);font-size:11px">acuan '+p.anchor+'</span>';
+    else if(p.t==='bulanan')pl='Bulanan · '+(p.tgl||[]).join(', ');
+    else if(p.t==='sekali')pl='Sekali · '+p.tgl;
+    else pl='Mengikuti roster shift';
+    const s=k.sas;
+    const sas=[...(s.lvl||[]).map(x=>`<span class="chip netral">${(LEVEL.find(l=>l.id===x)||{}).n.replace('Level ','')}</span>`),
+      ...(s.prn||[]).map(x=>`<span class="chip netral">${x==='teamhead'?'Team Head':'Anggota'}</span>`),
+      ...(s.sk||[]).map(x=>`<span class="chip brand">${(SATKER.find(z=>z.id===x)||{}).s||x}</span>`)].join(' ')||'—';
+    const ar={onsite:'Di site',sesuai:'Sesuai shift',abaikan:'Abaikan'}[k.shift];
+    return `<tr style="${k.aktif?'':'opacity:.5'}">
+      <td><b>${esc(k.nama)}</b><br><span style="color:var(--mute);font-size:11px">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:2px;background:${WARNA[k.kat]};margin-right:5px"></span>${k.kat}</span></td>
+      <td>${pl}${k.mirror?'<br><span style="color:var(--mute);font-size:11px">digandakan ke shift malam</span>':''}</td>
+      <td style="white-space:nowrap"><b>${k.m1.replace(':','.')}–${k.m2.replace(':','.')}</b></td>
+      <td>${sas}</td><td><span class="chip netral">${ar}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn xs" onclick="formKeg('${k.id}')">Ubah</button>
+        <button class="btn xs" onclick="aktifKeg('${k.id}')">${k.aktif?'Nonaktifkan':'Aktifkan'}</button>
+        <button class="btn xs danger" onclick="hapusKeg('${k.id}')">Hapus</button></td></tr>`}).join('');
+}
+function aktifKeg(id){const k=db.keg.find(x=>x.id===id);k.aktif=!k.aktif;gambar()}
+function hapusKeg(id){const k=db.keg.find(x=>x.id===id);
+  if(confirm('Hapus kegiatan "'+k.nama+'"?')){db.keg=db.keg.filter(x=>x.id!==id);gambar()}}
+
+/* ---------------- PERSONEL ---------------- */
+function vPersonel(){
+  const fl=document.getElementById('fLok').value,fs=document.getElementById('fSK').value;
+  const list=db.orang.filter(o=>(!fl||o.lok===fl)&&(!fs||o.sk===fs));
+  const pk=db.orang.filter(o=>o.lok==='Pakal').length;
+  document.getElementById('statOrg').innerHTML=`
+   <div><div class="n">${db.orang.length}</div><div class="l">Total personel</div></div>
+   <div><div class="n">${pk}</div><div class="l">Site Pakal</div></div>
+   <div><div class="n">${db.orang.length-pk}</div><div class="l">Kantor Buli</div></div>
+   <div><div class="n">${db.orang.filter(o=>o.prn==='teamhead').length}</div><div class="l">Team Head</div></div>
+   <div><div class="n">${db.orang.filter(o=>siang(shiftHari(o,tglAktif))).length}</div>
+     <div class="l">Siap kerja ${tglPdk(tglAktif)}</div></div>`;
+  document.getElementById('orgKet').textContent=list.length+' orang ditampilkan';
+  const W={D:'var(--ds)',N:'var(--ns)',O:'var(--off)',V:'var(--ovr)'};
+  document.getElementById('tOrg').innerHTML=list.map(o=>{
+    const sp=o.sh?`<span class="sparkl">${[...o.sh].map((c,i)=>
+      `<i style="background:${W[c]||'#E7EDEA'}" title="${i+1} Agt · ${
+        ({D:'Siang',N:'Malam',O:'Off',V:'Overshift'})[c]||'—'}"></i>`).join('')}</span>`
+      : '<span style="color:var(--mute);font-size:11.5px">Jam kantor</span>';
+    return `<tr><td>${esc(o.nama)}</td>
+      <td style="color:var(--ink-2)">${esc(o.jab)}</td>
+      <td style="color:var(--ink-2)">${(SATKER.find(s=>s.id===o.sk)||{}).s||o.sk}</td>
+      <td style="color:var(--mute)">${o.lvl==='supervisor'&&o.prn==='teamhead'?'Supervisor · TH':
+        o.lvl.charAt(0).toUpperCase()+o.lvl.slice(1)}</td>
+      <td><span class="chip ${o.lok==='Pakal'?'pakal':'buli'}">${o.lok}</span></td>
+      <td><b>${o.ros}</b></td><td>${sp}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn xs" onclick="formOrg('${o.id}')">Ubah</button>
+        <button class="btn xs danger" onclick="hapusOrg('${o.id}')">Hapus</button></td></tr>`}).join('');
+}
+function hapusOrg(id){const o=db.orang.find(x=>x.id===id);
+  if(confirm('Hapus '+o.nama+' dari daftar personel?')){db.orang=db.orang.filter(x=>x.id!==id);gambar()}}
+
+/* =====================================================================
+   FORM
+   ===================================================================== */
+const buka=id=>document.getElementById(id).classList.add('on');
+const tutup=id=>document.getElementById(id).classList.remove('on');
+function ubahTipe(){const t=document.getElementById('kTipe').value;
+  document.getElementById('wHari').style.display=(t==='mingguan'||t==='dua_mingguan')?'':'none';
+  document.getElementById('wAnchor').style.display=(t==='dua_mingguan')?'':'none';
+  document.getElementById('wTgl').style.display=(t==='bulanan'||t==='sekali')?'':'none'}
+
+function formKeg(id){
+  const k=id?db.keg.find(x=>x.id===id):null;
+  document.getElementById('mKegJdl').textContent=k?'Ubah kegiatan':'Tambah kegiatan';
+  const V=(i,v)=>document.getElementById(i).value=v;
+  V('kId',k?k.id:'');V('kNama',k?k.nama:'');V('kKat',k?k.kat:'Rapat rutin');
+  V('kM1',k?k.m1:'08:00');V('kM2',k?k.m2:'09:00');V('kTipe',k?k.pola.t:'mingguan');
+  V('kShift',k?k.shift:'onsite');V('kAnchor',(k&&k.pola.anchor)||'');
+  V('kTgl',(k&&k.pola.tgl)?(Array.isArray(k.pola.tgl)?k.pola.tgl[0]:k.pola.tgl):'');
+  document.getElementById('kMirror').checked=k?!!k.mirror:false;
+  const hs=k?(k.pola.t==='dua_mingguan'?[k.pola.hari]:(k.pola.hari||[])):[];
+  document.getElementById('kHari').innerHTML=HARI.map((h,i)=>
+    `<label><input type="checkbox" value="${i+1}" ${hs.includes(i+1)?'checked':''}> ${h}</label>`).join('');
+  const kot=(el,arr,sel)=>document.getElementById(el).innerHTML=arr.map(a=>
+    `<label><input type="checkbox" value="${a[0]}" ${sel.includes(a[0])?'checked':''}> ${a[1]}</label>`).join('');
+  kot('kLvl',LEVEL.map(l=>[l.id,l.n]),k?(k.sas.lvl||[]):[]);
+  kot('kSK',SATKER.map(s=>[s.id,s.n]),k?(k.sas.sk||[]):[]);
+  kot('kPrn',[['teamhead','Team Head'],['anggota','Anggota']],k?(k.sas.prn||[]):[]);
+  ubahTipe();buka('mKeg');
+}
+function simpanKeg(){
+  const id=document.getElementById('kId').value,nama=document.getElementById('kNama').value.trim();
+  if(!nama){alert('Nama kegiatan belum diisi.');return}
+  const t=document.getElementById('kTipe').value;
+  const hari=[...document.querySelectorAll('#kHari input:checked')].map(c=>+c.value);
+  let pola;
+  if(t==='mingguan'){if(!hari.length){alert('Pilih minimal satu hari.');return}pola={t,hari}}
+  else if(t==='dua_mingguan'){const a=document.getElementById('kAnchor').value;
+    if(!hari.length||!a){alert('Pilih hari dan tanggal acuan.');return}pola={t,hari:hari[0],anchor:a}}
+  else if(t==='bulanan'){const d=document.getElementById('kTgl').value;
+    if(!d){alert('Isi tanggal pelaksanaan.');return}pola={t,tgl:[d]}}
+  else if(t==='sekali'){const d=document.getElementById('kTgl').value;
+    if(!d){alert('Isi tanggal pelaksanaan.');return}pola={t,tgl:d}}
+  else pola={t:'roster'};
+  const o={id:id||'K'+Date.now().toString().slice(-6),nama,
+    kat:document.getElementById('kKat').value,
+    m1:document.getElementById('kM1').value,m2:document.getElementById('kM2').value,pola,
+    sas:{lvl:[...document.querySelectorAll('#kLvl input:checked')].map(c=>c.value),
+         sk:[...document.querySelectorAll('#kSK input:checked')].map(c=>c.value),
+         prn:[...document.querySelectorAll('#kPrn input:checked')].map(c=>c.value),org:[]},
+    shift:document.getElementById('kShift').value,
+    mirror:document.getElementById('kMirror').checked,aktif:true};
+  if(id){const i=db.keg.findIndex(x=>x.id===id);o.aktif=db.keg[i].aktif;db.keg[i]=o}else db.keg.push(o);
+  tutup('mKeg');pindah('kegiatan');
+}
+function formOrg(id){
+  const o=id?db.orang.find(x=>x.id===id):null;
+  document.getElementById('mOrgJdl').textContent=o?'Ubah data personel':'Tambah orang';
+  const V=(i,v)=>document.getElementById(i).value=v;
+  V('oId',o?o.id:'');V('oNama',o?o.nama:'');V('oJab',o?o.jab:'');V('oSK',o?o.sk:'SK1');
+  V('oLvl',o?o.lvl:'supervisor');V('oPrn',o?o.prn:'anggota');V('oLok',o?o.lok:'Pakal');
+  V('oRos',o?o.ros:'8-3');V('oShift',o?o.sh:'');
+  buka('mOrg');
+}
+function simpanOrg(){
+  const id=document.getElementById('oId').value,nama=document.getElementById('oNama').value.trim();
+  if(!nama){alert('Nama belum diisi.');return}
+  const o={id:id||'P'+Date.now().toString().slice(-6),nama,
+    jab:document.getElementById('oJab').value.trim()||'—',
+    sk:document.getElementById('oSK').value,lvl:document.getElementById('oLvl').value,
+    prn:document.getElementById('oPrn').value,lok:document.getElementById('oLok').value,
+    ros:document.getElementById('oRos').value.trim()||'—',
+    sh:document.getElementById('oShift').value.trim().toUpperCase(),shBln:'2026-08'};
+  if(id){const i=db.orang.findIndex(x=>x.id===id);db.orang[i]=o}else db.orang.push(o);
+  tutup('mOrg');pindah('personel');
+}
+
+/* =====================================================================
+   NAVIGASI
+   ===================================================================== */
+function pindah(v){
+  tampil=v;
+  document.querySelectorAll('#menu button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('section[id^=v-]').forEach(s=>s.hidden=true);
+  document.getElementById('v-'+v).hidden=false;
+  window.scrollTo({top:0,behavior:'instant'});
+  gambar();
+}
+document.querySelectorAll('#menu button').forEach(b=>b.onclick=()=>pindah(b.dataset.v));
+document.querySelectorAll('.mod').forEach(m=>m.onclick=e=>{if(e.target===m)m.classList.remove('on')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.mod.on').forEach(m=>m.classList.remove('on'))});
+document.getElementById('fLok').onchange=gambar;
+document.getElementById('fSK').onchange=gambar;
+function geserBulan(n){let{y,m}=bln;m+=n;if(m<1){m=12;y--}if(m>12){m=1;y++}
+  bln={y,m};tglAktif=iso(y,m,1);tlTanggal=tglAktif;gambar()}
+
+document.getElementById('sDari').value='2026-08-11';
+document.getElementById('sSampai').value='2026-08-22';
+gambar();
+
+/* ============ INTEGRASI SUPABASE — penyimpanan per-baris, sesi bersama ============ */
+const SB_URL="https://qblivboqavhlugydhmjr.supabase.co";
+const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE";
+const REST=SB_URL+"/rest/v1/";
+const CACHE="jadwalMining_cache_v1";
+let PERAN="viewer";
+function sbTok(){try{const a=JSON.parse(localStorage.getItem("pakal_auth")||"null");return (a&&a.access_token)||SB_ANON;}catch(e){return SB_ANON;}}
+function sbH(extra){return Object.assign({apikey:SB_ANON,Authorization:"Bearer "+sbTok(),"Content-Type":"application/json"},extra||{});}
+async function sbReq(url,method,body,prefer){
+  const r=await fetch(REST+url,{method,headers:sbH({Prefer:prefer||"return=representation"}),body:body!==undefined?JSON.stringify(body):undefined});
+  if(!r.ok){let t="";try{t=(await r.json()).message||"";}catch(e){}throw new Error("HTTP "+r.status+(t?": "+t:""));}
+  const txt=await r.text();return txt?JSON.parse(txt):null;
+}
+tulis=function(){try{localStorage.setItem(CACHE,JSON.stringify(db));}catch(e){}};
+
+function pasangShift(orang,shf,y,m){
+  const month=String(y)+"-"+p2(m),map={};
+  (shf||[]).forEach(s=>{if((s.tanggal||"").slice(0,7)===month){(map[s.personel_id]=map[s.personel_id]||{})[+s.tanggal.slice(8,10)]=s.kode;}});
+  orang.forEach(p=>{const days=map[p._uuid]||{};let sh="";for(let d=1;d<=31;d++)sh+=(days[d]||"-");p.sh=sh.replace(/-+$/,"");p.shBln=month;});
+}
+function rakit(sat,per,shf,keg,btl){
+  const orang=(per||[]).map(p=>({id:p.kode,_uuid:p.id,nama:p.nama,jab:p.jabatan,sk:p.satker_id,lvl:p.level,prn:p.peran,lok:p.lokasi,ros:p.roster,sh:"",shBln:String(bln.y)+"-"+p2(bln.m)}));
+  pasangShift(orang,shf,bln.y,bln.m);
+  const bmap={};(btl||[]).forEach(b=>{(bmap[b.kegiatan_id]=bmap[b.kegiatan_id]||[]).push(b.tanggal);});
+  const kg=(keg||[]).map(k=>({id:k.id,nama:k.nama,kat:k.kategori,m1:(k.jam_mulai||"").slice(0,5),m2:(k.jam_selesai||"").slice(0,5),pola:k.pola,sas:Object.assign({lvl:[],sk:[],prn:[],org:[]},k.sasaran||{}),shift:k.aturan_roster,mirror:!!k.mirror_ns,aktif:k.aktif,_batal:bmap[k.id]||[]}));
+  return {orang,keg:kg};
+}
+let SBRAW=null;
+async function tarikSupabase(){
+  try{
+    const g=u=>fetch(REST+u,{headers:sbH()}).then(r=>{if(!r.ok)throw new Error(u+" "+r.status);return r.json();});
+    const res=await Promise.all([g("mining_satker?select=*&order=urutan"),g("mining_personel?select=*&order=kode"),
+      g("mining_shift?select=*"),g("mining_kegiatan?select=*"),g("mining_kegiatan_batal?select=*")]);
+    const [sat,per,shf,keg,btl]=res;
+    if(!Array.isArray(per)||!per.length||!Array.isArray(keg))throw new Error("tabel kosong / belum dibuat");
+    SBRAW={sat,per,shf,keg,btl};
+    db=rakit(sat,per,shf,keg,btl); tulis();
+    if(typeof cacheSesi==="object")for(const k in cacheSesi)delete cacheSesi[k];
+    gambar();
+  }catch(e){console.warn("Supabase (pakai cache/seed):",e.message);}
+}
+async function ambilPeran(){
+  try{const r=await fetch(REST+"rpc/my_mining_role",{method:"POST",headers:sbH(),body:"{}"});PERAN=r.ok?((await r.json())||"viewer"):"viewer";}
+  catch(e){PERAN="viewer";}
+  document.documentElement.setAttribute("data-peran",PERAN);gateUI();
+}
+function bolehKeg(){return PERAN==="admin"||PERAN==="editor";}
+function bolehAdmin(){return PERAN==="admin";}
+function gateUI(){
+  document.querySelectorAll("button,a").forEach(b=>{
+    const s=b.getAttribute("onclick")||"";
+    const isKeg=/formKeg|hapusKeg|aktifKeg/.test(s), isAdm=/formOrg|hapusOrg|bukaRoster|imporRoster/.test(s);
+    let hide=false;
+    if(PERAN==="viewer")hide=isKeg||isAdm; else if(PERAN==="editor")hide=isAdm;
+    if(isKeg||isAdm)b.style.display=hide?"none":"";
+  });
+}
+function kegBody(o){return {nama:o.nama,kategori:o.kat,jam_mulai:o.m1+":00",jam_selesai:o.m2+":00",pola:o.pola,sasaran:o.sas,aturan_roster:o.shift,mirror_ns:o.mirror,aktif:o.aktif};}
+function mapKeg(row,batal){return {id:row.id,nama:row.nama,kat:row.kategori,m1:(row.jam_mulai||"").slice(0,5),m2:(row.jam_selesai||"").slice(0,5),pola:row.pola,sas:Object.assign({lvl:[],sk:[],prn:[],org:[]},row.sasaran||{}),shift:row.aturan_roster,mirror:!!row.mirror_ns,aktif:row.aktif,_batal:batal||[]};}
+
+simpanKeg=async function(){
+  if(!bolehKeg()){alert("Anda tidak memiliki akses untuk mengubah kegiatan.");return;}
+  const id=document.getElementById('kId').value,nama=document.getElementById('kNama').value.trim();
+  if(!nama){alert('Nama kegiatan belum diisi.');return;}
+  const t=document.getElementById('kTipe').value;
+  const hari=[...document.querySelectorAll('#kHari input:checked')].map(c=>+c.value);
+  let pola;
+  if(t==='mingguan'){if(!hari.length){alert('Pilih minimal satu hari.');return;}pola={t,hari};}
+  else if(t==='dua_mingguan'){const a=document.getElementById('kAnchor').value;if(!hari.length||!a){alert('Pilih hari dan tanggal acuan.');return;}pola={t,hari:hari[0],anchor:a};}
+  else if(t==='bulanan'){const d=document.getElementById('kTgl').value;if(!d){alert('Isi tanggal pelaksanaan.');return;}pola={t,tgl:[d]};}
+  else if(t==='sekali'){const d=document.getElementById('kTgl').value;if(!d){alert('Isi tanggal pelaksanaan.');return;}pola={t,tgl:d};}
+  else pola={t:'roster'};
+  const o={id,nama,kat:document.getElementById('kKat').value,m1:document.getElementById('kM1').value,m2:document.getElementById('kM2').value,pola,
+    sas:{lvl:[...document.querySelectorAll('#kLvl input:checked')].map(c=>c.value),sk:[...document.querySelectorAll('#kSK input:checked')].map(c=>c.value),prn:[...document.querySelectorAll('#kPrn input:checked')].map(c=>c.value),org:[]},
+    shift:document.getElementById('kShift').value,mirror:document.getElementById('kMirror').checked,aktif:true};
+  try{
+    let row;
+    if(id){const cur=db.keg.find(x=>x.id===id);o.aktif=cur?cur.aktif:true;row=await sbReq("mining_kegiatan?id=eq."+encodeURIComponent(id),"PATCH",kegBody(o));}
+    else row=await sbReq("mining_kegiatan","POST",kegBody(o));
+    row=Array.isArray(row)?row[0]:row;
+    const prev=id?db.keg.find(x=>x.id===id):null;
+    const mapped=mapKeg(row,prev?prev._batal:[]);
+    if(id){const i=db.keg.findIndex(x=>x.id===id);db.keg[i]=mapped;}else db.keg.push(mapped);
+    tulis();tutup('mKeg');pindah('kegiatan');
+  }catch(e){alert("Gagal menyimpan ke server. Menyimpan kegiatan butuh koneksi & akses.\n"+e.message);}
+};
+aktifKeg=async function(id){
+  if(!bolehKeg()){alert("Tidak ada akses.");return;}
+  const k=db.keg.find(x=>x.id===id);if(!k)return;
+  try{await sbReq("mining_kegiatan?id=eq."+encodeURIComponent(id),"PATCH",{aktif:!k.aktif});k.aktif=!k.aktif;tulis();gambar();}
+  catch(e){alert("Gagal (butuh koneksi): "+e.message);}
+};
+hapusKeg=async function(id){
+  if(!bolehKeg()){alert("Tidak ada akses.");return;}
+  const k=db.keg.find(x=>x.id===id);if(!k)return;
+  if(!confirm('Hapus kegiatan "'+k.nama+'"?'))return;
+  try{await sbReq("mining_kegiatan?id=eq."+encodeURIComponent(id),"DELETE",undefined,"return=minimal");db.keg=db.keg.filter(x=>x.id!==id);tulis();gambar();}
+  catch(e){alert("Gagal (butuh koneksi): "+e.message);}
+};
+simpanOrg=async function(){
+  if(!bolehAdmin()){alert("Hanya admin yang dapat mengubah data personel.");return;}
+  const id=document.getElementById('oId').value,nama=document.getElementById('oNama').value.trim();
+  if(!nama){alert('Nama belum diisi.');return;}
+  const body={kode:id||('P'+Date.now().toString().slice(-6)),nama,jabatan:document.getElementById('oJab').value.trim()||'—',
+    satker_id:document.getElementById('oSK').value,level:document.getElementById('oLvl').value,peran:document.getElementById('oPrn').value,
+    lokasi:document.getElementById('oLok').value,roster:document.getElementById('oRos').value.trim()||null};
+  try{
+    const cur=id?db.orang.find(x=>x.id===id):null;let row;
+    if(cur)row=await sbReq("mining_personel?kode=eq."+encodeURIComponent(id),"PATCH",body);
+    else row=await sbReq("mining_personel","POST",body);
+    row=Array.isArray(row)?row[0]:row;
+    const mapped={id:row.kode,_uuid:row.id,nama:row.nama,jab:row.jabatan,sk:row.satker_id,lvl:row.level,prn:row.peran,lok:row.lokasi,ros:row.roster,sh:(cur&&cur.sh)||'',shBln:(cur&&cur.shBln)||(String(bln.y)+'-'+p2(bln.m))};
+    if(cur){const i=db.orang.findIndex(x=>x.id===id);db.orang[i]=mapped;}else db.orang.push(mapped);
+    tulis();tutup('mOrg');pindah('personel');
+  }catch(e){alert("Gagal menyimpan (butuh koneksi & akses admin).\n"+e.message);}
+};
+function bukaRoster(){
+  if(!bolehAdmin()){alert("Hanya admin yang dapat mengimpor roster.");return;}
+  let ov=document.getElementById('mRosterOv');
+  if(!ov){
+    ov=document.createElement('div');ov.id='mRosterOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(6,20,17,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:840px;width:100%;max-height:88vh;overflow:auto;padding:22px;font-family:system-ui,Segoe UI,Roboto,sans-serif">'
+      +'<h2 style="margin:0 0 4px;font-size:18px;color:#12201d">Impor Roster Bulanan</h2>'
+      +'<p style="margin:0 0 12px;font-size:12.5px;color:#5a6b67;line-height:1.5">Tempel dari PLAN POLA KERJA DINAMIS. Baris pertama boleh header. Kolom pertama <b>Nama</b>, lalu kolom tanggal 1..31; isi sel <b>DS</b>/<b>NS</b>/<b>OFF</b>/<b>OVR</b> (pemisah TAB, seperti hasil salin dari Excel). Nama dicocokkan ke personel; yang tidak cocok akan dilaporkan, bukan diabaikan.</p>'
+      +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><label style="font-size:12px;color:#42524f;font-weight:600">Bulan</label>'
+      +'<input id="rosBulan" type="month" value="'+(String(bln.y)+'-'+p2(bln.m))+'" style="padding:8px;border:1px solid #d5dcda;border-radius:8px"></div>'
+      +'<textarea id="rosText" placeholder="Nama&#9;1&#9;2&#9;3 ...&#10;Budi&#9;DS&#9;NS&#9;OFF ..." style="width:100%;height:230px;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;border:1px solid #d5dcda;border-radius:8px;padding:10px"></textarea>'
+      +'<div id="rosMsg" style="font-size:12px;color:#5a6b67;margin:10px 0;white-space:pre-wrap"></div>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button id="rosBatal" style="padding:10px 16px;border:1px solid #d5dcda;border-radius:9px;background:#fff;cursor:pointer">Batal</button>'
+      +'<button id="rosProses" style="padding:10px 18px;border:none;border-radius:9px;background:#0f6e63;color:#fff;font-weight:700;cursor:pointer">Proses &amp; simpan</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#rosBatal').onclick=()=>ov.remove();
+    ov.querySelector('#rosProses').onclick=imporRoster;
+  }else ov.style.display='flex';
+}
+async function imporRoster(){
+  const map={DS:'D',NS:'N',OFF:'O',OVR:'V',D:'D',N:'N',O:'O',V:'V'};
+  const month=document.getElementById('rosBulan').value,msg=document.getElementById('rosMsg');
+  const lines=document.getElementById('rosText').value.split(/\r?\n/).filter(l=>l.trim());
+  if(!month||!lines.length){msg.textContent='Isi bulan dan tempel data roster.';return;}
+  const byNama={};db.orang.forEach(o=>byNama[o.nama.toLowerCase().replace(/\s+/g,' ').trim()]=o);
+  const rows=[],gagal=[];
+  lines.forEach(line=>{
+    const c=line.split('\t');if(c.length<2)return;
+    const nm=c[0].toLowerCase().replace(/\s+/g,' ').trim();
+    if(nm==='nama'||nm==='')return;
+    const o=byNama[nm];if(!o){gagal.push(c[0]);return;}
+    for(let d=1;d<c.length;d++){const raw=(c[d]||'').trim().toUpperCase();if(!raw)continue;const kode=map[raw];if(!kode)continue;rows.push({personel_id:o._uuid,tanggal:month+'-'+p2(d),kode});}
+  });
+  if(!rows.length){msg.textContent='Tidak ada baris valid yang cocok.'+(gagal.length?('\nNama tak cocok: '+[...new Set(gagal)].join(', ')):'');return;}
+  msg.textContent='Menyimpan '+rows.length+' entri shift…';
+  try{
+    for(let i=0;i<rows.length;i+=500){
+      const chunk=rows.slice(i,i+500);
+      const r=await fetch(REST+"mining_shift?on_conflict=personel_id,tanggal",{method:"POST",headers:sbH({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(chunk)});
+      if(!r.ok){let t="";try{t=(await r.json()).message||"";}catch(e){}throw new Error("HTTP "+r.status+(t?": "+t:""));}
+    }
+    msg.textContent='Berhasil menyimpan '+rows.length+' entri untuk '+month+'.'+(gagal.length?('\nTidak cocok ('+[...new Set(gagal)].length+' nama): '+[...new Set(gagal)].join(', ')):'\nSemua nama cocok.');
+    await tarikSupabase();
+  }catch(e){msg.textContent='Gagal menyimpan: '+e.message;}
+}
+(function(){var _g=gambar;gambar=function(){_g.apply(this,arguments);try{gateUI();}catch(e){}};})();
+(function(){if(typeof geserBulan==='function'){var _gb=geserBulan;geserBulan=function(n){_gb.call(this,n);try{if(SBRAW){pasangShift(db.orang,SBRAW.shf,bln.y,bln.m);if(typeof cacheSesi==='object')for(const k in cacheSesi)delete cacheSesi[k];gambar();}}catch(e){}};}})();
+tarikSupabase();ambilPeran();
+
+</script>
+</body>
+</html>
