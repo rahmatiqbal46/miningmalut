@@ -456,7 +456,10 @@ let MINERVA_LIVE=false;
 function snapshot(){return [...excU.map(u=>({id:u.id,type:'exc',gps:u.gps,spd:0,loc:u.loc||'-'})),...trucks.map(o=>({id:o.id,type:o.type,gps:o.gps,spd:o.gps==='lost'?-1:o.spd,loc:edges[o.edge]?('Jalur '+edges[o.edge].label):(o.live?'GPS':'-')}))];}
 /* ---- Wialon langsung dari halaman (token dari user, tanpa Netlify) ---- */
 const WHOST='https://hst-api.wialon.com';
-let WTOKEN=localStorage.getItem('rtup_wialon_token')||''; let WSID=null; let wTimer=null; let gpsForced=false;
+/* Token Wialon bawaan: RTUP menyambung sendiri tanpa perlu tindakan pengguna.
+   Token yang pernah dipasang sendiri lewat popover GPS tetap diprioritaskan. */
+const WTOKEN_BAWAAN='52bea3ba37168cff66cf4896340a64a5D32B5F354003D32F6649D715DCD3D6529F5C9B43';
+let WTOKEN=(localStorage.getItem('rtup_wialon_token')||'').trim()||WTOKEN_BAWAAN; let WSID=null; let wTimer=null; let gpsForced=false;
 function gset(state,msg){const p=document.getElementById('gpspop');p.classList.remove('ok','err');if(state)p.classList.add(state);const s=document.getElementById('gstat');s.lastChild.textContent=' '+msg;}
 function ensureWialon(cb,fail){if(window.wialon&&wialon.core){cb();return;}let n=0;const t=setInterval(function(){if(window.wialon&&wialon.core){clearInterval(t);cb();}else if(++n>50){clearInterval(t);fail&&fail();}},200);}
 function wialonPull(){wialon.core.Remote.getInstance().remoteCall('core/search_items',{spec:{itemsType:'avl_unit',propName:'sys_name',propValueMask:'*',sortType:'sys_name'},force:1,flags:1025,from:0,to:0},function(code,data){
@@ -471,7 +474,7 @@ function wialonConnect(tok){WTOKEN=(tok||'').trim();if(!WTOKEN){gset('err','Toke
     if(code){gset('err','Token salah / gagal ('+code+')');return;}
     wialonPull();if(wTimer)clearInterval(wTimer);wTimer=setInterval(wialonPull,LIVE.pollMs);});
   },function(){gset('err','SDK Wialon belum termuat (butuh internet)');});}
-function wialonDisconnect(){localStorage.removeItem('rtup_wialon_token');WTOKEN='';if(wTimer)clearInterval(wTimer);try{wialon.core.Session.getInstance().logout(function(){});}catch(e){}location.reload();}
+function wialonDisconnect(){try{localStorage.setItem('rtup_wialon_token',WTOKEN_BAWAAN);}catch(e){}WTOKEN=WTOKEN_BAWAAN;if(wTimer)clearInterval(wTimer);try{wialon.core.Session.getInstance().logout(function(){});}catch(e){}location.reload();}
 function setKontur(){var kb=document.querySelector('#layerSeg button[data-l=\"kontur\"]');if(kb)kb.click();}
 function forceGps(){gpsForced=true;var p=document.getElementById('gpspop');p.classList.add('forced','show');document.getElementById('gpsScrim').classList.add('on');var d=document.getElementById('gdisc');if(d)d.style.display='none';var h=p.querySelector('.gh');if(h)h.textContent='Masukkan token GPS untuk mulai';document.getElementById('gtok').focus();}
 function unforceGps(){gpsForced=false;var p=document.getElementById('gpspop');p.classList.remove('forced','show');document.getElementById('gpsScrim').classList.remove('on');var d=document.getElementById('gdisc');if(d)d.style.display='';}

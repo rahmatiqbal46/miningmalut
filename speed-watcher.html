@@ -271,6 +271,7 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
     <span class="tchip" id="connPill"><span class="dot"></span><span id="connText">Belum terhubung</span></span>
     <span class="tchip" id="pollPill"><span class="dot"></span><span id="pollText">Berhenti</span></span>
     <span class="clock" id="clock">--:--:--</span>
+    <button class="ibtn wide" id="swReconnect" title="Putuskan lalu sambungkan ulang ke Wialon">⟳ Reconnect</button>
     <button class="ibtn" id="shiftToggle" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap">◐</button>
     <button class="ibtn wide" id="openDrawer" aria-label="Buka setelan">⚙ Setelan</button>
   </div>
@@ -2857,6 +2858,26 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
 <script id="sw-gate">
 (function(){
   var SHARED='rtup_wialon_token';
+  /* Token Wialon bawaan: pengguna tidak perlu memasukkan apa pun. Token yang
+     pernah disimpan pengguna (mis. lewat panel Setelan) tetap diprioritaskan. */
+  var TOKEN_BAWAAN='52bea3ba37168cff66cf4896340a64a5D32B5F354003D32F6649D715DCD3D6529F5C9B43';
+  function tokenAktif(){var v='';try{v=localStorage.getItem(SHARED)||'';}catch(e){}v=(v||'').trim();return v||TOKEN_BAWAAN;}
+  function sambung(){
+    var v=tokenAktif();try{localStorage.setItem(SHARED,v);}catch(e){}
+    var api=el('apiHost');if(api&&!api.value)api.value='https://hst-api.wialon.com';
+    if(el('token'))el('token').value=v;
+    if(el('swgTok'))el('swgTok').value=v;
+    if(el('btnConnect'))el('btnConnect').click();
+  }
+  function reconnect(){
+    var b=el('swReconnect');
+    if(b){b.disabled=true;b.textContent='⟳ Menyambungkan…';}
+    try{if(typeof disconnect==='function')disconnect();}catch(e){}
+    setTimeout(function(){
+      sambung();
+      if(b)setTimeout(function(){b.disabled=false;b.textContent='⟳ Reconnect';},2600);
+    },600);
+  }
   function el(id){return document.getElementById(id);}
   function gate(){return el('swGate');}
   function setG(cls,msg){var g=gate();if(!g)return;g.classList.remove('ok','err');if(cls)g.classList.add(cls);var s=el('swgStat');if(s)s.textContent=msg;}
@@ -2901,14 +2922,21 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     App.map.vb=null;try{render();}catch(e){}
   }
   function pasangSite(){pasangCitra();pasangRuas();}
-  /* Batas umum Pulau Pakal 35 km/jam. Panel Setelan disembunyikan, jadi angka
-     ini dipaksa di sini supaya setelan lama 60 yang tersimpan di browser ikut
-     diperbarui tanpa perlu membersihkan penyimpanan. */
+  /* Batas umum Pulau Pakal 35 km/jam. Dipaksa SEKALI saja, untuk menimpa setelan
+     lama 60 yang tersimpan di browser. Sesudah itu penanda dipasang supaya angka
+     yang diubah sendiri lewat panel Setelan tidak ikut ditimpa tiap halaman dibuka. */
   function pasangBatas(){
     var n=el('cfgLimit');if(!n)return;
-    if(String(n.value)!=='35'){n.value=35;}
-    try{readConfig();}catch(e){}
-    var h=el('hLimit');if(h&&(!h.value||String(h.value)==='60'))h.value=35;
+    var K='sw_batas_bawaan_35';
+    var sudah=false;try{sudah=localStorage.getItem(K)==='1';}catch(e){}
+    if(sudah)return;
+    if(String(n.value)!=='35'){
+      n.value=35;
+      try{readConfig();}catch(e){}
+      try{simpanSetelan();}catch(e){}
+    }
+    var h=el('hLimit');if(h&&String(h.value)==='60')h.value=35;
+    try{localStorage.setItem(K,'1');}catch(e){}
   }
   // guide modal
   function openGuide(){var g=el('swGuide');if(g)g.classList.add('on');}
@@ -2926,12 +2954,18 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     closeDrawer();
     pasangBatas();pasangSite();setInterval(pasangSite,1200);
     var api=el('apiHost');if(api&&!api.value)api.value='https://hst-api.wialon.com';
-    var shared=null;try{shared=localStorage.getItem(SHARED);}catch(e){}
-    if(shared){if(el('token'))el('token').value=shared;if(el('swgTok'))el('swgTok').value=shared;setTimeout(function(){if(el('btnConnect'))el('btnConnect').click();try{if(window.Notification&&Notification.requestPermission)Notification.requestPermission();}catch(e){}},300);}
-    else if(gate()){gate().classList.add('on');}
-    // gate close on connect + pantau semua unit
-    setInterval(function(){if(connected()){if(gate())gate().classList.remove('on');closeDrawer();watchAll();var tk=el('token');if(tk&&tk.value){try{localStorage.setItem(SHARED,tk.value.trim());}catch(e){}}}},700);
-    setInterval(function(){var p=el('connPill');if(p&&/(^|\s)err(\s|$)/.test(p.className)&&!connected()&&gate()){if(!gate().classList.contains('on'))gate().classList.add('on');setG('err','Token salah / gagal. Coba lagi.');}},1600);
+    /* Sambung otomatis dengan token bawaan — pengguna tidak perlu berbuat apa pun.
+       Gerbang token tidak lagi ditampilkan; bila token bermasalah, pakai tombol
+       Reconnect di header atau ganti token lewat panel Setelan. */
+    setTimeout(function(){
+      sambung();
+      try{if(window.Notification&&Notification.requestPermission)Notification.requestPermission();}catch(e){}
+    },300);
+    if(el('swReconnect'))el('swReconnect').addEventListener('click',reconnect);
+    /* Pantau semua unit begitu tersambung. Panel Setelan SENGAJA tidak lagi ditutup
+       paksa di sini — dulu baris closeDrawer() membuat panel menutup sendiri tiap
+       0,7 detik sehingga batas kecepatan mustahil diubah. */
+    setInterval(function(){if(connected()){if(gate())gate().classList.remove('on');watchAll();var tk=el('token');if(tk&&tk.value){try{localStorage.setItem(SHARED,tk.value.trim());}catch(e){}}}},700);
     // teruskan notifikasi pelanggaran ke shell (agar muncul di halaman lain)
     var le=el('liveEvents'), lastTop='';
     if(le){ new MutationObserver(function(){var row=le.querySelector('tr');if(!row)return;var sig=row.textContent.replace(/\s+/g,' ').trim();if(sig&&sig!==lastTop&&!/belum ada|tidak ada|akan tampil/i.test(sig)){lastTop=sig;try{window.parent.postMessage({type:'sw-notif',text:sig.slice(0,160)},'*');}catch(e){}}}).observe(le,{childList:true,subtree:true}); }
