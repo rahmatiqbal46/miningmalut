@@ -190,7 +190,7 @@ iframe.page.show{display:block}
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Mine Plan<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="evaluasi">Evaluasi Kepatuhan</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M3 12h3M18 12h3M8 12l3 2 4-6"/></svg>ROC<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="amora">AMORA</button><button class="leaf" data-page="speed">Speed Watcher</button></div></div>
+    <div class="sub"><button class="leaf" data-page="amora">AMORA</button><button class="leaf" data-page="speed">Speed Watcher</button><button class="leaf" data-page="dispatch">Dispatch Monitoring</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M8 2v4M16 2v4M3.5 9h17"/></svg>Mining Bureau<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="jadwal">Jadwal Mining Bureau</button></div></div>
   </nav>
@@ -230,6 +230,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_evaluasi" title="Evaluasi Kepatuhan"></iframe>
    <iframe class="page" id="if_amora" title="AMORA"></iframe>
    <iframe class="page" id="if_jadwal" title="Jadwal Mining Bureau"></iframe>
+   <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
    <!-- placeholders -->
    <div class="ph" id="ph"></div>
  </div></main>
@@ -271,7 +272,8 @@ const PAGES={
  speed:{iframe:'if_speed',url:'speed-watcher.html'},
  evaluasi:{iframe:'if_evaluasi',url:'evaluasi.html'},
  amora:{iframe:'if_amora',url:'amora.html'},
- jadwal:{iframe:'if_jadwal',url:'jadwal.html'}
+ jadwal:{iframe:'if_jadwal',url:'jadwal.html'},
+ dispatch:{iframe:'if_dispatch',url:'dispatch-monitoring.html'}
 };
 const PH={};
 const MINEDEV={reklamasi:'rekla',smr:'smr',water:'wr',input:'input'}; let minedevLoaded=false;
@@ -296,6 +298,7 @@ function showPage(key){
 const BENTO=[
  ['rtup','Real Time Unit Position','Mine Production','Peta live posisi excavator & dump truck, kecepatan, dan status GPS.',['Wialon','GPS live']],
  ['speed','Speed Watcher','ROC','Pemantauan kecepatan unit & pelanggaran, live dari Wialon.',['Wialon','Speed']],
+ ['dispatch','Dispatch Monitoring','ROC','Deviasi ritase Minerva vs checker, kepatuhan operator, log isu & tindak lanjut.',['Deviasi','Kepatuhan','Log Isu']],
  ['reklamasi','Mine Development','Reklamasi · SMR · Water','Capaian reklamasi, jam kerja SMR, water & road.',['Capaian Reklamasi','Jam Kerja SMR','Water & Road']],
  ['evaluasi','Evaluasi Kepatuhan','Mine Plan','Kepatuhan realisasi terhadap rencana tambang.',['Compliance']],
  ['amora','AMORA','ROC','Asisten rute & operasi tambang.',['Routing']],
