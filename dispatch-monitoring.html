@@ -229,6 +229,26 @@
   .lb-sub{font-size:11.5px; color:var(--text-muted);}
   .lb-score{font-size:15px; font-weight:800; color:var(--accent);}
 
+  /* ---------- Panel unduh ---------- */
+  .unduh-atur{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px;}
+  .unduh-tgl[hidden]{display:none;}
+  .pilih-set{border:1px solid var(--border); border-radius:9px; padding:14px 16px 12px; margin:0 0 18px;
+    background:var(--surface-2);}
+  .pilih-set legend{font-family:var(--mono); font-size:var(--fs-cap); text-transform:uppercase;
+    letter-spacing:.07em; color:var(--text-muted); font-weight:600; padding:0 6px;}
+  .pilih-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:4px 16px;}
+  .pilih{display:flex; align-items:center; gap:9px; padding:6px 4px; cursor:pointer; font-size:var(--fs-body);
+    border-radius:6px; transition:color .15s var(--ease);}
+  .pilih:hover{color:var(--accent);}
+  .pilih input{width:16px; height:16px; margin:0; accent-color:var(--accent); cursor:pointer; flex-shrink:0;}
+  .pilih-aksi{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; padding-top:11px;
+    border-top:1px solid var(--border);}
+  .unduh-kaki{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .unduh-kaki .eyebrow{font-size:12px; color:var(--text-muted);}
+  .btn[disabled]{opacity:.55; cursor:not-allowed;}
+  .btn[disabled]:hover{border-color:var(--border); color:var(--text);}
+  .btn.primary[disabled]:hover{background:var(--accent); border-color:var(--accent); color:#fff;}
+
   ::-webkit-scrollbar{height:10px; width:10px;}
   ::-webkit-scrollbar-thumb{background:#0a332e2e; border-radius:6px;}
   ::-webkit-scrollbar-thumb:hover{background:#0a332e4d;}
@@ -683,9 +703,46 @@
     <div class="section-head"><h2>Laporan Tersimpan</h2><span class="eyebrow" id="savedCount"></span></div>
     <div class="table-wrap"><div id="entryList"></div></div>
 
-    <div class="section-head"><h2>Salinan Data</h2><span class="eyebrow">Laporan sudah tersimpan online. Unduhan ini untuk arsip pribadi atau bahan pelaporan di luar dashboard.</span></div>
-    <div class="card" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-      <button class="btn sm" id="btnExport">Unduh salinan JSON</button>
+    <div class="section-head">
+      <h2>Unduh Data</h2>
+      <span class="eyebrow">Satu berkas Excel, satu lembar per jenis data yang dicentang. Filter shift di bilah atas ikut berlaku, kecuali pada lembar Kepatuhan Operator yang mengikuti tanggal saja, persis seperti tampilannya di layar.</span>
+    </div>
+    <div class="card" id="kartuUnduh">
+      <div class="unduh-atur">
+        <div class="field">
+          <label>Rentang tanggal</label>
+          <div class="segmented" id="unduhRentangBtns">
+            <button type="button" class="active" data-rentang="filter">Ikuti filter</button>
+            <button type="button" data-rentang="semua">Semua data</button>
+            <button type="button" data-rentang="pilih">Tentukan sendiri</button>
+          </div>
+        </div>
+        <div class="field unduh-tgl" hidden><label for="unduhDari">Dari tanggal</label><input type="date" id="unduhDari"></div>
+        <div class="field unduh-tgl" hidden><label for="unduhSampai">Sampai tanggal</label><input type="date" id="unduhSampai"></div>
+      </div>
+
+      <fieldset class="pilih-set">
+        <legend>Lembar yang disertakan</legend>
+        <div class="pilih-grid" id="unduhLembar">
+          <label class="pilih"><input type="checkbox" value="ritase" checked><span>Ritase &amp; Deviasi Harian</span></label>
+          <label class="pilih"><input type="checkbox" value="laporan" checked><span>Laporan per Shift</span></label>
+          <label class="pilih"><input type="checkbox" value="alokasi" checked><span>Alokasi Unit</span></label>
+          <label class="pilih"><input type="checkbox" value="kepatuhan" checked><span>Kepatuhan Operator</span></label>
+          <label class="pilih"><input type="checkbox" value="isu" checked><span>Isu Operasional</span></label>
+          <label class="pilih"><input type="checkbox" value="kendala" checked><span>Kendala Digitalisasi</span></label>
+          <label class="pilih"><input type="checkbox" value="followup" checked><span>Tindak Lanjut</span></label>
+        </div>
+        <div class="pilih-aksi">
+          <button type="button" class="btn sm ghost" id="unduhPilihSemua">Centang semua</button>
+          <button type="button" class="btn sm ghost" id="unduhKosongkan">Kosongkan</button>
+        </div>
+      </fieldset>
+
+      <div class="unduh-kaki">
+        <button class="btn primary" id="btnExcel">Unduh Excel</button>
+        <button class="btn sm ghost" id="btnExport">Unduh salinan JSON</button>
+        <span class="eyebrow" id="unduhRingkas"></span>
+      </div>
     </div>
   </section>
 </main>
@@ -1189,7 +1246,12 @@ async function syncPull(silent){
     lastSyncAt=new Date();
     const n=Object.keys(getPending()).length;
     setSyncStatus(n?'err':'ok', (n?`${n} perubahan menunggu · `:'')+'Sinkron '+lastSyncAt.toLocaleTimeString('id-ID'));
-    if(typeof renderAll==='function'){ renderEntryList(); renderAll(); if(typeof loadKepIntoForm==='function') loadKepIntoForm(); }
+    if(typeof renderAll==='function'){
+      renderEntryList(); renderAll();
+      // Formulir dilewati selagi dipakai; ia akan termuat sendiri saat pengguna
+      // mengganti tanggal, mengganti shift, atau menyimpan.
+      if(!formulirKepatuhanDipakai() && typeof loadKepIntoForm==='function') loadKepIntoForm();
+    }
   }catch(e){
     setSyncStatus('err','Gagal sinkron: '+e.message);
   } finally { syncBusy=false; }
@@ -1221,6 +1283,56 @@ function initSyncUI(){
   syncPull(true);
   setInterval(()=>{ if(!document.hidden) syncPull(true); }, 60000);
 }
+
+/* ================= PENJAGA FORMULIR =================
+   Sinkronisasi latar berjalan tiap 60 detik. Sebelumnya ia ikut memanggil
+   loadKepIntoForm(), yang mengosongkan #kepAddRows lalu membangunnya ulang dari
+   data tersimpan. Akibatnya penilaian yang sedang diketik hilang setiap menit
+   sebelum sempat disimpan.
+
+   Aturannya sekarang: formulir hanya dibangun ulang oleh tindakan yang diminta
+   pengguna (ganti tanggal, ganti shift, tambah baris, simpan, hapus). Proses
+   latar tidak pernah menyentuhnya selama masih ada isian yang belum disimpan.
+
+   Dua formulir dilacak terpisah karena letaknya di tab berbeda: penilaian
+   keaktifan ada di #view-kepatuhan, laporan harian di #view-input. */
+const KOTOR = { kepatuhan:false, laporan:false };
+function tandaiBersihKepatuhan(){ KOTOR.kepatuhan=false; }
+function tandaiBersihLaporan(){ KOTOR.laporan=false; }
+function adaIsianBelumDisimpan(){ return KOTOR.kepatuhan || KOTOR.laporan; }
+function fokusDiFormulir(idView){
+  const f=document.activeElement;
+  return !!(f && f.closest && f.closest('#'+idView) && /^(INPUT|SELECT|TEXTAREA)$/.test(f.tagName));
+}
+/* Dipakai sinkronisasi latar. Sengaja tidak melihat tab mana yang sedang
+   terbuka: isian yang belum disimpan tetap harus aman meski penggunanya
+   sempat berpindah tab untuk melihat grafik. */
+function formulirKepatuhanDipakai(){
+  return KOTOR.kepatuhan || fokusDiFormulir('view-kepatuhan');
+}
+(function pasangPenjagaFormulir(){
+  const pasang=(idView, tandai)=>{
+    const v=document.getElementById(idView);
+    if(!v) return;
+    ['input','change'].forEach(ev=>v.addEventListener(ev, e=>{
+      // Panel unduh ada di tab yang sama tapi bukan isian laporan
+      if(e.target && e.target.closest && e.target.closest('#kartuUnduh')) return;
+      tandai();
+    }, true));
+  };
+  pasang('view-kepatuhan', ()=>{ KOTOR.kepatuhan=true; });
+  pasang('view-input',     ()=>{ KOTOR.laporan=true; });
+
+  // Baris kosong yang baru ditambahkan juga dihitung sebagai isian berjalan
+  const tambah=document.getElementById('kepAddRowBtn');
+  if(tambah) tambah.addEventListener('click', ()=>{ KOTOR.kepatuhan=true; });
+
+  // Jaring terakhir bila halaman ditutup atau dimuat ulang
+  window.addEventListener('beforeunload', e=>{
+    if(!adaIsianBelumDisimpan()) return;
+    e.preventDefault(); e.returnValue='';
+  });
+})();
 
 /* ================= CHART HELPERS ================= */
 /* Warna grafik ikut palet MiningMalut. Sumbu dan kisi sengaja lemah supaya
@@ -1779,6 +1891,7 @@ function loadKepIntoForm(){
     banner.innerHTML=`<div class="edit-banner" style="margin-top:14px; background:var(--accent-soft); color:var(--accent); border-color:var(--accent);"><span>+ Belum ada penilaian untuk ${tgl} · ${kepInShift} (site ${kepSite}). Tambahkan operator di bawah.</span></div>`;
     addKepRow();
   }
+  tandaiBersihKepatuhan();
 }
 document.getElementById('kepInDate').addEventListener('change', loadKepIntoForm);
 document.querySelectorAll('#kepInShiftBtns button').forEach(b=>b.addEventListener('click',()=>{
@@ -2010,6 +2123,7 @@ function loadEntryIntoForm(){
     if(!document.querySelector('#'+TABLE_BY_TYPE[t]+' tbody tr')) addRepeatRow(t);
   });
   updateDevPreviews();
+  tandaiBersihLaporan();
 }
 function updateDevPreviews(){
   [['tmmDevPreview','tmmMinerva','tmmChecker'],['otDevPreview','otMinerva','otChecker']].forEach(([el,a,b])=>{
@@ -2165,6 +2279,198 @@ function renderKelengkapan(){
   }));
 }
 
+/* ================= PENULIS XLSX =================
+   Menulis berkas .xlsx asli tanpa pustaka luar. Alasannya sama dengan alasan
+   speed-watcher.html menanam citranya sendiri: komputer kantor tidak bisa
+   memasang apa pun, dan satu CDN yang diblokir tidak boleh mematikan fitur.
+
+   Yang dihasilkan: ZIP (metode store, tanpa kompresi) berisi XML SpreadsheetML
+   minimal. Tanggal ditulis sebagai serial Excel supaya bisa difilter dan
+   di-pivot, bukan sebagai teks. */
+
+function crcTabel(){
+  const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c=n;
+    for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1);
+    t[n]=c>>>0;
+  }
+  return t;
+}
+const CRC_TABEL = crcTabel();
+function crc32(buf){
+  let c=0xFFFFFFFF;
+  for(let i=0;i<buf.length;i++) c = CRC_TABEL[(c ^ buf[i]) & 0xFF] ^ (c>>>8);
+  return (c ^ 0xFFFFFFFF)>>>0;
+}
+function teksKeBytes(s){ return new TextEncoder().encode(s); }
+
+/* Kompresi lewat CompressionStream bila peramban punya; kalau tidak, berkas
+   tetap ditulis apa adanya. Bedanya besar: 2.600 baris turun dari ±1,1 MB
+   ke ±150 KB, dan XLSX tanpa kompresi tetap sah dibuka Excel. */
+async function padatkan(buf){
+  if(typeof CompressionStream==='undefined') return null;
+  try{
+    const aliran = new Blob([buf]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    const out = new Uint8Array(await new Response(aliran).arrayBuffer());
+    return out.length < buf.length ? out : null;
+  }catch(e){ return null; }
+}
+
+/* ZIP: deflate bila bisa, store bila tidak. */
+async function bikinZip(berkas){
+  const enc=[]; let offset=0; const pusat=[];
+  const w16=(a,v)=>{a.push(v&0xFF,(v>>>8)&0xFF);};
+  const w32=(a,v)=>{a.push(v&0xFF,(v>>>8)&0xFF,(v>>>16)&0xFF,(v>>>24)&0xFF);};
+
+  for(const f of berkas){
+    const nama=teksKeBytes(f.nama);
+    const mentah = f.isi instanceof Uint8Array ? f.isi : teksKeBytes(f.isi);
+    const crc=crc32(mentah);
+    const padat=await padatkan(mentah);
+    const isi = padat || mentah;
+    const metode = padat ? 8 : 0;
+
+    const lokal=[];
+    w32(lokal,0x04034b50); w16(lokal,20); w16(lokal,0); w16(lokal,metode);
+    w16(lokal,0); w16(lokal,0);                      // waktu & tanggal DOS
+    w32(lokal,crc); w32(lokal,isi.length); w32(lokal,mentah.length);
+    w16(lokal,nama.length); w16(lokal,0);
+    enc.push(new Uint8Array(lokal), nama, isi);
+
+    const c=[];
+    w32(c,0x02014b50); w16(c,20); w16(c,20); w16(c,0); w16(c,metode);
+    w16(c,0); w16(c,0);
+    w32(c,crc); w32(c,isi.length); w32(c,mentah.length);
+    w16(c,nama.length); w16(c,0); w16(c,0); w16(c,0); w16(c,0);
+    w32(c,0); w32(c,offset);
+    pusat.push(new Uint8Array(c), nama);
+    offset += lokal.length + nama.length + isi.length;
+  }
+
+  const awalPusat=offset;
+  let ukuranPusat=0; pusat.forEach(p=>ukuranPusat+=p.length);
+  const akhir=[];
+  const w16b=(v)=>akhir.push(v&0xFF,(v>>>8)&0xFF);
+  const w32b=(v)=>akhir.push(v&0xFF,(v>>>8)&0xFF,(v>>>16)&0xFF,(v>>>24)&0xFF);
+  w32b(0x06054b50); w16b(0); w16b(0);
+  w16b(berkas.length); w16b(berkas.length);
+  w32b(ukuranPusat); w32b(awalPusat); w16b(0);
+
+  const semua=[...enc,...pusat,new Uint8Array(akhir)];
+  let total=0; semua.forEach(p=>total+=p.length);
+  const out=new Uint8Array(total); let p=0;
+  semua.forEach(b=>{ out.set(b,p); p+=b.length; });
+  return out;
+}
+
+function xmlAman(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\x00-\x08\x0B\x0C\x0E-\x1F/g,'');
+}
+function hurufKolom(i){
+  let s=''; i+=1;
+  while(i>0){ const r=(i-1)%26; s=String.fromCharCode(65+r)+s; i=Math.floor((i-1)/26); }
+  return s;
+}
+/* Serial Excel: hari sejak 30 Desember 1899 */
+function serialTanggal(iso){
+  const p=String(iso||'').split('-').map(Number);
+  if(p.length!==3 || p.some(isNaN)) return null;
+  return Math.round((Date.UTC(p[0],p[1]-1,p[2]) - Date.UTC(1899,11,30))/86400000);
+}
+
+/* Gaya: 0 umum · 1 kepala · 2 tanggal · 3 persen */
+const GAYA_XLSX = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts>
+<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0D4A42"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="4">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+/* kolom: [{judul, kunci, tipe:'teks'|'angka'|'tanggal'|'persen', lebar}] */
+function lembarXml(kolom, baris){
+  const lebar = kolom.map((c,i)=>`<col min="${i+1}" max="${i+1}" width="${c.lebar||16}" customWidth="1"/>`).join('');
+  let xml = `<row r="1" ht="20" customHeight="1">` + kolom.map((c,i)=>
+    `<c r="${hurufKolom(i)}1" s="1" t="inlineStr"><is><t xml:space="preserve">${xmlAman(c.judul)}</t></is></c>`).join('') + `</row>`;
+
+  baris.forEach((r,ri)=>{
+    const n=ri+2; let sel='';
+    kolom.forEach((c,ci)=>{
+      const v=r[c.kunci];
+      if(v===null || v===undefined || v==='') return;      // sel kosong dilewati
+      const ref=hurufKolom(ci)+n;
+      if(c.tipe==='tanggal'){
+        const s=serialTanggal(v);
+        sel += s===null
+          ? `<c r="${ref}" t="inlineStr"><is><t>${xmlAman(v)}</t></is></c>`
+          : `<c r="${ref}" s="2"><v>${s}</v></c>`;
+      } else if(c.tipe==='persen'){
+        if(isNaN(v)) return;
+        sel += `<c r="${ref}" s="3"><v>${Number(v)}</v></c>`;
+      } else if(c.tipe==='angka'){
+        if(isNaN(v)) return;
+        sel += `<c r="${ref}"><v>${Number(v)}</v></c>`;
+      } else {
+        sel += `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlAman(v)}</t></is></c>`;
+      }
+    });
+    xml += `<row r="${n}">${sel}</row>`;
+  });
+
+  const akhir = hurufKolom(kolom.length-1) + (baris.length+1);
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<cols>${lebar}</cols>
+<sheetData>${xml}</sheetData>
+<autoFilter ref="A1:${akhir}"/>
+</worksheet>`;
+}
+
+/* lembar: [{nama, kolom, baris}] */
+async function bikinXlsx(lembar){
+  const berkas=[];
+  const tipe = lembar.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('');
+  berkas.push({nama:'[Content_Types].xml', isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${tipe}</Types>`});
+
+  berkas.push({nama:'_rels/.rels', isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`});
+
+  const daftar = lembar.map((l,i)=>`<sheet name="${xmlAman(l.nama).slice(0,31)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');
+  berkas.push({nama:'xl/workbook.xml', isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${daftar}</sheets></workbook>`});
+
+  const rel = lembar.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('');
+  berkas.push({nama:'xl/_rels/workbook.xml.rels', isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${rel}<Relationship Id="rId${lembar.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`});
+
+  berkas.push({nama:'xl/styles.xml', isi:GAYA_XLSX});
+  lembar.forEach((l,i)=>berkas.push({nama:`xl/worksheets/sheet${i+1}.xml`, isi:lembarXml(l.kolom,l.baris)}));
+  return bikinZip(berkas);
+}
+
 /* ================= SALINAN DATA =================
    Impor JSON dan "muat ulang data bawaan" dibuang: sejak laporan tersimpan di
    Supabase, memulihkan data cukup dengan menarik ulang dari server. Yang
@@ -2176,6 +2482,239 @@ document.getElementById('btnExport').addEventListener('click',()=>{
   a.href=url; a.download=`dispatch-monitoring-${todayISO()}.json`; a.click(); URL.revokeObjectURL(url);
   showToast('Salinan JSON diunduh');
 });
+
+/* ================= UNDUH EXCEL =================
+   Seluruh pengumpul di bawah membaca lewat helper yang sudah ada
+   (devDailySeries, filteredEntries, loadKep) supaya isi berkas Excel persis
+   sama dengan yang tampil di layar. Helper itu membaca `state`, jadi saat
+   rentang tanggal ditentukan sendiri, `state.from`/`state.to` dipinjam
+   sebentar lalu dikembalikan di blok finally. Filter shift di bilah atas
+   tetap berlaku dan ikut ditulis di nama berkas. */
+
+const D_TGL   = {judul:'Tanggal', kunci:'tanggal', tipe:'tanggal', lebar:12};
+const D_SHIFT = {judul:'Shift', kunci:'shift', tipe:'teks', lebar:8};
+
+const LEMBAR_UNDUH = {
+  ritase:{
+    nama:'Ritase & Deviasi',
+    kolom:[D_TGL, {judul:'Jenis',kunci:'jenis',tipe:'teks',lebar:9},
+      {judul:'Ritase Minerva',kunci:'minerva',tipe:'angka',lebar:15},
+      {judul:'Ritase Checker',kunci:'checker',tipe:'angka',lebar:15},
+      {judul:'Selisih',kunci:'selisih',tipe:'angka',lebar:10},
+      {judul:'Deviasi',kunci:'deviasi',tipe:'persen',lebar:11}],
+    ambil(){
+      const out=[];
+      [['tmm','TMM'],['ot','OT']].forEach(([f,label])=>{
+        devInRange(f).forEach(r=>out.push({
+          tanggal:r.tanggal, jenis:label, minerva:r.minerva, checker:r.checker,
+          selisih:(r.minerva!==null&&r.checker!==null)?(r.minerva-r.checker):null,
+          deviasi:r.deviasi
+        }));
+      });
+      return out.sort((a,b)=> a.tanggal===b.tanggal ? a.jenis.localeCompare(b.jenis) : a.tanggal.localeCompare(b.tanggal));
+    }
+  },
+  laporan:{
+    nama:'Laporan per Shift',
+    kolom:[D_TGL, D_SHIFT,
+      {judul:'TMM Minerva',kunci:'tmmM',tipe:'angka',lebar:13},
+      {judul:'TMM Checker',kunci:'tmmC',tipe:'angka',lebar:13},
+      {judul:'Deviasi TMM',kunci:'tmmD',tipe:'persen',lebar:12},
+      {judul:'OT Minerva',kunci:'otM',tipe:'angka',lebar:12},
+      {judul:'OT Checker',kunci:'otC',tipe:'angka',lebar:12},
+      {judul:'Deviasi OT',kunci:'otD',tipe:'persen',lebar:11},
+      {judul:'Jumlah Isu',kunci:'nIsu',tipe:'angka',lebar:11},
+      {judul:'Jumlah Kendala',kunci:'nKendala',tipe:'angka',lebar:14},
+      {judul:'Jumlah Tindak Lanjut',kunci:'nFollow',tipe:'angka',lebar:19}],
+    ambil(){
+      return filteredEntries().map(e=>({
+        tanggal:e.date, shift:'Shift '+e.shift,
+        tmmM:(e.tmm||{}).minerva, tmmC:(e.tmm||{}).checker, tmmD:devFrac((e.tmm||{}).minerva,(e.tmm||{}).checker),
+        otM:(e.ot||{}).minerva,  otC:(e.ot||{}).checker,  otD:devFrac((e.ot||{}).minerva,(e.ot||{}).checker),
+        nIsu:((e.isuTmm||[]).length+(e.isuOt||[]).length), nKendala:(e.kendala||[]).length, nFollow:(e.followup||[]).length
+      }));
+    }
+  },
+  alokasi:{
+    nama:'Alokasi Unit',
+    kolom:[D_TGL, D_SHIFT, {judul:'Kelompok',kunci:'grup',tipe:'teks',lebar:16},
+      {judul:'Jenis Unit',kunci:'jenis',tipe:'teks',lebar:12},
+      {judul:'Digunakan',kunci:'actual',tipe:'angka',lebar:11},
+      {judul:'Budget',kunci:'budget',tipe:'angka',lebar:10},
+      {judul:'Selisih',kunci:'selisih',tipe:'angka',lebar:10}],
+    ambil(){
+      const peta=[['excaAntam','Mining Antam','Exca'],['haulerAntam','Mining Antam','Hauler'],
+                  ['excaPcm','Mining PCM','Exca'],['haulerPcm','Mining PCM','Hauler'],
+                  ['excaOt','Transhipment','Exca'],['haulerOt','Transhipment','Hauler']];
+      const out=[];
+      filteredEntries().forEach(e=>{
+        const a=e.unitAlloc||{};
+        peta.forEach(([k,grup,jenis])=>{
+          const v=a[k]; if(!v) return;
+          if((v.actual===null||v.actual===undefined) && (v.budget===null||v.budget===undefined)) return;
+          out.push({tanggal:e.date, shift:'Shift '+e.shift, grup, jenis,
+            actual:v.actual, budget:v.budget,
+            selisih:(hasNum(v.actual)&&hasNum(v.budget))?(v.actual-v.budget):null});
+        });
+      });
+      return out;
+    }
+  },
+  kepatuhan:{
+    nama:'Kepatuhan Operator',
+    kolom:[D_TGL, D_SHIFT, {judul:'Kelompok Penilaian',kunci:'site',tipe:'teks',lebar:18},
+      {judul:'Kode Unit',kunci:'unit',tipe:'teks',lebar:14},
+      {judul:'Tipe Unit',kunci:'tipe',tipe:'teks',lebar:13},
+      {judul:'ID Operator',kunci:'idop',tipe:'teks',lebar:12},
+      {judul:'Nama Operator',kunci:'nama',tipe:'teks',lebar:32},
+      {judul:'Keterangan Keaktifan',kunci:'ket',tipe:'teks',lebar:44},
+      {judul:'Skor',kunci:'skor',tipe:'persen',lebar:9}],
+    ambil(){
+      const out=[];
+      ['ANTAM','PCM'].forEach(site=>{
+        kepInRange(loadKep(site)).forEach(r=>out.push({
+          tanggal:r.tanggal, shift:normShift(r.shift)||r.shift, site,
+          unit:r.kode_unit, tipe:r.tipe_unit, idop:r.id_operator, nama:r.nama_operator,
+          ket:r.keterangan, skor:recScore(r)
+        }));
+      });
+      return out.sort((a,b)=> a.tanggal===b.tanggal ? String(a.nama).localeCompare(String(b.nama)) : a.tanggal.localeCompare(b.tanggal));
+    }
+  },
+  isu:{
+    nama:'Isu Operasional',
+    kolom:[D_TGL, D_SHIFT, {judul:'Bagian',kunci:'section',tipe:'teks',lebar:10},
+      {judul:'Kategori',kunci:'cat',tipe:'teks',lebar:26},
+      {judul:'Keterangan',kunci:'text',tipe:'teks',lebar:60}],
+    ambil(){ return buildIsuRows().map(r=>({tanggal:r.date, shift:'Shift '+r.shift, section:r.section, cat:r.cat, text:r.text})); }
+  },
+  kendala:{
+    nama:'Kendala Digitalisasi',
+    kolom:[D_TGL, D_SHIFT, {judul:'Bagian',kunci:'section',tipe:'teks',lebar:10},
+      {judul:'Kategori',kunci:'cat',tipe:'teks',lebar:28},
+      {judul:'Keterangan',kunci:'text',tipe:'teks',lebar:60}],
+    ambil(){
+      const out=[];
+      filteredEntries().forEach(e=>(e.kendala||[]).forEach(k=>out.push({
+        tanggal:e.date, shift:'Shift '+e.shift, section:k.section||'-', cat:k.cat, text:k.text})));
+      return out;
+    }
+  },
+  followup:{
+    nama:'Tindak Lanjut',
+    kolom:[D_TGL, D_SHIFT, {judul:'Kategori',kunci:'cat',tipe:'teks',lebar:22},
+      {judul:'Uraian',kunci:'text',tipe:'teks',lebar:60},
+      {judul:'Status',kunci:'status',tipe:'teks',lebar:12}],
+    ambil(){
+      const out=[];
+      filteredEntries().forEach(e=>(e.followup||[]).forEach(f=>out.push({
+        tanggal:e.date, shift:'Shift '+e.shift, cat:f.cat, text:f.text, status:f.status||'Baru'})));
+      return out;
+    }
+  }
+};
+
+let unduhMode='filter';
+
+function rentangUnduh(){
+  if(unduhMode==='semua') return {from:'2000-01-01', to:'2100-12-31'};
+  if(unduhMode==='pilih'){
+    const a=document.getElementById('unduhDari').value || state.from;
+    const b=document.getElementById('unduhSampai').value || state.to;
+    return (a<=b) ? {from:a, to:b} : {from:b, to:a};
+  }
+  return {from:state.from, to:state.to};
+}
+function lembarTerpilih(){
+  return [...document.querySelectorAll('#unduhLembar input:checked')].map(c=>c.value);
+}
+function tglSingkat(iso){
+  const p=String(iso||'').split('-');
+  if(p.length!==3) return iso;
+  const bulan=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  return Number(p[2])+' '+bulan[Number(p[1])-1]+' '+p[0];
+}
+function labelShift(){
+  return state.shift==='all' ? 'semua shift' : 'shift '+state.shift;
+}
+function segarkanRingkasUnduh(){
+  const n=lembarTerpilih().length;
+  const r=rentangUnduh();
+  const tombol=document.getElementById('btnExcel');
+  if(tombol) tombol.disabled = n===0;
+  const el=document.getElementById('unduhRingkas');
+  if(!el) return;
+  el.textContent = n===0
+    ? 'Centang minimal satu lembar.'
+    : `${n} lembar · ${unduhMode==='semua' ? 'seluruh tanggal' : tglSingkat(r.from)+' sampai '+tglSingkat(r.to)} · ${labelShift()}`;
+}
+
+async function unduhExcel(){
+  const pilih=lembarTerpilih();
+  if(!pilih.length){ showToast('Centang minimal satu lembar'); return; }
+  const r=rentangUnduh();
+  const btn=document.getElementById('btnExcel');
+  const labelAsli=btn.textContent;
+  btn.disabled=true; btn.textContent='Menyiapkan…';
+
+  const fromAsli=state.from, toAsli=state.to;
+  try{
+    state.from=r.from; state.to=r.to;
+    const lembar=[];
+    let totalBaris=0;
+    pilih.forEach(k=>{
+      const def=LEMBAR_UNDUH[k]; if(!def) return;
+      const baris=def.ambil();
+      totalBaris+=baris.length;
+      lembar.push({nama:def.nama, kolom:def.kolom, baris});
+    });
+    if(!totalBaris){ showToast('Tidak ada data pada rentang ini'); return; }
+
+    const buf=await bikinXlsx(lembar);
+    const blob=new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const tag = unduhMode==='semua' ? 'semua' : r.from+'_sd_'+r.to;
+    a.href=url; a.download=`dispatch-monitoring-${tag}.xlsx`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    showToast(`${lembar.length} lembar · ${totalBaris.toLocaleString('id-ID')} baris diunduh`);
+  }catch(e){
+    showToast('Gagal membuat berkas Excel: '+e.message);
+  }finally{
+    state.from=fromAsli; state.to=toAsli;
+    btn.disabled=false; btn.textContent=labelAsli;
+    segarkanRingkasUnduh();
+  }
+}
+
+function initUnduhUI(){
+  const kolomTgl=[...document.querySelectorAll('.unduh-tgl')];
+  document.querySelectorAll('#unduhRentangBtns button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('#unduhRentangBtns button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    unduhMode=b.dataset.rentang;
+    kolomTgl.forEach(el=>el.hidden = unduhMode!=='pilih');
+    if(unduhMode==='pilih'){
+      const dari=document.getElementById('unduhDari'), sampai=document.getElementById('unduhSampai');
+      if(!dari.value) dari.value=state.from;      // ikut filter aktif, tapi tidak menimpa
+      if(!sampai.value) sampai.value=state.to;    // tanggal yang sudah diketik sendiri
+    }
+    segarkanRingkasUnduh();
+  }));
+  ['unduhDari','unduhSampai'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change', segarkanRingkasUnduh);
+  });
+  document.querySelectorAll('#unduhLembar input').forEach(c=>c.addEventListener('change', segarkanRingkasUnduh));
+  document.getElementById('unduhPilihSemua').addEventListener('click',()=>{
+    document.querySelectorAll('#unduhLembar input').forEach(c=>c.checked=true); segarkanRingkasUnduh();
+  });
+  document.getElementById('unduhKosongkan').addEventListener('click',()=>{
+    document.querySelectorAll('#unduhLembar input').forEach(c=>c.checked=false); segarkanRingkasUnduh();
+  });
+  document.getElementById('btnExcel').addEventListener('click', unduhExcel);
+  segarkanRingkasUnduh();
+}
 
 /* ================= NAV / FILTER ================= */
 document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -2244,6 +2783,7 @@ function renderAll(){
   if(v==='logkendala') renderLogKendala();
   if(v==='tindaklanjut') renderTindakLanjut();
   if(v==='input') renderEntryList();
+  if(typeof segarkanRingkasUnduh==='function') segarkanRingkasUnduh();
 }
 (function init(){
   const mx=dataMaxDate();
@@ -2258,6 +2798,7 @@ function renderAll(){
   loadEntryIntoForm();
   renderEntryList();
   renderAll();
+  initUnduhUI();
   initSyncUI();
 })();
 </script>
