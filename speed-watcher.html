@@ -2968,8 +2968,170 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     setInterval(function(){if(connected()){if(gate())gate().classList.remove('on');watchAll();var tk=el('token');if(tk&&tk.value){try{localStorage.setItem(SHARED,tk.value.trim());}catch(e){}}}},700);
     // teruskan notifikasi pelanggaran ke shell (agar muncul di halaman lain)
     var le=el('liveEvents'), lastTop='';
-    if(le){ new MutationObserver(function(){var row=le.querySelector('tr');if(!row)return;var sig=row.textContent.replace(/\s+/g,' ').trim();if(sig&&sig!==lastTop&&!/belum ada|tidak ada|akan tampil/i.test(sig)){lastTop=sig;try{window.parent.postMessage({type:'sw-notif',text:sig.slice(0,160)},'*');}catch(e){}}}).observe(le,{childList:true,subtree:true}); }
+    if(le){ new MutationObserver(function(){var row=le.querySelector('tr');if(!row)return;/* Kejadian arsip yang baru dimuat tidak boleh memunculkan toast di halaman lain. App dideklarasikan dengan const sehingga tidak menempel di window — rujuk namanya langsung. */try{var atas=(typeof App!=='undefined'&&App.events)?App.events[0]:null;if(atas&&(Date.now()/1000-atas.tStart)>600)return;}catch(e){}var sig=row.textContent.replace(/\s+/g,' ').trim();if(sig&&sig!==lastTop&&!/belum ada|tidak ada|akan tampil/i.test(sig)){lastTop=sig;try{window.parent.postMessage({type:'sw-notif',text:sig.slice(0,160)},'*');}catch(e){}}}).observe(le,{childList:true,subtree:true}); }
   });
 })();
-</script></body>
+</script><script id="sw-arsip">
+/* =============================================================================
+   Arsip pelanggaran — dibaca dari Supabase, ditulis oleh Cloudflare Worker
+   "speed-watcher-24-7" yang berjalan tiap menit tanpa perlu halaman ini terbuka.
+
+   Halaman tetap mendeteksi sendiri secara langsung supaya angka di layar
+   bergerak seketika; kejadian dari server kemudian menimpanya karena server
+   melihat seluruh menit, bukan hanya saat tab kebetulan terbuka.
+
+   Nama ruas jalan sengaja TIDAK disimpan di server: geometrinya hanya ada di
+   berkas ini (window.PAKAL_SITE), jadi pelabelan dikerjakan di sini lewat
+   zonesAt(). Satu sumber geometri, tidak ada dua salinan yang bisa berbeda.
+   ============================================================================= */
+(function () {
+  var SUPA = {
+    url:   'https://qblivboqavhlugydhmjr.supabase.co',
+    key:   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE',
+    tabel: 'dashboard'
+  };
+  var PREFIKS = 'sw|ev|', AUTH = 'pakal_auth';
+  var SEGAR_MS = 60000;
+  var sibuk = false, tglPilih = '';
+
+  function el(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function tglLokal(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function jam(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+
+  /* Sesi login shell dipakai bila ada; kalau tidak, anon key saja — cukup untuk
+     membaca selama kebijakan RLS mengizinkan. */
+  function token() {
+    try {
+      var a = JSON.parse(localStorage.getItem(AUTH) || 'null');
+      if (a && a.access_token && (!a.expires_at || a.expires_at * 1000 > Date.now())) return a.access_token;
+    } catch (e) {}
+    return SUPA.key;
+  }
+  function alamat(tgl) {
+    return SUPA.url + '/rest/v1/' + SUPA.tabel +
+           '?id=like.' + encodeURIComponent(PREFIKS + tgl + '|*') + '&select=id,data';
+  }
+  function kabar(teks) { var n = el('arsipMeta'); if (n) n.textContent = teks; }
+
+  function labelRuas(ev) {
+    if (ev.zone) return;
+    try {
+      if (typeof zonesAt === 'function') {
+        var h = zonesAt(ev.lat, ev.lon);
+        if (h && h.length) ev.zone = h[0].name;
+      }
+    } catch (e) {}
+  }
+
+  /* Kejadian dari server menggantikan hasil deteksi layar untuk unit dan rentang
+     waktu yang sama, supaya satu pelanggaran tidak tampil dua kali. */
+  function gabung(daftar) {
+    if (typeof App === 'undefined' || !App.events) return;
+    var punya = {};
+    daftar.forEach(function (e) { punya[e._sid] = 1; });
+    var sisa = App.events.filter(function (e) {
+      if (e._sid) return !punya[e._sid];
+      for (var i = 0; i < daftar.length; i++) {
+        var s = daftar[i];
+        if (s.unitId === e.unitId && !(e.tEnd < s.tStart - 180 || e.tStart > s.tEnd + 180)) return false;
+      }
+      return true;
+    });
+    App.events = sisa.concat(daftar).sort(function (a, b) { return b.tStart - a.tStart; });
+  }
+
+  function muat(tgl, diam) {
+    if (sibuk) return;
+    sibuk = true;
+    if (!diam) kabar('Memuat…');
+    fetch(alamat(tgl), { headers: { apikey: SUPA.key, Authorization: 'Bearer ' + token() } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (baris) {
+        var daftar = (baris || []).map(function (b) {
+          var d = b.data || {};
+          return {
+            id: 'SV' + b.id, _sid: b.id,
+            unitId: d.unitId, unitName: d.unitName || '—', limit: d.limit,
+            tStart: d.tStart, tEnd: d.tEnd,
+            maxSpeed: d.maxSpeed, avgSpeed: d.avgSpeed, n: d.n || 0,
+            duration: d.duration, lat: d.lat, lon: d.lon,
+            zone: null, location: null, open: !!d.open, source: 'server'
+          };
+        }).filter(function (e) {
+          return isFinite(e.tStart) && isFinite(e.lat) && isFinite(e.lon) && isFinite(e.maxSpeed);
+        });
+        daftar.forEach(labelRuas);
+        gabung(daftar);
+        try { render(); } catch (e) {}
+        kabar(daftar.length
+          ? daftar.length + ' kejadian tercatat · diperbarui ' + jam(new Date())
+          : 'Belum ada kejadian tercatat pada tanggal ini');
+      })
+      .catch(function (e) {
+        kabar('Arsip tidak terbaca (' + (e && e.message ? e.message : e) + ')');
+      })
+      .then(function () { sibuk = false; });
+  }
+
+  /* Ruas baru bisa dikenali setelah PAKAL_SITE terpasang, yang terjadi beberapa
+     saat sesudah halaman dimuat. Pelabelan diulang tanpa menarik data lagi. */
+  function labelUlang() {
+    if (typeof App === 'undefined' || !App.events) return;
+    var berubah = false;
+    App.events.forEach(function (e) {
+      if (e._sid && !e.zone) { labelRuas(e); if (e.zone) berubah = true; }
+    });
+    if (berubah) { try { render(); } catch (e) {} }
+  }
+
+  function pasangKontrol() {
+    var tampil = document.getElementById('view-events');
+    if (!tampil || el('arsipTgl')) return;
+    var acuan = tampil.querySelector('.toolrow');
+    if (!acuan) return;
+
+    var baris = document.createElement('div');
+    baris.className = 'toolrow';
+    baris.innerHTML =
+      '<label class="meta" for="arsipTgl" style="flex:0 0 auto">Tanggal</label>' +
+      '<input id="arsipTgl" type="date" style="flex:0 0 auto;padding:6px 8px;font-size:12px">' +
+      '<button class="btn sm" id="arsipMuat">Muat</button>' +
+      '<span class="meta" id="arsipMeta" style="flex:1 1 100%">—</span>';
+    acuan.parentNode.insertBefore(baris, acuan);
+
+    var catatan = document.createElement('p');
+    catatan.className = 'note';
+    catatan.textContent = 'Pelanggaran direkam terus-menerus di server, juga saat halaman ini tertutup. ' +
+                          'Daftar di bawah menampilkan rekaman tanggal terpilih, bukan hanya sesi yang sedang berjalan.';
+    baris.parentNode.insertBefore(catatan, baris);
+
+    tglPilih = tglLokal(new Date());
+    el('arsipTgl').value = tglPilih;
+    el('arsipTgl').addEventListener('change', function () {
+      tglPilih = this.value || tglLokal(new Date());
+      muat(tglPilih, false);
+    });
+    el('arsipMuat').addEventListener('click', function () { muat(tglPilih, false); });
+  }
+
+  window.addEventListener('load', function () {
+    pasangKontrol();
+    muat(tglPilih, true);
+    setTimeout(labelUlang, 3000);
+    setTimeout(labelUlang, 9000);
+    /* Penyegaran hanya berlaku untuk hari berjalan, dan dihentikan saat tab
+       tidak terlihat supaya tidak ada permintaan jaringan yang sia-sia. */
+    setInterval(function () {
+      if (document.hidden) return;
+      if (tglPilih !== tglLokal(new Date())) return;
+      muat(tglPilih, true);
+    }, SEGAR_MS);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && tglPilih === tglLokal(new Date())) muat(tglPilih, true);
+    });
+  });
+})();
+</script>
+</body>
 </html>
