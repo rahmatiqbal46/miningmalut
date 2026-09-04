@@ -2957,9 +2957,16 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
 
         d.unit.forEach(function (x) {
           var u = App.units.get(x.id);
-          if (!u) { u = newUnit(x.id, x.nama || ('Unit ' + x.id)); App.units.set(x.id, u); baru = true; }
+          if (!u) {
+            /* Unit baru langsung dipantau, tapi SESUDAH itu pilihan pengguna
+               dihormati. Menyetel monitored setiap 10 detik akan menghidupkan
+               kembali unit yang baru saja dimatikan lewat panel Setelan. */
+            u = newUnit(x.id, x.nama || ('Unit ' + x.id));
+            u.monitored = true;
+            App.units.set(x.id, u);
+            baru = true;
+          }
           u.name = x.nama || u.name;
-          u.monitored = true;               // tidak ada lagi pemilihan unit manual
           if (x.waktu == null || x.lat == null || x.lon == null) { u.status = 'TANPA DATA'; return; }
           pushSample(u, {
             t: Math.round(x.waktu / 1000), lat: x.lat, lon: x.lon,
@@ -3117,6 +3124,449 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     v.insertBefore(p, v.firstChild);
   }
 
+
+  /* ------------------------------------------------- tip mengambang ("i") */
+  /* Tooltip bawaan memakai ::after position:absolute di dalam .drawer-body
+     yang overflow-y:auto, jadi selalu terpotong di panel Setelan. Diganti satu
+     elemen position:fixed di <body> yang tidak bisa dipotong induk mana pun. */
+  function pasangTip() {
+    if (el('swTip')) return;
+    var g = document.createElement('style');
+    g.textContent =
+      '.info::after{display:none!important}' +
+      '#swTip{position:fixed;z-index:200;max-width:min(300px,86vw);background:var(--ink);' +
+      'color:var(--surface);font-family:var(--sans);font-size:11.5px;font-weight:400;' +
+      'font-style:normal;line-height:1.5;padding:9px 11px;border-radius:9px;' +
+      'box-shadow:var(--sh-lg);opacity:0;pointer-events:none;transition:opacity .13s;text-align:left}' +
+      '#swTip.on{opacity:1}' +
+      '.unit-cek{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));' +
+      'gap:4px 10px;max-height:190px;overflow:auto;padding:8px;border:1px solid var(--line);' +
+      'border-radius:9px;background:var(--surface-2)}' +
+      '.unit-cek label{display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer}' +
+      '.unit-cek input{flex:0 0 auto;margin:0}';
+    document.head.appendChild(g);
+
+    var t = document.createElement('div');
+    t.id = 'swTip';
+    document.body.appendChild(t);
+
+    function tampil(n) {
+      var teks = n.getAttribute('data-tip');
+      if (!teks) return;
+      t.textContent = teks;
+      t.classList.add('on');
+      var r = n.getBoundingClientRect(), b = t.getBoundingClientRect();
+      var x = Math.min(Math.max(8, r.left + r.width / 2 - b.width / 2), window.innerWidth - b.width - 8);
+      var y = r.bottom + 8;
+      if (y + b.height > window.innerHeight - 8) y = Math.max(8, r.top - b.height - 8);
+      t.style.left = x + 'px';
+      t.style.top = y + 'px';
+    }
+    function sembunyi() { t.classList.remove('on'); }
+    function cari(e) { return e.target && e.target.closest ? e.target.closest('[data-tip]') : null; }
+
+    document.addEventListener('mouseover', function (e) { var n = cari(e); if (n) tampil(n); });
+    document.addEventListener('mouseout',  function (e) { if (cari(e)) sembunyi(); });
+    document.addEventListener('focusin',   function (e) { var n = cari(e); if (n) tampil(n); });
+    document.addEventListener('focusout',  sembunyi);
+    window.addEventListener('scroll', sembunyi, true);
+  }
+
+  /* ------------------------------------------------------- penulis XLSX */
+  /* Tanpa pustaka luar, alasan yang sama dengan Dispatch Monitoring: komputer
+     kantor tidak bisa memasang apa pun, dan satu CDN yang diblokir tidak boleh
+     mematikan fitur ekspor. */
+  function crcTabel() {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  }
+  var CRC = crcTabel();
+  function crc32(buf) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < buf.length; i++) c = CRC[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function keBytes(x) { return new TextEncoder().encode(x); }
+
+  async function padatkan(buf) {
+    if (typeof CompressionStream === 'undefined') return null;
+    try {
+      var aliran = new Blob([buf]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      var out = new Uint8Array(await new Response(aliran).arrayBuffer());
+      return out.length < buf.length ? out : null;
+    } catch (e) { return null; }
+  }
+
+  /* ZIP dirakit manual: deflate bila peramban punya, store bila tidak.
+     XLSX tanpa kompresi tetap sah dibuka Excel. */
+  async function bikinZip(berkas) {
+    var enc = [], pusat = [], offset = 0;
+    var w16 = function (a, v) { a.push(v & 0xFF, (v >>> 8) & 0xFF); };
+    var w32 = function (a, v) { a.push(v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF); };
+
+    for (var i = 0; i < berkas.length; i++) {
+      var f = berkas[i];
+      var nama = keBytes(f.nama);
+      var mentah = f.isi instanceof Uint8Array ? f.isi : keBytes(f.isi);
+      var crc = crc32(mentah);
+      var padat = await padatkan(mentah);
+      var isi = padat || mentah, metode = padat ? 8 : 0;
+
+      var lokal = [];
+      w32(lokal, 0x04034b50); w16(lokal, 20); w16(lokal, 0); w16(lokal, metode);
+      w16(lokal, 0); w16(lokal, 0);
+      w32(lokal, crc); w32(lokal, isi.length); w32(lokal, mentah.length);
+      w16(lokal, nama.length); w16(lokal, 0);
+      enc.push(new Uint8Array(lokal), nama, isi);
+
+      var c = [];
+      w32(c, 0x02014b50); w16(c, 20); w16(c, 20); w16(c, 0); w16(c, metode);
+      w16(c, 0); w16(c, 0);
+      w32(c, crc); w32(c, isi.length); w32(c, mentah.length);
+      w16(c, nama.length); w16(c, 0); w16(c, 0); w16(c, 0); w16(c, 0);
+      w32(c, 0); w32(c, offset);
+      pusat.push(new Uint8Array(c), nama);
+      offset += lokal.length + nama.length + isi.length;
+    }
+
+    var awalPusat = offset, ukuranPusat = 0;
+    pusat.forEach(function (x) { ukuranPusat += x.length; });
+    var akhir = [];
+    var a16 = function (v) { akhir.push(v & 0xFF, (v >>> 8) & 0xFF); };
+    var a32 = function (v) { akhir.push(v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF); };
+    a32(0x06054b50); a16(0); a16(0);
+    a16(berkas.length); a16(berkas.length);
+    a32(ukuranPusat); a32(awalPusat); a16(0);
+
+    var semua = enc.concat(pusat, [new Uint8Array(akhir)]), total = 0;
+    semua.forEach(function (x) { total += x.length; });
+    var out = new Uint8Array(total), q = 0;
+    semua.forEach(function (x) { out.set(x, q); q += x.length; });
+    return out;
+  }
+
+  function xmlAman(x) {
+    return String(x == null ? '' : x)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  }
+  function hurufKolom(i) {
+    var s = ''; i += 1;
+    while (i > 0) { var r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); }
+    return s;
+  }
+  /* Serial Excel: hari sejak 30 Desember 1899. Tanggal ditulis sebagai angka,
+     bukan teks, supaya bisa disortir dan di-pivot. */
+  function serialTanggal(iso) {
+    var p = String(iso || '').split('-').map(Number);
+    if (p.length !== 3 || p.some(isNaN)) return null;
+    return Math.round((Date.UTC(p[0], p[1] - 1, p[2]) - Date.UTC(1899, 11, 30)) / 86400000);
+  }
+
+  var GAYA = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts>' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF0D4A42"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="3">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+  function lembarXml(kolom, baris) {
+    var lebar = kolom.map(function (c, i) {
+      return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + (c.lebar || 16) + '" customWidth="1"/>';
+    }).join('');
+    var xml = '<row r="1" ht="20" customHeight="1">' + kolom.map(function (c, i) {
+      return '<c r="' + hurufKolom(i) + '1" s="1" t="inlineStr"><is><t xml:space="preserve">' +
+             xmlAman(c.judul) + '</t></is></c>';
+    }).join('') + '</row>';
+
+    baris.forEach(function (r, ri) {
+      var n = ri + 2, sel = '';
+      kolom.forEach(function (c, ci) {
+        var v = r[c.kunci];
+        if (v === null || v === undefined || v === '') return;
+        var ref = hurufKolom(ci) + n;
+        if (c.tipe === 'tanggal') {
+          var sr = serialTanggal(v);
+          sel += sr === null
+            ? '<c r="' + ref + '" t="inlineStr"><is><t>' + xmlAman(v) + '</t></is></c>'
+            : '<c r="' + ref + '" s="2"><v>' + sr + '</v></c>';
+        } else if (c.tipe === 'angka') {
+          if (isNaN(v)) return;
+          sel += '<c r="' + ref + '"><v>' + Number(v) + '</v></c>';
+        } else {
+          sel += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlAman(v) + '</t></is></c>';
+        }
+      });
+      xml += '<row r="' + n + '">' + sel + '</row>';
+    });
+
+    var akhir = hurufKolom(kolom.length - 1) + (baris.length + 1);
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      '<cols>' + lebar + '</cols><sheetData>' + xml + '</sheetData>' +
+      '<autoFilter ref="A1:' + akhir + '"/></worksheet>';
+  }
+
+  async function bikinXlsx(lembar) {
+    var berkas = [];
+    var tipe = lembar.map(function (_, i) {
+      return '<Override PartName="/xl/worksheets/sheet' + (i + 1) +
+        '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+    }).join('');
+    berkas.push({ nama: '[Content_Types].xml', isi:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      tipe + '</Types>' });
+    berkas.push({ nama: '_rels/.rels', isi:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>' });
+    var daftar = lembar.map(function (l, i) {
+      return '<sheet name="' + xmlAman(l.nama).slice(0, 31) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>';
+    }).join('');
+    berkas.push({ nama: 'xl/workbook.xml', isi:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheets>' + daftar + '</sheets></workbook>' });
+    var rel = lembar.map(function (_, i) {
+      return '<Relationship Id="rId' + (i + 1) +
+        '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>';
+    }).join('');
+    berkas.push({ nama: 'xl/_rels/workbook.xml.rels', isi:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rel +
+      '<Relationship Id="rId' + (lembar.length + 1) +
+      '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' });
+    berkas.push({ nama: 'xl/styles.xml', isi: GAYA });
+    lembar.forEach(function (l, i) {
+      berkas.push({ nama: 'xl/worksheets/sheet' + (i + 1) + '.xml', isi: lembarXml(l.kolom, l.baris) });
+    });
+    return bikinZip(berkas);
+  }
+
+  /* ------------------------------------------------------- panel unduh */
+
+  function jamPenuh(det) {
+    var d = new Date(det * 1000);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+  function hitungPilih() {
+    var box = el('unduhUnit'); if (!box) return;
+    var semua = box.querySelectorAll('input[data-unduh]');
+    var pilih = box.querySelectorAll('input[data-unduh]:checked');
+    var n = el('unduhJml');
+    if (n) n.textContent = pilih.length + ' dari ' + semua.length + ' unit dipilih';
+  }
+  function isiDaftarUnit() {
+    var box = el('unduhUnit'); if (!box) return;
+    var lama = {};
+    box.querySelectorAll('input[data-unduh]').forEach(function (c) { lama[c.getAttribute('data-unduh')] = c.checked; });
+    var arr = [];
+    App.units.forEach(function (u) { arr.push(u); });
+    arr.sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'id'); });
+    box.innerHTML = arr.map(function (u) {
+      var c = lama[u.id] === undefined ? true : lama[u.id];
+      return '<label><input type="checkbox" data-unduh="' + u.id + '"' + (c ? ' checked' : '') + '>' +
+             String(u.name).replace(/[<>&]/g, '') + '</label>';
+    }).join('');
+    hitungPilih();
+  }
+
+  async function jalankanUnduh() {
+    var dari = el('unduhDari').value, sampai = el('unduhSampai').value;
+    if (!dari || !sampai) { el('unduhKabar').textContent = 'Tanggal belum lengkap.'; return; }
+    if (dari > sampai) { var x = dari; dari = sampai; sampai = x; }
+
+    var pilih = {}, adaPilih = false;
+    el('unduhUnit').querySelectorAll('input[data-unduh]:checked').forEach(function (c) {
+      pilih[c.getAttribute('data-unduh')] = 1; adaPilih = true;
+    });
+    if (!adaPilih) { el('unduhKabar').textContent = 'Belum ada unit yang dicentang.'; return; }
+
+    var tb = el('unduhJalan');
+    tb.disabled = true; tb.textContent = 'Menyiapkan…';
+    el('unduhKabar').textContent = 'Mengambil data dari server…';
+    try {
+      var r = await fetch(API + '/api/pelanggaran?dari=' + encodeURIComponent(dari) +
+                          '&sampai=' + encodeURIComponent(sampai), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var d = await r.json();
+      var baris = (d.pelanggaran || []).filter(function (x) { return pilih[String(x.unit_id)]; });
+
+      if (!baris.length) {
+        el('unduhKabar').textContent = 'Tidak ada pelanggaran pada rentang dan unit yang dipilih.';
+        return;
+      }
+
+      var isi = baris.map(function (x) {
+        var m = Math.round(x.mulai / 1000), sl = Math.round(x.selesai / 1000);
+        var ev = { lat: x.lat, lon: x.lon, zone: null };
+        labelRuas(ev);
+        return {
+          tanggal: x.tanggal,
+          mulai: jamPenuh(m), selesai: jamPenuh(sl),
+          unit: x.unit || '',
+          maks: Math.round(x.kecepatan_max * 10) / 10,
+          rata: x.kecepatan_rata == null ? '' : Math.round(x.kecepatan_rata * 10) / 10,
+          batas: x.batas,
+          lebih: Math.round((x.kecepatan_max - x.batas) * 10) / 10,
+          durasi: Math.max(0, sl - m),
+          ruas: ev.zone || 'Di luar ruas terdaftar',
+          lintang: x.lat, bujur: x.lon,
+          sampel: x.sampel || ''
+        };
+      });
+
+      var per = {};
+      isi.forEach(function (x) {
+        if (!per[x.unit]) per[x.unit] = { unit: x.unit, jumlah: 0, tertinggi: 0, durasi: 0 };
+        var p = per[x.unit];
+        p.jumlah++; p.durasi += x.durasi;
+        if (x.maks > p.tertinggi) p.tertinggi = x.maks;
+      });
+      var ringkas = Object.keys(per).map(function (k) { return per[k]; })
+        .sort(function (a, b) { return b.jumlah - a.jumlah; })
+        .map(function (p) {
+          return { unit: p.unit, jumlah: p.jumlah, tertinggi: p.tertinggi,
+                   durasi: p.durasi, menit: Math.round(p.durasi / 6) / 10 };
+        });
+
+      var buf = await bikinXlsx([
+        { nama: 'Pelanggaran', baris: isi, kolom: [
+          { judul: 'Tanggal',            kunci: 'tanggal',  tipe: 'tanggal', lebar: 12 },
+          { judul: 'Mulai',              kunci: 'mulai',    tipe: 'teks',    lebar: 10 },
+          { judul: 'Selesai',            kunci: 'selesai',  tipe: 'teks',    lebar: 10 },
+          { judul: 'Unit',               kunci: 'unit',     tipe: 'teks',    lebar: 16 },
+          { judul: 'Kecepatan maks',     kunci: 'maks',     tipe: 'angka',   lebar: 15 },
+          { judul: 'Kecepatan rata-rata',kunci: 'rata',     tipe: 'angka',   lebar: 18 },
+          { judul: 'Batas',              kunci: 'batas',    tipe: 'angka',   lebar: 9 },
+          { judul: 'Kelebihan',          kunci: 'lebih',    tipe: 'angka',   lebar: 11 },
+          { judul: 'Durasi (detik)',     kunci: 'durasi',   tipe: 'angka',   lebar: 13 },
+          { judul: 'Ruas',               kunci: 'ruas',     tipe: 'teks',    lebar: 20 },
+          { judul: 'Lintang',            kunci: 'lintang',  tipe: 'angka',   lebar: 12 },
+          { judul: 'Bujur',              kunci: 'bujur',    tipe: 'angka',   lebar: 12 },
+          { judul: 'Jumlah sampel',      kunci: 'sampel',   tipe: 'angka',   lebar: 13 }
+        ] },
+        { nama: 'Ringkasan per Unit', baris: ringkas, kolom: [
+          { judul: 'Unit',                 kunci: 'unit',      tipe: 'teks',  lebar: 18 },
+          { judul: 'Jumlah pelanggaran',   kunci: 'jumlah',    tipe: 'angka', lebar: 18 },
+          { judul: 'Kecepatan tertinggi',  kunci: 'tertinggi', tipe: 'angka', lebar: 19 },
+          { judul: 'Total durasi (detik)', kunci: 'durasi',    tipe: 'angka', lebar: 19 },
+          { judul: 'Total durasi (menit)', kunci: 'menit',     tipe: 'angka', lebar: 19 }
+        ] }
+      ]);
+
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'Pelanggaran_Kecepatan_' + dari + '_sd_' + sampai + '.xlsx';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      el('unduhKabar').textContent = isi.length + ' pelanggaran dari ' + ringkas.length +
+        ' unit diunduh · 2 lembar.';
+    } catch (e) {
+      el('unduhKabar').textContent = 'Gagal menyiapkan berkas: ' + (e && e.message ? e.message : e);
+    } finally {
+      tb.disabled = false; tb.textContent = 'Unduh Excel';
+    }
+  }
+
+  function pasangUnduh() {
+    var v = el('view-events');
+    if (!v || el('unduhPanel')) return;
+
+    var kotak = document.createElement('div');
+    kotak.id = 'unduhPanel';
+    kotak.hidden = true;
+    kotak.style.cssText = 'border:1px solid var(--line);border-radius:11px;padding:11px;margin:0 0 10px';
+    kotak.innerHTML =
+      '<div class="toolrow" style="margin-bottom:8px">' +
+        '<label class="meta" for="unduhDari" style="flex:0 0 auto">Dari</label>' +
+        '<input id="unduhDari" type="date" style="flex:0 0 auto;padding:6px 8px;font-size:12px">' +
+        '<label class="meta" for="unduhSampai" style="flex:0 0 auto">Sampai</label>' +
+        '<input id="unduhSampai" type="date" style="flex:0 0 auto;padding:6px 8px;font-size:12px">' +
+      '</div>' +
+      '<div class="toolrow" style="margin-bottom:8px">' +
+        '<button class="btn sm" id="unduhSemua">Pilih semua</button>' +
+        '<button class="btn sm" id="unduhKosong">Kosongkan</button>' +
+        '<span class="meta" id="unduhJml" style="flex:1 1 auto"></span>' +
+      '</div>' +
+      '<div class="unit-cek" id="unduhUnit"></div>' +
+      '<div class="toolrow" style="margin-top:9px">' +
+        '<button class="btn wide" id="unduhJalan">Unduh Excel</button>' +
+      '</div>' +
+      '<p class="note" id="unduhKabar" style="margin-top:7px">' +
+        'Berkas berisi dua lembar: rincian tiap pelanggaran dan ringkasan per unit. ' +
+        'Kolom tanggal terbaca sebagai tanggal asli di Excel, jadi bisa langsung disortir dan di-pivot.' +
+      '</p>';
+
+    var tabel = v.querySelector('table');
+    v.insertBefore(kotak, tabel);
+
+    var hari = tglLokal(new Date());
+    el('unduhDari').value = hari;
+    el('unduhSampai').value = hari;
+
+    el('unduhUnit').addEventListener('change', hitungPilih);
+    el('unduhSemua').addEventListener('click', function () {
+      el('unduhUnit').querySelectorAll('input[data-unduh]').forEach(function (c) { c.checked = true; });
+      hitungPilih();
+    });
+    el('unduhKosong').addEventListener('click', function () {
+      el('unduhUnit').querySelectorAll('input[data-unduh]').forEach(function (c) { c.checked = false; });
+      hitungPilih();
+    });
+    el('unduhJalan').addEventListener('click', jalankanUnduh);
+
+    /* Tombol CSV lama diganti pembuka panel ini. Node dikloning supaya
+       pendengar lama ikut terlepas. */
+    var lama = el('btnExportEvents');
+    if (lama) {
+      var baru = lama.cloneNode(false);
+      baru.textContent = 'Unduh Excel';
+      lama.parentNode.replaceChild(baru, lama);
+      baru.addEventListener('click', function () {
+        kotak.hidden = !kotak.hidden;
+        if (!kotak.hidden) isiDaftarUnit();
+      });
+    }
+  }
+
+  /* Pemilihan unit di panel Setelan hanya menyaring tampilan. Dikatakan di
+     tempat orang akan mencarinya, bukan hanya di dokumentasi. */
+  function catatanUnit() {
+    var ul = el('unitList');
+    if (!ul || el('unitNb')) return;
+    var p = document.createElement('p');
+    p.id = 'unitNb';
+    p.className = 'hint';
+    p.style.margin = '0 0 7px';
+    p.textContent = 'Pilihan di sini hanya mengatur apa yang tampil di layar. ' +
+                    'Perekaman di server tetap berjalan untuk seluruh unit, 24 jam.';
+    ul.parentNode.insertBefore(p, ul);
+  }
+
   /* -------------------------------------------------------- modal panduan */
   function openGuide() { var g = el('swGuide'); if (g) g.classList.add('on'); }
   function closeGuide() { var g = el('swGuide'); if (g) g.classList.remove('on'); }
@@ -3167,6 +3617,7 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     });
 
     if (el('swReconnect')) el('swReconnect').addEventListener('click', reconnect);
+    pasangTip(); pasangUnduh(); catatanUnit();
 
     /* Teruskan pelanggaran baru ke shell supaya toast tetap muncul di halaman
        lain. Kejadian arsip yang baru dimuat tidak boleh ikut memicu: App
