@@ -385,4 +385,164 @@ function showSwToast(text){var w=document.getElementById('swToastWrap');if(!w){w
 
 // boot
 if(authValid())showApp(); else document.getElementById('login').style.display='flex';
-</script></body></html>
+</script><script id="home-ringkas">
+/* =============================================================================
+   Kartu "Pelanggaran Kecepatan" di halaman Home.
+
+   Dua peringkat untuk SHIFT YANG SEDANG BERJALAN: unit paling sering melanggar,
+   dan ruas jalan paling sering jadi tempat pelanggaran. Keduanya menampilkan
+   jumlah kejadian dan kecepatan tertinggi.
+
+   Pengelompokan dikerjakan Worker lewat GROUP BY di D1, bukan dengan menarik
+   seluruh baris pelanggaran ke browser. Batas shift mengikuti aturan yang sama
+   dengan proxy Minerva: siang 07:00-19:00 WIT, malam 19:00-07:00.
+   ============================================================================= */
+(function () {
+  var API = 'https://speed-watcher-24-7.rahmat-iqbal.workers.dev';
+  var SEGAR_MS = 60000;
+  var sibuk = false;
+
+  function el(id) { return document.getElementById(id); }
+  function esc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function pasangGaya() {
+    if (el('gayaRingkas')) return;
+    var g = document.createElement('style');
+    g.id = 'gayaRingkas';
+    g.textContent =
+      '.rk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}' +
+      '.rk-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;' +
+        'padding:16px 18px 12px;min-width:0}' +
+      '.rk-head{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}' +
+      '.rk-head b{font-size:13px;font-weight:800;color:#33413c}' +
+      '.rk-head span{font-family:var(--mono);font-size:10.5px;color:var(--muted);' +
+        'text-transform:uppercase;letter-spacing:.06em;margin-left:auto}' +
+      '.rk-row{display:flex;align-items:center;gap:10px;padding:8px 0;' +
+        'border-top:1px solid var(--line)}' +
+      '.rk-row:first-of-type{border-top:0}' +
+      '.rk-no{flex:0 0 22px;height:22px;border-radius:7px;background:var(--paper);' +
+        'color:var(--ink);font-family:var(--mono);font-size:11px;font-weight:700;' +
+        'display:flex;align-items:center;justify-content:center}' +
+      '.rk-row.top .rk-no{background:var(--amber);color:#10201d}' +
+      '.rk-nama{flex:1 1 auto;font-size:12.5px;font-weight:600;color:var(--ink);' +
+        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.rk-ang{flex:0 0 auto;text-align:right;font-family:var(--mono);font-size:11px;' +
+        'color:var(--muted);line-height:1.35}' +
+      '.rk-ang b{display:block;font-size:13.5px;color:var(--ink);font-weight:700}' +
+      '.rk-kosong{padding:16px 0 20px;font-size:12.5px;color:var(--muted)}' +
+      '.rk-kaki{display:flex;gap:10px;align-items:center;margin-top:10px;' +
+        'padding-top:10px;border-top:1px solid var(--line)}' +
+      '.rk-kaki button{background:none;border:0;padding:0;cursor:pointer;' +
+        'font-family:inherit;font-size:11.5px;font-weight:700;color:var(--t700)}' +
+      '.rk-kaki button:hover{text-decoration:underline}' +
+      '.rk-kaki small{margin-left:auto;font-family:var(--mono);font-size:10px;' +
+        'color:var(--muted)}' +
+      '.rk-nb{margin-top:10px;font-size:11.5px;line-height:1.55;color:var(--muted)}';
+    document.head.appendChild(g);
+  }
+
+  function pasangWadah() {
+    if (el('ringkasWrap')) return true;
+    var home = el('home');
+    if (!home) return false;
+    var dir = home.querySelector('.dir');
+    if (!dir) return false;
+
+    var w = document.createElement('div');
+    w.className = 'dir';
+    w.id = 'ringkasWrap';
+    w.style.paddingTop = '0';
+    w.innerHTML =
+      '<h2>Pelanggaran Kecepatan</h2>' +
+      '<div class="lead" id="rkLead">Shift berjalan</div>' +
+      '<div class="rk-grid">' +
+        '<div class="rk-card">' +
+          '<div class="rk-head"><b>Unit paling sering</b><span id="rkUnitN">—</span></div>' +
+          '<div id="rkUnit"><div class="rk-kosong">Memuat…</div></div>' +
+        '</div>' +
+        '<div class="rk-card">' +
+          '<div class="rk-head"><b>Ruas paling sering</b><span id="rkRuasN">—</span></div>' +
+          '<div id="rkRuas"><div class="rk-kosong">Memuat…</div></div>' +
+        '</div>' +
+      '</div>' +
+      '<p class="rk-nb">Pelanggaran yang terjadi di luar jaringan jalan — area loading, ' +
+        'dumping, stockpile — dinilai dengan batas luar dan di sini dinamai menurut ruas ' +
+        'terdekat, supaya peringkatnya tidak menumpuk di satu kantong.</p>' +
+      '<div class="rk-kaki">' +
+        '<button type="button" id="rkBuka">Buka Speed Watcher</button>' +
+        '<small id="rkCap">—</small>' +
+      '</div>';
+    dir.parentNode.insertBefore(w, dir.nextSibling);
+
+    el('rkBuka').addEventListener('click', function () {
+      try { showPage('speed'); } catch (e) {}
+    });
+    return true;
+  }
+
+  function baris(daftar, satuan) {
+    if (!daftar || !daftar.length) {
+      return '<div class="rk-kosong">Belum ada pelanggaran pada shift ini.</div>';
+    }
+    return daftar.map(function (d, i) {
+      return '<div class="rk-row' + (i === 0 ? ' top' : '') + '">' +
+        '<span class="rk-no">' + (i + 1) + '</span>' +
+        '<span class="rk-nama" title="' + esc(d.nama) + '">' + esc(d.nama) + '</span>' +
+        '<span class="rk-ang"><b>' + d.jumlah + '</b>' + satuan + '</span>' +
+        '<span class="rk-ang"><b>' + d.maks + '</b>km/j maks</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  /* Jendela shift ditampilkan dalam WIT, bukan jam perangkat: batas shift adalah
+     fakta operasi site, bukan jam dinding pembaca. Bandingkan jam di sidebar yang
+     memang sengaja mengikuti perangkat. */
+  function jamWIT(t) {
+    var d = new Date(t + 9 * 3600000);
+    return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  }
+  function jam(t) {
+    var d = new Date(t);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function tarik() {
+    if (sibuk || !pasangWadah()) return;
+    sibuk = true;
+    fetch(API + '/api/ringkas', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) {
+        el('rkLead').textContent = 'Shift ' + d.shift + ' · ' + d.tanggal + ' · ' +
+          jamWIT(d.mulai) + '–' + jamWIT(d.selesai) + ' WIT';
+        el('rkUnit').innerHTML = baris(d.unit, 'kejadian');
+        el('rkRuas').innerHTML = baris(d.ruas, 'kejadian');
+        el('rkUnitN').textContent = (d.unit || []).length ? 'Top ' + d.unit.length : '';
+        el('rkRuasN').textContent = (d.ruas || []).length ? 'Top ' + d.ruas.length : '';
+        el('rkCap').textContent = d.total + ' pelanggaran shift ini · diperbarui ' + jam(Date.now());
+      })
+      .catch(function (e) {
+        var pesan = '<div class="rk-kosong">Data tidak terbaca (' +
+                    esc(e && e.message ? e.message : e) + ').</div>';
+        el('rkUnit').innerHTML = pesan;
+        el('rkRuas').innerHTML = pesan;
+        el('rkCap').textContent = '—';
+      })
+      .then(function () { sibuk = false; });
+  }
+
+  window.addEventListener('load', function () {
+    pasangGaya();
+    tarik();
+    /* Tab yang ditinggal di belakang tidak memanggil jaringan. */
+    setInterval(function () { if (!document.hidden) tarik(); }, SEGAR_MS);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) tarik();
+    });
+  });
+})();
+</script>
+</body></html>

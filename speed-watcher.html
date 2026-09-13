@@ -2927,22 +2927,85 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
   }
   function pasangSite() { pasangCitra(); pasangRuas(); }
 
-  /* Batas umum Pulau Pakal 35 km/jam, dipaksa SEKALI saja untuk menimpa setelan
-     lama 60 yang tersimpan di browser. Sesudah itu penanda dipasang supaya angka
-     yang diubah lewat panel Setelan tidak ikut ditimpa tiap halaman dibuka.
-     Angka ini harus sama dengan BATAS_KECEPATAN di Worker. */
-  function pasangBatas() {
-    var n = el('cfgLimit'); if (!n) return;
-    var K = 'sw_batas_bawaan_35';
-    var sudah = false; try { sudah = localStorage.getItem(K) === '1'; } catch (e) {}
-    if (sudah) return;
-    if (String(n.value) !== '35') {
-      n.value = 35;
+  /* ---------------------------------------------- batas kecepatan per ruas */
+  /* Batas adalah ketentuan tetap yang tinggal di Worker. Halaman hanya menarik
+     dan menampilkannya — tidak ada jalan mengubahnya dari sini. Dengan begitu
+     angka di layar tidak mungkin berbeda dengan angka yang dipakai server untuk
+     menilai, dan mengubah batas menuntut perubahan kode, bukan klik. */
+  var BATAS = null;
+
+  function tarikBatas() {
+    return fetch(API + '/api/batas', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ruas) throw new Error('tabel batas tidak terbaca');
+        BATAS = d;
+        terapkanBatas();
+        kunciSetelanBatas();
+      })
+      .catch(function (e) { catat('Tabel batas tidak terbaca: ' + (e && e.message ? e.message : e), true); });
+  }
+
+  /* Batas umum dipakai untuk posisi di luar semua ruas; tiap ruas memakai
+     angkanya sendiri. Dijalankan berulang karena pasangRuas() membangun ulang
+     App.zones dan terapkanSetelanZona() bisa memulihkan angka lama dari
+     localStorage — angka server harus selalu menang. */
+  function terapkanBatas() {
+    if (!BATAS || typeof App === 'undefined' || !App.zones) return;
+    var n = el('cfgLimit');
+    if (n && Number(n.value) !== Number(BATAS.batas_luar)) {
+      n.value = BATAS.batas_luar;
       try { readConfig(); } catch (e) {}
-      try { simpanSetelan(); } catch (e) {}
     }
-    var h = el('hLimit'); if (h && String(h.value) === '60') h.value = 35;
-    try { localStorage.setItem(K, '1'); } catch (e) {}
+    var berubah = false;
+    App.zones.forEach(function (z) {
+      var b = BATAS.ruas[z.name];
+      if (b && z.limit !== b) { z.limit = b; berubah = true; }
+    });
+    if (berubah) { try { renderZoneList(); } catch (e) {} try { render(); } catch (e) {} }
+  }
+
+  /* Kolom isian batas diganti keterangan baca-saja. Elemen #cfgLimit sendiri
+     dipertahankan (disembunyikan) karena readConfig() membacanya. */
+  function kunciSetelanBatas() {
+    var n = el('cfgLimit');
+    if (n && !el('batasNb')) {
+      n.type = 'hidden';
+      var f = n.closest ? n.closest('.field') : null;
+      if (f) {
+        var lab = f.querySelector('label'); if (lab) lab.remove();
+        var p = document.createElement('p');
+        p.id = 'batasNb'; p.className = 'hint'; p.style.margin = '0';
+        p.textContent = 'Batas di luar ruas ' + BATAS.batas_luar + ' km/jam. ' +
+          BATAS.jumlah_ruas + ' ruas punya batasnya sendiri, lihat daftar Ruas jalan. ' +
+          'Seluruhnya ditetapkan di server dan tidak bisa diubah dari sini.';
+        f.appendChild(p);
+      }
+    }
+    var zl = el('zoneList');
+    if (zl && !zl.dataset.terkunci) {
+      zl.dataset.terkunci = '1';
+      var kunci = function () {
+        zl.querySelectorAll('input[data-zlim]').forEach(function (c) {
+          c.disabled = true;
+          c.setAttribute('title', 'Ketentuan tetap — diubah lewat kajian, bukan dari dashboard');
+        });
+      };
+      kunci();
+      new MutationObserver(kunci).observe(zl, { childList: true });
+      var h = zl.parentNode ? zl.parentNode.querySelector('.hint') : null;
+      if (h) h.textContent = 'Batas tiap ruas adalah ketentuan tetap yang ditentukan di server. ' +
+                             'Mengubahnya perlu kajian, bukan lewat dashboard.';
+    }
+    var ul = el('unitList');
+    if (ul && !ul.dataset.terkunci) {
+      ul.dataset.terkunci = '1';
+      var kunciUnit = function () {
+        ul.querySelectorAll('input[data-ulim]').forEach(function (c) { c.disabled = true; });
+      };
+      kunciUnit();
+      new MutationObserver(kunciUnit).observe(ul, { childList: true });
+    }
   }
 
   /* ------------------------------------------------ data unit dari server */
@@ -3056,13 +3119,20 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
             maxSpeed: r.kecepatan_max,
             avgSpeed: r.kecepatan_rata || r.kecepatan_max,
             n: r.sampel || 0, duration: Math.max(0, selesai - mulai),
-            lat: r.lat, lon: r.lon, zone: null, location: null,
+            lat: r.lat, lon: r.lon,
+            /* Ruas datang dari server: itulah ruas yang dipakai server saat
+               menilai. Menghitung ulang di sini berisiko menampilkan ruas lain
+               daripada yang jadi dasar penilaian. Kejadian di luar semua ruas
+               diberi nama ruas terdekat dengan penanda "(sekitar)" — supaya
+               tetap bisa dibaca, tanpa mengaku terjadi di ruas itu. */
+            zone: r.ruas || (r.ruas_dekat ? r.ruas_dekat + ' (sekitar)' : null),
+            location: null,
             open: !!r.berjalan, source: 'server'
           };
         }).filter(function (e) {
           return isFinite(e.tStart) && isFinite(e.lat) && isFinite(e.lon) && isFinite(e.maxSpeed);
         });
-        daftar.forEach(labelRuas);
+        daftar.forEach(labelRuas);   // hanya mengisi yang ruasnya kosong
         gabung(daftar);
         try { render(); } catch (e) {}
         kabar(daftar.length
@@ -3421,7 +3491,10 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
 
       var isi = baris.map(function (x) {
         var m = Math.round(x.mulai / 1000), sl = Math.round(x.selesai / 1000);
-        var ev = { lat: x.lat, lon: x.lon, zone: null };
+        /* Ruas diambil apa adanya dari server. zonesAt() hanya dipakai kalau
+           barisnya lama dan belum punya kolom ruas. */
+        var ev = { lat: x.lat, lon: x.lon,
+                   zone: x.ruas || (x.ruas_dekat ? x.ruas_dekat + ' (sekitar)' : null) };
         labelRuas(ev);
         return {
           tanggal: x.tanggal,
@@ -3593,7 +3666,9 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     var sc = el('scrim'); if (sc) sc.classList.remove('on');
     var g = el('swGate'); if (g) g.classList.remove('on');
 
-    pasangBatas(); pasangSite(); setInterval(pasangSite, 1200);
+    pasangSite();
+    setInterval(function () { pasangSite(); terapkanBatas(); }, 1200);
+    tarikBatas();
     pasangKontrol(); tandaiRiwayat();
     setConn('warn', 'Menghubungkan…');
 
