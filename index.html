@@ -427,8 +427,10 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
         'color:var(--ink);font-family:var(--mono);font-size:11px;font-weight:700;' +
         'display:flex;align-items:center;justify-content:center}' +
       '.rk-row.top .rk-no{background:var(--amber);color:#10201d}' +
-      '.rk-nama{flex:1 1 auto;font-size:12.5px;font-weight:600;color:var(--ink);' +
+      '.rk-nama{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink);' +
         'overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.rk-nama small{display:block;margin-top:1px;font-family:var(--mono);font-size:9.5px;' +
+        'font-weight:600;letter-spacing:.03em;color:var(--muted)}' +
       '.rk-ang{flex:0 0 auto;text-align:right;font-family:var(--mono);font-size:11px;' +
         'color:var(--muted);line-height:1.35}' +
       '.rk-ang b{display:block;font-size:13.5px;color:var(--ink);font-weight:700}' +
@@ -488,9 +490,14 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
       return '<div class="rk-kosong">Belum ada pelanggaran pada shift ini.</div>';
     }
     return daftar.map(function (d, i) {
+      /* Batas ruas ikut ditampilkan supaya angka kecepatan maksimum punya
+         pembanding di tempat yang sama; tanpa itu 41 km/jam tidak berarti apa-apa
+         sampai pembacanya ingat ruas itu berbatas berapa. */
+      var batas = (d.batas === undefined || d.batas === null) ? '' :
+        '<small>batas ' + d.batas + ' km/j</small>';
       return '<div class="rk-row' + (i === 0 ? ' top' : '') + '">' +
         '<span class="rk-no">' + (i + 1) + '</span>' +
-        '<span class="rk-nama" title="' + esc(d.nama) + '">' + esc(d.nama) + '</span>' +
+        '<span class="rk-nama" title="' + esc(d.nama) + '">' + esc(d.nama) + batas + '</span>' +
         '<span class="rk-ang"><b>' + d.jumlah + '</b>' + satuan + '</span>' +
         '<span class="rk-ang"><b>' + d.maks + '</b>km/j maks</span>' +
       '</div>';
