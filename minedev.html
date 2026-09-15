@@ -581,6 +581,12 @@ select.inp{cursor:pointer;text-align:left}
             </div>
             </div>
             <p class="note" style="margin-top:12px">Sekali setup: di Supabase buat tabel <code>dashboard(id text primary key, data jsonb, updated_at timestamptz)</code> dan izinkan akses anon (lihat panduan yang diberikan). Tempel <b>Project URL</b> + <b>anon key</b> di atas lalu klik Hubungkan. Konfigurasi ini tersimpan di perangkat ini; bagikan URL + key yang sama ke rekan agar melihat data yang sama.</p>
+            <div id="smr_migrate_box" style="display:none;margin-top:14px;padding:12px 14px;border:1px solid var(--line2);border-radius:10px;background:var(--surface)">
+              <div style="font-size:12.5px;font-weight:700;margin-bottom:5px">Penyimpanan Jam Kerja SMR</div>
+              <div id="smr_migrate_info" class="note" style="margin:0 0 9px">&mdash;</div>
+              <button id="smr_migrate_btn" class="seg-btn" style="padding:8px 14px;border:none;border-radius:9px;background:var(--brand);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">Pindahkan sekarang</button>
+              <div id="smr_migrate_msg" style="margin-top:9px;font-size:12px;color:var(--muted);line-height:1.6"></div>
+            </div>
           </div></div>
         </div>
 
@@ -2129,10 +2135,11 @@ function applySMRPaste(){
     if(x.cat)set[x.eq][x.cat]=r4(num(set[x.eq][x.cat])+x.val);
     else if(x.val>0){set[x.eq]._bad=set[x.eq]._bad||{};set[x.eq]._bad[x.code]=r4(num(set[x.eq]._bad[x.code])+x.val);}
   });
+  s.groups.forEach(g=>{const a=g.split("\u0001");smrMark(a[0],a[1]);});
   const last=r.rows[r.rows.length-1];
   SMR_DATE=last.dt;SMR_SHIFT=last.sh;SMR_MONTH=SMR_DATE.slice(0,7);
   $("#smr_date").value=SMR_DATE;syncShiftSeg();
-  save();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
+  save();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();updateSMRMigrateUI();
   let msg='<b style="color:var(--ok)">✓ '+r.rows.length+' baris disimpan</b> · '+s.label+' · '+
     s.shifts.map(x=>SHIFT_LAB[x]||x).join(" + ")+' · '+s.groups.length+' alat-shift';
   if(r.skip)msg+=' · <span class="meta">'+r.skip+' baris dilewati</span>';
@@ -2159,10 +2166,11 @@ function applySMRPatch(){
   const keys=Object.keys(sums);
   if(!keys.length&&!r.bad.length){box.innerHTML='<b style="color:#c0392b">Tidak ada kategori yang bisa diperbaiki dari baris itu.</b>';return;}
   keys.forEach(k=>{const a=k.split("\u0001");ensureShift(a[0],a[1])[a[2]][a[3]]=r4(sums[k]);});
+  Object.keys(touched).forEach(t=>{const a=t.split("\u0001");smrMark(a[0],a[1]);});
   const last=r.rows[r.rows.length-1];
   SMR_DATE=last.dt;SMR_SHIFT=last.sh;SMR_MONTH=SMR_DATE.slice(0,7);
   $("#smr_date").value=SMR_DATE;syncShiftSeg();
-  save();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
+  save();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();updateSMRMigrateUI();
   let msg='<b style="color:var(--ok)">✓ '+keys.length+' nilai diperbaiki</b>';
   if(r.skip)msg+=' · <span class="meta">'+r.skip+' baris dilewati</span>';
   if(r.bad.length)msg+='<br><b style="color:#c0392b">Kode terlarang diabaikan pada mode Perbaiki:</b> '+
@@ -2214,7 +2222,7 @@ function buildSMRInputGrid(){
     const e=el.dataset.e,k=el.dataset.k;
     el.value=(data[e]&&data[e][k])??"";
     el.disabled=S.mode!=="edit";
-    el.addEventListener("input",()=>{ensureShift(SMR_DATE,SMR_SHIFT)[e][k]=el.value;save();recalcAll();renderSMRTotals();});
+    el.addEventListener("input",()=>{ensureShift(SMR_DATE,SMR_SHIFT)[e][k]=el.value;smrMark(SMR_DATE,SMR_SHIFT);save();recalcAll();renderSMRTotals();});
   });
   renderSMRTotals();
 }
@@ -2275,6 +2283,7 @@ function buildSMRSavedList(){
       if(confirm("Hapus seluruh data tanggal "+fmtDateID(d)+" (semua shift)?")){
         delete S.smr.byDate[d];if(SMR_DATE===d)SMR_DATE=TODAY_ISO;
         save();$("#smr_date").value=SMR_DATE;buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
+        smrDeleteDate(d).then(()=>updateSMRMigrateUI()).catch(e=>setCloudStatus("Gagal hapus di server: "+e.message,"bad"));
       }
     };
   });
@@ -3059,20 +3068,38 @@ function setupLogin(){
 async function afterAuth(){
   updateGreet();
   setCloudStatus("Menyambungkan…");
-  try{const row=await cloudPull();if(row){applyCloud(row.data||{});lastSyncTs=row.updated_at;setCloudStatus("Tersinkron · "+new Date().toLocaleTimeString("id-ID"),"ok");}
-    else setCloudStatus("Tersambung (belum ada data online)","ok");startPoll();}
+  try{
+    const row=await cloudPull();
+    if(row){applyCloud(row.data||{});lastSyncTs=row.updated_at;}
+    let n=0;try{n=await smrPullAll();}catch(e){}
+    setCloudStatus((row||n)?("Tersinkron · "+n+" baris SMR · "+new Date().toLocaleTimeString("id-ID")):"Tersambung (belum ada data online)","ok");
+    try{setupSMRInput();}catch(e){} try{recalcAll();}catch(e){}
+    updateSMRMigrateUI();
+    startPoll();
+  }
   catch(e){setCloudStatus("Gagal: "+e.message,"bad");}
 }
 function cloudBase(){return CFG.url.replace(/\/+$/,"").replace(/\/rest\/v1$/,"").replace(/\/+$/,"")+"/rest/v1/dashboard";}
-function cloudPayload(){return {rekla:S.rekla,smr:S.smr,sf:S.sf,road:S.road,gantt:S.gantt};}
+function cloudPayload(){
+  const smr=Object.assign({},S.smr);
+  // byDate baru dilepas dari baris 'pakal' setelah pemindahan tuntas dan terverifikasi.
+  // Sebelum itu baris 'pakal' tetap jadi cadangan, supaya tidak ada perangkat yang kehilangan data lama.
+  if(smr.moved)delete smr.byDate;
+  return {rekla:S.rekla,smr:smr,sf:S.sf,road:S.road,gantt:S.gantt};
+}
 function refreshUIFromState(){
   try{buildInputs();}catch(e){} try{setupSMRDash();}catch(e){} try{buildGantt();}catch(e){}
   try{recalcAll();}catch(e){} try{renderFeatureDetail();updateMapSel();}catch(e){}
 }
 function applyCloud(data){
   if(!data)return;
+  const keepByDate=(S.smr&&S.smr.byDate)||{};
   ["rekla","smr","sf","road","gantt"].forEach(k=>{if(data[k]!==undefined)S[k]=data[k];});
+  if(!S.smr||typeof S.smr!=="object")S.smr={plan:{},start:"",end:""};
+  const legacy=S.smr.byDate||null;   // sisa data SMR yang masih menumpang di baris 'pakal'
+  S.smr.byDate=keepByDate;           // sumber kebenaran byDate = baris smr|tgl|shift
   try{normRekla(S.rekla);}catch(e){}
+  try{if(legacy)mergeLegacyByDate(legacy);}catch(e){}
   try{migrateSMRShift();}catch(e){}
   try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
   refreshUIFromState();
@@ -3092,13 +3119,203 @@ async function cloudPush(){
   if(r.ok){lastSyncTs=ts;setCloudStatus("Tersinkron · "+new Date().toLocaleTimeString("id-ID"),"ok");}
   else{setCloudStatus("Gagal simpan (HTTP "+r.status+")","bad");}
 }
-function cloudOnSave(){if(!CFG.url||!CFG.key)return;lastLocalEdit=Date.now();clearTimeout(pushT);pushT=setTimeout(()=>cloudPush().catch(()=>{}),900);}
+/* ---------------------------------------------------------------
+   PENYIMPANAN JAM KERJA SMR — satu baris per tanggal + shift
+   id: smr|YYYY-MM-DD|DS   ·   data: {type,tanggal,shift,alat,updatedBy}
+   Tabel yang dipakai sama (dashboard), tanpa RLS tambahan.
+--------------------------------------------------------------- */
+const SMRIDKEY="pakal_smr_ids_v1";
+let smrTs={};          // id baris -> updated_at yang terakhir diketahui perangkat ini
+let smrDirty={};       // "tgl|shift" -> menunggu dikirim
+let smrIndexSig="";
+
+function smrRowId(dt,sh){return "smr|"+dt+"|"+sh;}
+function parseSmrRowId(id){const p=String(id).split("|");return (p.length===3&&p[0]==="smr")?{dt:p[1],sh:p[2]}:null;}
+function loadSmrIds(){try{return JSON.parse(localStorage.getItem(SMRIDKEY))||{};}catch(e){return {};}}
+function saveSmrIds(m){try{localStorage.setItem(SMRIDKEY,JSON.stringify(m));}catch(e){}}
+function smrMark(dt,sh){if(dt&&sh)smrDirty[dt+"|"+sh]=1;}
+function smrSplitKey(k){const i=k.lastIndexOf("|");return {dt:k.slice(0,i),sh:k.slice(i+1)};}
+
+/* Menyerap byDate lama tanpa menimpa yang sudah ada di penyimpanan baru. */
+function mergeLegacyByDate(legacy){
+  if(!legacy||typeof legacy!=="object")return 0;
+  let n=0;
+  Object.keys(legacy).forEach(dt=>{
+    const d=legacy[dt];if(!d||typeof d!=="object")return;
+    const norm=Object.keys(d).some(k=>EQUIP.indexOf(k)>=0)?{"-":d}:d;
+    if(!S.smr.byDate[dt])S.smr.byDate[dt]={};
+    Object.keys(norm).forEach(sh=>{if(!S.smr.byDate[dt][sh]){S.smr.byDate[dt][sh]=norm[sh];n++;}});
+  });
+  return n;
+}
+
+async function smrPullAll(){
+  if(!CFG.url||!CFG.key)return 0;
+  const r=await fetch(cloudBase()+"?id=like.smr%7C*&select=id,data,updated_at&order=id",{headers:cloudHeaders()});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const j=await r.json()||[];
+  const now={};let n=0;
+  j.forEach(row=>{
+    const k=parseSmrRowId(row.id);if(!k)return;
+    const alat=row.data&&row.data.alat;if(!alat||typeof alat!=="object")return;
+    if(!S.smr.byDate[k.dt])S.smr.byDate[k.dt]={};
+    S.smr.byDate[k.dt][k.sh]=alat;
+    smrTs[row.id]=row.updated_at;now[row.id]=row.updated_at;n++;
+  });
+  // baris yang dulu ada di server lalu hilang = dihapus orang lain
+  const prev=loadSmrIds();
+  Object.keys(prev).forEach(id=>{
+    if(now[id])return;
+    const k=parseSmrRowId(id);if(!k)return;
+    if(S.smr.byDate[k.dt]&&S.smr.byDate[k.dt][k.sh]){
+      delete S.smr.byDate[k.dt][k.sh];
+      if(!Object.keys(S.smr.byDate[k.dt]).length)delete S.smr.byDate[k.dt];
+    }
+    delete smrTs[id];
+  });
+  saveSmrIds(now);
+  smrIndexSig=j.map(x=>x.id+"@"+x.updated_at).join(";");
+  try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
+  return n;
+}
+
+async function smrPushKeys(keys){
+  if(!CFG.url||!CFG.key||!keys.length)return 0;
+  const by=(displayName()||(AUTH&&AUTH.email)||"");
+  let sent=0;
+  for(let i=0;i<keys.length;i+=40){
+    const ts=new Date().toISOString();
+    const body=keys.slice(i,i+40).map(k=>{
+      const x=smrSplitKey(k);
+      const alat=S.smr.byDate[x.dt]&&S.smr.byDate[x.dt][x.sh];
+      return alat?{id:smrRowId(x.dt,x.sh),data:{type:"smr",tanggal:x.dt,shift:x.sh,alat:alat,updatedBy:by},updated_at:ts}:null;
+    }).filter(Boolean);
+    if(!body.length)continue;
+    const r=await fetch(cloudBase(),{method:"POST",
+      headers:Object.assign(cloudHeaders(),{Prefer:"resolution=merge-duplicates,return=minimal"}),
+      body:JSON.stringify(body)});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const ids=loadSmrIds();
+    body.forEach(b=>{smrTs[b.id]=ts;ids[b.id]=ts;});
+    saveSmrIds(ids);
+    sent+=body.length;
+  }
+  return sent;
+}
+
+async function smrPushDirty(){
+  const keys=Object.keys(smrDirty);
+  if(!keys.length)return 0;
+  smrDirty={};
+  try{return await smrPushKeys(keys);}
+  catch(e){keys.forEach(k=>smrDirty[k]=1);throw e;}   // gagal kirim -> tetap antre
+}
+
+async function smrDeleteDate(dt){
+  if(!CFG.url||!CFG.key)return;
+  const r=await fetch(cloudBase()+"?id=like."+encodeURIComponent("smr|"+dt+"|")+"*",{method:"DELETE",headers:cloudHeaders()});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const ids=loadSmrIds();
+  Object.keys(ids).forEach(id=>{const k=parseSmrRowId(id);if(k&&k.dt===dt){delete ids[id];delete smrTs[id];}});
+  saveSmrIds(ids);
+  Object.keys(smrDirty).forEach(k=>{if(smrSplitKey(k).dt===dt)delete smrDirty[k];});
+}
+
+async function smrPollChanges(){
+  if(!CFG.url||!CFG.key)return 0;
+  const r=await fetch(cloudBase()+"?id=like.smr%7C*&select=id,updated_at&order=id",{headers:cloudHeaders()});
+  if(!r.ok)return 0;
+  const j=await r.json()||[];
+  const sig=j.map(x=>x.id+"@"+x.updated_at).join(";");
+  if(sig===smrIndexSig)return 0;
+  const now={};j.forEach(x=>now[x.id]=x.updated_at);
+  const changed=j.filter(x=>smrTs[x.id]!==x.updated_at).length;
+  const prev=loadSmrIds();
+  const removed=Object.keys(prev).filter(id=>!now[id]).length;
+  smrIndexSig=sig;
+  if(!changed&&!removed){saveSmrIds(now);return 0;}
+  return await smrPullAll();
+}
+
+/* ---- pemindahan data lama dari baris 'pakal' ke baris per tanggal+shift ---- */
+function smrUnmigrated(){
+  const out=[];
+  Object.keys(S.smr.byDate||{}).forEach(dt=>{
+    Object.keys(S.smr.byDate[dt]||{}).forEach(sh=>{
+      if(!smrTs[smrRowId(dt,sh)])out.push(dt+"|"+sh);
+    });
+  });
+  return out;
+}
+function updateSMRMigrateUI(){
+  const box=$("#smr_migrate_box");if(!box)return;
+  const list=smrUnmigrated();
+  const total=Object.keys(S.smr.byDate||{}).length;
+  const info=$("#smr_migrate_info"),b=$("#smr_migrate_btn");
+  if(!CFG.url||!CFG.key){box.style.display="none";return;}
+  box.style.display="";
+  if(smrMoved()&&!list.length){
+    if(info)info.innerHTML='Seluruh data SMR tersimpan sebagai baris tersendiri (<code>smr|tanggal|shift</code>). '+
+      total+' tanggal · '+Object.keys(smrTs).length+' baris di server. Baris <code>pakal</code> sudah tidak memuat data SMR.';
+    if(b)b.style.display="none";
+    return;
+  }
+  if(b)b.style.display="";
+  if(list.length){
+    const dts=[...new Set(list.map(k=>smrSplitKey(k).dt))].sort();
+    if(info)info.innerHTML='<b style="color:#c0392b">'+list.length+' baris belum dipindah</b> ('+dts.length+' tanggal, '+
+      fmtDateID(dts[0])+' &ndash; '+fmtDateID(dts[dts.length-1])+'). Data ini masih menumpang di baris <code>pakal</code>, '+
+      'dan baris itu tetap dipertahankan sebagai cadangan sampai pemindahan tuntas. '+
+      'Angkanya tetap tampil dan tetap bisa diedit selama menunggu.';
+  }else{
+    if(info)info.innerHTML='Semua '+total+' tanggal sudah punya barisnya sendiri di server. '+
+      'Tinggal satu langkah: menutup penyimpanan lama, yaitu melepas data SMR dari baris <code>pakal</code>.';
+  }
+}
+function smrMoved(){return !!(S.smr&&S.smr.moved);}
+async function smrMigrateAll(){
+  const msg=$("#smr_migrate_msg"),btn=$("#smr_migrate_btn");
+  const list=smrUnmigrated();
+  if(!list.length){if(msg)msg.innerHTML="Tidak ada yang perlu dipindah.";return;}
+  if(btn){btn.disabled=true;btn.textContent="Memindahkan…";}
+  if(msg)msg.innerHTML="Mengirim "+list.length+" baris…";
+  try{
+    const sent=await smrPushKeys(list);
+    if(msg)msg.innerHTML="Terkirim "+sent+" baris. Membaca ulang dari server sebagai bukti…";
+    smrIndexSig="";
+    const back=await smrPullAll();
+    const sisa=smrUnmigrated().length;
+    if(sisa){
+      updateSMRMigrateUI();
+      if(msg)msg.innerHTML='<b style="color:#c0392b">Masih tersisa '+sisa+' baris.</b> '+sent+' baris dikirim, '+back+
+        ' terbaca kembali. Penyimpanan lama <b>tidak</b> ditutup &mdash; data lama masih aman di baris <code>pakal</code>. Coba tekan sekali lagi.';
+      return;
+    }
+    S.smr.moved=true;                         // baru sekarang byDate dilepas dari baris 'pakal'
+    save();
+    await cloudPush();
+    updateSMRMigrateUI();
+    if(msg)msg.innerHTML='<b style="color:var(--ok)">✓ Selesai.</b> '+sent+' baris dikirim, '+back+
+      ' baris terbaca kembali dari server sebagai bukti. Baris <code>pakal</code> sudah ditulis ulang tanpa data SMR.';
+  }catch(e){
+    if(msg)msg.innerHTML='<b style="color:#c0392b">Gagal: '+e.message+'</b> Data lokal tidak berubah, coba lagi.';
+  }finally{ if(btn){btn.disabled=false;btn.textContent="Pindahkan sekarang";} }
+}
+
+function cloudOnSave(){if(!CFG.url||!CFG.key)return;lastLocalEdit=Date.now();clearTimeout(pushT);
+  pushT=setTimeout(()=>{
+    cloudPush().catch(()=>{});
+    smrPushDirty().then(n=>{if(n)setCloudStatus("Tersinkron · "+n+" baris SMR · "+new Date().toLocaleTimeString("id-ID"),"ok");})
+      .catch(e=>setCloudStatus("Gagal simpan SMR: "+e.message,"bad"));
+  },900);}
 function startPoll(){stopPoll();if(!CFG.auto)return;pollIV=setInterval(async()=>{
   if(!CFG.url||!CFG.key)return;
   if(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
   if(Date.now()-lastLocalEdit<5000)return;
   try{const row=await cloudPull();if(row&&row.updated_at!==lastSyncTs){lastSyncTs=row.updated_at;applyCloud(row.data||{});
     setCloudStatus("Diperbarui dari online · "+new Date().toLocaleTimeString("id-ID"),"ok");}}catch(e){}
+  try{const n=await smrPollChanges();if(n){try{setupSMRInput();}catch(e){}try{recalcAll();}catch(e){}updateSMRMigrateUI();
+    setCloudStatus("Data SMR diperbarui · "+new Date().toLocaleTimeString("id-ID"),"ok");}}catch(e){}
 },20000);}
 function stopPoll(){if(pollIV)clearInterval(pollIV);pollIV=null;}
 async function cloudConnect(){
@@ -3111,6 +3328,9 @@ async function cloudConnect(){
         applyCloud(row.data||{});lastSyncTs=row.updated_at;setCloudStatus("Tersinkron (memuat online) · "+new Date().toLocaleTimeString("id-ID"),"ok");
       } else { await cloudPush(); } }
     else { await cloudPush(); }
+    try{await smrPullAll();}catch(e){}
+    try{setupSMRInput();}catch(e){} try{recalcAll();}catch(e){}
+    updateSMRMigrateUI();
     startPoll();
   }catch(e){setCloudStatus("Gagal: "+e.message+" (cek URL/key & kebijakan RLS)","bad");}
 }
@@ -3118,6 +3338,9 @@ function cloudDisconnect(){CFG.url="";CFG.key="";saveCfg();stopPoll();
   const u=$("#cloud_url"),k=$("#cloud_key");if(u)u.value="";if(k)k.value="";setCloudStatus("Lokal (terputus)");}
 function setupCloudUI(){
   loadCfg();
+  smrTs=loadSmrIds();
+  const mb=$("#smr_migrate_btn");if(mb)mb.onclick=smrMigrateAll;
+  updateSMRMigrateUI();
   if(HAS_AUTH){
     loadAuth(); setupLogin();
     const wrap=$("#cloud_manual");if(wrap)wrap.style.display="none";
