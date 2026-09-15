@@ -463,7 +463,7 @@ select.inp{cursor:pointer;text-align:left}
 
       <!-- ===== SMR ===== -->
       <section class="sec" id="sec-smr">
-        <p class="subnote">Physical Availability (PA), Use of Availability (UA), dan Effective Working Hours (EWH) per alat, dihitung dari distribusi waktu yang diisi di halaman <b>Input Data</b>.</p>
+        <p class="subnote">Physical Availability (PA), Use of Availability (UA), dan Effective Working Hours (EWH) per alat, dihitung dari distribusi waktu yang diisi di halaman <b>Input Data</b>. MOHH = seluruh kategori dikurangi Holiday / Fasting Month.</p>
         <div style="margin-bottom:18px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
           <div class="field" style="margin:0"><label>Tanggal Awal</label><input class="inp" type="date" id="smr_dash_start" style="max-width:170px"></div>
           <div class="field" style="margin:0"><label>Tanggal Akhir</label><input class="inp" type="date" id="smr_dash_end" style="max-width:170px"></div>
@@ -482,7 +482,7 @@ select.inp{cursor:pointer;text-align:left}
         <div class="card" style="margin-bottom:18px">
           <div class="card-h"><h3>Ketersediaan &amp; Jam Kerja per Alat</h3><span class="meta" id="smr_tag">Hari Kemarin</span></div>
           <div class="card-b pt"><div class="tbl-scroll"><table id="smr_tbl">
-            <thead><tr><th>Alat</th><th>Total Waktu</th><th>PA %</th><th>UA %</th><th>EWH (jam)</th></tr></thead>
+            <thead><tr><th>Alat</th><th>MOHH (jam)</th><th>PA %</th><th>UA %</th><th>EWH (jam)</th></tr></thead>
             <tbody></tbody><tfoot></tfoot></table></div></div>
         </div>
 
@@ -613,17 +613,24 @@ select.inp{cursor:pointer;text-align:left}
           <div class="card" style="margin-bottom:18px"><div class="card-b" style="padding-top:18px">
             <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px">
               <div class="field" style="margin:0"><label>Tanggal Data</label><input class="inp" id="smr_date" type="date" style="max-width:180px"></div>
-              <div class="seg" id="smr_mode_seg"><button data-m="manual" class="on">Isi Manual</button><button data-m="paste">Tempel Data</button></div>
-              <span class="meta" id="smr_date_info" style="margin-left:auto">—</span>
+              <div class="field" style="margin:0"><label>Shift</label><div class="seg" id="smr_shift_seg"><button data-s="DS" class="on">Day Shift</button><button data-s="NS">Night Shift</button><button data-s="-">Tanpa shift</button></div></div>
+              <div class="seg" id="smr_mode_seg"><button data-m="manual" class="on">Isi Manual</button><button data-m="paste">Kirim Data</button><button data-m="patch">Perbaiki</button></div>
+              <span class="meta" id="smr_date_info" style="margin-left:auto">&mdash;</span>
             </div>
             <div id="smr_paste_box" class="hidden" style="margin-bottom:14px">
-              <p class="note" style="margin:0 0 8px">Tempel data mentah (format: <code>SMR 06⇥KODE⇥nilai</code>, satu baris per kode). Sistem mengonversi otomatis ke grid manual di bawah sehingga bisa diedit. Kode terbaca: RTM→Kerja, SWR→Hujan, DME→Moving, SCU→P2H, SRG/DTR→Refueling, SRM→Rest, SST→Safety, DSP→Pray, SCS→Change Shift, BBU/BBS→Down.</p>
-              <textarea class="inp" id="smr_paste" rows="7" placeholder="SMR 06&#9;RTM&#9;10.548\nSMR 06&#9;SWR&#9;0\n..." style="width:100%;font-family:ui-monospace,monospace;font-size:12px;resize:vertical"></textarea>
-              <div style="margin-top:8px"><button id="smr_paste_apply" class="seg-btn" style="padding:9px 16px;border:none;border-radius:9px;background:var(--brand);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">Terapkan ke tanggal ini</button>
-                <span id="smr_paste_msg" style="margin-left:12px;font-size:12px;color:var(--muted)"></span></div>
+              <p class="note" style="margin:0 0 8px">Tempel ekspor mentah apa adanya &mdash; boleh satu shift, boleh berhari-hari sekaligus, boleh campur Day dan Night Shift. Enam kolom dipisah tab: <code>tanggal &#8677; shift &#8677; lokasi &#8677; alat &#8677; kode &#8677; jam</code>. Tanggal dan shift dibaca dari isi tempelan, jadi pilihan di atas tidak perlu diubah dulu. <b>Setiap tanggal + shift + alat yang muncul akan diganti seluruhnya</b>; yang tidak muncul tidak disentuh.</p>
+              <textarea class="inp" id="smr_paste" rows="8" placeholder="9/14/2026&#9;Day Shift&#9;Front&#9;SMR 06&#9;RTM&#9;10.51611111&#10;9/14/2026&#9;Day Shift&#9;Front&#9;SMR 06&#9;SCU&#9;0.05&#10;..." style="width:100%;font-family:ui-monospace,monospace;font-size:12px;resize:vertical"></textarea>
+              <div style="margin-top:8px"><button id="smr_paste_apply" class="seg-btn" style="padding:9px 16px;border:none;border-radius:9px;background:var(--brand);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">Simpan data</button></div>
+              <div id="smr_paste_msg" style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.65"></div>
             </div>
-            <div class="tbl-scroll"><table id="smr_input_tbl"><thead><tr><th>Kategori Waktu (jam)</th></tr></thead><tbody></tbody></table></div>
-            <p class="note">Isi durasi tiap kategori (jam) per alat untuk tanggal terpilih. Setiap perubahan tersimpan otomatis. Pilih tanggal lain untuk menambah data hari lain.</p>
+            <div id="smr_patch_box" class="hidden" style="margin-bottom:14px">
+              <p class="note" style="margin:0 0 8px">Untuk koreksi kecil tanpa mengirim ulang seluruh shift. Format barisnya sama persis dengan ekspor, satu baris pun boleh. <b>Hanya kategori yang disebut yang diganti</b>, sisanya utuh. Kalau satu kategori punya beberapa kode (misalnya SRG dan DTR), sertakan keduanya bila keduanya berubah &mdash; nilainya dijumlahkan lalu menggantikan kategori itu.</p>
+              <textarea class="inp" id="smr_patch" rows="4" placeholder="9/14/2026&#9;Day Shift&#9;Front&#9;SMR 09&#9;RTM&#9;11.5" style="width:100%;font-family:ui-monospace,monospace;font-size:12px;resize:vertical"></textarea>
+              <div style="margin-top:8px"><button id="smr_patch_apply" class="seg-btn" style="padding:9px 16px;border:none;border-radius:9px;background:var(--brand);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">Terapkan perbaikan</button></div>
+              <div id="smr_patch_msg" style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.65"></div>
+            </div>
+            <div class="tbl-scroll"><table id="smr_input_tbl"><thead><tr><th>Kategori Waktu (jam)</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+            <p class="note">Angka di grid ini berlaku untuk tanggal <b>dan shift</b> yang dipilih di atas. Setiap perubahan tersimpan otomatis. Total tiap alat harus 12 jam per shift; 24 jam untuk data lama yang belum bershift.</p>
             <div id="smr_saved" style="margin-top:14px"></div>
           </div></div>
           <div class="card"><div class="card-b" style="padding-top:18px;max-width:520px">
@@ -1758,10 +1765,19 @@ const M3=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des
 const EQUIP=["SMR 06","SMR 07","SMR 08","SMR 09","SMR Enviro"];
 const TCATS=[["kerja","Waktu Kerja"],["hujan","Waktu Hujan"],["moving","Moving Equipment"],["p2h","P2H"],
  ["refuel","Refueling & Greasing"],["rest","Rest & Meal"],["safety","Safety Talk"],["pray","Sunday & Friday Pray"],
- ["change","Change Shift"],["down","Down Time"]];
-// SMR raw code -> category (codes summing into one category appear multiple times)
-const SMR_CODEMAP={RTM:"kerja",SWR:"hujan",DME:"moving",SCU:"p2h",SRG:"refuel",DTR:"refuel",
- SRM:"rest",SST:"safety",DSP:"pray",SCS:"change",BBU:"down",BBS:"down"};
+ ["change","Change Shift"],["nooper","No Operator"],["nojob","No Job"],["fogdust","Fog / Dust"],
+ ["holiday","Holiday / Fasting Month"],["down","Down Time"]];
+// kategori yang TIDAK ikut dihitung sebagai MOHH (dasar PA dan UA)
+const MOHH_EXCL=["holiday"];
+// kode mentah ekspor -> kategori (beberapa kode boleh menuju kategori yang sama)
+const SMR_CODEMAP={RLD:"kerja",RTM:"kerja",DFR:"kerja",SWS:"hujan",DME:"moving",SCU:"p2h",
+ SRG:"refuel",DTR:"refuel",SRM:"rest",SST:"safety",SFS:"pray",SCS:"change",
+ SNO:"nooper",SDP:"nooper",SOP:"nooper",SNJ:"nojob",SFD:"fogdust",
+ SPH:"holiday",SFM:"holiday",BBU:"down",BBS:"down"};
+// kode yang seharusnya tidak muncul di ekspor SMR -> beri peringatan
+const SMR_BADCODES=["DSP","DWL","DWT","SFR","SRK","SUA","SOS","STD","SNS","SWD","SWR"];
+const SHIFT_ORDER=["DS","NS","-"];
+const SHIFT_LAB={DS:"Day Shift",NS:"Night Shift","-":"Tanpa shift"};
 const now=new Date();
 const CUR_MONTH=now.getMonth(), CUR_YEAR=now.getFullYear(), TODAY=now.getDate();
 const MONTHS_ELAPSED=CUR_MONTH;             // completed months: Jan..(CUR_MONTH-1)
@@ -1793,6 +1809,17 @@ function normRekla(rk){
   if(!hadTargets){const annual=parseFloat(String(rk.annual).replace(",","."))||0;if(annual>0){const per=Math.round(annual/12*1000)/1000;rk.targets=Array(12).fill(per);}}
 }
 normRekla(S.rekla);
+/* Data SMR lama berbentuk byDate[tgl][alat][kategori] (tanpa shift).
+   Dipindah ke byDate[tgl]["-"][alat][kategori] supaya tidak ada angka dashboard yang berubah. */
+function migrateSMRShift(){
+  const bd=S.smr&&S.smr.byDate;if(!bd)return;
+  Object.keys(bd).forEach(dt=>{
+    const day=bd[dt];
+    if(!day||typeof day!=="object")return;
+    if(Object.keys(day).some(k=>EQUIP.indexOf(k)>=0))bd[dt]={"-":day};
+  });
+}
+migrateSMRShift();
 function load(){try{const r=JSON.parse(localStorage.getItem(LSKEY));if(r)return deepMerge(defState(),r);}catch(e){}return defState();}
 function deepMerge(a,b){for(const k in b){if(b[k]&&typeof b[k]==="object"&&!Array.isArray(b[k])&&a[k])deepMerge(a[k],b[k]);else a[k]=b[k];}return a;}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){} if(typeof cloudOnSave==="function")cloudOnSave();},150);}
@@ -1814,7 +1841,8 @@ function datesInRange(start,end){
 function aggregateSMR(start,end){
   const agg=eqSetObj();const dates=datesInRange(start,end);
   dates.forEach(dt=>{const day=S.smr.byDate[dt];if(!day)return;
-    EQUIP.forEach(e=>{const ed=day[e];if(!ed)return;TCATS.forEach(([k])=>{agg[e][k]=num(agg[e][k])+num(ed[k]);});});
+    Object.keys(day).forEach(sh=>{const st=day[sh];if(!st)return;
+      EQUIP.forEach(e=>{const ed=st[e];if(!ed)return;TCATS.forEach(([k])=>{agg[e][k]=num(agg[e][k])+num(ed[k]);});});});
   });
   return {agg,dayCount:dates.length};
 }
@@ -1976,91 +2004,279 @@ function updateRoadDetailState(name,el){
   if(!need)di.placeholder="Hanya untuk jalan yang butuh perbaikan";
   else di.placeholder="Detail perbaikan (cth: grading, drainase)";
 }
-let SMR_DATE="";            // currently edited date on Input page
-function ensureDay(dt){if(!S.smr.byDate[dt])S.smr.byDate[dt]=eqSetObj();return S.smr.byDate[dt];}
+let SMR_DATE="";            // tanggal yang sedang diedit di halaman Input
+let SMR_SHIFT="DS";         // shift yang sedang diedit: DS | NS | -
+let SMR_MONTH="";           // filter bulan untuk daftar tanggal tersimpan, "YYYY-MM"
+const r4=v=>Math.round(num(v)*1000000)/1000000;   // bersihkan sisa pecahan float, presisi 6 desimal
+
+function ensureDay(dt){if(!S.smr.byDate[dt])S.smr.byDate[dt]={};return S.smr.byDate[dt];}
+function ensureShift(dt,sh){const d=ensureDay(dt);if(!d[sh])d[sh]=eqSetObj();return d[sh];}
+function readSet(dt,sh){const d=S.smr.byDate[dt];return (d&&d[sh])||eqSetObj();}
+function shiftTarget(sh){return sh==="-"?24:12;}
+function eqFilled(o){
+  if(!o)return false;
+  if(TCATS.some(([k])=>num(o[k])!==0))return true;
+  return !!(o._bad&&Object.keys(o._bad).length);
+}
+function shiftsOf(dt){
+  const d=S.smr.byDate[dt]||{};
+  return SHIFT_ORDER.filter(s=>d[s]&&EQUIP.some(e=>eqFilled(d[s][e])));
+}
+function eqTotal(o){
+  let t=0;TCATS.forEach(([k])=>t+=num(o&&o[k]));
+  if(o&&o._bad)Object.keys(o._bad).forEach(c=>t+=num(o._bad[c]));
+  return t;
+}
+
+/* =========== PARSER EKSPOR SHIFT ===========
+   tanggal <TAB> shift <TAB> lokasi <TAB> alat <TAB> kode <TAB> jam      */
+function shiftKey(s){
+  const t=String(s||"").toLowerCase().replace(/[\s._\-]/g,"");
+  if(t==="dayshift"||t==="day"||t==="ds"||t==="siang")return "DS";
+  if(t==="nightshift"||t==="night"||t==="ns"||t==="malam")return "NS";
+  return null;
+}
+function parseExportDate(s){
+  s=String(s||"").trim();
+  let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);   // bulan/tanggal/tahun, sesuai ekspor
+  if(m)return m[3]+"-"+pad2(m[1])+"-"+pad2(m[2]);
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m)return m[1]+"-"+pad2(m[2])+"-"+pad2(m[3]);
+  return null;
+}
+function splitCols(line){
+  let p=line.split("\t").map(x=>x.trim()).filter(x=>x!=="");
+  if(p.length<5)p=line.trim().split(/\s{2,}|;|\|/).map(x=>x.trim()).filter(x=>x!=="");
+  if(p.length<5)p=line.trim().split(/\s+/).map(x=>x.trim()).filter(x=>x!=="");
+  return p;
+}
+function parseSMRExport(txt){
+  const out={rows:[],bad:[],dups:[],skip:0,noDate:0,noShift:0};
+  const seen={};
+  String(txt||"").split(/\r?\n/).forEach(line=>{
+    if(!line.trim())return;
+    const p=splitCols(line);
+    if(p.length<3){out.skip++;return;}
+    let ci=-1,code=null;
+    for(let i=p.length-1;i>=0;i--){
+      const t=p[i].toUpperCase();
+      if(SMR_CODEMAP[t]||SMR_BADCODES.indexOf(t)>=0){code=t;ci=i;break;}
+    }
+    if(ci<1||ci+1>=p.length){out.skip++;return;}
+    const val=num(String(p[ci+1]).replace(",","."));
+    let eq=p[ci-1]||"";
+    if(EQUIP.indexOf(eq)<0&&ci>=2)eq=(p[ci-2]+" "+p[ci-1]).trim();
+    if(EQUIP.indexOf(eq)<0){out.skip++;return;}
+    const dt=parseExportDate(p[0]);
+    let sh=null;
+    for(let i=0;i<ci-1;i++){const k=shiftKey(p[i]);if(k){sh=k;break;}}
+    if(!dt)out.noDate++;
+    if(!sh)out.noShift++;
+    const rec={dt:dt||SMR_DATE,sh:sh||SMR_SHIFT,eq:eq,code:code,cat:SMR_CODEMAP[code]||null,val:val};
+    const key=rec.dt+"\u0001"+rec.sh+"\u0001"+rec.eq+"\u0001"+rec.code;
+    if(seen[key])out.dups.push(rec);else seen[key]=true;
+    if(!rec.cat&&val>0)out.bad.push(rec);
+    out.rows.push(rec);
+  });
+  return out;
+}
+function parseSummary(r){
+  const dts={},shs={},grp={};
+  r.rows.forEach(x=>{dts[x.dt]=1;shs[x.sh]=1;grp[x.dt+"\u0001"+x.sh+"\u0001"+x.eq]=1;});
+  const dl=Object.keys(dts).sort();
+  return {dates:dl,shifts:Object.keys(shs).sort(),groups:Object.keys(grp),
+    label:dl.length===1?fmtDateID(dl[0]):(dl.length+" tanggal · "+fmtDateID(dl[0])+" – "+fmtDateID(dl[dl.length-1]))};
+}
+function dupReport(r){
+  return '<b style="color:#c0392b">Kode kembar terdeteksi — kemungkinan typo. Tidak ada data yang disimpan.</b><br>'+
+    r.dups.slice(0,12).map(d=>"&nbsp;&nbsp;"+fmtDateID(d.dt)+" · "+(SHIFT_LAB[d.sh]||d.sh)+" · "+d.eq+" · <b>"+d.code+"</b>").join("<br>")+
+    (r.dups.length>12?"<br>&nbsp;&nbsp;… dan "+(r.dups.length-12)+" lagi":"");
+}
+function badReport(r){
+  if(!r.bad.length)return "";
+  const agg={};
+  r.bad.forEach(b=>{const k=fmtDateID(b.dt)+" · "+(SHIFT_LAB[b.sh]||b.sh)+" · "+b.eq+" · "+b.code;agg[k]=(agg[k]||0)+b.val;});
+  const ks=Object.keys(agg).sort();
+  return '<br><b style="color:#c0392b">Kode yang seharusnya tidak dipakai — minta perbaikan ke pengirim data:</b><br>'+
+    ks.slice(0,12).map(k=>"&nbsp;&nbsp;"+k+" = <b>"+fmt(agg[k],2)+" jam</b>").join("<br>")+
+    (ks.length>12?"<br>&nbsp;&nbsp;… dan "+(ks.length-12)+" lagi":"")+
+    '<br>&nbsp;&nbsp;<span class="meta">Jamnya tetap tersimpan dan ikut dihitung di baris Total, tapi tidak masuk kategori mana pun.</span>';
+}
+function totalReport(groups){
+  const wrong=[];
+  groups.forEach(g=>{
+    const a=g.split("\u0001"),dt=a[0],sh=a[1],eq=a[2];
+    const tot=eqTotal(readSet(dt,sh)[eq]),tg=shiftTarget(sh);
+    if(Math.abs(tot-tg)>0.01)wrong.push("&nbsp;&nbsp;"+fmtDateID(dt)+" · "+(SHIFT_LAB[sh]||sh)+" · "+eq+" = <b>"+fmt(tot,2)+" jam</b> (seharusnya "+tg+")");
+  });
+  if(!wrong.length)return "";
+  return '<br><b style="color:#c0392b">Total jam tidak pas:</b><br>'+wrong.slice(0,12).join("<br>")+
+    (wrong.length>12?"<br>&nbsp;&nbsp;… dan "+(wrong.length-12)+" lagi":"");
+}
+
+/* =========== KIRIM DATA (mengganti) =========== */
+function applySMRPaste(){
+  if(S.mode!=="edit")return;
+  const box=$("#smr_paste_msg");
+  const r=parseSMRExport($("#smr_paste").value);
+  if(!r.rows.length){box.innerHTML='<b style="color:#c0392b">Tidak ada baris yang terbaca.</b> Pastikan kolomnya dipisah tab dan nama alatnya persis seperti di daftar.';return;}
+  if(r.dups.length){box.innerHTML=dupReport(r);return;}
+  const s=parseSummary(r);
+  // kosongkan setiap (tanggal, shift, alat) yang muncul, lalu isi ulang
+  s.groups.forEach(g=>{const a=g.split("\u0001");ensureShift(a[0],a[1])[a[2]]=blankEqObj();});
+  r.rows.forEach(x=>{
+    const set=ensureShift(x.dt,x.sh);
+    if(x.cat)set[x.eq][x.cat]=r4(num(set[x.eq][x.cat])+x.val);
+    else if(x.val>0){set[x.eq]._bad=set[x.eq]._bad||{};set[x.eq]._bad[x.code]=r4(num(set[x.eq]._bad[x.code])+x.val);}
+  });
+  const last=r.rows[r.rows.length-1];
+  SMR_DATE=last.dt;SMR_SHIFT=last.sh;SMR_MONTH=SMR_DATE.slice(0,7);
+  $("#smr_date").value=SMR_DATE;syncShiftSeg();
+  save();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
+  let msg='<b style="color:var(--ok)">✓ '+r.rows.length+' baris disimpan</b> · '+s.label+' · '+
+    s.shifts.map(x=>SHIFT_LAB[x]||x).join(" + ")+' · '+s.groups.length+' alat-shift';
+  if(r.skip)msg+=' · <span class="meta">'+r.skip+' baris dilewati</span>';
+  if(r.noDate||r.noShift)msg+='<br><span class="meta">'+(r.noDate?r.noDate+" baris tanpa tanggal terbaca":"")+
+    (r.noDate&&r.noShift?", ":"")+(r.noShift?r.noShift+" baris tanpa shift terbaca":"")+" — dipakai pilihan di atas.</span>";
+  msg+=badReport(r)+totalReport(s.groups);
+  box.innerHTML=msg;
+}
+
+/* =========== PERBAIKI (koreksi sebagian) =========== */
+function applySMRPatch(){
+  if(S.mode!=="edit")return;
+  const box=$("#smr_patch_msg");
+  const r=parseSMRExport($("#smr_patch").value);
+  if(!r.rows.length){box.innerHTML='<b style="color:#c0392b">Tidak ada baris yang terbaca.</b>';return;}
+  if(r.dups.length){box.innerHTML=dupReport(r);return;}
+  const sums={},touched={};
+  r.rows.forEach(x=>{
+    if(!x.cat)return;
+    const k=x.dt+"\u0001"+x.sh+"\u0001"+x.eq+"\u0001"+x.cat;
+    sums[k]=(sums[k]||0)+x.val;
+    touched[x.dt+"\u0001"+x.sh+"\u0001"+x.eq]=1;
+  });
+  const keys=Object.keys(sums);
+  if(!keys.length&&!r.bad.length){box.innerHTML='<b style="color:#c0392b">Tidak ada kategori yang bisa diperbaiki dari baris itu.</b>';return;}
+  keys.forEach(k=>{const a=k.split("\u0001");ensureShift(a[0],a[1])[a[2]][a[3]]=r4(sums[k]);});
+  const last=r.rows[r.rows.length-1];
+  SMR_DATE=last.dt;SMR_SHIFT=last.sh;SMR_MONTH=SMR_DATE.slice(0,7);
+  $("#smr_date").value=SMR_DATE;syncShiftSeg();
+  save();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
+  let msg='<b style="color:var(--ok)">✓ '+keys.length+' nilai diperbaiki</b>';
+  if(r.skip)msg+=' · <span class="meta">'+r.skip+' baris dilewati</span>';
+  if(r.bad.length)msg+='<br><b style="color:#c0392b">Kode terlarang diabaikan pada mode Perbaiki:</b> '+
+    [...new Set(r.bad.map(b=>b.code))].join(", ");
+  msg+=totalReport(Object.keys(touched));
+  box.innerHTML=msg;
+}
+
+/* =========== GRID =========== */
+function syncShiftSeg(){$$('#smr_shift_seg button').forEach(b=>b.classList.toggle("on",b.dataset.s===SMR_SHIFT));}
 function setupSMRInput(){
   const di=$("#smr_date");
   if(!SMR_DATE)SMR_DATE=TODAY_ISO;
   di.value=SMR_DATE;
   di.disabled=S.mode!=="edit";
-  di.onchange=()=>{SMR_DATE=di.value||TODAY_ISO;buildSMRInputGrid();updateSMRDateInfo();};
-  // mode segment (manual / paste)
+  di.onchange=()=>{SMR_DATE=di.value||TODAY_ISO;SMR_MONTH=SMR_DATE.slice(0,7);buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();};
+  $$('#smr_shift_seg button').forEach(b=>{b.onclick=()=>{SMR_SHIFT=b.dataset.s;syncShiftSeg();buildSMRInputGrid();updateSMRDateInfo();};});
+  syncShiftSeg();
   $$('#smr_mode_seg button').forEach(b=>{b.onclick=()=>{
     $$('#smr_mode_seg button').forEach(x=>x.classList.toggle("on",x===b));
-    $("#smr_paste_box").classList.toggle("hidden",b.dataset.m!=="paste");
+    const m=b.dataset.m;
+    $("#smr_paste_box").classList.toggle("hidden",m!=="paste");
+    $("#smr_patch_box").classList.toggle("hidden",m!=="patch");
   };});
   $("#smr_paste_apply").onclick=applySMRPaste;
-  $("#smr_paste").disabled=S.mode!=="edit";
-  $("#smr_paste_apply").disabled=S.mode!=="edit";
+  $("#smr_patch_apply").onclick=applySMRPatch;
+  ["#smr_paste","#smr_paste_apply","#smr_patch","#smr_patch_apply"].forEach(s=>{const el=$(s);if(el)el.disabled=S.mode!=="edit";});
   buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();
 }
 function updateSMRDateInfo(){
   const n=Object.keys(S.smr.byDate||{}).length;
-  $("#smr_date_info").textContent=(SMR_DATE?fmtDateID(SMR_DATE):"—")+" · "+n+" tanggal tersimpan";
+  const shs=shiftsOf(SMR_DATE);
+  $("#smr_date_info").textContent=(SMR_DATE?fmtDateID(SMR_DATE):"—")+" · "+(SHIFT_LAB[SMR_SHIFT]||SMR_SHIFT)+
+    " · "+(shs.length?"terisi: "+shs.map(s=>SHIFT_LAB[s]||s).join(", "):"belum ada data")+
+    " · "+n+" tanggal tersimpan";
 }
 function buildSMRInputGrid(){
-  const data=ensureDay(SMR_DATE);
+  const data=readSet(SMR_DATE,SMR_SHIFT);
   const thead=$("#smr_input_tbl thead tr");
   thead.innerHTML="<th>Kategori Waktu (jam)</th>"+EQUIP.map(e=>`<th>${e}</th>`).join("");
   const tb=$("#smr_input_tbl tbody");tb.innerHTML="";
   TCATS.forEach(([k,lab])=>{
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td class="rowlab">${lab}</td>`+EQUIP.map(e=>`<td><input class="inp" type="number" step="0.01" data-e="${e}" data-k="${k}"></td>`).join("");
+    const note=MOHH_EXCL.indexOf(k)>=0?' <span class="meta" style="font-weight:500">di luar MOHH</span>':'';
+    tr.innerHTML=`<td class="rowlab">${lab}${note}</td>`+EQUIP.map(e=>`<td><input class="inp" type="number" step="0.0001" data-e="${e}" data-k="${k}"></td>`).join("");
     tb.appendChild(tr);
   });
   tb.querySelectorAll("input").forEach(el=>{
     const e=el.dataset.e,k=el.dataset.k;
-    el.value=data[e][k]??"";
+    el.value=(data[e]&&data[e][k])??"";
     el.disabled=S.mode!=="edit";
-    el.addEventListener("input",()=>{ensureDay(SMR_DATE)[e][k]=el.value;save();recalcAll();});
+    el.addEventListener("input",()=>{ensureShift(SMR_DATE,SMR_SHIFT)[e][k]=el.value;save();recalcAll();renderSMRTotals();});
   });
+  renderSMRTotals();
 }
-function applySMRPaste(){
-  if(S.mode!=="edit")return;
-  const txt=$("#smr_paste").value||"";
-  const lines=txt.split(/\r?\n/);
-  const day=ensureDay(SMR_DATE);
-  // reset categories we map (so re-applying replaces, summing SRG+DTR / BBU+BBS)
-  const touched={};let nrows=0,unknown=0;const eqSeen=new Set();
-  lines.forEach(line=>{
-    if(!line.trim())return;
-    const parts=line.split(/\t|\s{2,}|,|;/).map(x=>x.trim()).filter(x=>x!=="");
-    if(parts.length<3)return;
-    // equipment may be "SMR 06" (two tokens) — find code token = a known code
-    let code=null,ci=-1;
-    for(let i=0;i<parts.length;i++){if(SMR_CODEMAP[parts[i].toUpperCase()]){code=parts[i].toUpperCase();ci=i;break;}}
-    if(!code){unknown++;return;}
-    const eq=parts.slice(0,ci).join(" ").trim();
-    const val=num(parts[ci+1]);
-    if(!EQUIP.includes(eq))return;
-    eqSeen.add(eq);
-    const cat=SMR_CODEMAP[code];
-    const key=eq+"|"+cat;
-    if(!touched[key]){touched[key]=true;day[eq][cat]=0;}
-    day[eq][cat]=num(day[eq][cat])+val;nrows++;
-  });
-  save();buildSMRInputGrid();recalcAll();buildSMRSavedList();updateSMRDateInfo();
-  $("#smr_paste_msg").textContent=nrows?`✓ ${nrows} baris diterapkan ke ${eqSeen.size} alat untuk ${fmtDateID(SMR_DATE)}.`:"Tidak ada baris valid terbaca.";
+function renderSMRTotals(){
+  const ft=$("#smr_input_tbl tfoot");if(!ft)return;
+  const data=readSet(SMR_DATE,SMR_SHIFT),tg=shiftTarget(SMR_SHIFT);
+  const cells=EQUIP.map(e=>{
+    const o=data[e]||{},tot=eqTotal(o);
+    let bad=0;if(o._bad)Object.keys(o._bad).forEach(c=>bad+=num(o._bad[c]));
+    const col=tot===0?"var(--faint)":(Math.abs(tot-tg)<=0.01?"var(--brand)":"#c0392b");
+    const flag=bad>0?` <span title="mengandung kode terlarang: ${Object.keys(o._bad).join(", ")}" style="color:#c0392b">&#9873;</span>`:"";
+    return `<td class="calc" style="color:${col};font-weight:700">${fmt(tot,2)}${flag}</td>`;
+  }).join("");
+  ft.innerHTML=`<tr><td class="rowlab">Total (target ${tg} jam)</td>${cells}</tr>`;
 }
 function buildSMRSavedList(){
   const host=$("#smr_saved");if(!host)return;
   const dates=smrDates();
   if(!dates.length){host.innerHTML='<p class="note" style="margin:0">Belum ada tanggal tersimpan.</p>';return;}
-  host.innerHTML='<div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:8px">Tanggal Tersimpan ('+dates.length+')</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:8px">'+dates.map(d=>{
-      const day=S.smr.byDate[d];let ewh=0;EQUIP.forEach(e=>ewh+=num(day[e].kerja));
-      return `<span class="datechip${d===SMR_DATE?' on':''}" data-d="${d}" style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line2);border-radius:999px;font-size:12px;cursor:pointer;background:${d===SMR_DATE?'var(--brand)':'var(--surface)'};color:${d===SMR_DATE?'#fff':'var(--ink)'}">
-        ${fmtDateID(d)} <b style="font-weight:600;opacity:.8">${fmt1(ewh)}j</b>
-        ${S.mode==="edit"?`<span class="deldate" data-d="${d}" title="Hapus" style="opacity:.7;font-weight:700">×</span>`:''}</span>`;
+  const months=[...new Set(dates.map(d=>d.slice(0,7)))].sort();
+  if(!SMR_MONTH||months.indexOf(SMR_MONTH)<0)
+    SMR_MONTH=(SMR_DATE&&months.indexOf(SMR_DATE.slice(0,7))>=0)?SMR_DATE.slice(0,7):months[months.length-1];
+  const inMonth=dates.filter(d=>d.slice(0,7)===SMR_MONTH);
+  const opts=months.map(m=>`<option value="${m}"${m===SMR_MONTH?" selected":""}>${MONTHS[+m.slice(5,7)-1]} ${m.slice(0,4)}</option>`).join("");
+  host.innerHTML=
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'+
+      '<span style="font-size:11.5px;color:var(--muted);font-weight:600">Tanggal Tersimpan</span>'+
+      `<select class="inp" id="smr_month" style="max-width:190px;font-size:12px">${opts}</select>`+
+      `<span class="meta">${dates.length} tanggal · ${inMonth.length} di bulan ini</span>`+
+    '</div><div style="display:flex;flex-wrap:wrap;gap:8px">'+
+    inMonth.map(d=>{
+      const shs=shiftsOf(d);
+      const badge=["DS","NS"].map(s=>{
+        const on=shs.indexOf(s)>=0;
+        return `<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:5px;background:${on?'var(--brand)':'transparent'};color:${on?'#fff':'var(--faint)'};border:1px solid ${on?'var(--brand)':'var(--line2)'}">${s}</span>`;
+      }).join("")+(shs.indexOf("-")>=0?'<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:5px;border:1px solid var(--line2);color:var(--muted)">lama</span>':"");
+      const belum=shs.indexOf("-")<0&&!(shs.indexOf("DS")>=0&&shs.indexOf("NS")>=0);
+      const sel=d===SMR_DATE;
+      return `<span class="datechip" data-d="${d}" style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid ${sel?'var(--brand)':'var(--line2)'};border-radius:999px;font-size:12px;cursor:pointer;background:var(--surface)">`+
+        `<b style="font-weight:600">${d.slice(8)}</b> ${badge}`+
+        (belum?'<span title="shift belum lengkap" style="color:#c0392b;font-weight:700">&bull;</span>':'')+
+        (S.mode==="edit"?`<span class="deldate" data-d="${d}" title="Hapus seluruh tanggal ini" style="opacity:.6;font-weight:700">&times;</span>`:'')+
+      '</span>';
     }).join("")+'</div>';
+  const ms=$("#smr_month");if(ms)ms.onchange=()=>{SMR_MONTH=ms.value;buildSMRSavedList();};
   host.querySelectorAll(".datechip").forEach(ch=>{
-    ch.onclick=e=>{ if(e.target.classList.contains("deldate"))return;
-      SMR_DATE=ch.dataset.d;$("#smr_date").value=SMR_DATE;buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList(); };
+    ch.onclick=ev=>{
+      if(ev.target.classList.contains("deldate"))return;
+      SMR_DATE=ch.dataset.d;$("#smr_date").value=SMR_DATE;
+      const shs=shiftsOf(SMR_DATE);
+      if(shs.length&&shs.indexOf(SMR_SHIFT)<0)SMR_SHIFT=shs[0];
+      syncShiftSeg();buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();
+    };
   });
   host.querySelectorAll(".deldate").forEach(x=>{
-    x.onclick=e=>{e.stopPropagation();const d=x.dataset.d;
-      if(confirm("Hapus data tanggal "+fmtDateID(d)+"?")){delete S.smr.byDate[d];if(SMR_DATE===d)SMR_DATE=TODAY_ISO;
-        save();$("#smr_date").value=SMR_DATE;buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();}};
+    x.onclick=ev=>{
+      ev.stopPropagation();const d=x.dataset.d;
+      if(confirm("Hapus seluruh data tanggal "+fmtDateID(d)+" (semua shift)?")){
+        delete S.smr.byDate[d];if(SMR_DATE===d)SMR_DATE=TODAY_ISO;
+        save();$("#smr_date").value=SMR_DATE;buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
+      }
+    };
   });
 }
 
@@ -2169,11 +2385,13 @@ function drawDonut(pct){
 
 /* ----- SMR ----- */
 function eqMetrics(o){
-  let total=0;TCATS.forEach(([k])=>total+=num(o[k]));
+  let raw=0;TCATS.forEach(([k])=>raw+=num(o[k]));
+  let excl=0;MOHH_EXCL.forEach(k=>excl+=num(o[k]));
+  const mohh=raw-excl;                       // Holiday / Fasting Month di luar MOHH
   const down=num(o.down),kerja=num(o.kerja);
-  const pa=total>0?(1-down/total)*100:0;
-  const ua=(total-down)>0?kerja/(total-down)*100:0;
-  return {total,pa,ua,ewh:kerja};
+  const pa=mohh>0?(1-down/mohh)*100:0;
+  const ua=(mohh-down)>0?kerja/(mohh-down)*100:0;
+  return {total:mohh,raw,mohh,excl,pa,ua,ewh:kerja};
 }
 function buildSMRStatic(){
   $("#smr_kpis").innerHTML=[["Rata-rata PA","%"],["Rata-rata UA","%"],["Total EWH","jam"],["Total Down Time","jam"]].map((x,i)=>
@@ -2855,6 +3073,7 @@ function applyCloud(data){
   if(!data)return;
   ["rekla","smr","sf","road","gantt"].forEach(k=>{if(data[k]!==undefined)S[k]=data[k];});
   try{normRekla(S.rekla);}catch(e){}
+  try{migrateSMRShift();}catch(e){}
   try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
   refreshUIFromState();
 }
