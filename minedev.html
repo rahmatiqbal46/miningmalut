@@ -1768,7 +1768,20 @@ select.inp{cursor:pointer;text-align:left}
 const LSKEY="pakal_dashboard_v2";
 const MONTHS=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const M3=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-const EQUIP=["SMR 06","SMR 07","SMR 08","SMR 09","SMR Enviro"];
+const EQUIP=["SMR 06","SMR 07","SMR 08","SMR 09"];
+/* Alat yang sudah dikeluarkan dari daftar. SMR Enviro dihapus 16 September 2026: tidak ada
+   di ekspor shift dan tidak lagi dipakai. Datanya dibuang setiap kali data dibaca, dari
+   localStorage, baris 'pakal', maupun baris smr|tgl|shift, supaya tidak tampil, tidak ikut
+   dihitung, dan tidak tersimpan kembali. Nama di sini tetap dikenali sebagai nama alat,
+   supaya data lama tanpa shift tetap terbaca benar saat dimigrasi. */
+const EQUIP_DIHAPUS=["SMR Enviro"];
+function kunciAlat(k){return EQUIP.indexOf(k)>=0||EQUIP_DIHAPUS.indexOf(k)>=0;}
+function buangAlatDihapus(set){          // set = {alat:{kategori}}; true bila ada yang dibuang
+  if(!set||typeof set!=="object")return false;
+  let ada=false;
+  EQUIP_DIHAPUS.forEach(e=>{if(Object.prototype.hasOwnProperty.call(set,e)){delete set[e];ada=true;}});
+  return ada;
+}
 const TCATS=[["kerja","Waktu Kerja"],["hujan","Waktu Hujan"],["moving","Moving Equipment"],["p2h","P2H"],
  ["refuel","Refueling & Greasing"],["rest","Rest & Meal"],["safety","Safety Talk"],["pray","Sunday & Friday Pray"],
  ["change","Change Shift"],["nooper","No Operator"],["nojob","No Job"],["fogdust","Fog / Dust"],
@@ -1816,16 +1829,21 @@ function normRekla(rk){
 }
 normRekla(S.rekla);
 /* Data SMR lama berbentuk byDate[tgl][alat][kategori] (tanpa shift).
-   Dipindah ke byDate[tgl]["-"][alat][kategori] supaya tidak ada angka dashboard yang berubah. */
+   Dipindah ke byDate[tgl]["-"][alat][kategori] supaya tidak ada angka dashboard yang berubah.
+   Sekalian membuang alat yang sudah dikeluarkan dari daftar (EQUIP_DIHAPUS).
+   Mengembalikan true bila ada yang berubah. */
 function migrateSMRShift(){
-  const bd=S.smr&&S.smr.byDate;if(!bd)return;
+  const bd=S.smr&&S.smr.byDate;if(!bd)return false;
+  let ubah=false;
   Object.keys(bd).forEach(dt=>{
-    const day=bd[dt];
+    let day=bd[dt];
     if(!day||typeof day!=="object")return;
-    if(Object.keys(day).some(k=>EQUIP.indexOf(k)>=0))bd[dt]={"-":day};
+    if(Object.keys(day).some(kunciAlat)){day={"-":day};bd[dt]=day;ubah=true;}
+    Object.keys(day).forEach(sh=>{if(buangAlatDihapus(day[sh]))ubah=true;});
   });
+  return ubah;
 }
-migrateSMRShift();
+if(migrateSMRShift()){try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}}
 function load(){try{const r=JSON.parse(localStorage.getItem(LSKEY));if(r)return deepMerge(defState(),r);}catch(e){}return defState();}
 function deepMerge(a,b){for(const k in b){if(b[k]&&typeof b[k]==="object"&&!Array.isArray(b[k])&&a[k])deepMerge(a[k],b[k]);else a[k]=b[k];}return a;}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){} if(typeof cloudOnSave==="function")cloudOnSave();},150);}
@@ -3128,6 +3146,7 @@ const SMRIDKEY="pakal_smr_ids_v1";
 let smrTs={};          // id baris -> updated_at yang terakhir diketahui perangkat ini
 let smrDirty={};       // "tgl|shift" -> menunggu dikirim
 let smrIndexSig="";
+const smrBersihJalan={};  // "tgl|shift" -> sedang ditulis ulang tanpa alat yang dihapus
 
 function smrRowId(dt,sh){return "smr|"+dt+"|"+sh;}
 function parseSmrRowId(id){const p=String(id).split("|");return (p.length===3&&p[0]==="smr")?{dt:p[1],sh:p[2]}:null;}
@@ -3142,7 +3161,7 @@ function mergeLegacyByDate(legacy){
   let n=0;
   Object.keys(legacy).forEach(dt=>{
     const d=legacy[dt];if(!d||typeof d!=="object")return;
-    const norm=Object.keys(d).some(k=>EQUIP.indexOf(k)>=0)?{"-":d}:d;
+    const norm=Object.keys(d).some(kunciAlat)?{"-":d}:d;
     if(!S.smr.byDate[dt])S.smr.byDate[dt]={};
     Object.keys(norm).forEach(sh=>{if(!S.smr.byDate[dt][sh]){S.smr.byDate[dt][sh]=norm[sh];n++;}});
   });
@@ -3154,10 +3173,11 @@ async function smrPullAll(){
   const r=await fetch(cloudBase()+"?id=like.smr%7C*&select=id,data,updated_at&order=id",{headers:cloudHeaders()});
   if(!r.ok)throw new Error("HTTP "+r.status);
   const j=await r.json()||[];
-  const now={};let n=0;
+  const now={};let n=0;const perluBersih=[];
   j.forEach(row=>{
     const k=parseSmrRowId(row.id);if(!k)return;
     const alat=row.data&&row.data.alat;if(!alat||typeof alat!=="object")return;
+    if(buangAlatDihapus(alat))perluBersih.push(k.dt+"|"+k.sh);
     if(!S.smr.byDate[k.dt])S.smr.byDate[k.dt]={};
     S.smr.byDate[k.dt][k.sh]=alat;
     smrTs[row.id]=row.updated_at;now[row.id]=row.updated_at;n++;
@@ -3176,7 +3196,21 @@ async function smrPullAll(){
   saveSmrIds(now);
   smrIndexSig=j.map(x=>x.id+"@"+x.updated_at).join(";");
   try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
+  smrBersihkanServer(perluBersih);
   return n;
+}
+
+/* Baris di server yang masih memuat alat yang sudah dihapus ditulis ulang tanpa alat itu.
+   Cukup sekali per baris: sesudahnya tarikan berikutnya tidak menemukannya lagi. Yang dikirim
+   adalah isi server yang baru saja ditarik, jadi tidak ada angka alat lain yang berubah.
+   Gagal kirim -> masuk antrean biasa (smrDirty) dan ikut terkirim pada simpan berikutnya. */
+function smrBersihkanServer(keys){
+  keys=(keys||[]).filter(k=>!smrBersihJalan[k]);
+  if(!keys.length)return;
+  keys.forEach(k=>smrBersihJalan[k]=1);
+  smrPushKeys(keys)
+    .catch(()=>{keys.forEach(k=>smrDirty[k]=1);})
+    .finally(()=>{keys.forEach(k=>delete smrBersihJalan[k]);});
 }
 
 async function smrPushKeys(keys){
