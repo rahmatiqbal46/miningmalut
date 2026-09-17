@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 5 (14 September 2026)
+// Versi 6 (17 September 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -50,6 +50,36 @@
 // Batas TIDAK bisa diubah dari dashboard. Ia ketentuan tetap yang perlu kajian
 // untuk diubah, jadi tempatnya di kode, bukan di panel Setelan. Halaman
 // menariknya lewat /api/batas supaya angka di layar selalu ikut server.
+//
+// Versi 6 memperbaiki KUOTA BACA D1. Pada 16 September 2026 akun melewati batas
+// paket gratis 5 juta baris terbaca per hari, dan D1 menolak semua pembacaan
+// sampai 00.00 UTC. Yang mahal bukan jumlah pelanggarannya, melainkan cara
+// membacanya: tabel `pelanggaran` tidak punya indeks, jadi setiap kueri memindai
+// SELURUH tabel — dan D1 menagih tiap baris yang dipindai, bukan yang dikirim.
+//
+//  1. /api/ringkas menjalankan TIGA pemindaian penuh per panggilan, dan dipanggil
+//     tiap 60 detik oleh setiap tab dashboard yang terbuka — juga saat halaman
+//     Home tidak sedang dilihat, bahkan di layar login.
+//  2. /api/pelanggaran?tanggal= memindai seluruh tabel tiap 60 detik untuk setiap
+//     Speed Watcher yang pernah dibuka, termasuk iframe yang sudah ditinggalkan.
+//  3. Biaya tiap panggilan tumbuh bersama tabel. Tanpa perubahan apa pun, tagihan
+//     harian naik sendiri setiap hari sampai umur simpan 120 hari tercapai.
+//
+// Perbaikannya:
+//  - Dua indeks, (tanggal, mulai) dan (mulai). Diperiksa lewat sqlite_schema
+//    sekali per isolate dan hanya dibuat bila belum ada — membangun indeks
+//    menulis satu baris per baris tabel, jadi tidak boleh diulang tiap permintaan.
+//  - /api/ringkas memakai SATU kueri, dan hasilnya dibagi bersama lewat baris
+//    `kv` selama 55 detik. Berapa pun tab yang membuka Home, D1 menghitung
+//    ringkasan paling banyak sekali per menit.
+//  - /api/pelanggaran menerima ?sejak=<id>&buka=<id,…>. Halaman cukup menarik
+//    baris baru dan baris yang masih berjalan, bukan seluruh hari tiap menit.
+//  - Galat saat membaca state TIDAK lagi dianggap state kosong. Versi 5 menelan
+//    galat itu, lalu cron berjalan tanpa ingatan dan bisa menimpa state tersimpan
+//    — kejadian yang sedang terbuka kehilangan pemiliknya dan tidak pernah
+//    ditutup. Sekarang putaran menit itu dilewati utuh.
+//  - Kejadian yatim (masih berjalan tapi tidak diperbarui lebih dari satu jam)
+//    ditutup sekali sehari bersama pembersihan data lama.
 //
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Cron: * * * * *
@@ -104,6 +134,19 @@ const SIMPAN_HARI = 120;
 let tabelSiap = false;
 let sidCache = null;
 
+// Ringkasan shift untuk kartu Home dipakai bersama selama ini, lintas tab dan
+// lintas isolate (lewat baris `kv`), supaya jumlah penonton tidak melipatgandakan
+// pembacaan D1. Halaman menariknya tiap 60 detik, jadi 55 detik tidak menambah
+// keterlambatan yang terasa.
+const RINGKAS_SEGAR = 55000;  // ms
+let ringkasMem = null;
+
+// Kejadian yang masih berstatus berjalan tapi tidak diperbarui selama ini
+// dianggap yatim dan ditutup oleh pembersihan harian. Cron sendiri menutup
+// kejadian menggantung setelah 15 menit, jadi satu jam hanya mengenai baris yang
+// state-nya benar-benar hilang.
+const YATIM_MS = 3600000;
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -153,6 +196,46 @@ async function siapkanTabel(env) {
       await env.DB.prepare(`ALTER TABLE pelanggaran ADD COLUMN ${k} ${perlu[k]}`).run();
     }
   }
+
+  /* Indeks untuk kueri yang dipanggil berulang. Tanpa indeks, D1 memindai seluruh
+     tabel pada setiap kueri dan menagih setiap baris yang dipindai — itulah yang
+     menghabiskan kuota 5 juta baris terbaca pada 16 September 2026.
+
+       idx_pelanggaran_tanggal_mulai  → ?tanggal= , rentang ekspor, hitungan hari
+                                        ini, pembersihan data lama
+       idx_pelanggaran_mulai          → jendela shift di /api/ringkas
+
+     Nama indeks WAJIB sama dengan yang dibuat lewat Console D1, supaya tidak
+     terbangun kembar. Diperiksa dulu lewat sqlite_schema: membangun indeks
+     menulis satu baris per baris tabel, jadi tidak boleh dicoba tiap permintaan.
+
+     Bagian ini dibungkus try karena ia jaring pengaman, bukan jalur utama: indeks
+     dibuat lewat Console D1. Kalau pemeriksaannya gagal, permintaan tetap
+     dilayani — lebih lambat tanpa indeks, tapi tidak mati. */
+  try {
+    const idx = await env.DB.prepare(
+      `SELECT name FROM sqlite_schema WHERE type = 'index' AND tbl_name = 'pelanggaran'`
+    ).all();
+    const adaIdx = new Set((idx.results || []).map((r) => r.name));
+    const indeks = {
+      idx_pelanggaran_tanggal_mulai:
+        `CREATE INDEX IF NOT EXISTS idx_pelanggaran_tanggal_mulai ON pelanggaran(tanggal, mulai)`,
+      idx_pelanggaran_mulai:
+        `CREATE INDEX IF NOT EXISTS idx_pelanggaran_mulai ON pelanggaran(mulai)`,
+    };
+    let dibuat = false;
+    for (const k of Object.keys(indeks)) {
+      if (!adaIdx.has(k)) {
+        await env.DB.prepare(indeks[k]).run();
+        dibuat = true;
+      }
+    }
+    // Statistik tabel untuk perencana kueri, hanya sesudah indeks baru dibuat.
+    if (dibuat) await env.DB.prepare(`PRAGMA optimize`).run().catch(() => {});
+  } catch (e) {
+    console.log(`pemeriksaan indeks gagal: ${String(e.message || e)}`);
+  }
+
   tabelSiap = true;
 }
 
@@ -394,8 +477,14 @@ async function perbaruiPelanggaran(env, id, ev, tutup) {
    lalu menulis ulang ±25 KB JSON pada tiap putaran menghabiskan anggaran CPU
    10 ms sebelum enam putaran selesai. */
 async function muatState(env) {
+  /* Galat baca D1 SENGAJA dibiarkan naik. Versi 5 membungkus pembacaan ini di
+     dalam try, sehingga saat kuota baca habis state dianggap kosong: cron lalu
+     berjalan tanpa ingatan dan bisa menimpa state tersimpan, dan kejadian yang
+     sedang terbuka tidak pernah ditutup. Yang boleh jatuh ke kosong hanya isi
+     yang rusak, bukan pembacaan yang gagal. */
+  const teks = await ambilKV(env, "state");
   let simpan = {};
-  try { simpan = JSON.parse((await ambilKV(env, "state")) || "{}"); } catch (e) { simpan = {}; }
+  try { simpan = JSON.parse(teks || "{}"); } catch (e) { simpan = {}; }
   return (simpan && typeof simpan.u === "object" && simpan.u) ? simpan.u : {};
 }
 
@@ -513,6 +602,97 @@ async function periksa(env) {
 async function bersihkan(env) {
   const batas = tanggalWIT(Date.now() - SIMPAN_HARI * 86400000);
   await env.DB.prepare(`DELETE FROM pelanggaran WHERE tanggal < ?`).bind(batas).run();
+
+  /* Kejadian yatim: masih berstatus berjalan padahal tidak diperbarui lebih dari
+     satu jam, karena state yang memegangnya hilang. Tanpa ini ia tampil
+     "sedang berlangsung" selamanya. Hanya tiga hari terakhir yang diperiksa
+     supaya kueri berjalan di indeks tanggal, bukan memindai seluruh tabel. */
+  await env.DB.prepare(
+    `UPDATE pelanggaran SET berjalan = 0
+      WHERE tanggal >= ? AND berjalan = 1 AND selesai < ?`
+  ).bind(tanggalWIT(Date.now() - 3 * 86400000), Date.now() - YATIM_MS).run();
+}
+
+/* Ringkasan shift untuk kartu di halaman Home: lima unit dan lima ruas yang
+   paling sering melanggar, jumlah kejadian, dan kecepatan tertinggi.
+
+   Versi 5 menjalankan tiga kueri — per unit, per ruas, dan total — yang
+   masing-masing memindai seluruh tabel. Sekarang satu kueri mengelompokkan per
+   pasangan (unit, ruas) di jendela shift lewat indeks `mulai`, lalu dua peringkat
+   dan totalnya dirakit di sini. Jumlah pasangan kecil (paling banyak jumlah unit
+   kali jumlah ruas), jadi perakitan ini murah. */
+async function hitungRingkas(env, j) {
+  const { results } = await env.DB.prepare(
+    `SELECT COALESCE(NULLIF(unit, ''), ?) AS u,
+            COALESCE(NULLIF(ruas, ''), NULLIF(ruas_dekat, ''), ?) AS r,
+            COUNT(*) AS jumlah, MAX(kecepatan_max) AS maks
+       FROM pelanggaran
+      WHERE mulai >= ? AND mulai < ?
+      GROUP BY u, r`
+  ).bind("Tanpa nama", "Tanpa nama", j.mulai, j.selesai).all();
+
+  const perUnit = new Map(), perRuas = new Map();
+  let total = 0;
+  const tambah = (peta, nama, n, m) => {
+    const a = peta.get(nama) || { nama, jumlah: 0, maks: 0 };
+    a.jumlah += n;
+    a.maks = Math.max(a.maks, m || 0);
+    peta.set(nama, a);
+  };
+  for (const x of results || []) {
+    total += x.jumlah;
+    tambah(perUnit, x.u, x.jumlah, x.maks);
+    tambah(perRuas, x.r, x.jumlah, x.maks);
+  }
+  // Urutan sama dengan versi 5 (jumlah, lalu kecepatan tertinggi). Nama dipakai
+  // sebagai penentu terakhir supaya urutan yang seri tidak berganti tiap menit.
+  const lima = (peta) => [...peta.values()]
+    .sort((a, b) => b.jumlah - a.jumlah || b.maks - a.maks ||
+                    String(a.nama).localeCompare(String(b.nama)))
+    .slice(0, 5)
+    .map((a) => ({ nama: a.nama, jumlah: a.jumlah, maks: Math.round((a.maks || 0) * 10) / 10 }));
+
+  /* Batas yang ditempelkan adalah batas RESMI ruas itu menurut tabel di berkas
+     ini, bukan batas yang kebetulan dipakai saat menilai. Untuk baris yang
+     dinamai lewat ruas terdekat (§21.4) keduanya bisa berbeda: kejadiannya dinilai
+     dengan BATAS_LUAR, sedangkan yang ditampilkan di sini adalah batas jalan yang
+     namanya dipinjam. */
+  const tabelBatas = {};
+  for (const r of RUAS) tabelBatas[r.n] = r.b;
+
+  return {
+    shift: j.nama, tanggal: j.tanggal, mulai: j.mulai, selesai: j.selesai,
+    total,
+    batas_luar: BATAS_LUAR,
+    unit: lima(perUnit),
+    ruas: lima(perRuas).map((r) => ({
+      nama: r.nama, jumlah: r.jumlah, maks: r.maks,
+      batas: tabelBatas[r.nama] ?? BATAS_LUAR,
+    })),
+  };
+}
+
+/* Ringkasan dipakai bersama: memori isolate lebih dulu, lalu baris `kv` supaya
+   isolate lain — dan tab lain — ikut memakainya. Hanya bila keduanya sudah lebih
+   tua dari RINGKAS_SEGAR, D1 benar-benar menghitung ulang. `dihitung` ikut
+   dikirim supaya kartu menampilkan jam hitung yang sebenarnya. */
+async function ringkasShift(env, j) {
+  const kunci = j.mulai + "-" + j.selesai;
+  const kini = Date.now();
+  const segar = (o) => !!o && o.kunci === kunci && o.waktu <= kini && kini - o.waktu < RINGKAS_SEGAR;
+
+  if (segar(ringkasMem)) return ringkasMem.isi;
+
+  const teks = await ambilKV(env, "ringkas");
+  let simpan = null;
+  try { simpan = JSON.parse(teks || "null"); } catch (e) { simpan = null; }
+  if (segar(simpan)) { ringkasMem = simpan; return simpan.isi; }
+
+  const isi = await hitungRingkas(env, j);
+  isi.dihitung = kini;
+  ringkasMem = { kunci, waktu: kini, isi };
+  await simpanKV(env, "ringkas", JSON.stringify(ringkasMem));
+  return isi;
 }
 
 /* Batas shift mengikuti aturan yang sama dengan proxy Minerva (§7):
@@ -555,7 +735,14 @@ export default {
     const url = new URL(req.url);
 
     try {
-      await siapkanTabel(env);
+      /* /api/unit dipanggil tiap 10 detik oleh setiap Speed Watcher dan tidak
+         menyentuh tabel pelanggaran; /api/batas tidak menyentuh D1 sama sekali.
+         Keduanya tidak menjalankan pemeriksaan skema, supaya isolate baru tidak
+         membayar beberapa kueri skema di jalur yang paling ramai. Tabel kv yang
+         dipakai /api/unit dibuat oleh cron dalam menit pertama Worker hidup. */
+      if (url.pathname !== "/api/unit" && url.pathname !== "/api/batas") {
+        await siapkanTabel(env);
+      }
 
       if (url.pathname === "/api/unit") {
         const units = await ambilUnit(env);
@@ -598,10 +785,53 @@ export default {
           return json({ dari: a, sampai: b, jumlah: results.length, pelanggaran: results });
         }
         const tgl = url.searchParams.get("tanggal") || tanggalWIT(Date.now());
-        const { results } = await env.DB.prepare(
-          `SELECT * FROM pelanggaran WHERE tanggal=? ORDER BY mulai DESC`
-        ).bind(tgl).all();
-        return json({ tanggal: tgl, jumlah: results.length, pelanggaran: results });
+
+        /* Tarikan susulan untuk halaman yang sudah memegang arsip hari itu:
+           ?sejak=<id terbesar yang terakhir diterima>&buka=<id kejadian yang
+           masih berjalan>. Yang dibaca hanya baris baru dan baris yang masih
+           berjalan, bukan seluruh hari. Tanpa ini, Speed Watcher yang terbuka
+           seharian membaca ulang seluruh baris hari itu tiap menit.
+
+           `+tanggal` disengaja: tanda plus melarang D1 memakai indeks tanggal
+           untuk syarat ini, sehingga kueri berjalan di kunci utama (id > ?) dan
+           hanya menyentuh baris yang lebih baru. Semua kueri berada dalam satu
+           batch — satu transaksi — jadi `maks_id` dan isi jawabannya berasal
+           dari keadaan tabel yang sama. */
+        const sejak = Number(url.searchParams.get("sejak"));
+        if (Number.isInteger(sejak) && sejak > 0) {
+          const buka = (url.searchParams.get("buka") || "").split(",")
+            .map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 100);
+          const perintah = [
+            env.DB.prepare(`SELECT MAX(id) AS maks FROM pelanggaran`),
+            env.DB.prepare(
+              `SELECT * FROM pelanggaran WHERE id > ? AND +tanggal = ? ORDER BY id`
+            ).bind(sejak, tgl),
+          ];
+          if (buka.length) {
+            perintah.push(env.DB.prepare(
+              `SELECT * FROM pelanggaran WHERE id IN (${buka.map(() => "?").join(",")})`
+            ).bind(...buka));
+          }
+          const hasil = await env.DB.batch(perintah);
+          const peta = new Map();
+          for (const h of hasil.slice(1)) for (const r of h.results || []) peta.set(r.id, r);
+          const baris = [...peta.values()].sort((a, b) => b.mulai - a.mulai);
+          return json({
+            tanggal: tgl, sebagian: true, sejak,
+            maks_id: hasil[0].results?.[0]?.maks ?? 0,
+            jumlah: baris.length, pelanggaran: baris,
+          });
+        }
+
+        const hasil = await env.DB.batch([
+          env.DB.prepare(`SELECT MAX(id) AS maks FROM pelanggaran`),
+          env.DB.prepare(`SELECT * FROM pelanggaran WHERE tanggal=? ORDER BY mulai DESC`).bind(tgl),
+        ]);
+        const results = hasil[1].results || [];
+        return json({
+          tanggal: tgl, maks_id: hasil[0].results?.[0]?.maks ?? 0,
+          jumlah: results.length, pelanggaran: results,
+        });
       }
 
       /* Tabel batas dibaca halaman supaya angka di layar selalu ikut server.
@@ -618,54 +848,14 @@ export default {
         });
       }
 
-      /* Ringkasan shift berjalan untuk kartu di halaman Home shell.
-         Pengelompokan dikerjakan D1 lewat GROUP BY, bukan dengan menarik semua
-         baris ke browser — lebih hemat jaringan dan lebih hemat CPU. */
+      /* Ringkasan shift berjalan untuk kartu di halaman Home shell. Dihitung satu
+         kueri dan dipakai bersama lintas tab — lihat ringkasShift(). Untuk ruas,
+         yang dipakai adalah ruas tempat kejadian dinilai; bila kejadiannya di luar
+         semua ruas, dipakai nama ruas terdekat, supaya peringkat tidak menumpuk di
+         satu kantong "Di luar ruas". */
       if (url.pathname === "/api/ringkas") {
         const j = jendelaShift(url.searchParams.get("shift"));
-        /* Untuk ruas, yang dipakai adalah ruas tempat kejadian dinilai; bila
-           kejadiannya di luar semua ruas, dipakai nama ruas terdekat. Dengan
-           begitu peringkat tidak menumpuk di satu kantong "Di luar ruas". */
-        const per = async (kolom) => {
-          const ungkap = kolom === "ruas"
-            ? "COALESCE(NULLIF(ruas, ''), NULLIF(ruas_dekat, ''), ?)"
-            : "COALESCE(NULLIF(unit, ''), ?)";
-          const { results } = await env.DB.prepare(
-            `SELECT ${ungkap} AS nama,
-                    COUNT(*) AS jumlah, MAX(kecepatan_max) AS maks
-               FROM pelanggaran
-              WHERE mulai >= ? AND mulai < ?
-              GROUP BY nama
-              ORDER BY jumlah DESC, maks DESC
-              LIMIT 5`
-          ).bind("Tanpa nama", j.mulai, j.selesai).all();
-          return (results || []).map((r) => ({
-            nama: r.nama, jumlah: r.jumlah,
-            maks: Math.round((r.maks || 0) * 10) / 10,
-          }));
-        };
-        const total = await env.DB.prepare(
-          `SELECT COUNT(*) AS n FROM pelanggaran WHERE mulai >= ? AND mulai < ?`
-        ).bind(j.mulai, j.selesai).first();
-        /* Batas yang ditempelkan adalah batas RESMI ruas itu menurut tabel di
-           berkas ini, bukan batas yang kebetulan dipakai saat menilai. Untuk
-           baris yang dinamai lewat ruas terdekat (§21.4) keduanya bisa berbeda:
-           kejadiannya dinilai dengan BATAS_LUAR, sedangkan yang ditampilkan di
-           sini adalah batas jalan yang namanya dipinjam. */
-        const tabelBatas = {};
-        for (const r of RUAS) tabelBatas[r.n] = r.b;
-        const ruasTop = (await per("ruas")).map((r) => ({
-          nama: r.nama, jumlah: r.jumlah, maks: r.maks,
-          batas: tabelBatas[r.nama] ?? BATAS_LUAR,
-        }));
-
-        return json({
-          shift: j.nama, tanggal: j.tanggal, mulai: j.mulai, selesai: j.selesai,
-          total: total?.n ?? 0,
-          batas_luar: BATAS_LUAR,
-          unit: await per("unit"),
-          ruas: ruasTop,
-        });
+        return json(await ringkasShift(env, j));
       }
 
       /* Sekali pakai, boleh diulang: mengisi nama ruas terdekat untuk baris
@@ -680,7 +870,12 @@ export default {
          Dibatasi 15 baris sekali panggil. Terukur: 50 baris memakan ~15,7 ms
          CPU, di atas anggaran 10 ms paket gratis — dan Worker yang melewatinya
          dihentikan di tengah jalan (§21.6). Panggil berulang sampai `sisa`
-         bernilai 0. */
+         bernilai 0.
+
+         PERINGATAN KUOTA: kedua kuerinya memindai seluruh tabel (tidak ada indeks
+         untuk ruas_dekat kosong), jadi tiap panggilan membaca dua kali jumlah
+         baris tabel. Jangan dipanggil otomatis atau berkala — hanya untuk
+         mengisi baris lama, lalu tinggalkan. */
       if (url.pathname === "/api/isi-nama") {
         const { results } = await env.DB.prepare(
           `SELECT id, lat, lon FROM pelanggaran
@@ -730,7 +925,16 @@ export default {
       /* Enam putaran berbagi satu anggaran CPU, jadi state hanya dibaca sekali
          di awal dan ditulis sekali di akhir. Baris pelanggaran tetap ditulis
          seketika saat kejadiannya terjadi. */
-      const state = await muatState(env);
+      /* Kalau state tidak terbaca — misalnya kuota baca D1 habis — menit ini
+         dilewati utuh. Berjalan dengan state kosong berarti melupakan kejadian
+         yang sedang terbuka, lalu menimpa state yang masih benar. */
+      let state;
+      try {
+        state = await muatState(env);
+      } catch (e) {
+        console.log(`state tidak terbaca, menit ini dilewati: ${String(e.message || e)}`);
+        return;
+      }
       let unitTerakhir = 0;
 
       for (let i = 0; i < TICK_COUNT; i++) {
