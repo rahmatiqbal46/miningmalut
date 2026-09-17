@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operator Performance · MiningMalut</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<style>
+  :root{
+    /* Palet MiningMalut, sama dengan index.html dan dispatch-monitoring.html */
+    --t900:#06211d; --t800:#0a332e; --t700:#0d4a42;
+    --amber:#E8920A;
+    --bg:#eef3f0; --surface:#ffffff; --surface-2:#f4f8f6; --surface-3:#e6efeb;
+    --border:#dbe4e0; --border-soft:#e8efec;
+    --text:#10201d; --text-secondary:#3f5a53; --text-muted:#52655f;
+    --accent:#0d4a42; --accent-soft:#e2ede9;
+    --good:#0f6b46; --good-soft:#e4f2ea;
+    --warn:#8a5600; --warn-soft:#fbeed6;
+    --bad:#a01c14;  --bad-soft:#fbe6e4;
+    /* Amber tidak pernah membawa tulisan (2,46:1 terhadap putih) */
+    --radius:10px;
+    --shadow:0 1px 2px rgba(6,33,29,.05), 0 1px 3px rgba(6,33,29,.06);
+    --font:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono:ui-monospace,'SFMono-Regular','Roboto Mono',Menlo,Consolas,monospace;
+    --fs-cap:10.5px; --fs-body:13.5px; --fs-head:19px; --fs-kpi:40px;
+    --z-sticky:100; --z-dialog:300;
+    --ease:cubic-bezier(.22,1,.36,1);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;
+    font-size:var(--fs-body);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  button{font:inherit;color:inherit}
+  [hidden]{display:none!important}
+
+  /* ---------- kepala ---------- */
+  header.topbar{position:sticky;top:0;z-index:var(--z-sticky);background:var(--surface);border-bottom:1px solid var(--border)}
+  .topbar-inner{max-width:1320px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:12px}
+  nav.tabs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  .tab-btn{appearance:none;border:none;background:none;cursor:pointer;font-size:var(--fs-body);font-weight:600;
+    color:var(--text-muted);padding:14px 13px 12px;border-bottom:2px solid transparent;white-space:nowrap;
+    transition:color .18s var(--ease),border-color .18s var(--ease)}
+  .tab-btn:hover{color:var(--accent)}
+  .tab-btn.active{color:var(--accent);font-weight:800;border-bottom-color:var(--amber)}
+  .sync-pill{display:inline-flex;align-items:center;gap:7px;flex-shrink:0;cursor:pointer;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:100px;padding:5px 12px 5px 10px;font-family:var(--mono);
+    font-size:var(--fs-cap);letter-spacing:.04em;color:var(--text-secondary)}
+  .sync-pill:hover{border-color:var(--accent)}
+  .sync-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex-shrink:0}
+  .sync-pill.is-ok .dot{background:var(--good)}
+  .sync-pill.is-warn .dot{background:var(--amber)}
+  .sync-pill.is-err .dot{background:var(--bad)}
+  .sync-pill.is-err{border-color:var(--bad);color:var(--bad)}
+
+  main{max-width:1320px;margin:0 auto;padding:22px 20px 72px}
+  .view{display:none}.view.active{display:block}
+
+  .banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--radius);padding:11px 14px;margin-bottom:14px;
+    font-size:12.5px;line-height:1.5;border:1px solid var(--border);background:var(--surface)}
+  .banner b{font-weight:800}
+  .banner.info{background:var(--accent-soft);border-color:#c9ddd6;color:var(--t800)}
+  .banner.warn{background:var(--warn-soft);border-color:#efd6a8;color:var(--warn)}
+  .banner.err{background:var(--bad-soft);border-color:#f0c6c2;color:var(--bad)}
+  .banner .x{margin-left:auto;border:0;background:none;cursor:pointer;font-weight:800;color:inherit;padding:0 4px}
+
+  /* ---------- kontrol ---------- */
+  .filterbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:14px 16px;margin-bottom:22px;box-shadow:var(--shadow)}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label,.field .lbl{font-family:var(--mono);font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.07em;
+    color:var(--text-muted);font-weight:600}
+  input,select{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;
+    font-family:var(--font);font-size:var(--fs-body);outline:none}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  select:disabled{color:var(--text-muted);background:var(--surface-2)}
+  .segmented{display:inline-flex;gap:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:3px;flex-wrap:wrap}
+  .segmented button{appearance:none;border:none;background:none;cursor:pointer;font-size:12.5px;font-weight:700;
+    color:var(--text-secondary);padding:6px 12px;border-radius:6px;white-space:nowrap;
+    transition:background-color .15s var(--ease),color .15s var(--ease)}
+  .segmented button.active{background:var(--accent);color:#fff}
+  .segmented button:not(.active):hover{color:var(--accent);background:var(--surface-3)}
+  .spacer{flex:1}
+  .periode-cap{font-size:12.5px;color:var(--text-secondary);text-align:right;line-height:1.45;padding-bottom:3px}
+  .periode-cap b{color:var(--text);font-weight:800}
+  .btn{appearance:none;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:7px 13px;border-radius:7px;
+    font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ---------- judul bagian ---------- */
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:32px 0 12px}
+  .section-head:first-child{margin-top:0}
+  .section-head h2{font-size:var(--fs-head);font-weight:800;margin:0;letter-spacing:-.02em}
+  .section-head .eyebrow{font-size:12px;color:var(--text-muted);max-width:70ch;line-height:1.5}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:980px){.grid-2{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .kosong{color:var(--text-muted);font-size:12.5px;text-align:center;padding:26px 10px;line-height:1.55}
+  .kosong .btn{margin-top:10px}
+
+  .co{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:2px 8px;border-radius:100px;vertical-align:middle}
+  .co.ANTAM{background:var(--accent-soft);color:var(--accent)}
+  .co.PCM{background:var(--warn-soft);color:var(--warn)}
+
+  /* ---------- ringkasan perusahaan ---------- */
+  .ring{display:grid;grid-template-columns:auto 1fr;gap:6px 22px;align-items:end}
+  .ring-head{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ring-head b{font-size:15px;font-weight:800}
+  .ring-kpi{font-size:var(--fs-kpi);font-weight:800;line-height:1;letter-spacing:-.03em;color:var(--accent)}
+  .ring-kpi small{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);letter-spacing:0;margin-top:8px}
+  .ring-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .ring-split div{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:8px;padding:9px 11px}
+  .ring-split span{display:block;font-family:var(--mono);font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+  .ring-split b{font-size:19px;font-weight:800}
+  .ring-split em{font-style:normal;font-size:12px;color:var(--text-secondary);margin-left:6px}
+  .ring-foot{grid-column:1/-1;margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.5}
+  @media(max-width:560px){.ring{grid-template-columns:1fr}.ring-split{margin-top:10px}
+    #syncTxt{display:none}.sync-pill{padding:8px}}
+
+  /* ---------- papan terbaik: satu-satunya bagian yang "bersuara" ---------- */
+  .papan{border-radius:var(--radius);overflow:hidden;border:1px solid var(--t800);box-shadow:var(--shadow);background:var(--surface)}
+  .papan-head{background:linear-gradient(180deg,var(--t800),var(--t700));color:#eaf5f1;padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .papan-head b{font-size:15px;font-weight:800;color:#fff}
+  .papan-head .co{background:#ffffff1f;color:#fff}
+  .papan-body{padding:4px 16px 12px}
+  .grup{padding-top:12px}
+  .grup + .grup{border-top:1px solid var(--border-soft);margin-top:10px}
+  .grup h3{margin:0 0 6px;font-size:12px;font-weight:800;color:var(--text-secondary)}
+  .op{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;cursor:pointer;
+    padding:7px 6px;border-radius:8px}
+  .op:hover{background:var(--surface-2)}
+  .op .nama{flex:1;min-width:0}
+  .op .nama b{display:block;font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .op .nama small{display:block;font-size:12px;color:var(--text-muted);margin-top:1px}
+  .op .nilai{font-size:19px;font-weight:800;color:var(--accent)}
+  .op.juara .nilai{font-size:24px}
+  .op .rk{flex:0 0 auto;width:22px;text-align:center;font-size:12px;font-weight:800;color:var(--text-muted)}
+  .op.juara .rk{color:var(--text)}
+  .op.juara .rk::after{content:"";display:block;height:3px;border-radius:2px;background:var(--amber);margin:3px 3px 0}
+  .tag-seri{display:inline-block;font-size:10.5px;font-weight:700;color:var(--text-secondary);background:var(--surface-3);
+    border-radius:100px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+  .perlu .op .nilai{color:var(--text-secondary)}
+  .perlu .papan-head{background:var(--surface-2);color:var(--text)}
+  .perlu .papan-head b{color:var(--text)}
+  .perlu .papan-head .co{background:var(--surface-3);color:var(--text-secondary)}
+  .perlu.papan{border-color:var(--border)}
+
+  /* avatar */
+  .av{flex:0 0 auto;width:38px;height:38px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+    font-size:13px;font-weight:800;background:var(--accent-soft);color:var(--accent);border:1px solid var(--border)}
+  .av.PCM{background:var(--warn-soft);color:var(--warn)}
+  .av img{width:100%;height:100%;object-fit:cover;display:block}
+  .op.juara .av{width:48px;height:48px;font-size:15px;border:2px solid var(--amber)}
+
+  /* ---------- ranking ---------- */
+  .kontrol{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+  .kontrol input[type=search]{min-width:200px}
+  .catatan{font-size:12px;color:var(--text-muted);margin:-2px 0 12px;line-height:1.5}
+  .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  table{width:100%;border-collapse:collapse;font-size:var(--fs-body)}
+  th{text-align:left;font-family:var(--mono);font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);
+    padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;background:var(--surface-2);position:sticky;top:0;white-space:nowrap}
+  td{padding:8px 12px;border-bottom:1px solid var(--border-soft);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:var(--surface-2)}
+  td.num,th.num{text-align:right}
+  td.rank{font-weight:800;width:56px}
+  .opcell{display:flex;align-items:center;gap:10px;border:0;background:none;cursor:pointer;padding:0;text-align:left}
+  .opcell .av{width:32px;height:32px;font-size:11.5px}
+  .opcell b{font-weight:800;display:block}
+  .opcell b:hover{text-decoration:underline;text-decoration-color:var(--amber);text-decoration-thickness:2px;text-underline-offset:3px}
+  .opcell small{display:block;color:var(--text-muted);font-size:12px}
+  .nilai-besar{font-weight:800;font-size:15px}
+  .muted{color:var(--text-muted)}
+  details.belum{margin-top:14px}
+  details.belum summary{cursor:pointer;font-weight:700;color:var(--text-secondary);padding:6px 0}
+
+  /* ---------- hall of fame ---------- */
+  .hof{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .bulan h3{margin:0 0 10px;font-size:15px;font-weight:800}
+  .bulan .dua{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .juara-hof{border-top:3px solid var(--amber);padding-top:10px}
+  .juara-hof .lbl{font-family:var(--mono);font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+  .juara-hof .op{padding:6px 0}
+  .juara-hof .op:hover{background:none}
+  .juara-hof .op .av{width:44px;height:44px}
+  .juara-hof .kedua{font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45}
+
+  /* ---------- detail operator ---------- */
+  dialog{border:0;padding:0;border-radius:14px;width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 32px);
+    box-shadow:0 20px 60px rgba(6,33,29,.35);color:var(--text)}
+  dialog::backdrop{background:rgba(6,33,29,.45)}
+  .dlg-head{display:flex;gap:16px;align-items:center;padding:18px 20px;background:linear-gradient(180deg,var(--t800),var(--t700));color:#eaf5f1;position:sticky;top:0;z-index:1}
+  .dlg-head .av{width:72px;height:72px;font-size:22px;border:2px solid var(--amber)}
+  .dlg-head h2{margin:0;font-size:19px;font-weight:800;color:#fff}
+  .dlg-head p{margin:4px 0 0;font-size:12.5px;color:#b7d6ce}
+  .dlg-head .tutup{margin-left:auto;align-self:flex-start;border:1px solid #ffffff33;background:transparent;color:#fff;border-radius:8px;
+    padding:6px 10px;cursor:pointer;font-weight:700}
+  .dlg-body{padding:16px 20px 22px}
+  .stat2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.stat2{grid-template-columns:1fr}.bulan .dua{grid-template-columns:1fr}}
+  .stat2 .card h3{margin:0 0 8px;font-size:12px;font-weight:800;color:var(--text-secondary)}
+  .stat2 .besar{font-size:32px;font-weight:800;color:var(--accent);line-height:1}
+  .stat2 .kecil{font-size:12.5px;color:var(--text-secondary);margin-top:8px;line-height:1.55}
+  .subjudul{margin:18px 0 8px;font-size:13px;font-weight:800}
+  .chart svg{display:block;width:100%;height:auto}
+  .chart .bar{fill:var(--t700)}
+  .chart .bar.akhir{fill:var(--amber)}
+  .chart .lbl{font-size:10px;fill:var(--text-muted);font-family:var(--font)}
+  .chart .val{font-size:10px;fill:var(--text);font-weight:700;font-family:var(--font)}
+  .chart .garis{fill:none;stroke:var(--t700);stroke-width:2}
+  .chart .titik{fill:var(--t700)}
+  .chart .grid{stroke:var(--border);stroke-width:1}
+  .memuat{opacity:.55;transition:opacity .2s}
+
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <nav class="tabs" role="tablist" aria-label="Bagian Operator Performance">
+      <button class="tab-btn active" role="tab" aria-selected="true" data-view="ringkasan">Ringkasan</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-view="ranking">Ranking</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-view="hof">Hall of Fame</button>
+    </nav>
+    <button class="sync-pill" id="syncPill" type="button"><span class="dot"></span><span id="syncTxt">Memuat</span></button>
+  </div>
+</header>
+
+<main>
+  <div id="bannerWrap"></div>
+
+  <section class="filterbar" id="filterbar" aria-label="Periode">
+    <div class="field">
+      <span class="lbl">Periode</span>
+      <div class="segmented" id="segPeriode">
+        <button type="button" data-p="kemarin">Kemarin</button>
+        <button type="button" data-p="7h">7 hari</button>
+        <button type="button" data-p="bulan" class="active">Bulan ini</button>
+        <button type="button" data-p="bulanlalu">Bulan lalu</button>
+        <button type="button" data-p="pilih">Pilih tanggal</button>
+      </div>
+    </div>
+    <div class="field" data-pilih hidden><label for="inDari">Dari</label><input type="date" id="inDari"></div>
+    <div class="field" data-pilih hidden><label for="inSampai">Sampai</label><input type="date" id="inSampai"></div>
+    <div class="spacer"></div>
+    <div class="periode-cap" id="periodeCap">—</div>
+  </section>
+
+  <!-- RINGKASAN -->
+  <div class="view active" id="view-ringkasan">
+    <div class="section-head">
+      <h2>Ringkasan</h2>
+      <div class="eyebrow">Rata-rata dari nilai harian yang sah. Hari tanpa target, hari dengan porsi kerja di bawah 10% kelompoknya, dan hari yang belum final tidak dihitung.</div>
+    </div>
+    <div class="grid-2" id="ringkas"></div>
+
+    <div class="section-head">
+      <h2>Terbaik</h2>
+      <div class="eyebrow">Top 1 excavator dan top 3 dump truck. Operator dengan nilai sama tampil sebagai juara bersama.</div>
+    </div>
+    <div class="grid-2" id="terbaik"></div>
+
+    <div class="section-head">
+      <h2>Perlu Pendampingan</h2>
+      <div class="eyebrow">Nilai terendah pada periode ini. Nilai rendah bisa disebabkan kondisi unit atau front kerja, bukan hanya cara operator bekerja.</div>
+    </div>
+    <div class="grid-2" id="perlu"></div>
+  </div>
+
+  <!-- RANKING -->
+  <div class="view" id="view-ranking">
+    <div class="section-head">
+      <h2>Ranking operator</h2>
+      <div class="eyebrow" id="rkEyebrow">Klik nama operator untuk melihat detailnya.</div>
+    </div>
+    <div class="kontrol">
+      <div class="field"><span class="lbl">Perusahaan</span>
+        <div class="segmented" id="segCo"><button type="button" data-v="ANTAM" class="active">ANTAM</button><button type="button" data-v="PCM">PCM</button></div></div>
+      <div class="field"><span class="lbl">Alat</span>
+        <div class="segmented" id="segAlat"><button type="button" data-v="" class="active">Semua</button><button type="button" data-v="exca">Excavator</button><button type="button" data-v="truck">Dump truck</button></div></div>
+      <div class="field"><label for="selKomp">Dinilai dari</label><select id="selKomp"></select></div>
+      <div class="field"><label for="inCari">Cari nama atau badge</label><input type="search" id="inCari" autocomplete="off"></div>
+    </div>
+    <div class="catatan" id="rkCatatan"></div>
+    <div id="rkTabel"></div>
+  </div>
+
+  <!-- HALL OF FAME -->
+  <div class="view" id="view-hof">
+    <div class="section-head">
+      <h2>Hall of Fame</h2>
+      <div class="eyebrow">Juara tiap bulan yang sudah selesai, ANTAM dan PCM digabung. Syarat hari kerja dan porsi kerja sama dengan ranking.</div>
+    </div>
+    <div id="hofIsi"><div class="kosong">Memuat…</div></div>
+  </div>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlgNama">
+  <div class="dlg-head">
+    <div class="av" id="dlgAv"></div>
+    <div><h2 id="dlgNama">—</h2><p id="dlgMeta">—</p></div>
+    <button class="tutup" type="button" id="dlgTutup">Tutup</button>
+  </div>
+  <div class="dlg-body" id="dlgBody"></div>
+</dialog>
+
+<script>
+(function () {
+'use strict';
+
+/* =====================================================================
+   OPERATOR PERFORMANCE
+   Semua angka dihitung di Supabase (fungsi op_halaman, op_hall_of_fame,
+   op_detail). Halaman ini hanya menampilkan, supaya halaman, poster,
+   dan ekspor tidak pernah memakai aturan yang berbeda.
+   Sesi login dipinjam dari shell (localStorage pakal_auth).
+   ===================================================================== */
+var SUPA = {
+  url: 'https://qblivboqavhlugydhmjr.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE'
+};
+var AUTH_KEY = 'pakal_auth';
+var BUCKET = 'op-foto';
+var SEGAR_MS = 30 * 60 * 1000;      // data berubah dua kali sehari; 30 menit cukup
+var BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+var BULAN_PANJANG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+var ALAT = { exca: 'Excavator', truck: 'Dump truck' };
+
+var S = {
+  periode: 'bulan', dari: null, sampai: null,
+  data: null, hof: null, muatTerakhir: 0, sibuk: false,
+  co: 'ANTAM', alat: '', komp: '', cari: '',
+  foto: {}, view: 'ringkasan'
+};
+
+function el(id) { return document.getElementById(id); }
+function esc(t) {
+  return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function pad(n) { return String(n).padStart(2, '0'); }
+function angka(v, d) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  d = d == null ? 1 : d;
+  return Number(v).toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+/* ---------- tanggal, dihitung dari string Y-M-D (tanpa toISOString, §20.2) ---------- */
+function hariIniWit() {
+  var d = new Date(Date.now() + 9 * 3600000);
+  return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+}
+function geser(ymd, n) {
+  var p = ymd.split('-'), t = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n));
+  return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate());
+}
+function tgl(t, tahun) { var p = String(t).split('-'); return (+p[2]) + ' ' + BULAN[+p[1] - 1] + (tahun ? ' ' + p[0] : ''); }
+function rentang(a, b) {
+  if (a === b) return tgl(a, true);
+  if (a.slice(0, 7) === b.slice(0, 7)) return (+a.slice(8)) + '–' + tgl(b, true);
+  return a.slice(0, 4) === b.slice(0, 4) ? tgl(a, false) + '–' + tgl(b, true) : tgl(a, true) + '–' + tgl(b, true);
+}
+function namaBulan(ymd) { var p = ymd.split('-'); return BULAN_PANJANG[+p[1] - 1] + ' ' + p[0]; }
+function jamWit(ts) {
+  var d = new Date(new Date(ts).getTime() + 9 * 3600000);
+  return d.getUTCDate() + ' ' + BULAN[d.getUTCMonth()] + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ' WIT';
+}
+
+function hitungPeriode() {
+  var t = hariIniWit();
+  switch (S.periode) {
+    case 'kemarin': return [geser(t, -1), geser(t, -1)];
+    case '7h': return [geser(t, -7), geser(t, -1)];
+    case 'bulanlalu': {
+      var awalIni = t.slice(0, 8) + '01';
+      var akhirLalu = geser(awalIni, -1);
+      return [akhirLalu.slice(0, 8) + '01', akhirLalu];
+    }
+    case 'pilih': {
+      var a = el('inDari').value || geser(t, -7), b = el('inSampai').value || geser(t, -1);
+      if (b < a) { var x = a; a = b; b = x; }
+      if (b > t) b = t;
+      return [a, b];
+    }
+    default: return [t.slice(0, 8) + '01', t];
+  }
+}
+
+/* ---------- akses Supabase ---------- */
+function token() {
+  try {
+    var a = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+    if (a && a.access_token && (!a.expires_at || a.expires_at * 1000 > Date.now())) return a.access_token;
+  } catch (e) {}
+  return null;
+}
+function galat(pesan, jenis) { var e = new Error(pesan); e.jenis = jenis; return e; }
+function rpc(fn, args) {
+  var tk = token();
+  if (!tk) return Promise.reject(galat('sesi', 'sesi'));
+  return fetch(SUPA.url + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: { apikey: SUPA.key, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args || {})
+  }).then(function (r) {
+    if (r.status === 401) throw galat('sesi', 'sesi');
+    if (!r.ok) return r.text().then(function (t) { throw galat('Supabase ' + r.status + ': ' + t.slice(0, 160), 'server'); });
+    return r.json();
+  });
+}
+/* Foto ada di bucket privat, jadi alamatnya ditandatangani dan berlaku 1 jam. */
+function muatFoto(daftar) {
+  var tk = token(), perlu = [];
+  daftar.forEach(function (p) {
+    if (p && !(S.foto[p] && S.foto[p].sampai > Date.now()) && perlu.indexOf(p) < 0) perlu.push(p);
+  });
+  if (!tk || !perlu.length) return Promise.resolve();
+  return fetch(SUPA.url + '/storage/v1/object/sign/' + BUCKET, {
+    method: 'POST',
+    headers: { apikey: SUPA.key, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expiresIn: 3600, paths: perlu })
+  }).then(function (r) { return r.ok ? r.json() : []; }).then(function (arr) {
+    (arr || []).forEach(function (x) {
+      if (x && x.signedURL && x.path) {
+        S.foto[x.path] = { url: SUPA.url + '/storage/v1' + x.signedURL, sampai: Date.now() + 55 * 60000 };
+      }
+    });
+  }).catch(function () {});
+}
+
+/* ---------- potongan tampilan ---------- */
+function inisial(nama) {
+  var k = String(nama || '').replace(/[^A-Za-z\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  return ((k[0] || '?').charAt(0) + (k.length > 1 ? k[k.length - 1].charAt(0) : '')).toUpperCase();
+}
+function avatar(o) {
+  var f = o.photo_path && S.foto[o.photo_path];
+  return '<span class="av ' + esc(o.company) + '" aria-hidden="true">' +
+    (f ? '<img src="' + esc(f.url) + '" alt="" loading="lazy">' : esc(inisial(o.name))) + '</span>';
+}
+function tombolOp(o, isi, kelas) {
+  return '<button type="button" class="' + (kelas || 'op') + '" data-badge="' + esc(o.badge) + '">' + isi + '</button>';
+}
+
+/* ---------- banner & status ---------- */
+var bannerTutup = {};
+function banner(kunci, jenis, html) {
+  if (bannerTutup[kunci]) return '';
+  return '<div class="banner ' + jenis + '" data-kunci="' + kunci + '"><div>' + html + '</div>' +
+    '<button class="x" type="button" aria-label="Tutup pesan">×</button></div>';
+}
+function tampilStatus(st) {
+  var pill = el('syncPill'), txt = el('syncTxt'), html = '';
+  pill.className = 'sync-pill';
+  if (!st) { txt.textContent = 'Status tidak terbaca'; pill.classList.add('is-warn'); return; }
+  var ok = st.terakhir_ok ? new Date(st.terakhir_ok).getTime() : 0;
+  var umurJam = ok ? (Date.now() - ok) / 3600000 : Infinity;
+  if (!ok) {
+    txt.textContent = 'Belum pernah sinkron'; pill.classList.add('is-err');
+  } else if (umurJam > 26) {
+    txt.textContent = 'Data tertinggal'; pill.classList.add('is-err');
+    html += banner('telat', 'err', '<b>Data belum diperbarui sejak ' + esc(jamWit(st.terakhir_ok)) + '.</b> ' +
+      'Pengambilan dari Minerva dijadwalkan pukul 07:00 dan 19:00 WIT. Beri tahu admin MiningMalut.' +
+      (st.terakhir && st.terakhir.message ? ' Pesan terakhir: ' + esc(String(st.terakhir.message).slice(0, 160)) : ''));
+  } else {
+    txt.textContent = 'Diperbarui ' + jamWit(st.terakhir_ok);
+    pill.classList.add(st.terakhir && st.terakhir.status === 'gagal' ? 'is-warn' : 'is-ok');
+  }
+  pill.title = st.terakhir ? ('Sinkron terakhir: ' + jamWit(st.terakhir.ran_at) + ' · ' + st.terakhir.status +
+    (st.terakhir.message ? ' · ' + st.terakhir.message : '')) : '';
+  var m = st.mundur;
+  if (m && !m.selesai) {
+    html += banner('mundur', 'info', m.macet
+      ? '<b>Pengisian data lama berhenti.</b> ' + esc(m.macet)
+      : '<b>Data lama masih diisi dari Minerva</b>, saat ini sudah sampai ' + esc(tgl(m.tertua_berisi || m.kursor, true)) +
+        '. Periode panjang dan Hall of Fame akan lengkap dengan sendirinya.');
+  }
+  el('bannerWrap').innerHTML = html;
+}
+
+function pesanGagal(e) {
+  if (e && e.jenis === 'sesi') return 'Sesi login sudah berakhir. Keluar dari MiningMalut lalu masuk lagi untuk memuat data.';
+  return 'Data tidak terbaca. ' + esc(e && e.message ? e.message : e);
+}
+
+/* ---------- muat halaman ---------- */
+function muat() {
+  var p = hitungPeriode();
+  S.dari = p[0]; S.sampai = p[1];
+  el('periodeCap').innerHTML = '<b>' + esc(rentang(S.dari, S.sampai)) + '</b>';
+  if (S.sibuk) return;
+  S.sibuk = true;
+  document.querySelectorAll('#ringkas,#terbaik,#perlu,#rkTabel').forEach(function (x) { x.classList.add('memuat'); });
+  rpc('op_halaman', { p_from: S.dari, p_to: S.sampai })
+    .then(function (d) {
+      S.data = d; S.muatTerakhir = Date.now();
+      var paths = (d.ranking || []).map(function (r) { return r.photo_path; }).filter(Boolean);
+      return muatFoto(paths).then(function () { return d; });
+    })
+    .then(function (d) {
+      tampilStatus(d.status);
+      var fin = d.status && d.status.final_terakhir;
+      el('periodeCap').innerHTML = '<b>' + esc(rentang(S.dari, S.sampai)) + '</b>' +
+        (fin && fin < S.sampai ? '<br>data final sampai ' + esc(tgl(fin, true)) : '');
+      tampilRingkasan(); isiKomponen(); tampilRanking();
+    })
+    .catch(function (e) {
+      var msg = '<div class="card kosong">' + pesanGagal(e) + '</div>';
+      el('ringkas').innerHTML = msg; el('terbaik').innerHTML = ''; el('perlu').innerHTML = '';
+      el('rkTabel').innerHTML = msg;
+      el('syncTxt').textContent = 'Gagal memuat'; el('syncPill').className = 'sync-pill is-err';
+    })
+    .then(function () {
+      S.sibuk = false;
+      document.querySelectorAll('.memuat').forEach(function (x) { x.classList.remove('memuat'); });
+    });
+}
+
+/* ---------- ringkasan ---------- */
+function kosongPeriode() {
+  return '<div class="card kosong">Belum ada data final pada ' + esc(rentang(S.dari, S.sampai)) + '.' +
+    (S.periode === 'bulan' ? '<br><button class="btn" type="button" data-ke-periode="bulanlalu">Lihat bulan lalu</button>' : '') + '</div>';
+}
+function tampilRingkasan() {
+  var d = S.data, rk = d.ringkasan || {};
+  var adaData = ['ANTAM', 'PCM'].some(function (c) { return rk[c] && rk[c].operator > 0; });
+  if (!adaData) {
+    el('ringkas').innerHTML = kosongPeriode(); el('terbaik').innerHTML = ''; el('perlu').innerHTML = '';
+    return;
+  }
+  el('ringkas').innerHTML = ['ANTAM', 'PCM'].map(function (c) {
+    var r = rk[c] || {};
+    var catatan = [];
+    if (r.baris_tanpa_target) catatan.push(r.baris_tanpa_target + ' catatan harian tanpa target');
+    if (r.baris_porsi_kecil) catatan.push(r.baris_porsi_kecil + ' catatan harian berporsi kerja di bawah 10%');
+    if (r.baris_sementara) catatan.push(r.baris_sementara + ' catatan harian belum final');
+    if (r.belum_memenuhi) catatan.push(r.belum_memenuhi + ' operator belum cukup hari kerja untuk masuk peringkat');
+    function sub(a) {
+      var x = r[a] || {};
+      return '<div><span>' + ALAT[a] + '</span><b>' + angka(x.rata) + '</b><em>' + (x.operator || 0) + ' operator</em></div>';
+    }
+    return '<div class="card ring">' +
+      '<div class="ring-head"><b>Operator ' + c + '</b></div>' +
+      '<div class="ring-kpi">' + angka(r.rata) + '<small>nilai rata-rata · ' + (r.operator || 0) + ' operator</small></div>' +
+      '<div class="ring-split">' + sub('exca') + sub('truck') + '</div>' +
+      (catatan.length ? '<div class="ring-foot">Tidak dihitung: ' + esc(catatan.join(', ')) + '.</div>' : '') +
+    '</div>';
+  }).join('');
+
+  el('terbaik').innerHTML = ['ANTAM', 'PCM'].map(function (c) { return papan(c, 'top'); }).join('');
+  el('perlu').innerHTML = ['ANTAM', 'PCM'].map(function (c) { return papan(c, 'perlu'); }).join('');
+}
+function papan(c, jenis) {
+  var u = (S.data.unggulan || {})[c] || {};
+  var isi = ['exca', 'truck'].map(function (a) {
+    var daftar = (u[a] && u[a][jenis]) || [];
+    var hitung = {};
+    daftar.forEach(function (o) { hitung[o.nilai] = (hitung[o.nilai] || 0) + 1; });
+    var baris = daftar.length ? daftar.map(function (o, i) {
+      var juara = jenis === 'top' && o.peringkat === 1;
+      var seri = hitung[o.nilai] > 1;
+      return tombolOp(o,
+        '<span class="rk">' + (jenis === 'top' ? o.peringkat : '') + '</span>' +
+        avatar(o) +
+        '<span class="nama"><b>' + esc(o.name) + (seri ? '<span class="tag-seri">' + (jenis === 'top' ? 'bersama' : 'seri') + '</span>' : '') + '</b>' +
+        '<small>' + o.hari_valid + ' hari · badge ' + esc(o.badge) + '</small></span>' +
+        '<span class="nilai">' + angka(o.nilai) + '</span>',
+        'op' + (juara ? ' juara' : ''));
+    }).join('') : '<div class="kosong">' + (jenis === 'top'
+        ? 'Belum ada operator yang memenuhi syarat.'
+        : 'Tidak ada. Semua operator yang memenuhi syarat sudah tampil di Terbaik atau nilainya sama.') + '</div>';
+    return '<div class="grup"><h3>' + ALAT[a] + '</h3>' + baris + '</div>';
+  }).join('');
+  return '<div class="papan' + (jenis === 'perlu' ? ' perlu' : '') + '">' +
+    '<div class="papan-head"><b>' +
+      (jenis === 'top' ? 'Terbaik ' : 'Perlu pendampingan · ') + c + '</b></div>' +
+    '<div class="papan-body">' + isi + '</div></div>';
+}
+
+/* ---------- ranking ---------- */
+function isiKomponen() {
+  var sel = el('selKomp'), komp = (S.data && S.data.komponen) || {};
+  var daftar = S.alat ? (komp[S.alat] || []) : [];
+  if (S.komp && daftar.indexOf(S.komp) < 0) S.komp = '';
+  sel.innerHTML = '<option value="">Nilai keseluruhan</option>' +
+    daftar.map(function (k) { return '<option value="' + esc(k) + '"' + (k === S.komp ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('');
+  sel.disabled = !S.alat;
+  sel.title = S.alat ? '' : 'Pilih Excavator atau Dump truck untuk menilai per komponen';
+}
+function nilaiDari(o) {
+  if (!S.komp) return o.nilai;
+  var k = o.komponen && o.komponen[S.komp];
+  return k && k.s != null ? k.s : null;
+}
+function tampilRanking() {
+  if (!S.data) return;
+  var semua = (S.data.ranking || []).filter(function (o) {
+    return o.company === S.co && (!S.alat || o.equipment_type === S.alat);
+  });
+  var q = S.cari.trim().toLowerCase();
+  var cocok = function (o) { return !q || o.name.toLowerCase().indexOf(q) >= 0 || String(o.badge).indexOf(q) >= 0; };
+
+  var masuk = semua.filter(function (o) { return o.memenuhi && nilaiDari(o) != null; });
+  var belum = semua.filter(function (o) { return !o.memenuhi; });
+
+  // Peringkat: nilai sama (dan hari sama) = peringkat sama. Nama tidak memecah seri.
+  masuk.sort(function (a, b) {
+    var va = nilaiDari(a), vb = nilaiDari(b);
+    return (vb - va) || (b.hari_valid - a.hari_valid) || a.name.localeCompare(b.name);
+  });
+  var pakaiSql = !S.komp && S.alat;
+  var prev = null;
+  masuk.forEach(function (o, i) {
+    if (pakaiSql) { o._rk = o.peringkat; return; }
+    var kunci = nilaiDari(o).toFixed(2) + '|' + o.hari_valid;
+    o._rk = (prev && prev.kunci === kunci) ? prev.rk : i + 1;
+    prev = { kunci: kunci, rk: o._rk };
+  });
+
+  var catatan = [];
+  if (!S.alat) catatan.push('Excavator dan dump truck diurutkan bersama menurut nilai keseluruhan.');
+  if (S.komp) catatan.push('Diurutkan menurut skor komponen ' + S.komp + ' dari Minerva; persentase capaian ditampilkan di sampingnya.');
+  var syarat = {};
+  semua.forEach(function (o) { syarat[o.equipment_type] = o.syarat_hari; });
+  if (S.dari !== S.sampai) {
+    catatan.push('Syarat masuk peringkat: ' + Object.keys(syarat).map(function (a) { return ALAT[a].toLowerCase() + ' ' + syarat[a] + ' hari'; }).join(', ') +
+      ' (setengah median hari kerja rekan se-perusahaan dan se-jenis alat).');
+  }
+  el('rkCatatan').textContent = catatan.join(' ');
+
+  if (!semua.length) { el('rkTabel').innerHTML = kosongPeriode(); return; }
+
+  var kolomNilai = S.komp ? 'Skor ' + esc(S.komp) : 'Nilai';
+  var rows = masuk.filter(cocok).map(function (o) {
+    var k = S.komp && o.komponen[S.komp];
+    return '<tr><td class="rank">' + o._rk + '</td>' +
+      '<td>' + sel(o) + '</td>' +
+      '<td>' + ALAT[o.equipment_type] + '</td>' +
+      '<td class="num"><span class="nilai-besar">' + angka(nilaiDari(o), S.komp ? 2 : 1) + '</span>' +
+        (k && k.p != null ? ' <span class="muted">· ' + angka(k.p) + '%</span>' : '') + '</td>' +
+      '<td class="num">' + (S.komp ? angka(o.nilai) : '<span class="muted">' + angka(o.nilai_min) + '–' + angka(o.nilai_max) + '</span>') + '</td>' +
+      '<td class="num">' + o.hari_valid + '</td></tr>';
+  }).join('');
+  var html = '<div class="table-wrap"><table><thead><tr><th>#</th><th>Operator</th><th>Alat</th>' +
+    '<th class="num">' + kolomNilai + '</th><th class="num">' + (S.komp ? 'Nilai keseluruhan' : 'Rentang harian') + '</th>' +
+    '<th class="num">Hari</th></tr></thead><tbody>' +
+    (rows || '<tr><td colspan="6" class="kosong">' + (q ? 'Tidak ada nama atau badge yang cocok.' : 'Belum ada operator yang memenuhi syarat pada periode ini.') + '</td></tr>') +
+    '</tbody></table></div>';
+
+  var belumTampil = belum.filter(cocok);
+  if (belumTampil.length) {
+    html += '<details class="belum"><summary>Belum masuk peringkat (' + belumTampil.length + ')</summary>' +
+      '<div class="table-wrap"><table><thead><tr><th>Operator</th><th>Alat</th><th class="num">Nilai</th><th>Alasan</th></tr></thead><tbody>' +
+      belumTampil.map(function (o) {
+        var alasan = [];
+        if (o.hari_valid === 0) alasan.push('tidak ada hari yang sah');
+        else alasan.push(o.hari_valid + ' dari ' + o.syarat_hari + ' hari yang disyaratkan');
+        if (o.hari_tanpa_target) alasan.push(o.hari_tanpa_target + ' hari tanpa target');
+        if (o.hari_porsi_kecil) alasan.push(o.hari_porsi_kecil + ' hari berporsi kecil');
+        if (o.hari_sementara) alasan.push(o.hari_sementara + ' hari belum final');
+        return '<tr><td>' + sel(o) + '</td><td>' + ALAT[o.equipment_type] + '</td>' +
+          '<td class="num">' + angka(o.nilai) + '</td><td class="muted">' + esc(alasan.join(' · ')) + '</td></tr>';
+      }).join('') + '</tbody></table></div></details>';
+  }
+  el('rkTabel').innerHTML = html;
+}
+function sel(o) {
+  return tombolOp(o, avatar(o) + '<span><b>' + esc(o.name) + '</b><small>badge ' + esc(o.badge) + '</small></span>', 'opcell');
+}
+
+/* ---------- hall of fame ---------- */
+function muatHof() {
+  el('hofIsi').innerHTML = '<div class="kosong">Memuat…</div>';
+  rpc('op_hall_of_fame', {})
+    .then(function (d) {
+      S.hof = d || [];
+      var paths = [];
+      S.hof.forEach(function (b) {
+        ['exca', 'truck'].forEach(function (a) {
+          ((b[a] && b[a].juara) || []).forEach(function (j) { if (j.photo_path) paths.push(j.photo_path); });
+        });
+      });
+      return muatFoto(paths);
+    })
+    .then(tampilHof)
+    .catch(function (e) { el('hofIsi').innerHTML = '<div class="card kosong">' + pesanGagal(e) + '</div>'; });
+}
+function tampilHof() {
+  if (!S.hof || !S.hof.length) {
+    el('hofIsi').innerHTML = '<div class="card kosong">Belum ada bulan yang selesai dengan data lengkap. ' +
+      'Juara pertama akan tampil sesudah bulan berjalan berakhir.</div>';
+    return;
+  }
+  el('hofIsi').innerHTML = '<div class="hof">' + S.hof.map(function (b) {
+    return '<div class="card bulan"><h3>' + esc(namaBulan(b.bulan)) + '</h3><div class="dua">' +
+      ['exca', 'truck'].map(function (a) {
+        var x = b[a] || {}, j = x.juara || [];
+        if (!j.length) return '<div class="juara-hof"><div class="lbl">' + ALAT[a] + '</div><div class="kosong">Tidak ada yang memenuhi syarat.</div></div>';
+        return '<div class="juara-hof"><div class="lbl">' + ALAT[a] + (j.length > 1 ? ' · juara bersama' : '') + '</div>' +
+          j.map(function (o) {
+            return tombolOp(o, avatar(o) + '<span class="nama"><b>' + esc(o.name) + '</b>' +
+              '<small><span class="co ' + o.company + '">' + o.company + '</span> ' + angka(o.nilai) + ' · ' + o.hari_valid + ' hari</small></span>');
+          }).join('') +
+          (x.kedua && x.kedua.length ? '<div class="kedua">Peringkat 2: ' + esc(x.kedua.join(', ')) + '</div>' : '') +
+        '</div>';
+      }).join('') + '</div></div>';
+  }).join('') + '</div>';
+}
+
+/* ---------- detail operator ---------- */
+var dlgAlat = null, dlgData = null;
+function bukaDetail(badge) {
+  var dlg = el('dlg');
+  el('dlgNama').textContent = 'Memuat…'; el('dlgMeta').textContent = ''; el('dlgAv').textContent = '';
+  el('dlgBody').innerHTML = '<div class="kosong">Memuat…</div>';
+  if (!dlg.open) { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); }
+  rpc('op_detail', { p_badge: badge })
+    .then(function (d) {
+      dlgData = d;
+      var o = d.operator;
+      return muatFoto(o && o.photo_path ? [o.photo_path] : []).then(function () { return d; });
+    })
+    .then(function (d) {
+      var o = d.operator;
+      if (!o) { el('dlgNama').textContent = 'Operator tidak ditemukan'; el('dlgBody').innerHTML = ''; return; }
+      el('dlgNama').textContent = o.name;
+      el('dlgMeta').innerHTML = '<span class="co ' + esc(o.company) + '">' + esc(o.company) + '</span> badge ' + esc(o.badge) +
+        (o.first_seen ? ' · tercatat ' + esc(rentang(o.first_seen, o.last_seen)) : '');
+      var f = o.photo_path && S.foto[o.photo_path];
+      el('dlgAv').className = 'av ' + o.company;
+      el('dlgAv').innerHTML = f ? '<img src="' + esc(f.url) + '" alt="Foto ' + esc(o.name) + '">' : esc(inisial(o.name));
+      var alat = (d.alat || []).map(function (x) { return x.equipment_type; });
+      dlgAlat = alat.indexOf(S.alat) >= 0 ? S.alat : alat[0];
+      tampilDetail();
+    })
+    .catch(function (e) { el('dlgNama').textContent = 'Gagal memuat'; el('dlgBody').innerHTML = '<div class="kosong">' + pesanGagal(e) + '</div>'; });
+}
+function tampilDetail() {
+  var d = dlgData, daftar = d.alat || [];
+  if (!daftar.length) { el('dlgBody').innerHTML = '<div class="kosong">Belum ada nilai yang sah untuk operator ini.</div>'; return; }
+  var x = daftar.filter(function (a) { return a.equipment_type === dlgAlat; })[0] || daftar[0];
+  var html = '';
+  if (daftar.length > 1) {
+    html += '<div class="segmented" id="dlgSeg" style="margin-bottom:14px">' + daftar.map(function (a) {
+      return '<button type="button" data-a="' + a.equipment_type + '"' + (a.equipment_type === x.equipment_type ? ' class="active"' : '') + '>' + ALAT[a.equipment_type] + '</button>';
+    }).join('') + '</div>';
+  }
+  var bi = x.bulan_ini, sp = x.sepanjang || {};
+  var t = hariIniWit();
+  var biKecil = !bi || !bi.hari ? 'Belum ada hari yang sah bulan ini.'
+    : bi.hari + ' hari kerja sah' + (bi.memenuhi
+      ? ' · peringkat ' + bi.peringkat + ' dari ' + bi.dari_n + ' operator ' + ALAT[x.equipment_type].toLowerCase()
+      : ' · belum masuk peringkat, syaratnya ' + bi.syarat_hari + ' hari');
+  html += '<div class="stat2">' +
+    '<div class="card"><h3>' + esc(BULAN_PANJANG[+t.slice(5, 7) - 1]) + ' (bulan berjalan)</h3>' +
+      '<div class="besar">' + angka(bi && bi.rata) + '</div><div class="kecil">' + esc(biKecil) + '</div></div>' +
+    '<div class="card"><h3>Sepanjang waktu</h3><div class="besar">' + angka(sp.rata) + '</div>' +
+      '<div class="kecil">' + (sp.hari ? sp.hari + ' hari kerja sah · terbaik ' + angka(sp.terbaik) + ' · terendah ' + angka(sp.terendah) +
+        '<br>' + esc(rentang(sp.dari, sp.sampai)) : 'Belum ada hari yang sah.') + '</div></div>' +
+  '</div>';
+
+  var komp = x.komponen || {}, kk = Object.keys(komp);
+  if (kk.length) {
+    html += '<div class="subjudul">Komponen penilaian, rata-rata sepanjang waktu</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Komponen</th><th class="num">Capaian</th><th class="num">Skor</th></tr></thead><tbody>' +
+      kk.map(function (k) {
+        return '<tr><td>' + esc(k) + '</td><td class="num">' + angka(komp[k].p) + '%</td><td class="num">' + angka(komp[k].s, 2) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  if ((x.bulanan || []).length) {
+    html += '<div class="subjudul">Rata-rata per bulan</div><div class="chart">' + grafikBulanan(x.bulanan) + '</div>';
+  }
+  if ((x.terakhir || []).length > 1) {
+    html += '<div class="subjudul">30 hari kerja terakhir</div><div class="chart">' + grafikHarian(x.terakhir) + '</div>';
+  }
+  el('dlgBody').innerHTML = html;
+}
+function grafikBulanan(data) {
+  var d = data.slice(-12), W = 700, H = 170, pb = 26, pt = 18, lebar = W / d.length;
+  var maks = Math.max(100, Math.max.apply(null, d.map(function (b) { return b.rata || 0; })));
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Rata-rata nilai per bulan">' +
+    d.map(function (b, i) {
+      var h = ((b.rata || 0) / maks) * (H - pb - pt), x = i * lebar + lebar * 0.2, w = lebar * 0.6, y = H - pb - h;
+      var p = b.bulan.split('-');
+      return '<rect class="bar' + (i === d.length - 1 ? ' akhir' : '') + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3"/>' +
+        '<text class="val" x="' + (x + w / 2).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" text-anchor="middle">' + angka(b.rata) + '</text>' +
+        '<text class="lbl" x="' + (x + w / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + BULAN[+p[1] - 1] + ' ' + p[0].slice(2) + '</text>';
+    }).join('') + '</svg>';
+}
+function grafikHarian(data) {
+  var W = 700, H = 150, pl = 30, pr = 10, pt = 12, pb = 24;
+  var v = data.map(function (x) { return +x.nilai; });
+  var mn = Math.max(0, Math.floor(Math.min.apply(null, v) / 10) * 10), mx = Math.min(150, Math.ceil(Math.max.apply(null, v) / 10) * 10);
+  if (mx - mn < 20) mx = mn + 20;
+  var sx = function (i) { return pl + (i / Math.max(1, data.length - 1)) * (W - pl - pr); };
+  var sy = function (n) { return pt + (1 - (n - mn) / (mx - mn)) * (H - pt - pb); };
+  var jalur = data.map(function (x, i) { return (i ? 'L' : 'M') + sx(i).toFixed(1) + ' ' + sy(+x.nilai).toFixed(1); }).join(' ');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Nilai harian 30 hari kerja terakhir">' +
+    [mn, (mn + mx) / 2, mx].map(function (g) {
+      return '<line class="grid" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + sy(g).toFixed(1) + '" y2="' + sy(g).toFixed(1) + '"/>' +
+        '<text class="lbl" x="' + (pl - 6) + '" y="' + (sy(g) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(g) + '</text>';
+    }).join('') +
+    '<path class="garis" d="' + jalur + '"/>' +
+    data.map(function (x, i) { return '<circle class="titik" cx="' + sx(i).toFixed(1) + '" cy="' + sy(+x.nilai).toFixed(1) + '" r="2.6"><title>' + esc(tgl(x.tanggal, true) + ': ' + angka(x.nilai)) + '</title></circle>'; }).join('') +
+    '<text class="lbl" x="' + pl + '" y="' + (H - 6) + '">' + esc(tgl(data[0].tanggal, true)) + '</text>' +
+    '<text class="lbl" x="' + (W - pr) + '" y="' + (H - 6) + '" text-anchor="end">' + esc(tgl(data[data.length - 1].tanggal, true)) + '</text>' +
+  '</svg>';
+}
+
+/* ---------- interaksi ---------- */
+function gantiView(v) {
+  S.view = v;
+  document.querySelectorAll('.tab-btn').forEach(function (b) {
+    var on = b.dataset.view === v; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('active', x.id === 'view-' + v); });
+  el('filterbar').hidden = v === 'hof';
+  if (v === 'hof' && !S.hof) muatHof();
+}
+function gantiPeriode(p) {
+  S.periode = p;
+  document.querySelectorAll('#segPeriode button').forEach(function (b) { b.classList.toggle('active', b.dataset.p === p); });
+  document.querySelectorAll('[data-pilih]').forEach(function (f) { f.hidden = p !== 'pilih'; });
+  if (p === 'pilih') {
+    var t = hariIniWit();
+    if (!el('inDari').value) el('inDari').value = S.dari || geser(t, -7);
+    if (!el('inSampai').value) el('inSampai').value = S.sampai && S.sampai < t ? S.sampai : geser(t, -1);
+    el('inDari').max = t; el('inSampai').max = t;
+  }
+  muat();
+}
+function segmen(id, cb) {
+  el(id).addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+    cb(b.dataset.v);
+  });
+}
+
+document.querySelector('nav.tabs').addEventListener('click', function (e) {
+  var b = e.target.closest('.tab-btn'); if (b) gantiView(b.dataset.view);
+});
+el('segPeriode').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (b) gantiPeriode(b.dataset.p);
+});
+el('inDari').addEventListener('change', muat);
+el('inSampai').addEventListener('change', muat);
+segmen('segCo', function (v) { S.co = v; tampilRanking(); });
+segmen('segAlat', function (v) { S.alat = v; isiKomponen(); tampilRanking(); });
+el('selKomp').addEventListener('change', function () { S.komp = this.value; tampilRanking(); });
+el('inCari').addEventListener('input', function () { S.cari = this.value; tampilRanking(); });
+
+document.body.addEventListener('click', function (e) {
+  var op = e.target.closest('[data-badge]');
+  if (op) { bukaDetail(op.dataset.badge); return; }
+  var kp = e.target.closest('[data-ke-periode]');
+  if (kp) { gantiPeriode(kp.dataset.kePeriode); return; }
+  var x = e.target.closest('.banner .x');
+  if (x) { var bn = x.closest('.banner'); bannerTutup[bn.dataset.kunci] = 1; bn.remove(); }
+});
+el('dlgBody').addEventListener('click', function (e) {
+  var b = e.target.closest('#dlgSeg button'); if (b) { dlgAlat = b.dataset.a; tampilDetail(); }
+});
+el('dlgTutup').addEventListener('click', function () { el('dlg').close ? el('dlg').close() : el('dlg').removeAttribute('open'); });
+el('dlg').addEventListener('click', function (e) { if (e.target === this) this.close(); });
+el('syncPill').addEventListener('click', function () {
+  bannerTutup = {};
+  if (S.data) tampilStatus(S.data.status);
+  var t = this.title; if (t) el('bannerWrap').insertAdjacentHTML('afterbegin', banner('rinci', 'info', esc(t)));
+});
+
+/* Hanya menarik ulang selagi benar-benar terlihat. Di dalam shell,
+   document.hidden tetap false saat bingkainya disembunyikan, jadi yang
+   dibaca adalah frameElement.getClientRects() (dokumentasi §10.9). */
+function terlihat() {
+  if (document.visibilityState === 'hidden') return false;
+  try { if (window.frameElement) return window.frameElement.getClientRects().length > 0; } catch (e) {}
+  return true;
+}
+setInterval(function () {
+  if (terlihat() && !S.sibuk && Date.now() - S.muatTerakhir > SEGAR_MS) { S.hof = null; muat(); if (S.view === 'hof') muatHof(); }
+}, 60000);
+
+muat();
+})();
+</script>
+</body>
+</html>
