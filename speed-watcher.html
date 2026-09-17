@@ -3103,44 +3103,96 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     App.events = sisa.concat(daftar).sort(function (a, b) { return b.tStart - a.tStart; });
   }
 
-  function tarikArsip(diam) {
+  /* Arsip ditarik PENUH sekali — saat halaman dimuat, tanggal diganti, atau
+     tombol Muat ditekan — lalu tiap menit disusul dengan baris BARU dan baris
+     yang MASIH BERJALAN saja (?sejak=&buka=). Versi sebelumnya menarik seluruh
+     hari tiap 60 detik; tanpa indeks di D1 tiap tarikan itu memindai seluruh
+     tabel, dan bersama kartu Home menghabiskan kuota 5 juta baris terbaca pada
+     16 September 2026.
+
+     Baris pelanggaran di server hanya berubah selama berstatus berjalan, dan
+     ditutup dengan satu pembaruan terakhir. Karena itu cukup memegang id terbesar
+     yang sudah diterima (arsip.maks) dan daftar id yang masih berjalan
+     (arsip.buka): baris baru pasti ber-id lebih besar, dan penutupan pasti datang
+     lewat daftar buka. Worker lama yang belum mengenal ?sejak= mengabaikannya dan
+     mengirim seluruh hari tanpa maks_id — halaman lalu kembali ke tarikan penuh. */
+  var arsip = { tgl: null, maks: 0, buka: {}, ids: {} };
+  var arsipTerakhir = 0;
+
+  function ubahBaris(r) {
+    var mulai = Math.round(r.mulai / 1000), selesai = Math.round(r.selesai / 1000);
+    return {
+      id: 'SV' + r.id, _sid: r.id,
+      unitId: r.unit_id, unitName: r.unit || '—', limit: r.batas,
+      tStart: mulai, tEnd: selesai,
+      maxSpeed: r.kecepatan_max,
+      avgSpeed: r.kecepatan_rata || r.kecepatan_max,
+      n: r.sampel || 0, duration: Math.max(0, selesai - mulai),
+      lat: r.lat, lon: r.lon,
+      /* Ruas datang dari server: itulah ruas yang dipakai server saat
+         menilai. Menghitung ulang di sini berisiko menampilkan ruas lain
+         daripada yang jadi dasar penilaian. Kejadian di luar semua ruas
+         diberi nama ruas terdekat dengan penanda "(sekitar)" — supaya
+         tetap bisa dibaca, tanpa mengaku terjadi di ruas itu. */
+      zone: r.ruas || (r.ruas_dekat ? r.ruas_dekat + ' (sekitar)' : null),
+      location: null,
+      open: !!r.berjalan, source: 'server'
+    };
+  }
+
+  function tarikArsip(diam, penuh) {
     if (sibukArsip) return;
     sibukArsip = true;
+    arsipTerakhir = Date.now();
+
+    var tgl = tglPilih;
+    var susulan = !penuh && arsip.tgl === tgl && arsip.maks > 0;
+    var alamat = API + '/api/pelanggaran?tanggal=' + encodeURIComponent(tgl);
+    if (susulan) {
+      alamat += '&sejak=' + arsip.maks;
+      var buka = Object.keys(arsip.buka);
+      if (buka.length) alamat += '&buka=' + buka.join(',');
+    }
+
     if (!diam) kabar('Memuat…');
-    fetch(API + '/api/pelanggaran?tanggal=' + encodeURIComponent(tglPilih), { cache: 'no-store' })
+    fetch(alamat, { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) {
-        var daftar = (d.pelanggaran || []).map(function (r) {
-          var mulai = Math.round(r.mulai / 1000), selesai = Math.round(r.selesai / 1000);
-          return {
-            id: 'SV' + r.id, _sid: r.id,
-            unitId: r.unit_id, unitName: r.unit || '—', limit: r.batas,
-            tStart: mulai, tEnd: selesai,
-            maxSpeed: r.kecepatan_max,
-            avgSpeed: r.kecepatan_rata || r.kecepatan_max,
-            n: r.sampel || 0, duration: Math.max(0, selesai - mulai),
-            lat: r.lat, lon: r.lon,
-            /* Ruas datang dari server: itulah ruas yang dipakai server saat
-               menilai. Menghitung ulang di sini berisiko menampilkan ruas lain
-               daripada yang jadi dasar penilaian. Kejadian di luar semua ruas
-               diberi nama ruas terdekat dengan penanda "(sekitar)" — supaya
-               tetap bisa dibaca, tanpa mengaku terjadi di ruas itu. */
-            zone: r.ruas || (r.ruas_dekat ? r.ruas_dekat + ' (sekitar)' : null),
-            location: null,
-            open: !!r.berjalan, source: 'server'
-          };
-        }).filter(function (e) {
+        if (d && d.error) throw new Error(d.error);
+        if (tgl !== tglPilih) return;   // tanggal diganti selagi menunggu; disusul di bawah
+
+        var mentah = d.pelanggaran || [];
+        var daftar = mentah.map(ubahBaris).filter(function (e) {
           return isFinite(e.tStart) && isFinite(e.lat) && isFinite(e.lon) && isFinite(e.maxSpeed);
         });
+
+        if (!susulan || !d.sebagian) { arsip.tgl = tgl; arsip.ids = {}; arsip.buka = {}; }
+        mentah.forEach(function (r) {
+          if (r.berjalan) arsip.buka[r.id] = 1; else delete arsip.buka[r.id];
+        });
+        daftar.forEach(function (e) { arsip.ids[e._sid] = 1; });
+
+        /* maks_id yang MUNDUR berarti isi tabel berubah di luar kebiasaan
+           (misalnya basis data dipulihkan); tarikan berikutnya dibuat penuh. */
+        var maks = Number(d.maks_id);
+        if (!isFinite(maks) || maks <= 0) arsip.maks = 0;
+        else arsip.maks = (susulan && maks < arsip.maks) ? 0 : maks;
+
         daftar.forEach(labelRuas);   // hanya mengisi yang ruasnya kosong
-        gabung(daftar);
+        gabung(daftar);              // baris yang tidak ikut terkirim tetap dipegang
         try { render(); } catch (e) {}
-        kabar(daftar.length
-          ? daftar.length + ' kejadian tercatat · diperbarui ' + jam(new Date())
+
+        var n = Object.keys(arsip.ids).length;
+        kabar(n
+          ? n + ' kejadian tercatat · diperbarui ' + jam(new Date())
           : 'Belum ada kejadian tercatat pada tanggal ini');
       })
       .catch(function (e) { kabar('Arsip tidak terbaca (' + (e && e.message ? e.message : e) + ')'); })
-      .then(function () { sibukArsip = false; });
+      .then(function () {
+        sibukArsip = false;
+        // Tanggal yang diganti selagi tarikan lama berjalan dulu terabaikan.
+        if (tgl !== tglPilih) tarikArsip(false, true);
+      });
   }
 
   /* Ruas baru bisa dikenali setelah PAKAL_SITE terpasang, beberapa saat sesudah
@@ -3177,9 +3229,10 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     el('arsipTgl').value = tglPilih;
     el('arsipTgl').addEventListener('change', function () {
       tglPilih = this.value || tglLokal(new Date());
-      tarikArsip(false);
+      tarikArsip(false, true);
     });
-    el('arsipMuat').addEventListener('click', function () { tarikArsip(false); });
+    // Muat selalu penuh: jalan pintas untuk menyegarkan seluruh hari dari server.
+    el('arsipMuat').addEventListener('click', function () { tarikArsip(false, true); });
   }
 
   /* Tab Riwayat menarik pesan mentah lewat sesi Wialon di browser, dan sesi itu
@@ -3677,18 +3730,40 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     setTimeout(labelUlang, 3000);
     setTimeout(labelUlang, 9000);
 
-    /* Polling berhenti saat tab tidak terlihat: tab yang ditinggal di belakang
-       tidak boleh memanggil jaringan. Perekaman tetap jalan di server. */
+    /* Unit tetap ditarik selama tab di depan, walau bingkai ini sedang
+       tersembunyi di dalam shell: deteksi layar itulah yang memunculkan toast
+       pelanggaran di modul lain (§4.6). Endpoint ini tidak membaca D1. */
     setInterval(function () { if (!document.hidden) tarikUnit(); }, AMBIL_MS);
+
+    /* Arsip hanya ditarik selagi bingkai ini BENAR-BENAR terlihat. Di dalam shell,
+       iframe modul yang ditinggalkan tetap hidup dengan display:none, dan dari
+       dalam bingkai hampir tidak ada yang berubah: document.hidden tetap false,
+       dan innerWidth/innerHeight tetap ukuran lamanya (teruji di Chromium). Yang
+       berubah hanya kotak elemen iframe di halaman induk, jadi itu yang dibaca
+       lewat frameElement — bisa, karena shell dan halaman ini satu asal. Dibuka
+       sendiri di luar shell, frameElement bernilai null dan halaman dianggap
+       terlihat selama tabnya di depan.
+
+       Dulu arsip terus ditarik tiap menit meski penggunanya sedang di modul lain.
+       Pemeriksaan tiap 5 detik ini lokal, tanpa jaringan, dan begitu bingkai
+       tampil kembali arsip langsung disusul. */
+    function terlihat() {
+      if (document.hidden) return false;
+      try {
+        var bingkai = window.frameElement;
+        if (bingkai) return bingkai.getClientRects().length > 0;
+      } catch (e) { /* induk lintas asal: tidak bisa dibaca, anggap terlihat */ }
+      return true;
+    }
+    var tadiTerlihat = terlihat();
     setInterval(function () {
-      if (document.hidden) return;
-      if (tglPilih !== tglLokal(new Date())) return;
-      tarikArsip(true);
-    }, ARSIP_MS);
+      var t = terlihat(), baruMuncul = t && !tadiTerlihat;
+      tadiTerlihat = t;
+      if (!t || tglPilih !== tglLokal(new Date())) return;
+      if (baruMuncul || Date.now() - arsipTerakhir >= ARSIP_MS) tarikArsip(true);
+    }, 5000);
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden) return;
-      tarikUnit();
-      if (tglPilih === tglLokal(new Date())) tarikArsip(true);
+      if (!document.hidden) tarikUnit();
     });
 
     if (el('swReconnect')) el('swReconnect').addEventListener('click', reconnect);

@@ -523,6 +523,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
   function tarik() {
     if (sibuk || !pasangWadah()) return;
     sibuk = true;
+    terakhir = Date.now();
     fetch(API + '/api/ringkas', { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) {
@@ -532,7 +533,10 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
         el('rkRuas').innerHTML = baris(d.ruas, 'kejadian');
         el('rkUnitN').textContent = (d.unit || []).length ? 'Top ' + d.unit.length : '';
         el('rkRuasN').textContent = (d.ruas || []).length ? 'Top ' + d.ruas.length : '';
-        el('rkCap').textContent = d.total + ' pelanggaran shift ini · diperbarui ' + jam(Date.now());
+        /* Ringkasan dipakai bersama di server sampai 55 detik, jadi jam yang
+           ditampilkan adalah jam hitungnya, bukan jam jawaban tiba. */
+        el('rkCap').textContent = d.total + ' pelanggaran shift ini · diperbarui ' +
+          jam(d.dihitung || Date.now());
       })
       .catch(function (e) {
         var pesan = '<div class="rk-kosong">Data tidak terbaca (' +
@@ -544,14 +548,34 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
       .then(function () { sibuk = false; });
   }
 
+  /* Kartu hanya menarik data selagi BENAR-BENAR terlihat: tab di depan, sudah
+     login, dan halaman Home yang sedang tampil. #home bernilai display:none saat
+     pengguna di modul lain, dan #app bernilai display:none di layar login —
+     keduanya membuat getClientRects() kosong.
+
+     Versi sebelumnya menarik tiap 60 detik selama tab terbuka, di modul mana pun
+     dan bahkan sebelum login. Setiap tarikan memindai seluruh tabel pelanggaran
+     di D1 tiga kali, dan itu ikut menghabiskan kuota 5 juta baris terbaca pada
+     16 September 2026. Pemeriksaan tiap 5 detik ini lokal, tanpa jaringan. */
+  var terakhir = 0, tadiTerlihat = false;
+  function terlihat() {
+    if (document.hidden) return false;
+    var home = el('home');
+    return !!home && home.getClientRects().length > 0;
+  }
+  function periksa() {
+    var t = terlihat();
+    var baruMuncul = t && !tadiTerlihat;
+    tadiTerlihat = t;
+    if (!t) return;
+    if (baruMuncul || Date.now() - terakhir >= SEGAR_MS) tarik();
+  }
+
   window.addEventListener('load', function () {
     pasangGaya();
-    tarik();
-    /* Tab yang ditinggal di belakang tidak memanggil jaringan. */
-    setInterval(function () { if (!document.hidden) tarik(); }, SEGAR_MS);
-    document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) tarik();
-    });
+    pasangWadah();   // wadah dipasang sejak awal supaya Direktori tidak meloncat
+    periksa();
+    setInterval(periksa, 5000);
   });
 })();
 </script>
