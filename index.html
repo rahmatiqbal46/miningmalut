@@ -412,194 +412,423 @@ function showSwToast(text){var w=document.getElementById('swToastWrap');if(!w){w
 
 // boot
 if(authValid())showApp(); else document.getElementById('login').style.display='flex';
-</script><script id="home-ringkas">
+</script><script id="home-periode">
 /* =============================================================================
-   Kartu "Pelanggaran Kecepatan" di halaman Home.
+   Baris paling atas halaman Home: tiga kartu berdampingan dengan SATU filter
+   periode.
 
-   Dua peringkat untuk SHIFT YANG SEDANG BERJALAN: unit paling sering melanggar,
-   dan ruas jalan paling sering jadi tempat pelanggaran. Keduanya menampilkan
-   jumlah kejadian dan kecepatan tertinggi.
+     1. Pelanggaran Kecepatan  — unit dan segmen jalan   (Worker D1)
+     2. Top Operator           — 1 excavator, 3 dump truck, ANTAM dan PCM
+                                 (Supabase, op_halaman)
+     3. Keaktifan Update Status Operator                 (Supabase, Dispatch)
 
-   Pengelompokan dikerjakan Worker lewat GROUP BY di D1, bukan dengan menarik
-   seluruh baris pelanggaran ke browser. Batas shift mengikuti aturan yang sama
-   dengan proxy Minerva: siang 07:00-19:00 WIT, malam 19:00-07:00.
+   Berkas ini hanya memasang wadah, tombol periode, dan gaya bersamanya. Isi
+   tiap kartu ditulis tiga berkas berikutnya, yang menempel lewat dua kejadian:
+
+     homeperiode  periode berganti — tarik ulang sekarang juga
+     hometick     denyut 15 detik selagi Home benar-benar terlihat; tiap kartu
+                  memutuskan sendiri kapan datanya sudah cukup tua
+
+   Satu denyut untuk bertiga, bukan tiga penghitung waktu yang berjalan sendiri:
+   tarikan yang tidak dilihat siapa pun ikut menghabiskan kuota D1 dan Supabase
+   (§4.4, pelajaran 16 September 2026).
+
+   Periode dihitung dalam WIT, bukan jam perangkat. "Kemarin" berarti kemarin di
+   site, dan "Last 7 Days" adalah tujuh hari penuh yang sudah tertutup — hari ini
+   tidak ikut, karena shift-nya belum selesai dan angkanya pasti terlihat rendah.
    ============================================================================= */
 (function () {
-  var API = 'https://speed-watcher-24-7.rahmat-iqbal.workers.dev';
-  var SEGAR_MS = 60000;
-  var sibuk = false;
+  var pilih = 'kemarin';
 
   function el(id) { return document.getElementById(id); }
-  function esc(t) {
-    return String(t == null ? '' : t)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function hariIniWIT() {
+    var d = new Date(Date.now() + 9 * 3600000);
+    return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+  }
+  function geser(ymd, n) {
+    var p = String(ymd).split('-');
+    var t = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n));
+    return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate());
+  }
+  function hitung() {
+    var t = hariIniWIT();
+    return pilih === '7h' ? [geser(t, -7), geser(t, -1)] : [geser(t, -1), geser(t, -1)];
+  }
+
+  /* Satu-satunya sumber periode untuk ketiga kartu. */
+  window.HomePeriode = { jenis: pilih, dari: '', sampai: '' };
+  function segarkanPeriode() {
+    var r = hitung();
+    window.HomePeriode = { jenis: pilih, dari: r[0], sampai: r[1] };
   }
 
   function pasangGaya() {
-    if (el('gayaRingkas')) return;
+    if (el('gayaHomeAtas')) return;
     var g = document.createElement('style');
-    g.id = 'gayaRingkas';
-    g.textContent =
-      '.rk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}' +
-      '.rk-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;' +
-        'padding:16px 18px 12px;min-width:0}' +
-      '.rk-head{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}' +
-      '.rk-head b{font-size:13px;font-weight:800;color:#33413c}' +
-      '.rk-head span{font-family:var(--mono);font-size:10.5px;color:var(--muted);' +
-        'text-transform:uppercase;letter-spacing:.06em;margin-left:auto}' +
-      '.rk-row{display:flex;align-items:center;gap:10px;padding:8px 0;' +
-        'border-top:1px solid var(--line)}' +
-      '.rk-row:first-of-type{border-top:0}' +
-      '.rk-no{flex:0 0 22px;height:22px;border-radius:7px;background:var(--paper);' +
-        'color:var(--ink);font-family:var(--mono);font-size:11px;font-weight:700;' +
-        'display:flex;align-items:center;justify-content:center}' +
-      '.rk-row.top .rk-no{background:var(--amber);color:#10201d}' +
-      '.rk-nama{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink);' +
-        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-      '.rk-nama small{display:block;margin-top:1px;font-family:var(--mono);font-size:9.5px;' +
-        'font-weight:600;letter-spacing:.03em;color:var(--muted)}' +
-      '.rk-ang{flex:0 0 auto;text-align:right;font-family:var(--mono);font-size:11px;' +
-        'color:var(--muted);line-height:1.35}' +
-      '.rk-ang b{display:block;font-size:13.5px;color:var(--ink);font-weight:700}' +
-      '.rk-kosong{padding:16px 0 20px;font-size:12.5px;color:var(--muted)}' +
-      '.rk-kaki{display:flex;gap:10px;align-items:center;margin-top:10px;' +
-        'padding-top:10px;border-top:1px solid var(--line)}' +
-      '.rk-kaki button{background:none;border:0;padding:0;cursor:pointer;' +
-        'font-family:inherit;font-size:11.5px;font-weight:700;color:var(--t700)}' +
-      '.rk-kaki button:hover{text-decoration:underline}' +
-      '.rk-kaki small{margin-left:auto;font-family:var(--mono);font-size:10px;' +
-        'color:var(--muted)}' +
-      '.rk-nb{margin-top:10px;font-size:11.5px;line-height:1.55;color:var(--muted)}';
+    g.id = 'gayaHomeAtas';
+    g.textContent = [
+      /* --- kepala bagian: judul di kiri, tombol periode di kanan --- */
+      '.dv-kepala{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}',
+      '.dv-kepala h2{margin:0}',
+      '.dv-seg{display:inline-flex;gap:2px;padding:2px;background:var(--panel);',
+        'border:1px solid var(--line2);border-radius:9px}',
+      '.dv-seg button{border:0;background:transparent;font:inherit;font-size:12px;font-weight:700;',
+        'color:#3b4f49;padding:6px 14px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}',
+      '.dv-seg button:hover{background:#eef3f0}',
+      '.dv-seg button[aria-pressed="true"]{background:var(--t800);color:#fff}',
+      '.dv-seg button:focus-visible{outline:2px solid var(--t700);outline-offset:2px}',
+
+      /* --- baris tiga kartu --- */
+      '.atas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:stretch}',
+      '.rk-card{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);',
+        'border-radius:14px;padding:16px 18px 14px;min-width:0}',
+      '.rk-card>h3{font-size:13px;font-weight:800;color:#33413c;letter-spacing:-.1px;margin:0 0 12px;',
+        'padding-bottom:10px;border-bottom:1px solid var(--line)}',
+      '.rk-isi{flex:1 1 auto;min-width:0}',
+
+      /* --- kelompok di dalam kartu (Unit / Segmen Jalan / ANTAM / PCM) --- */
+      '.rk-grup+.rk-grup{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}',
+      '.rk-grup>h4{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:10px;',
+        'font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}',
+      '.rk-sub{margin-top:8px}',
+      '.rk-sub>h5{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.09em;',
+        'text-transform:uppercase;color:#7e8e89;margin:0 0 1px}',
+
+      /* --- baris data, dipakai ketiga kartu --- */
+      '.rk-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}',
+      '.rk-grup h4+.rk-row,.rk-sub h5+.rk-row{border-top:0}',
+      '.rk-no{flex:0 0 21px;height:21px;border-radius:6px;background:var(--paper);color:var(--ink);',
+        'font-family:var(--mono);font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center}',
+      '.rk-row.top .rk-no{background:var(--amber);color:#10201d}',
+      '.rk-row.bawah .rk-no{background:#fbe6e4;color:#a01c14}',
+      '.rk-nama{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink);',
+        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.rk-nama small{display:block;margin-top:1px;font-family:var(--mono);font-size:9.5px;',
+        'font-weight:600;letter-spacing:.02em;color:var(--muted)}',
+      '.rk-ang{flex:0 0 auto;text-align:right;font-family:var(--mono);font-size:12.5px;',
+        'font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}',
+      '.rk-ang.samar{color:var(--muted);font-weight:600}',
+      '.rk-kosong{padding:14px 0;font-size:12.5px;line-height:1.5;color:var(--muted)}',
+
+      /* --- kaki kartu: satu tautan ke modulnya --- */
+      '.rk-kaki{display:flex;align-items:center;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}',
+      '.rk-kaki button{background:none;border:0;padding:0;cursor:pointer;font-family:inherit;',
+        'font-size:11.5px;font-weight:700;color:var(--t700)}',
+      '.rk-kaki button:hover{text-decoration:underline}',
+      '.rk-kaki button:focus-visible{outline:2px solid var(--t700);outline-offset:2px}',
+      '@media (prefers-reduced-motion: reduce){.dv-seg button{transition:none}}'
+    ].join('');
     document.head.appendChild(g);
   }
 
   function pasangWadah() {
-    if (el('ringkasWrap')) return true;
-    var home = el('home');
-    if (!home) return false;
-    var dir = home.querySelector('.dir');
+    if (el('atasWrap')) return true;
+    var bento = el('bento');
+    var dir = bento && bento.closest('.dir');
     if (!dir) return false;
 
     var w = document.createElement('div');
     w.className = 'dir';
-    w.id = 'ringkasWrap';
+    w.id = 'atasWrap';
     w.style.paddingBottom = '6px';
     w.innerHTML =
-      '<h2>Pelanggaran Kecepatan</h2>' +
-      '<div class="lead" id="rkLead">Shift berjalan</div>' +
-      '<div class="rk-grid">' +
-        '<div class="rk-card">' +
-          '<div class="rk-head"><b>Unit paling sering</b><span id="rkUnitN">—</span></div>' +
-          '<div id="rkUnit"><div class="rk-kosong">Memuat…</div></div>' +
-        '</div>' +
-        '<div class="rk-card">' +
-          '<div class="rk-head"><b>Ruas paling sering</b><span id="rkRuasN">—</span></div>' +
-          '<div id="rkRuas"><div class="rk-kosong">Memuat…</div></div>' +
+      '<div class="dv-kepala">' +
+        '<h2>Ringkasan Operasi</h2>' +
+        '<div class="dv-seg" role="group" aria-label="Periode data">' +
+          '<button type="button" data-p="kemarin" aria-pressed="true">Kemarin</button>' +
+          '<button type="button" data-p="7h" aria-pressed="false">Last 7 Days</button>' +
         '</div>' +
       '</div>' +
-      '<p class="rk-nb">Pelanggaran yang terjadi di luar jaringan jalan — area loading, ' +
-        'dumping, stockpile — dinilai dengan batas luar dan di sini dinamai menurut ruas ' +
-        'terdekat, supaya peringkatnya tidak menumpuk di satu kantong.</p>' +
-      '<div class="rk-kaki">' +
-        '<button type="button" id="rkBuka">Buka Speed Watcher</button>' +
-        '<small id="rkCap">—</small>' +
+      '<div class="atas-grid">' +
+        '<section class="rk-card" id="kartuSpeed"><h3>Pelanggaran Kecepatan</h3>' +
+          '<div class="rk-isi" id="speedIsi"><div class="rk-kosong">Memuat…</div></div>' +
+          '<div class="rk-kaki"><button type="button" id="speedBuka">Buka Speed Watcher</button></div>' +
+        '</section>' +
+        '<section class="rk-card" id="kartuTop"><h3>Top Operator</h3>' +
+          '<div class="rk-isi" id="topIsi"><div class="rk-kosong">Memuat…</div></div>' +
+          '<div class="rk-kaki"><button type="button" id="topBuka">Buka Operator Performance</button></div>' +
+        '</section>' +
+        '<section class="rk-card" id="kartuKep"><h3>Keaktifan Update Status Operator</h3>' +
+          '<div class="rk-isi" id="kepIsi"><div class="rk-kosong">Memuat…</div></div>' +
+          '<div class="rk-kaki"><button type="button" id="kepBuka">Buka Dispatch Monitoring</button></div>' +
+        '</section>' +
       '</div>';
-    dir.parentNode.insertBefore(w, dir);   // di atas Direktori
+    dir.parentNode.insertBefore(w, dir);
 
-    el('rkBuka').addEventListener('click', function () {
-      try { showPage('speed'); } catch (e) {}
+    w.querySelectorAll('.dv-seg button').forEach(function (tb) {
+      tb.addEventListener('click', function () {
+        if (pilih === tb.dataset.p) return;
+        pilih = tb.dataset.p;
+        w.querySelectorAll('.dv-seg button').forEach(function (x) {
+          x.setAttribute('aria-pressed', x === tb ? 'true' : 'false');
+        });
+        segarkanPeriode();
+        window.dispatchEvent(new CustomEvent('homeperiode'));
+      });
     });
     return true;
   }
 
-  function baris(daftar, satuan) {
-    if (!daftar || !daftar.length) {
-      return '<div class="rk-kosong">Belum ada pelanggaran pada shift ini.</div>';
+  /* Home benar-benar terlihat: tab di depan, sudah login, dan Home yang tampil.
+     #home dan #app keduanya display:none di keadaan lain, jadi getClientRects()
+     kosong. Pemeriksaannya lokal, tanpa jaringan. */
+  function terlihat() {
+    if (document.hidden) return false;
+    var home = el('home');
+    return !!home && home.getClientRects().length > 0;
+  }
+  var tadiTerlihat = false, tglTerakhir = '';
+  function denyut() {
+    var t = terlihat();
+    var baruMuncul = t && !tadiTerlihat;
+    tadiTerlihat = t;
+    if (!t) return;
+    /* Tanggal WIT berganti saat tab dibiarkan terbuka semalaman; tanpa ini
+       "Kemarin" tetap menunjuk hari yang sudah lewat dua hari. */
+    segarkanPeriode();
+    if (window.HomePeriode.dari !== tglTerakhir) {
+      tglTerakhir = window.HomePeriode.dari;
+      if (!baruMuncul) { window.dispatchEvent(new CustomEvent('homeperiode')); return; }
     }
+    window.dispatchEvent(new CustomEvent('hometick', { detail: { baruMuncul: baruMuncul } }));
+  }
+
+  window.addEventListener('load', function () {
+    pasangGaya();
+    pasangWadah();
+    segarkanPeriode();
+    tglTerakhir = window.HomePeriode.dari;
+    /* Denyut pertama ditunda satu putaran. Ketiga kartu memasang pendengarnya
+       di penangan `load` masing-masing, yang berjalan SESUDAH penangan ini;
+       denyut yang dikirim sekarang juga tidak akan didengar siapa pun, dan
+       kartunya tinggal menulis "Memuat…" sampai denyut berikutnya 15 detik
+       kemudian. */
+    setTimeout(denyut, 0);
+    setInterval(denyut, 15000);
+    document.addEventListener('visibilitychange', denyut);
+    if (window.MutationObserver) {
+      var mo = new MutationObserver(function () { setTimeout(denyut, 0); });
+      if (el('home')) mo.observe(el('home'), { attributes: true, attributeFilter: ['class'] });
+      if (el('app')) mo.observe(el('app'), { attributes: true, attributeFilter: ['style'] });
+    }
+  });
+})();
+</script><script id="home-speed">
+/* =============================================================================
+   Kartu "Pelanggaran Kecepatan" di baris atas Home.
+
+   Dua peringkat untuk periode yang dipilih: unit paling sering melanggar, dan
+   segmen jalan paling sering jadi tempat pelanggaran. Keduanya menampilkan
+   jumlah kejadian dan kecepatan tertinggi.
+
+   Pengelompokan dikerjakan Worker lewat GROUP BY di D1, bukan dengan menarik
+   seluruh baris pelanggaran ke browser — itulah sebabnya jawabannya diminta
+   lewat /api/ringkas dan bukan /api/pelanggaran.
+
+   Worker menerima ?dari=&sampai= sejak versi 18 September 2026. Versi lama
+   mengabaikan keduanya dan tetap menjawab shift berjalan, jadi jawabannya
+   diperiksa: angka shift yang dilabeli "Kemarin" jauh lebih menyesatkan
+   daripada kartu yang mengaku belum bisa menghitung.
+   ============================================================================= */
+(function () {
+  var API = 'https://speed-watcher-24-7.rahmat-iqbal.workers.dev';
+  var SEGAR_MS = 60000;
+  var sibuk = false, terakhir = 0, kunciTerakhir = '';
+
+  function el(id) { return document.getElementById(id); }
+  function esc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function baris(daftar) {
+    if (!daftar || !daftar.length) return '<div class="rk-kosong">Tidak ada pelanggaran.</div>';
     return daftar.map(function (d, i) {
-      /* Batas ruas ikut ditampilkan supaya angka kecepatan maksimum punya
-         pembanding di tempat yang sama; tanpa itu 41 km/jam tidak berarti apa-apa
+      /* Batas ruas ikut ditampilkan supaya angka kecepatan tertinggi punya
+         pembanding di tempat yang sama; tanpa itu 41 km/j tidak berarti apa-apa
          sampai pembacanya ingat ruas itu berbatas berapa. */
       var batas = (d.batas === undefined || d.batas === null) ? '' :
         '<small>batas ' + d.batas + ' km/j</small>';
       return '<div class="rk-row' + (i === 0 ? ' top' : '') + '">' +
         '<span class="rk-no">' + (i + 1) + '</span>' +
         '<span class="rk-nama" title="' + esc(d.nama) + '">' + esc(d.nama) + batas + '</span>' +
-        '<span class="rk-ang"><b>' + d.jumlah + '</b>' + satuan + '</span>' +
-        '<span class="rk-ang"><b>' + d.maks + '</b>km/j maks</span>' +
+        '<span class="rk-ang">' + d.jumlah + '&times;</span>' +
+        '<span class="rk-ang samar">' + d.maks + ' km/j</span>' +
       '</div>';
     }).join('');
   }
 
-  function pad(n) { return String(n).padStart(2, '0'); }
-  /* Jendela shift ditampilkan dalam WIT, bukan jam perangkat: batas shift adalah
-     fakta operasi site, bukan jam dinding pembaca. Bandingkan jam di sidebar yang
-     memang sengaja mengikuti perangkat. */
-  function jamWIT(t) {
-    var d = new Date(t + 9 * 3600000);
-    return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  function tampil(d) {
+    el('speedIsi').innerHTML =
+      '<div class="rk-grup"><h4>Unit</h4>' + baris(d.unit) + '</div>' +
+      '<div class="rk-grup"><h4>Segmen Jalan</h4>' + baris(d.ruas) + '</div>';
   }
-  function jam(t) {
-    var d = new Date(t);
-    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  function pesan(teks) {
+    el('speedIsi').innerHTML = '<div class="rk-kosong">' + teks + '</div>';
   }
 
-  function tarik() {
-    if (sibuk || !pasangWadah()) return;
+  function tarik(paksa) {
+    var p = window.HomePeriode;
+    if (!p || !p.dari || !el('speedIsi')) return;
+    var kunci = p.dari + '|' + p.sampai;
+    if (sibuk) return;
+    if (!paksa && kunci === kunciTerakhir && Date.now() - terakhir < SEGAR_MS) return;
     sibuk = true;
     terakhir = Date.now();
-    fetch(API + '/api/ringkas', { cache: 'no-store' })
+    kunciTerakhir = kunci;
+
+    fetch(API + '/api/ringkas?dari=' + encodeURIComponent(p.dari) +
+                '&sampai=' + encodeURIComponent(p.sampai), { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) {
-        el('rkLead').textContent = 'Shift ' + d.shift + ' · ' + d.tanggal + ' · ' +
-          jamWIT(d.mulai) + '–' + jamWIT(d.selesai) + ' WIT';
-        el('rkUnit').innerHTML = baris(d.unit, 'kejadian');
-        el('rkRuas').innerHTML = baris(d.ruas, 'kejadian');
-        el('rkUnitN').textContent = (d.unit || []).length ? 'Top ' + d.unit.length : '';
-        el('rkRuasN').textContent = (d.ruas || []).length ? 'Top ' + d.ruas.length : '';
-        /* Ringkasan dipakai bersama di server sampai 55 detik, jadi jam yang
-           ditampilkan adalah jam hitungnya, bukan jam jawaban tiba. */
-        el('rkCap').textContent = d.total + ' pelanggaran shift ini · diperbarui ' +
-          jam(d.dihitung || Date.now());
+        if (d.dari !== p.dari || d.sampai !== p.sampai) {
+          kunciTerakhir = '';
+          pesan('Worker Speed Watcher belum mendukung filter periode. ' +
+                'Perbarui speed-watcher-24-7 lalu muat ulang halaman ini.');
+          return;
+        }
+        tampil(d);
       })
       .catch(function (e) {
-        var pesan = '<div class="rk-kosong">Data tidak terbaca (' +
-                    esc(e && e.message ? e.message : e) + ').</div>';
-        el('rkUnit').innerHTML = pesan;
-        el('rkRuas').innerHTML = pesan;
-        el('rkCap').textContent = '—';
+        kunciTerakhir = '';
+        pesan('Data tidak terbaca (' + esc(e && e.message ? e.message : e) + ').');
       })
       .then(function () { sibuk = false; });
   }
 
-  /* Kartu hanya menarik data selagi BENAR-BENAR terlihat: tab di depan, sudah
-     login, dan halaman Home yang sedang tampil. #home bernilai display:none saat
-     pengguna di modul lain, dan #app bernilai display:none di layar login —
-     keduanya membuat getClientRects() kosong.
+  window.addEventListener('load', function () {
+    var b = el('speedBuka');
+    if (b) b.addEventListener('click', function () { try { showPage('speed'); } catch (e) {} });
+    window.addEventListener('homeperiode', function () { tarik(true); });
+    window.addEventListener('hometick', function () { tarik(false); });
+  });
+})();
+</script><script id="home-operator">
+/* =============================================================================
+   Kartu "Top Operator" di baris atas Home.
 
-     Versi sebelumnya menarik tiap 60 detik selama tab terbuka, di modul mana pun
-     dan bahkan sebelum login. Setiap tarikan memindai seluruh tabel pelanggaran
-     di D1 tiga kali, dan itu ikut menghabiskan kuota 5 juta baris terbaca pada
-     16 September 2026. Pemeriksaan tiap 5 detik ini lokal, tanpa jaringan. */
-  var terakhir = 0, tadiTerlihat = false;
-  function terlihat() {
-    if (document.hidden) return false;
-    var home = el('home');
-    return !!home && home.getClientRects().length > 0;
+   Satu excavator dan tiga dump truck terbaik, untuk ANTAM dan PCM, pada periode
+   yang dipilih. Sumbernya op_halaman — fungsi yang sama dengan halaman Operator
+   Performance, jadi peringkat di Home tidak pernah berbeda dari peringkat di
+   modulnya. Nilai yang seri tampil sebagai juara bersama, apa adanya dari SQL.
+
+   Jawaban op_halaman memuat seluruh tabel peringkat, jauh lebih banyak daripada
+   yang dipakai kartu ini. Karena itu tarikannya paling jarang di antara ketiga
+   kartu: nilai operator hanya berubah saat pengambilan 07:00 dan 19:00 WIT
+   berjalan, dan periodenya pun selalu hari yang sudah tertutup. Jawaban tiap
+   periode disimpan supaya bolak-balik Kemarin dan Last 7 Days tidak menarik
+   ulang apa pun.
+   ============================================================================= */
+(function () {
+  var SEGAR_MS = 900000;            // 15 menit
+  var ALAT = [['exca', 'Excavator'], ['truck', 'Dump truck']];
+  var sibuk = false, simpan = {}, dipasang = '';
+
+  function el(id) { return document.getElementById(id); }
+  function esc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function periksa() {
-    var t = terlihat();
-    var baruMuncul = t && !tadiTerlihat;
-    tadiTerlihat = t;
-    if (!t) return;
-    if (baruMuncul || Date.now() - terakhir >= SEGAR_MS) tarik();
+  function nilai(v) {
+    return (v === null || v === undefined || isNaN(v)) ? '—' :
+      Number(v).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+  function sesi() {
+    try {
+      var a = JSON.parse(localStorage.getItem('pakal_auth') || 'null');
+      if (a && a.access_token && (!a.expires_at || a.expires_at * 1000 > Date.now())) return a.access_token;
+    } catch (e) {}
+    return null;
+  }
+  function rpc(fn, args) {
+    var t = sesi();
+    if (!t) {
+      var g = new Error('sesi login kedaluwarsa');
+      g.kedaluwarsa = true;
+      return Promise.reject(g);
+    }
+    return fetch(CFG.url.replace(/\/+$/, '') + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      headers: { apikey: CFG.key, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args || {})
+    }).then(function (r) {
+      if (!r.ok) {
+        var e = new Error('HTTP ' + r.status);
+        if (r.status === 401) e.kedaluwarsa = true;
+        throw e;
+      }
+      return r.text().then(function (x) { return x ? JSON.parse(x) : null; });
+    });
+  }
+
+  function barisOp(o, i, seri) {
+    return '<div class="rk-row' + (o.peringkat === 1 ? ' top' : '') + '">' +
+      '<span class="rk-no">' + (o.peringkat || i + 1) + '</span>' +
+      '<span class="rk-nama" title="' + esc(o.name) + '">' + esc(o.name || 'Tanpa nama') +
+        '<small>badge ' + esc(o.badge) + ' &middot; ' + o.hari_valid + ' hari' +
+          (seri ? ' &middot; bersama' : '') + '</small></span>' +
+      '<span class="rk-ang">' + nilai(o.nilai) + '</span>' +
+    '</div>';
+  }
+  function kelompok(u, kode, label) {
+    var daftar = (u[kode] && u[kode].top) || [];
+    var hitung = {};
+    daftar.forEach(function (o) { hitung[o.nilai] = (hitung[o.nilai] || 0) + 1; });
+    var isi = daftar.length
+      ? daftar.map(function (o, i) { return barisOp(o, i, hitung[o.nilai] > 1); }).join('')
+      : '<div class="rk-kosong">Belum ada yang memenuhi syarat.</div>';
+    return '<div class="rk-sub"><h5>' + label + '</h5>' + isi + '</div>';
+  }
+  function tampil(kunci, d) {
+    if (dipasang === kunci) return;              // denyut 15 detik tidak menulis ulang DOM
+    dipasang = kunci;
+    var unggulan = (d && d.unggulan) || {};
+    el('topIsi').innerHTML = ['ANTAM', 'PCM'].map(function (c) {
+      var u = unggulan[c] || {};
+      return '<div class="rk-grup"><h4>' + c + '</h4>' +
+        ALAT.map(function (a) { return kelompok(u, a[0], a[1]); }).join('') + '</div>';
+    }).join('');
+  }
+  function pesan(teks) {
+    dipasang = '';
+    el('topIsi').innerHTML = '<div class="rk-kosong">' + teks + '</div>';
+  }
+
+  function tarik() {
+    var p = window.HomePeriode;
+    if (!p || !p.dari || !el('topIsi')) return;
+    var kunci = p.dari + '|' + p.sampai;
+    var ada = simpan[kunci];
+    if (ada) {
+      tampil(kunci, ada.isi);                    // yang tersimpan langsung tampil
+      if (Date.now() - ada.waktu < SEGAR_MS) return;
+    } else if (dipasang !== '') {
+      pesan('Memuat…');
+    }
+    if (sibuk) return;
+    sibuk = true;
+
+    rpc('op_halaman', { p_from: p.dari, p_to: p.sampai })
+      .then(function (d) {
+        simpan[kunci] = { waktu: Date.now(), isi: d };
+        var kini = window.HomePeriode.dari + '|' + window.HomePeriode.sampai;
+        if (kini === kunci) { dipasang = ''; tampil(kunci, d); }
+      })
+      .catch(function (e) {
+        if (simpan[kunci]) return;               // isi lama masih sah di layar
+        pesan(e && e.kedaluwarsa
+          ? 'Sesi login sudah kedaluwarsa. Keluar lalu masuk lagi untuk memuat data terbaru.'
+          : 'Data tidak terbaca (' + esc(e && e.message ? e.message : e) + ').');
+      })
+      .then(function () { sibuk = false; });
   }
 
   window.addEventListener('load', function () {
-    pasangGaya();
-    pasangWadah();   // wadah dipasang sejak awal supaya Direktori tidak meloncat
-    periksa();
-    setInterval(periksa, 5000);
+    var b = el('topBuka');
+    if (b) b.addEventListener('click', function () { try { showPage('operator'); } catch (e) {} });
+    window.addEventListener('homeperiode', tarik);
+    window.addEventListener('hometick', tarik);
   });
 })();
 </script>
@@ -841,46 +1070,45 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
 </script>
 <script id="home-dispatch">
 /* =============================================================================
-   Dua bagian Home yang datanya dari Dispatch Monitoring, di bawah kartu
-   Pelanggaran Kecepatan dan di atas Direktori:
+   Dua bagian Home yang datanya dari Dispatch Monitoring:
 
-   1. Deviasi Ritase Minerva, seluruh data. Yang digambar persen selisih
-      Minerva terhadap checker per hari, bukan dua garis ritase. Titik harian
-      sengaja samar; yang dibaca garis rata-rata 7 hari.
-   2. Keaktifan Operator bulan berjalan: skor ANTAM dan PCM, lalu tiga operator
+   1. Kartu "Keaktifan Update Status Operator" di baris atas, mengikuti filter
+      periode bersama (§ home-periode). Skor ANTAM dan PCM, lalu tiga operator
       terbaik dan tiga terendah di tiap kelompok.
+   2. "Deviasi Ritase Minerva" di bawahnya: dua grafik terpisah, TMM dan OT,
+      berisi rata-rata deviasi per bulan atas seluruh data. Titik harian tidak
+      lagi digambar — yang dicari dari bagian ini adalah arah jangka panjang,
+      dan titik harian hanya membuat garisnya berbulu.
 
    SUMBER SAMA DENGAN dispatch-monitoring.html
    - Baris `dispatchseed|v1` (data historis). Cache localStorage-nya dipakai
      bersama (`dispatchSeedCache_v1`), jadi modul Dispatch tidak perlu mengunduh
      ulang sesudah Home memuatnya, dan sebaliknya.
-   - Baris `dispatch|laporan|…` (seluruhnya) dan `dispatch|kepatuhan|…` (hanya
-     bulan berjalan).
+   - Baris `dispatch|laporan|…` (seluruhnya) dan `dispatch|kepatuhan|…` (bulan
+     yang disentuh periode terpilih — bisa dua bulan bila rentangnya melewati
+     pergantian bulan).
 
-   Rumus deviasi, peta skor keterangan, cara merata-rata, dan urutan peringkat
-   SENGAJA disalin dari modul itu. Kalau salah satunya diubah di sana, ubah juga
-   di sini. Kalau tidak, Home dan modulnya menampilkan angka yang berbeda.
+   Rumus deviasi, peta skor keterangan, dan urutan peringkat SENGAJA disalin
+   dari modul itu. Kalau salah satunya diubah di sana, ubah juga di sini. Kalau
+   tidak, Home dan modulnya menampilkan angka yang berbeda.
 
    Grafik digambar sebagai SVG sebaris tanpa Chart.js: Home tidak memuat pustaka
    luar, dan satu CDN yang diblokir tidak boleh mematikan tampilan.
-
-   Penarikan data hanya terjadi selagi Home benar-benar terlihat, sama seperti
-   kartu Pelanggaran Kecepatan (§4.4).
    ============================================================================= */
 (function () {
   var SEGAR_MS = 300000;          // data dispatch diisi per shift; 5 menit cukup
-  var JEDA_MIN_MS = 60000;        // muncul lagi di Home: tarik ulang bila > 1 menit
   var SEED_ID = 'dispatchseed|v1';
   var SEED_CACHE = 'dispatchSeedCache_v1';
-  var LABEL = { tmm: 'TMM', ot: 'OT' };
   var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   var BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
     'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  var GRAFIK = [['tmm', 'TMM', 'dvTmm'], ['ot', 'OT', 'dvOt']];
 
   var seed = null, seedCap = null;
-  var DATA = null, PILIH = 'tmm';
-  var sibuk = false, terakhir = 0, tadiTerlihat = false;
-  var fokusIdx = -1;
+  var DATA = null;                // { bulanan:{tmm:[],ot:[]}, yMax }
+  var KEP = null;
+  var sibuk = false, terakhir = 0, kunciTerakhir = '';
+  var geo = {}, fokus = {};
 
   function el(id) { return document.getElementById(id); }
   function esc(t) {
@@ -890,26 +1118,15 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
   function pad(n) { return String(n).padStart(2, '0'); }
   /* Tanggal dari waktu lokal perangkat, tidak lewat toISOString() (§20.2). */
   function ymdLokal(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-  function hariKe(t) { var p = String(t).split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]) / 864e5; }
   function persen(v, digit) {
     if (v === null || v === undefined || isNaN(v)) return '—';
     return (v * 100).toLocaleString('id-ID', {
       minimumFractionDigits: digit, maximumFractionDigits: digit
     }) + '%';
   }
-  function angka(v) {
-    return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toLocaleString('id-ID');
-  }
-  function tglPendek(t, denganTahun) {
-    var p = String(t).split('-');
-    return (+p[2]) + ' ' + BULAN[+p[1] - 1] + (denganTahun ? ' ' + p[0] : '');
-  }
-  function rentangTgl(a, b) {
-    if (a === b) return tglPendek(a, true);
-    if (a.slice(0, 7) === b.slice(0, 7)) return (+a.slice(8)) + '–' + tglPendek(b, true);
-    return a.slice(0, 4) === b.slice(0, 4)
-      ? tglPendek(a, false) + '–' + tglPendek(b, true)
-      : tglPendek(a, true) + '–' + tglPendek(b, true);
+  function namaBulan(b) {
+    var p = String(b).split('-');
+    return BULAN_PANJANG[+p[1] - 1] + ' ' + p[0];
   }
 
   /* ---------------------------------------------------------------- Supabase */
@@ -989,35 +1206,49 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     if (typeof d.payload === 'string') { try { return JSON.parse(d.payload); } catch (e) { return null; } }
     return d.payload || null;
   }
-  function muatBaris(bulan) {
+  /* Rentang "Last 7 Days" bisa melewati pergantian bulan, dan kunci baris
+     kepatuhan memuat bulan. Karena itu yang diminta adalah setiap bulan yang
+     disentuh rentangnya, bukan hanya bulan berjalan. */
+  function bulanRentang(dari, sampai) {
+    var a = dari.slice(0, 7), b = sampai.slice(0, 7);
+    return a === b ? [a] : [a, b];
+  }
+  function muatBaris(dari, sampai) {
     var qLap = 'id=like.' + encodeURIComponent('dispatch|laporan|') + '*&select=id,data';
-    var qKep = 'id=like.' + encodeURIComponent('dispatch|kepatuhan|') + '*' +
-      encodeURIComponent('|' + bulan + '-') + '*&select=id,data';
-    return Promise.all([ambilJson(qLap), ambilJson(qKep)]).then(function (h) {
+    var minta = [ambilJson(qLap)].concat(bulanRentang(dari, sampai).map(function (bl) {
+      return ambilJson('id=like.' + encodeURIComponent('dispatch|kepatuhan|') + '*' +
+        encodeURIComponent('|' + bl + '-') + '*&select=id,data');
+    }));
+    return Promise.all(minta).then(function (h) {
       var laporan = (Array.isArray(h[0]) ? h[0] : []).map(isiPayload).filter(Boolean);
       var slot = { ANTAM: {}, PCM: {} };
-      (Array.isArray(h[1]) ? h[1] : []).forEach(function (row) {
-        var p = String(row.id || '').split('|');   // dispatch|kepatuhan|SITE|tgl|Shift N
-        if (p.length < 5 || !slot[p[2]]) return;
-        var isi = isiPayload(row);
-        slot[p[2]][p[3] + '|' + normShift(p[4])] = Array.isArray(isi) ? isi : [];
+      h.slice(1).forEach(function (kel) {
+        (Array.isArray(kel) ? kel : []).forEach(function (row) {
+          var p = String(row.id || '').split('|');   // dispatch|kepatuhan|SITE|tgl|Shift N
+          if (p.length < 5 || !slot[p[2]]) return;
+          var isi = isiPayload(row);
+          slot[p[2]][p[3] + '|' + normShift(p[4])] = Array.isArray(isi) ? isi : [];
+        });
       });
       return { laporan: laporan, slot: slot };
     });
   }
   /* Salinan lokal yang ditulis modul Dispatch di perangkat ini. Hanya dipakai
      bila server tidak terbaca. */
-  function barisLokal(bulan) {
+  function barisLokal(dari, sampai) {
     var laporan = [];
     try {
       var l = JSON.parse(localStorage.getItem('dispatchReports_v2') || 'null');
       if (Array.isArray(l)) laporan = l;
     } catch (e) {}
+    var bulan = bulanRentang(dari, sampai);
     var slot = { ANTAM: {}, PCM: {} };
     ['ANTAM', 'PCM'].forEach(function (site) {
       try {
         var s = JSON.parse(localStorage.getItem('dispatch_kep_slots_' + site) || '{}') || {};
-        Object.keys(s).forEach(function (k) { if (k.slice(0, 7) === bulan) slot[site][k] = s[k]; });
+        Object.keys(s).forEach(function (k) {
+          if (bulan.indexOf(k.slice(0, 7)) >= 0) slot[site][k] = s[k];
+        });
       } catch (e) {}
     });
     return { laporan: laporan, slot: slot };
@@ -1060,37 +1291,27 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     return Object.keys(perTgl).sort()
       .filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= hariIni; })
       .map(function (d) {
-        return { t: d, h: hariKe(d), m: perTgl[d].minerva, c: perTgl[d].checker,
-                 dev: devFrac(perTgl[d].minerva, perTgl[d].checker) };
+        return { t: d, dev: devFrac(perTgl[d].minerva, perTgl[d].checker) };
       })
       .filter(function (r) { return r.dev !== null; });
   }
-  /* Rata-rata bergerak 7 hari KALENDER (bukan 7 titik), minimal 3 hari berdata
-     di jendelanya. Hari tanpa data tidak diisi nol. */
-  function rataBergerak(titik) {
-    var kiri = 0;
-    for (var i = 0; i < titik.length; i++) {
-      while (titik[i].h - titik[kiri].h >= 7) kiri++;
-      var n = i - kiri + 1, jml = 0;
-      for (var k = kiri; k <= i; k++) jml += titik[k].dev;
-      titik[i].ma = n >= 3 ? jml / n : null;
-    }
-    return titik;
-  }
-  function ringkasDeviasi(titik) {
-    if (!titik.length) return null;
-    var h0 = titik[0].h, h1 = titik[titik.length - 1].h, span = h1 - h0 + 1;
-    var jendela = Math.min(30, Math.floor(span / 3));
-    var semua = titik.reduce(function (a, p) { return a + p.dev; }, 0) / titik.length;
-    if (jendela < 7) return { semua: semua, jendela: 0 };
-    function rata(daftar) {
-      return daftar.length ? daftar.reduce(function (a, p) { return a + p.dev; }, 0) / daftar.length : null;
-    }
-    return {
-      semua: semua, jendela: jendela,
-      awal: rata(titik.filter(function (p) { return p.h < h0 + jendela; })),
-      akhir: rata(titik.filter(function (p) { return p.h > h1 - jendela; }))
-    };
+  /* Rata-rata bulanan adalah rata-rata dari deviasi HARIAN bulan itu, bukan
+     deviasi dari jumlah sebulan. Cara yang sama dipakai angka "rata-rata
+     seluruh data" di modul Dispatch, jadi keduanya tetap sebanding.
+
+     Bulan dengan kurang dari tiga hari berdata dilewati: satu atau dua hari
+     tidak cukup untuk disebut rata-rata sebulan, dan kalau digambar ia tampil
+     sebagai lonjakan yang tidak pernah benar-benar terjadi. */
+  function perBulan(titik) {
+    var peta = {};
+    titik.forEach(function (p) {
+      var b = p.t.slice(0, 7);
+      var o = peta[b] || (peta[b] = { b: b, jml: 0, n: 0 });
+      o.jml += p.dev; o.n++;
+    });
+    return Object.keys(peta).sort()
+      .map(function (b) { return { b: b, dev: peta[b].jml / peta[b].n, hari: peta[b].n }; })
+      .filter(function (o) { return o.hari >= 3; });
   }
 
   var PETA_SKOR = {
@@ -1157,8 +1378,8 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
   /* Urutan peringkat. Modul Dispatch hanya mengurutkan menurut skor, jadi
      urutan skor kembar di sana bergantung urutan baris dari server. Di Home
      urutannya dibuat pasti: skor sama, penilaian terbanyak dulu (buktinya lebih
-     kuat), lalu nama. Operator lain yang kembar dengan baris terakhir disebut
-     jumlahnya di bawah daftar, supaya perbedaan urutan dengan modul tidak
+     kuat), lalu nama. Operator yang nilainya kembar ditandai "bersama" pada
+     keterangan di bawah namanya, supaya perbedaan urutan dengan modul tidak
      menyesatkan. */
   function banding(a, b) { return String(a.nama || '').localeCompare(String(b.nama || ''), 'id'); }
   function urutTerbaik(a, b) { return (b.rata - a.rata) || (b.n - a.n) || banding(a, b); }
@@ -1192,72 +1413,44 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     var g = document.createElement('style');
     g.id = 'gayaDispatchHome';
     g.textContent = [
-      '.dv-kepala{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}',
-      '.dv-seg{display:inline-flex;gap:2px;padding:2px;margin-bottom:16px;background:var(--panel);',
-        'border:1px solid var(--line2);border-radius:9px}',
-      '.dv-seg button{border:0;background:transparent;font:inherit;font-size:12px;font-weight:700;',
-        'color:#3b4f49;padding:5px 13px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}',
-      '.dv-seg button:hover{background:#eef3f0}',
-      '.dv-seg button[aria-pressed="true"]{background:var(--t800);color:#fff}',
-      '.dv-seg button:focus-visible,.rk-kaki button:focus-visible{outline:2px solid var(--t700);outline-offset:2px}',
-      '.dv-kartu{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px 12px;min-width:0}',
-      '.dv-ring{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px;font-size:12.5px;',
-        'color:var(--muted);min-height:20px;margin-bottom:8px}',
-      '.dv-ring b{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);margin-left:4px}',
+      /* --- kartu keaktifan, memakai kerangka .rk-* dari home-periode --- */
+      '.kp-tag{margin-left:auto;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;',
+        'white-space:nowrap;font-family:var(--mono);letter-spacing:.02em;text-transform:none}',
+      '.kp-tag.baik{background:#e4f2ea;color:#0f6b46}.kp-tag.perhatian{background:#fbeed6;color:#8a5600}',
+      '.kp-tag.rendah{background:#fbe6e4;color:#a01c14}',
+      '.kp-skor{display:flex;align-items:baseline;gap:2px;margin-top:6px;font-variant-numeric:tabular-nums}',
+      '.kp-skor b{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--ink)}',
+      '.kp-skor span{font-size:14px;font-weight:700;color:var(--muted)}',
+      '.kp-meter{position:relative;height:6px;margin-top:10px;border-radius:6px;background:#e3ece8}',
+      '.kp-meter i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}',
+      '.kp-meter u{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:#fff}',
+
+      /* --- dua grafik deviasi berdampingan --- */
+      '.dv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}',
+      '.dv-kartu{background:var(--panel);border:1px solid var(--line);border-radius:14px;',
+        'padding:16px 18px 14px;min-width:0}',
+      '.dv-kartu>h3{font-size:13px;font-weight:800;color:#33413c;margin:0}',
+      '.dv-ring{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-top:6px;',
+        'font-size:12.5px;color:var(--muted);min-height:22px}',
+      '.dv-ring b{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--ink);margin-left:4px}',
       '.dv-ring b.baik{color:#0f6b46}.dv-ring b.perhatian{color:#8a5600}.dv-ring b.rendah{color:#a01c14}',
-      '.dv-chip{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}',
+      '.dv-chip{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px}',
       '.dv-chip.turun{background:#e4f2ea;color:#0f6b46}.dv-chip.naik{background:#fbe6e4;color:#a01c14}',
       '.dv-chip.tetap{background:#eef3f0;color:#3b4f49}',
-      '.dv-grafik{position:relative;height:236px;border-radius:8px;outline:none;touch-action:pan-y}',
+      '.dv-grafik{position:relative;height:226px;margin-top:10px;border-radius:8px;outline:none;touch-action:pan-y}',
       '.dv-grafik:focus-visible{box-shadow:0 0 0 2px var(--t700)}',
       '.dv-grafik svg{display:block;width:100%;height:100%;overflow:visible}',
-      '.dv-grafik .rk-kosong{padding-top:90px;text-align:center}',
+      '.dv-grafik .rk-kosong{padding-top:88px;text-align:center}',
       '.dv-grafik .dv-ax{font:10.5px var(--mono);fill:#52655f}',
       '.dv-grafik .dv-amb{font:700 10.5px var(--mono)}',
-      '.dv-tip{position:absolute;left:0;top:0;z-index:2;pointer-events:none;min-width:168px;',
+      '.dv-tip{position:absolute;left:0;top:0;z-index:2;pointer-events:none;min-width:150px;',
         'background:#0a332e;color:#cfe2dc;border-radius:9px;padding:8px 11px;font-size:11.5px;line-height:1.5;',
         'white-space:nowrap;opacity:0;transition:opacity .12s ease-out}',
       '.dv-tip.on{opacity:1}',
       '.dv-tip b{display:block;color:#fff;font-weight:700;margin-bottom:2px}',
       '.dv-tip span{display:flex;justify-content:space-between;gap:14px}',
       '.dv-tip em{font-style:normal;font-family:var(--mono);color:#fff}',
-      '.dv-tip small{display:block;margin-top:3px;font-family:var(--mono);font-size:10px;color:#8fbdb2}',
-      '.dv-leg{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:6px;font-size:11.5px;color:var(--muted)}',
-      '.dv-leg span{display:inline-flex;align-items:center;gap:7px}',
-      '.dv-leg i{display:inline-block;flex:0 0 auto}',
-      '.dv-leg .l-titik{width:6px;height:6px;border-radius:50%;background:#7faea2}',
-      '.dv-leg .l-garis{width:18px;height:2.5px;border-radius:2px;background:var(--t700)}',
-      '.dv-leg .l-pita{width:14px;height:10px;border-radius:2px;background:#0f6b4617;border-top:1.5px dashed #0f6b46}',
-      '.kp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}',
-      '.kp-kartu{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px 14px;min-width:0}',
-      '.kp-atas{display:flex;align-items:center;gap:10px}',
-      '.kp-atas b{font-size:13px;font-weight:800;color:#33413c}',
-      '.kp-tag{margin-left:auto;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}',
-      '.kp-tag.baik{background:#e4f2ea;color:#0f6b46}.kp-tag.perhatian{background:#fbeed6;color:#8a5600}',
-      '.kp-tag.rendah{background:#fbe6e4;color:#a01c14}',
-      '.kp-skor{display:flex;align-items:baseline;gap:2px;margin-top:8px;font-variant-numeric:tabular-nums}',
-      '.kp-skor b{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--ink)}',
-      '.kp-skor span{font-size:15px;font-weight:700;color:var(--muted)}',
-      '.kp-meter{position:relative;height:6px;margin:12px 0 0;border-radius:6px;background:#e3ece8}',
-      '.kp-meter i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}',
-      '.kp-meter u{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:#fff}',
-      '.kp-skala{position:relative;height:15px;margin-top:3px;font-family:var(--mono);font-size:9.5px;color:var(--muted)}',
-      '.kp-skala span{position:absolute;top:0;transform:translateX(-50%)}',
-      '.kp-skala span:first-child{transform:none}.kp-skala span:last-child{transform:translateX(-100%)}',
-      '.kp-meta{margin-top:2px;font-size:11.5px;color:var(--muted)}',
-      '.kp-daftar{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px 22px;margin-top:14px}',
-      '.kp-daftar h3{font-size:11.5px;font-weight:800;color:#33413c;margin:0 0 3px}',
-      '.kp-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}',
-      '.kp-no{flex:0 0 22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;',
-        'font-family:var(--mono);font-size:11px;font-weight:700;background:var(--paper);color:var(--ink)}',
-      '.kp-row.emas .kp-no{background:var(--amber);color:#10201d}',
-      '.kp-row.bawah .kp-no{background:#fbe6e4;color:#a01c14}',
-      '.kp-nama{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink);',
-        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.kp-nama small{display:block;margin-top:1px;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--muted)}',
-      '.kp-nilai{flex:0 0 auto;font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--ink)}',
-      '.kp-lain{padding:5px 0 0;font-size:11px;color:var(--muted)}',
-      '@media (prefers-reduced-motion: reduce){.dv-tip,.dv-seg button{transition:none}}'
+      '@media (prefers-reduced-motion: reduce){.dv-tip{transition:none}}'
     ].join('');
     document.head.appendChild(g);
   }
@@ -1274,145 +1467,91 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     a.id = 'deviasiWrap';
     a.style.paddingBottom = '6px';
     a.innerHTML =
-      '<div class="dv-kepala">' +
-        '<div><h2>Deviasi Ritase Minerva</h2><div class="lead" id="dvLead">Seluruh data</div></div>' +
-        '<div class="dv-seg" role="group" aria-label="Jenis ritase">' +
-          '<button type="button" data-f="tmm" aria-pressed="true">TMM</button>' +
-          '<button type="button" data-f="ot" aria-pressed="false">OT</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="dv-kartu">' +
-        '<div class="dv-ring" id="dvRingkas"></div>' +
-        '<div class="dv-grafik" id="dvGrafik" tabindex="0" role="group" ' +
-          'aria-label="Grafik deviasi harian. Tekan panah kiri atau kanan untuk membaca tiap hari.">' +
-          '<div class="rk-kosong">Memuat…</div>' +
-        '</div>' +
-        '<div class="dv-leg" aria-hidden="true">' +
-          '<span><i class="l-titik"></i>Deviasi harian</span>' +
-          '<span><i class="l-garis"></i>Rata-rata 7 hari</span>' +
-          '<span><i class="l-pita"></i>Normal, di bawah 2%</span>' +
-        '</div>' +
-      '</div>' +
-      '<p class="rk-nb">Deviasi adalah selisih ritase Minerva terhadap hitungan checker, dibagi hitungan ' +
-        'checker. Laporan per shift dijumlah per tanggal lebih dulu. Di bawah 2% normal, 2% sampai 5% ' +
-        'perlu perhatian, 5% ke atas tinggi.</p>';
-
-    var b = document.createElement('div');
-    b.className = 'dir';
-    b.id = 'keaktifanWrap';
-    b.style.paddingBottom = '6px';
-    b.innerHTML =
-      '<h2>Keaktifan Operator</h2>' +
-      '<div class="lead" id="kpLead">Bulan berjalan</div>' +
-      '<div class="kp-grid">' +
-        '<div class="kp-kartu" id="kpANTAM"><div class="kp-atas"><b>Operator ANTAM</b></div>' +
-          '<div class="rk-kosong">Memuat…</div></div>' +
-        '<div class="kp-kartu" id="kpPCM"><div class="kp-atas"><b>Operator PCM</b></div>' +
-          '<div class="rk-kosong">Memuat…</div></div>' +
-      '</div>' +
-      '<p class="rk-nb" id="kpNb">Skor bulan ini adalah rata-rata skor harian. Peringkat memakai rata-rata ' +
-        'skor tiap operator; bila skornya sama, operator dengan shift dinilai terbanyak di atas. Shift ' +
-        'tanpa keterangan tidak ikut dihitung.</p>' +
-      '<div class="rk-kaki">' +
-        '<button type="button" id="dvBuka">Buka Dispatch Monitoring</button>' +
-        '<small id="dvCap">—</small>' +
+      '<h2 style="margin-bottom:16px">Deviasi Ritase Minerva</h2>' +
+      '<div class="dv-grid">' +
+        GRAFIK.map(function (g) {
+          return '<div class="dv-kartu">' +
+            '<h3>' + g[1] + '</h3>' +
+            '<div class="dv-ring" id="' + g[2] + 'Ring"></div>' +
+            '<div class="dv-grafik" id="' + g[2] + '" tabindex="0" role="group" ' +
+              'aria-label="Rata-rata deviasi ' + g[1] + ' per bulan. ' +
+              'Tekan panah kiri atau kanan untuk membaca tiap bulan.">' +
+              '<div class="rk-kosong">Memuat…</div>' +
+            '</div></div>';
+        }).join('') +
       '</div>';
-
+    /* Tanpa tautan "Buka Dispatch Monitoring" di kaki bagian ini: kartu
+       Keaktifan tepat di atasnya sudah membawa tautan yang sama, dan keduanya
+       terlihat bersamaan di satu layar. */
     dir.parentNode.insertBefore(a, dir);
-    dir.parentNode.insertBefore(b, dir);
 
-    el('dvBuka').addEventListener('click', function () { try { showPage('dispatch'); } catch (e) {} });
-    a.querySelectorAll('.dv-seg button').forEach(function (tb) {
-      tb.addEventListener('click', function () {
-        PILIH = tb.dataset.f;
-        a.querySelectorAll('.dv-seg button').forEach(function (x) {
-          x.setAttribute('aria-pressed', x === tb ? 'true' : 'false');
-        });
-        fokusIdx = -1;
-        tampilDeviasi();
-      });
+    GRAFIK.forEach(function (g) {
+      fokus[g[0]] = -1;
+      pasangInteraksi(g[0], g[2]);
+      if (window.ResizeObserver) {
+        var lebarLama = 0;
+        new ResizeObserver(function () {
+          var w = el(g[2]).clientWidth;
+          if (w > 0 && w !== lebarLama) { lebarLama = w; gambar(g[0], g[2]); }
+        }).observe(el(g[2]));
+      }
     });
-    pasangInteraksiGrafik();
-    if (window.ResizeObserver) {
-      var lebarLama = 0;
-      new ResizeObserver(function () {
-        var w = el('dvGrafik').clientWidth;
-        if (w > 0 && w !== lebarLama) { lebarLama = w; gambarGrafik(); }
-      }).observe(el('dvGrafik'));
-    }
     return true;
   }
 
   /* ---------------------------------------------------------- grafik deviasi */
-  var geo = null;   // geometri grafik terakhir, dipakai untuk kursor & keyboard
-
   function langkahY(atas) {
     var pilihan = [0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25, 0.5];
     for (var i = 0; i < pilihan.length; i++) if (atas / pilihan[i] <= 5) return pilihan[i];
     return 1;
   }
   function tampilDeviasi() {
-    var ring = el('dvRingkas'), lead = el('dvLead');
     if (!DATA) return;
-    var titik = DATA.seri[PILIH];
-    if (!titik.length) {
-      lead.textContent = 'Seluruh data';
-      ring.innerHTML = '';
-    } else {
-      lead.textContent = 'Seluruh data · ' + rentangTgl(titik[0].t, titik[titik.length - 1].t) +
-        ' · ' + titik.length.toLocaleString('id-ID') + ' hari berdata';
-      var r = DATA.ringkas[PILIH];
-      var html = '<span>Rata-rata seluruh data<b>' + persen(r.semua, 1) + '</b></span>';
-      if (r.jendela) {
-        var tAk = tagDev(r.akhir);
-        html += '<span>' + r.jendela + ' hari pertama<b>' + persen(r.awal, 1) + '</b></span>' +
-          '<span>' + r.jendela + ' hari terakhir<b class="' + (tAk ? tAk.cls : '') + '">' +
-          persen(r.akhir, 1) + '</b></span>';
-        var poin = (r.akhir - r.awal) * 100;
+    GRAFIK.forEach(function (g) {
+      var titik = DATA.bulanan[g[0]], ring = el(g[2] + 'Ring');
+      if (!titik.length) { ring.innerHTML = ''; gambar(g[0], g[2]); return; }
+      var akhir = titik[titik.length - 1];
+      var t = tagDev(akhir.dev);
+      var html = '<span>' + esc(namaBulan(akhir.b)) +
+        '<b class="' + (t ? t.cls : '') + '">' + persen(akhir.dev, 1) + '</b></span>';
+      if (titik.length > 1) {
+        var poin = (akhir.dev - titik[titik.length - 2].dev) * 100;
         var arah = Math.abs(poin) < 0.05 ? 'tetap' : (poin < 0 ? 'turun' : 'naik');
         html += '<span class="dv-chip ' + arah + '">' + (arah === 'tetap' ? 'tidak berubah' :
-          arah + ' ' + Math.abs(poin).toLocaleString('id-ID', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) +
-          ' poin') + '</span>';
+          arah + ' ' + Math.abs(poin).toLocaleString('id-ID',
+            { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' poin') + '</span>';
       }
       ring.innerHTML = html;
-    }
-    gambarGrafik();
+      gambar(g[0], g[2]);
+    });
   }
 
-  function gambarGrafik() {
-    var wadah = el('dvGrafik');
+  function gambar(kunci, idWadah) {
+    var wadah = el(idWadah);
     if (!wadah || !DATA) return;
     var lebar = wadah.clientWidth, tinggi = wadah.clientHeight;
     if (lebar < 60) return;                       // Home tersembunyi; digambar saat tampil lagi
-    var titik = DATA.seri[PILIH];
+    var titik = DATA.bulanan[kunci];
     if (!titik.length) {
-      geo = null;
-      wadah.innerHTML = '<div class="rk-kosong">Belum ada data deviasi ' + LABEL[PILIH] + '.</div>';
+      geo[kunci] = null;
+      wadah.innerHTML = '<div class="rk-kosong">Belum ada data deviasi ' +
+        (kunci === 'tmm' ? 'TMM' : 'OT') + '.</div>';
       return;
     }
-    var sempit = lebar < 520;
-    var kiri = 40, kanan = 30, atas = 12, bawah = 24;
+    var kiri = 42, kanan = 30, atas = 14, bawah = 24;
     var gw = lebar - kiri - kanan, gh = tinggi - atas - bawah;
-    var h0 = titik[0].h, h1 = titik[titik.length - 1].h;
-    if (h1 === h0) { h0 -= 1; h1 += 1; }
+    var n = titik.length;
+    /* Skala tegak dipakai bersama kedua grafik (§DATA.yMax). Kalau TMM dan OT
+       punya skala sendiri-sendiri, dua bulan yang nilainya jauh berbeda
+       tergambar sama tinggi, dan grafik berdampingan jadi menyesatkan. */
+    var yMax = DATA.yMax, step = langkahY(yMax);
 
-    /* Skala tegak memakai persentil 95 harian, bukan nilai tertinggi: satu hari
-       bermasalah (mis. Minerva mati) tidak boleh memipihkan seluruh garis.
-       Titik di atas skala digambar sebagai segitiga di tepi atas; nilainya tetap
-       terbaca utuh di tooltip. */
-    var urut = titik.map(function (p) { return p.dev; }).sort(function (a, b) { return a - b; });
-    var p95 = urut[Math.floor(0.95 * (urut.length - 1))];
-    var maMax = titik.reduce(function (a, p) { return p.ma !== null && p.ma > a ? p.ma : a; }, 0);
-    var puncak = Math.max(p95, maMax, 0.055) * 1.12;
-    var step = langkahY(puncak);
-    var yMax = Math.ceil(puncak / step - 1e-9) * step;
-
-    function sx(h) { return kiri + (h - h0) / (h1 - h0) * gw; }
+    function sx(i) { return n === 1 ? kiri + gw / 2 : kiri + i / (n - 1) * gw; }
     function sy(v) { return atas + gh - Math.min(v, yMax) / yMax * gh; }
-    function f1(n) { return Math.round(n * 10) / 10; }
+    function f1(x) { return Math.round(x * 10) / 10; }
 
     var s = '';
-    // pita normal < 2% dan garis ambang
+    // pita normal < 2%
     s += '<rect x="' + kiri + '" y="' + f1(sy(0.02)) + '" width="' + f1(gw) + '" height="' +
       f1(sy(0) - sy(0.02)) + '" fill="#0f6b46" fill-opacity=".07"/>';
     // kisi & label sumbu tegak
@@ -1426,6 +1565,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     /* Label ambang memakai warna yang cukup gelap untuk teks kecil; amber
        #b06f00 hanya 4,1:1 terhadap putih, jadi dipakai untuk garisnya saja. */
     [[0.02, '#0f6b46', '#0f6b46', '2%'], [0.05, '#b06f00', '#8a5600', '5%']].forEach(function (a) {
+      if (a[0] > yMax) return;
       var ya = f1(sy(a[0]));
       s += '<line x1="' + kiri + '" x2="' + f1(kiri + gw) + '" y1="' + ya + '" y2="' + ya +
         '" stroke="' + a[1] + '" stroke-opacity=".55" stroke-dasharray="3 4"/>';
@@ -1433,200 +1573,159 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
         a[3] + '</text>';
     });
 
-    // label bulan
-    var p0 = titik[0].t.split('-').map(Number);
-    var th = p0[0], bl = p0[1] - 1;
-    if (p0[2] !== 1) { bl++; if (bl > 11) { bl = 0; th++; } }
-    var ticks = [];
-    for (;;) {
-      var hb = Date.UTC(th, bl, 1) / 864e5;
-      if (hb > h1) break;
-      ticks.push({ h: hb, th: th, bl: bl });
-      bl++; if (bl > 11) { bl = 0; th++; }
-    }
-    if (ticks.length) {
-      var jarak = gw / Math.max(1, (h1 - h0) / 30.44);
-      var tiap = jarak < 30 ? 3 : jarak < 50 ? 2 : 1;
-      ticks.forEach(function (tk, i) {
-        var x = f1(sx(tk.h));
-        s += '<line x1="' + x + '" x2="' + x + '" y1="' + f1(atas + gh) + '" y2="' + f1(atas + gh + 4) +
-          '" stroke="#0a332e" stroke-opacity=".25"/>';
-        if (i % tiap) return;
-        var lbl = BULAN[tk.bl] + ((i === 0 || tk.bl === 0) ? ' ' + tk.th : '');
-        if (x < kiri + 14 || x > kiri + gw - 14) return;
-        s += '<text x="' + x + '" y="' + f1(atas + gh + 17) + '" text-anchor="middle" class="dv-ax">' + lbl + '</text>';
-      });
-    } else {
-      s += '<text x="' + kiri + '" y="' + f1(atas + gh + 17) + '" class="dv-ax">' + tglPendek(titik[0].t) + '</text>';
-      s += '<text x="' + f1(kiri + gw) + '" y="' + f1(atas + gh + 17) + '" text-anchor="end" class="dv-ax">' +
-        tglPendek(titik[titik.length - 1].t) + '</text>';
-    }
-
-    // titik harian
-    var r = sempit ? 1.5 : 1.8, bulat = '', lewat = '';
-    titik.forEach(function (p) {
-      var x = f1(sx(p.h));
-      if (p.dev > yMax) {
-        lewat += 'M' + x + ' ' + (atas + 1) + 'l3.2 5.4h-6.4z';
-      } else {
-        bulat += '<circle cx="' + x + '" cy="' + f1(sy(p.dev)) + '" r="' + r + '"/>';
-      }
+    // label bulan; dijarangkan supaya tidak saling menimpa di kolom sempit
+    var tiap = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(gw / 46))));
+    titik.forEach(function (p, i) {
+      if (i % tiap) return;
+      var x = f1(sx(i)), bl = p.b.split('-');
+      var lbl = BULAN[+bl[1] - 1] + (i === 0 || +bl[1] === 1 ? ' ' + bl[0].slice(2) : '');
+      s += '<text x="' + x + '" y="' + f1(atas + gh + 17) + '" text-anchor="middle" class="dv-ax">' +
+        lbl + '</text>';
     });
-    s += '<g fill="#7faea2" fill-opacity=".62">' + bulat + '</g>';
-    if (lewat) s += '<path d="' + lewat + '" fill="#b06f00" fill-opacity=".8"/>';
 
-    // garis rata-rata 7 hari; putus bila jarak antar-hari berdata > 7 hari
-    var d = '', lalu = null;
-    titik.forEach(function (p) {
-      if (p.ma === null) { lalu = null; return; }
-      var cmd = (lalu === null || p.h - lalu > 7) ? 'M' : 'L';
-      d += cmd + f1(sx(p.h)) + ' ' + f1(sy(p.ma));
-      lalu = p.h;
+    // garis rata-rata bulanan, lalu titik tiap bulan di atasnya
+    var d = titik.map(function (p, i) {
+      return (i ? 'L' : 'M') + f1(sx(i)) + ' ' + f1(sy(p.dev));
+    }).join('');
+    s += '<path d="' + d + '" fill="none" stroke="#fff" stroke-width="5" ' +
+      'stroke-linejoin="round" stroke-linecap="round" stroke-opacity=".9"/>';
+    s += '<path d="' + d + '" fill="none" stroke="#0d4a42" stroke-width="2.3" ' +
+      'stroke-linejoin="round" stroke-linecap="round"/>';
+    titik.forEach(function (p, i) {
+      s += '<circle cx="' + f1(sx(i)) + '" cy="' + f1(sy(p.dev)) +
+        '" r="3.4" fill="#0d4a42" stroke="#fff" stroke-width="1.6"/>';
     });
-    if (d) {
-      s += '<path d="' + d + '" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" stroke-opacity=".9"/>';
-      s += '<path d="' + d + '" fill="none" stroke="#0d4a42" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>';
-    }
 
     // lapisan kursor
-    s += '<g id="dvKursor" style="display:none">' +
-      '<line id="dvKGaris" y1="' + atas + '" y2="' + f1(atas + gh) + '" stroke="#0a332e" stroke-opacity=".3"/>' +
-      '<circle id="dvKHari" r="4" fill="#7faea2" stroke="#fff" stroke-width="1.5"/>' +
-      '<circle id="dvKRata" r="4.5" fill="#0d4a42" stroke="#fff" stroke-width="2"/>' +
+    s += '<g id="' + idWadah + 'Kursor" style="display:none">' +
+      '<line class="kg" y1="' + atas + '" y2="' + f1(atas + gh) + '" stroke="#0a332e" stroke-opacity=".3"/>' +
+      '<circle class="kt" r="5.2" fill="#0d4a42" stroke="#fff" stroke-width="2"/>' +
       '</g>';
 
     wadah.innerHTML =
       '<svg viewBox="0 0 ' + lebar + ' ' + tinggi + '" preserveAspectRatio="none" aria-hidden="true">' + s +
-      '</svg><div class="dv-tip" id="dvTip" aria-live="polite"></div>';
+      '</svg><div class="dv-tip" id="' + idWadah + 'Tip" aria-live="polite"></div>';
 
-    geo = { kiri: kiri, gw: gw, h0: h0, h1: h1, sx: sx, sy: sy, yMax: yMax, lebar: lebar, tinggi: tinggi };
-    if (fokusIdx >= 0 && document.activeElement === wadah) tunjuk(Math.min(fokusIdx, titik.length - 1));
+    geo[kunci] = { kiri: kiri, gw: gw, n: n, sx: sx, sy: sy, lebar: lebar, tinggi: tinggi, id: idWadah };
+    if (fokus[kunci] >= 0 && document.activeElement === wadah) tunjuk(kunci, Math.min(fokus[kunci], n - 1));
   }
 
-  function indeksTerdekat(px) {
-    var titik = DATA.seri[PILIH];
-    var h = geo.h0 + (px - geo.kiri) / geo.gw * (geo.h1 - geo.h0);
-    var lo = 0, hi = titik.length - 1;
-    while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (titik[mid].h < h) lo = mid; else hi = mid; }
-    return Math.abs(titik[lo].h - h) <= Math.abs(titik[hi].h - h) ? lo : hi;
+  function indeksTerdekat(kunci, px) {
+    var g = geo[kunci];
+    if (g.n === 1) return 0;
+    var i = Math.round((px - g.kiri) / g.gw * (g.n - 1));
+    return Math.max(0, Math.min(g.n - 1, i));
   }
-  function tunjuk(i) {
-    if (!geo || !DATA) return;
-    var titik = DATA.seri[PILIH], p = titik[i];
+  function tunjuk(kunci, i) {
+    var g = geo[kunci];
+    if (!g || !DATA) return;
+    var titik = DATA.bulanan[kunci], p = titik[i];
     if (!p) return;
-    fokusIdx = i;
-    var k = el('dvKursor'), tip = el('dvTip');
-    if (!k || !tip) return;
-    var x = geo.sx(p.h), yH = geo.sy(p.dev);
+    fokus[kunci] = i;
+    var wadah = el(g.id);
+    var k = el(g.id + 'Kursor'), tip = el(g.id + 'Tip');
+    if (!k || !tip || !wadah) return;
+    var x = g.sx(i), y = g.sy(p.dev);
     k.style.display = '';
-    el('dvKGaris').setAttribute('x1', x); el('dvKGaris').setAttribute('x2', x);
-    el('dvKHari').setAttribute('cx', x); el('dvKHari').setAttribute('cy', p.dev > geo.yMax ? geo.sy(geo.yMax) : yH);
-    var rata = el('dvKRata');
-    if (p.ma !== null) {
-      rata.style.display = '';
-      rata.setAttribute('cx', x); rata.setAttribute('cy', geo.sy(p.ma));
-    } else rata.style.display = 'none';
+    k.querySelector('.kg').setAttribute('x1', x);
+    k.querySelector('.kg').setAttribute('x2', x);
+    k.querySelector('.kt').setAttribute('cx', x);
+    k.querySelector('.kt').setAttribute('cy', y);
 
-    var bag = String(p.t).split('-').map(Number);
-    var hari = new Date(bag[0], bag[1] - 1, bag[2]).toLocaleDateString('id-ID',
-      { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-    tip.innerHTML = '<b>' + esc(hari) + '</b>' +
-      '<span>Deviasi harian <em>' + persen(p.dev, 1) + '</em></span>' +
-      '<span>Rata-rata 7 hari <em>' + (p.ma === null ? '—' : persen(p.ma, 1)) + '</em></span>' +
-      '<small>Minerva ' + angka(p.m) + ' · Checker ' + angka(p.c) + '</small>';
+    tip.innerHTML = '<b>' + esc(namaBulan(p.b)) + '</b>' +
+      '<span>Rata-rata deviasi <em>' + persen(p.dev, 1) + '</em></span>' +
+      '<span>Hari berdata <em>' + p.hari + '</em></span>';
     tip.classList.add('on');
     var tw = tip.offsetWidth, tt = tip.offsetHeight;
     var tx = x + 14;
-    if (tx + tw > geo.lebar) tx = x - 14 - tw;
+    if (tx + tw > g.lebar) tx = x - 14 - tw;
     if (tx < 0) tx = 0;
-    var ty = Math.max(0, Math.min(geo.tinggi - tt, (p.ma !== null ? geo.sy(p.ma) : yH) - tt - 10));
+    var ty = Math.max(0, Math.min(g.tinggi - tt, y - tt - 10));
     tip.style.transform = 'translate(' + Math.round(tx) + 'px,' + Math.round(ty) + 'px)';
   }
-  function sembunyi() {
-    var k = el('dvKursor'), tip = el('dvTip');
+  function sembunyi(kunci) {
+    var g = geo[kunci];
+    if (!g) return;
+    var k = el(g.id + 'Kursor'), tip = el(g.id + 'Tip');
     if (k) k.style.display = 'none';
     if (tip) tip.classList.remove('on');
   }
-  function pasangInteraksiGrafik() {
-    var w = el('dvGrafik');
+  function pasangInteraksi(kunci, idWadah) {
+    var w = el(idWadah);
+    function ada() { return geo[kunci] && DATA && DATA.bulanan[kunci].length; }
     w.addEventListener('pointermove', function (e) {
-      if (!geo || !DATA || !DATA.seri[PILIH].length) return;
+      if (!ada()) return;
       var r = w.getBoundingClientRect();
-      tunjuk(indeksTerdekat(e.clientX - r.left));
+      tunjuk(kunci, indeksTerdekat(kunci, e.clientX - r.left));
     });
-    w.addEventListener('pointerleave', function () { if (document.activeElement !== w) sembunyi(); });
+    w.addEventListener('pointerleave', function () { if (document.activeElement !== w) sembunyi(kunci); });
     w.addEventListener('focus', function () {
-      if (!geo || !DATA || !DATA.seri[PILIH].length) return;
-      tunjuk(fokusIdx >= 0 ? Math.min(fokusIdx, DATA.seri[PILIH].length - 1) : DATA.seri[PILIH].length - 1);
+      if (!ada()) return;
+      var n = DATA.bulanan[kunci].length;
+      tunjuk(kunci, fokus[kunci] >= 0 ? Math.min(fokus[kunci], n - 1) : n - 1);
     });
-    w.addEventListener('blur', sembunyi);
+    w.addEventListener('blur', function () { sembunyi(kunci); });
     w.addEventListener('keydown', function (e) {
-      if (!geo || !DATA) return;
-      var n = DATA.seri[PILIH].length;
-      if (!n) return;
-      var i = fokusIdx < 0 ? n - 1 : fokusIdx;
-      var peta = { ArrowLeft: -1, ArrowRight: 1, PageUp: -7, PageDown: 7 };
+      if (!ada()) return;
+      var n = DATA.bulanan[kunci].length;
+      var i = fokus[kunci] < 0 ? n - 1 : fokus[kunci];
+      var peta = { ArrowLeft: -1, ArrowRight: 1, PageUp: -3, PageDown: 3 };
       if (peta[e.key] !== undefined) i += peta[e.key];
       else if (e.key === 'Home') i = 0;
       else if (e.key === 'End') i = n - 1;
-      else if (e.key === 'Escape') { sembunyi(); return; }
+      else if (e.key === 'Escape') { sembunyi(kunci); return; }
       else return;
       e.preventDefault();
-      tunjuk(Math.max(0, Math.min(n - 1, i)));
+      tunjuk(kunci, Math.max(0, Math.min(n - 1, i)));
     });
   }
 
-  /* ------------------------------------------------------ panel keaktifan */
-  function barisOp(o, i, kelas) {
-    return '<div class="kp-row ' + kelas + '">' +
-      '<span class="kp-no">' + (i + 1) + '</span>' +
-      '<span class="kp-nama" title="' + esc(o.nama) + '">' + esc(o.nama || 'Tanpa nama') +
-        '<small>' + esc(o.tipe || '-') + ' · ' + o.shift + ' shift' +
-          (o.shift > o.n ? ' · ' + (o.shift - o.n) + ' tanpa keterangan' : '') + '</small></span>' +
-      '<span class="kp-nilai">' + persen(o.rata, 0) + '</span>' +
+  /* ------------------------------------------------------ kartu keaktifan */
+  function barisOp(o, i, kelas, seri) {
+    return '<div class="rk-row ' + kelas + '">' +
+      '<span class="rk-no">' + (i + 1) + '</span>' +
+      '<span class="rk-nama" title="' + esc(o.nama) + '">' + esc(o.nama || 'Tanpa nama') +
+        '<small>' + esc(o.tipe || '-') + ' &middot; ' + o.shift + ' shift' +
+          (seri ? ' &middot; bersama' : '') + '</small></span>' +
+      '<span class="rk-ang">' + persen(o.rata, 0) + '</span>' +
     '</div>';
   }
   function panelKep(site, k) {
-    var judul = '<div class="kp-atas"><b>Operator ' + site + '</b>';
-    if (k.skor === null) {
-      return judul + '</div><div class="rk-kosong">Belum ada penilaian keaktifan bulan ini.</div>';
+    if (!k || k.skor === null) {
+      return '<div class="rk-grup"><h4>' + site + '</h4>' +
+        '<div class="rk-kosong">Belum ada penilaian keaktifan pada periode ini.</div></div>';
     }
     var p = k.skor * 100, t = tagSkor(p);
     var warna = { baik: '#0f6b46', perhatian: '#b06f00', rendah: '#a01c14' }[t.cls];
-    var html = judul + '<span class="kp-tag ' + t.cls + '">' + t.label + '</span></div>' +
-      '<div class="kp-skor"><b>' + p.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) +
+    var html = '<div class="rk-grup"><h4>' + site + '<span class="kp-tag ' + t.cls + '">' + t.label + '</span></h4>' +
+      '<div class="kp-skor"><b>' +
+        p.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) +
         '</b><span>%</span></div>' +
       '<div class="kp-meter" role="img" aria-label="Skor ' + persen(k.skor, 1) + ', ambang 60% dan 80%">' +
         '<i style="width:' + Math.max(0, Math.min(100, p)).toFixed(1) + '%;background:' + warna + '"></i>' +
-        '<u style="left:60%"></u><u style="left:80%"></u></div>' +
-      '<div class="kp-skala" aria-hidden="true"><span style="left:0">0</span><span style="left:60%">60</span>' +
-        '<span style="left:80%">80</span><span style="left:100%">100</span></div>' +
-      '<div class="kp-meta">' + k.hari + ' hari berdata · ' + k.jumlah + ' operator dinilai</div>';
+        '<u style="left:60%"></u><u style="left:80%"></u></div>';
 
     if (k.sama && k.jumlah > 1) {
-      return html + '<div class="kp-daftar"><div class="kp-lain">Semua ' + k.jumlah +
-        ' operator bernilai ' + persen(k.top[0].rata, 0) + ' bulan ini.</div></div>';
+      return html + '<div class="rk-sub"><h5>Semua operator</h5>' +
+        '<div class="rk-row"><span class="rk-nama">' + k.jumlah + ' operator, nilai sama' +
+        '</span><span class="rk-ang">' + persen(k.top[0].rata, 0) + '</span></div></div></div>';
     }
-    var kiri = '<div><h3>' + (k.jumlah <= 3 ? 'Operator dinilai' : '3 terbaik') + '</h3>' +
-      k.top.map(function (o, i) { return barisOp(o, i, i === 0 ? 'emas' : ''); }).join('') +
-      (k.kembarTop ? '<div class="kp-lain">+' + k.kembarTop + ' operator lain juga ' +
-        persen(k.top[k.top.length - 1].rata, 0) + '</div>' : '') + '</div>';
-    var kanan = '';
+    html += '<div class="rk-sub"><h5>' + (k.jumlah <= 3 ? 'Operator dinilai' : '3 terbaik') + '</h5>' +
+      k.top.map(function (o, i) {
+        return barisOp(o, i, i === 0 ? 'top' : '',
+          i === k.top.length - 1 && k.kembarTop > 0);
+      }).join('') + '</div>';
     if (k.bawah.length) {
-      kanan = '<div><h3>' + (k.bawah.length < 3 ? k.bawah.length : 3) + ' terendah</h3>' +
-        k.bawah.map(function (o, i) { return barisOp(o, i, 'bawah'); }).join('') +
-        (k.kembarBawah ? '<div class="kp-lain">+' + k.kembarBawah + ' operator lain juga ' +
-          persen(k.bawah[k.bawah.length - 1].rata, 0) + '</div>' : '') + '</div>';
+      html += '<div class="rk-sub"><h5>' + (k.bawah.length < 3 ? k.bawah.length : 3) + ' terendah</h5>' +
+        k.bawah.map(function (o, i) {
+          return barisOp(o, i, 'bawah', i === k.bawah.length - 1 && k.kembarBawah > 0);
+        }).join('') + '</div>';
     }
-    return html + '<div class="kp-daftar">' + kiri + kanan + '</div>';
+    return html + '</div>';
   }
   function tampilKeaktifan() {
-    if (!DATA) return;
-    var b = DATA.bulan;
-    el('kpLead').textContent = (b.awal === b.akhir ? '1 ' : '1–' + (+b.akhir.slice(8)) + ' ') +
-      BULAN_PANJANG[b.bl] + ' ' + b.th;
-    el('kpANTAM').innerHTML = panelKep('ANTAM', DATA.kep.ANTAM);
-    el('kpPCM').innerHTML = panelKep('PCM', DATA.kep.PCM);
+    if (!KEP || !el('kepIsi')) return;
+    el('kepIsi').innerHTML = panelKep('ANTAM', KEP.ANTAM) + panelKep('PCM', KEP.PCM);
   }
 
   /* ------------------------------------------------------------ penarikan */
@@ -1636,93 +1735,64 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
   }
   function tampilGagalTotal(e) {
     var msg = '<div class="rk-kosong">' + pesanGalat(e) + '</div>';
-    if (!DATA) {
-      el('dvGrafik').innerHTML = msg;
-      el('dvRingkas').innerHTML = '';
-      ['ANTAM', 'PCM'].forEach(function (s) {
-        el('kp' + s).innerHTML = '<div class="kp-atas"><b>Operator ' + s + '</b></div>' + msg;
-      });
-    }
-    el('dvCap').textContent = DATA ? 'gagal memperbarui · data ' + jam(DATA.waktu) : '—';
+    if (!DATA) GRAFIK.forEach(function (g) { el(g[2]).innerHTML = msg; });
+    if (!KEP && el('kepIsi')) el('kepIsi').innerHTML = msg;
   }
-  function jam(t) { var d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
 
-  function tarik() {
-    if (sibuk || !pasangWadah()) return;
+  function tarik(paksa) {
+    var p = window.HomePeriode;
+    if (!p || !p.dari || !pasangWadah()) return;
+    var kunci = p.dari + '|' + p.sampai;
+    if (sibuk) return;
+    if (!paksa && kunci === kunciTerakhir && Date.now() - terakhir < SEGAR_MS) return;
     sibuk = true;
     terakhir = Date.now();
-    var kini = new Date();
-    var hariIni = ymdLokal(kini);
-    var bulan = hariIni.slice(0, 7);
-    var galatServer = null;
+    kunciTerakhir = kunci;
+    var hariIni = ymdLokal(new Date());
 
     muatSeed()
-      .then(function (hasilSeed) {
-        if (hasilSeed && hasilSeed.basi) galatServer = hasilSeed.basi;
-        return muatBaris(bulan).catch(function (e) { galatServer = galatServer || e; return null; });
+      .then(function () {
+        /* Baris server gagal terbaca bukan alasan mengosongkan kartu: data
+           historis sudah di tangan, dan salinan perangkat menutup sisanya. */
+        return muatBaris(p.dari, p.sampai).catch(function () { return null; });
       })
       .then(function (baris) {
-        var lokal = barisLokal(bulan);
+        var lokal = barisLokal(p.dari, p.sampai);
         /* Server tanpa satu pun laporan dianggap belum terisi, bukan kosong:
            pakai salinan perangkat, lalu laporan bawaan. Pengaman yang sama
            dengan applyRemote() di modul (§20.4). */
         var laporan = (baris && baris.laporan.length) ? baris.laporan
           : (lokal.laporan.length ? lokal.laporan : seed.entries);
         var slot = baris ? baris.slot : lokal.slot;
-        var awal = bulan + '-01';
 
-        var seri = {
-          tmm: rataBergerak(seriHarian('tmm', seed.devTmm, laporan, hariIni)),
-          ot: rataBergerak(seriHarian('ot', seed.devOt, laporan, hariIni))
+        var bulanan = {
+          tmm: perBulan(seriHarian('tmm', seed.devTmm, laporan, hariIni)),
+          ot: perBulan(seriHarian('ot', seed.devOt, laporan, hariIni))
         };
-        DATA = {
-          seri: seri,
-          ringkas: { tmm: ringkasDeviasi(seri.tmm), ot: ringkasDeviasi(seri.ot) },
-          kep: {
-            ANTAM: hitungKep(catatanRentang(seed.antamRecords, slot.ANTAM, awal, hariIni)),
-            PCM: hitungKep(catatanRentang(seed.pcmRecords, slot.PCM, awal, hariIni))
-          },
-          bulan: { awal: awal, akhir: hariIni, th: kini.getFullYear(), bl: kini.getMonth() },
-          waktu: Date.now()
+        var puncak = 0;
+        ['tmm', 'ot'].forEach(function (k) {
+          bulanan[k].forEach(function (o) { if (o.dev > puncak) puncak = o.dev; });
+        });
+        puncak = Math.max(puncak, 0.055) * 1.12;
+        var step = langkahY(puncak);
+        DATA = { bulanan: bulanan, yMax: Math.ceil(puncak / step - 1e-9) * step };
+
+        KEP = {
+          ANTAM: hitungKep(catatanRentang(seed.antamRecords, slot.ANTAM, p.dari, p.sampai)),
+          PCM: hitungKep(catatanRentang(seed.pcmRecords, slot.PCM, p.dari, p.sampai))
         };
         tampilDeviasi();
         tampilKeaktifan();
-        el('dvCap').textContent = galatServer
-          ? (galatServer.kedaluwarsa ? 'sesi kedaluwarsa · menampilkan salinan di perangkat'
-                                     : 'server tidak terbaca · menampilkan salinan di perangkat')
-          : 'diperbarui ' + jam(DATA.waktu);
       })
-      .catch(tampilGagalTotal)
+      .catch(function (e) { kunciTerakhir = ''; tampilGagalTotal(e); })
       .then(function () { sibuk = false; });
-  }
-
-  /* Hanya menarik selagi Home benar-benar terlihat (§4.4). Pengamat atribut
-     menangkap Home yang baru tampil tanpa menunggu putaran berikutnya. */
-  function terlihat() {
-    if (document.hidden) return false;
-    var home = el('home');
-    return !!home && home.getClientRects().length > 0;
-  }
-  function periksa() {
-    var t = terlihat();
-    var baruMuncul = t && !tadiTerlihat;
-    tadiTerlihat = t;
-    if (!t) return;
-    var umur = Date.now() - terakhir;
-    if ((baruMuncul && umur >= JEDA_MIN_MS) || umur >= SEGAR_MS) tarik();
   }
 
   window.addEventListener('load', function () {
     pasangGaya();
     pasangWadah();
-    periksa();
-    setInterval(periksa, 15000);
-    document.addEventListener('visibilitychange', periksa);
-    if (window.MutationObserver) {
-      var mo = new MutationObserver(function () { setTimeout(periksa, 0); });
-      if (el('home')) mo.observe(el('home'), { attributes: true, attributeFilter: ['class'] });
-      if (el('app')) mo.observe(el('app'), { attributes: true, attributeFilter: ['style'] });
-    }
+    window.addEventListener('homeperiode', function () { tarik(true); });
+    window.addEventListener('hometick', function () { tarik(false); });
   });
 })();
 </script>
