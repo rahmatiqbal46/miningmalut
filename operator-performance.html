@@ -675,11 +675,12 @@ function tampilRanking() {
   var catatan = [];
   if (!S.alat) catatan.push('Excavator dan dump truck diurutkan bersama menurut nilai keseluruhan.');
   if (S.komp) catatan.push('Diurutkan menurut skor komponen ' + S.komp + ' dari Minerva; persentase capaian ditampilkan di sampingnya.');
-  var syarat = {};
+  var syarat = {}, per = S.data.periode || {};
   semua.forEach(function (o) { syarat[o.equipment_type] = o.syarat_hari; });
   if (S.dari !== S.sampai) {
     catatan.push('Syarat masuk peringkat: ' + Object.keys(syarat).map(function (a) { return ALAT[a].toLowerCase() + ' ' + syarat[a] + ' hari'; }).join(', ') +
-      ' (setengah median hari kerja rekan se-perusahaan dan se-jenis alat).');
+      ' (setengah median hari kerja rekan se-perusahaan dan se-jenis alat' +
+      (per.hari >= (per.panjang_bulanan || 28) ? ', minimal ' + (per.min_hari_bulanan || 5) + ' hari untuk periode sebulan atau lebih' : '') + ').');
   }
   el('rkCatatan').textContent = catatan.join(' ');
 
@@ -798,7 +799,7 @@ function tampilHof() {
     '<div class="hof-top"><div class="kecil">Hall of Fame · juara bulan terakhir</div>' +
       '<h3>' + esc(namaBulan(terbaru.bulan)) + '</h3>' +
       '<p>Terima kasih atas kinerja terbaik di Pulau Pakal sepanjang ' + esc(namaBulan(terbaru.bulan)) + '. ' +
-      'ANTAM dan PCM dinilai bersama, dari rata-rata nilai harian scorecard Minerva yang sah.</p></div>' +
+      'ANTAM dan PCM dinilai bersama, dari rata-rata nilai harian scorecard Minerva yang sah, dengan syarat minimal 5 hari kerja.</p></div>' +
     '<div class="hof-duo">' + heroJuara(terbaru) + '</div>' +
   '</section>';
 
