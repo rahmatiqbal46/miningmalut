@@ -157,6 +157,8 @@
   /* ---------- ranking ---------- */
   .kontrol{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
   .kontrol input[type=search]{min-width:200px}
+  .komp-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .komp-hint{font-size:12px;color:var(--text-muted);max-width:30ch;line-height:1.4}
   .catatan{font-size:12px;color:var(--text-muted);margin:-2px 0 12px;line-height:1.5}
   .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
   table{width:100%;border-collapse:collapse;font-size:var(--fs-body)}
@@ -178,15 +180,66 @@
   details.belum summary{cursor:pointer;font-weight:700;color:var(--text-secondary);padding:6px 0}
 
   /* ---------- hall of fame ---------- */
-  .hof{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
-  .bulan h3{margin:0 0 10px;font-size:15px;font-weight:800}
-  .bulan .dua{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .juara-hof{border-top:3px solid var(--amber);padding-top:10px}
-  .juara-hof .lbl{font-family:var(--mono);font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
-  .juara-hof .op{padding:6px 0}
-  .juara-hof .op:hover{background:none}
-  .juara-hof .op .av{width:44px;height:44px}
-  .juara-hof .kedua{font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45}
+  /* Hall of Fame: satu-satunya bagian yang boleh megah. Warnanya tetap
+     palet MiningMalut; amber hanya untuk cincin, pita, dan garis, tidak
+     pernah untuk tulisan. */
+  .hof-hero{position:relative;overflow:hidden;border-radius:14px;color:#eaf5f1;
+    background:linear-gradient(160deg,var(--t900) 0%,var(--t800) 45%,var(--t700) 100%);padding:26px 28px 24px;box-shadow:0 10px 30px rgba(6,33,29,.22)}
+  .hof-hero::before{content:"";position:absolute;inset:0;opacity:.13;pointer-events:none;
+    background-image:repeating-radial-gradient(circle at 82% 18%,#7fb4a8 0 1px,transparent 1px 26px)}
+  .hof-hero::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--amber)}
+  .hof-top{position:relative}
+  .hof-top .kecil{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8fbdb2}
+  .hof-top h3{margin:6px 0 0;font-size:30px;font-weight:800;letter-spacing:-.02em;color:#fff}
+  .hof-top p{margin:6px 0 0;font-size:13px;color:#b7d6ce;max-width:62ch;line-height:1.5}
+  .hof-duo{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media(max-width:760px){.hof-duo{grid-template-columns:1fr}}
+  .hof-champ{background:#ffffff0d;border:1px solid #ffffff1f;border-radius:12px;padding:18px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .hof-champ .alat{font-family:var(--mono);font-size:var(--fs-cap);letter-spacing:.12em;text-transform:uppercase;color:#8fbdb2}
+  .hof-champ .para{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:16px}
+  .hof-champ .orang{display:flex;flex-direction:column;align-items:center;border:0;background:none;color:inherit;cursor:pointer;padding:4px;border-radius:12px;max-width:230px}
+  .hof-champ .orang:hover .nm{text-decoration:underline;text-decoration-color:var(--amber);text-decoration-thickness:2px;text-underline-offset:4px}
+  .medali{position:relative;display:inline-block}
+  .medali .av{width:112px;height:112px;font-size:32px;border:0;box-shadow:0 0 0 4px var(--t800),0 0 0 7px var(--amber)}
+  .para.banyak .medali .av{width:78px;height:78px;font-size:22px}
+  .medali svg{position:absolute;right:-8px;bottom:-6px;width:36px;height:36px}
+  .para.banyak .medali svg{width:26px;height:26px;right:-6px;bottom:-4px}
+  .hof-champ .nm{margin-top:16px;font-size:19px;font-weight:800;color:#fff;line-height:1.2;text-wrap:balance}
+  .para.banyak .nm{font-size:15px}
+  .hof-champ .orang .co{margin-top:7px}
+  .hof-champ .skor{margin-top:10px;font-size:44px;font-weight:800;line-height:1;color:#fff;letter-spacing:-.03em}
+  .para.banyak .skor{font-size:30px}
+  .hof-champ .ket{margin-top:6px;font-size:12px;color:#b7d6ce}
+  .hof-champ .runner{margin-top:16px;padding-top:12px;border-top:1px solid #ffffff1f;width:100%;font-size:12px;color:#b7d6ce;line-height:1.5}
+  .hof-champ .kosong{color:#b7d6ce}
+
+  .hof-sering{margin-top:14px;display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap}
+  .hof-sering h4{margin:0 6px 0 0;font-size:12px;font-weight:800;color:var(--text-secondary)}
+  .sering{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--surface);border-radius:100px;padding:4px 12px 4px 4px;cursor:pointer}
+  .sering:hover{border-color:var(--accent)}
+  .sering .av{width:30px;height:30px;font-size:11px;border:2px solid var(--amber)}
+  .sering b{font-size:12.5px;font-weight:800}
+  .sering span.n{font-size:12px;color:var(--text-secondary)}
+
+  .plakat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .plakat{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .plakat-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:11px 16px;
+    background:linear-gradient(180deg,var(--t800),var(--t700));border-bottom:3px solid var(--amber)}
+  .plakat-head b{font-size:15px;font-weight:800;color:#fff}
+  .plakat-head span{font-family:var(--mono);font-size:11px;color:#8fbdb2}
+  .plakat-body{padding:4px 14px 8px}
+  .plakat-row{display:flex;align-items:flex-start;gap:12px;padding:12px 2px;border-bottom:1px solid var(--border-soft)}
+  .plakat-row:last-child{border-bottom:0}
+  .plakat-row .alat{flex:0 0 74px;padding-top:14px;font-family:var(--mono);font-size:var(--fs-cap);letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);line-height:1.35}
+  .plakat-row .siapa{flex:1;min-width:0}
+  .plakat-row .op{padding:3px 0}
+  .plakat-row .op:hover{background:none}
+  .plakat-row .op:hover .nama b{text-decoration:underline;text-decoration-color:var(--amber);text-decoration-thickness:2px;text-underline-offset:3px}
+  .plakat-row .op .av{width:44px;height:44px;border:0;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--amber)}
+  .plakat-row .op .nama b{white-space:normal}
+  .plakat-row .op .nama small .co{margin-right:4px}
+  .plakat-row .op .nilai{font-size:22px}
+  .plakat-row .kedua{font-size:12px;color:var(--text-muted);line-height:1.45;margin:6px 0 0 56px}
 
   /* ---------- detail operator ---------- */
   dialog{border:0;padding:0;border-radius:14px;width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 32px);
@@ -200,7 +253,8 @@
     padding:6px 10px;cursor:pointer;font-weight:700}
   .dlg-body{padding:16px 20px 22px}
   .stat2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:560px){.stat2{grid-template-columns:1fr}.bulan .dua{grid-template-columns:1fr}}
+  @media(max-width:560px){.stat2{grid-template-columns:1fr}.hof-hero{padding:22px 16px}.hof-top h3{font-size:24px}
+    .plakat-row{flex-wrap:wrap}.plakat-row .alat{flex-basis:100%}.plakat-row .kedua{margin-left:0}}
   .stat2 .card h3{margin:0 0 8px;font-size:12px;font-weight:800;color:var(--text-secondary)}
   .stat2 .besar{font-size:32px;font-weight:800;color:var(--accent);line-height:1}
   .stat2 .kecil{font-size:12.5px;color:var(--text-secondary);margin-top:8px;line-height:1.55}
@@ -282,7 +336,8 @@
         <div class="segmented" id="segCo"><button type="button" data-v="ANTAM" class="active">ANTAM</button><button type="button" data-v="PCM">PCM</button></div></div>
       <div class="field"><span class="lbl">Alat</span>
         <div class="segmented" id="segAlat"><button type="button" data-v="" class="active">Semua</button><button type="button" data-v="exca">Excavator</button><button type="button" data-v="truck">Dump truck</button></div></div>
-      <div class="field"><label for="selKomp">Dinilai dari</label><select id="selKomp"></select></div>
+      <div class="field"><span class="lbl">Dinilai dari</span>
+        <div class="komp-wrap"><div class="segmented" id="segKomp"></div><span class="komp-hint" id="kompHint">Pilih Excavator atau Dump truck untuk menilai per komponen</span></div></div>
       <div class="field"><label for="inCari">Cari nama atau badge</label><input type="search" id="inCari" autocomplete="off"></div>
     </div>
     <div class="catatan" id="rkCatatan"></div>
@@ -291,10 +346,6 @@
 
   <!-- HALL OF FAME -->
   <div class="view" id="view-hof">
-    <div class="section-head">
-      <h2>Hall of Fame</h2>
-      <div class="eyebrow">Juara tiap bulan yang sudah selesai, ANTAM dan PCM digabung. Syarat hari kerja dan porsi kerja sama dengan ranking.</div>
-    </div>
     <div id="hofIsi"><div class="kosong">Memuat…</div></div>
   </div>
 </main>
@@ -582,13 +633,14 @@ function papan(c, jenis) {
 
 /* ---------- ranking ---------- */
 function isiKomponen() {
-  var sel = el('selKomp'), komp = (S.data && S.data.komponen) || {};
+  var komp = (S.data && S.data.komponen) || {};
   var daftar = S.alat ? (komp[S.alat] || []) : [];
   if (S.komp && daftar.indexOf(S.komp) < 0) S.komp = '';
-  sel.innerHTML = '<option value="">Nilai keseluruhan</option>' +
-    daftar.map(function (k) { return '<option value="' + esc(k) + '"' + (k === S.komp ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('');
-  sel.disabled = !S.alat;
-  sel.title = S.alat ? '' : 'Pilih Excavator atau Dump truck untuk menilai per komponen';
+  el('segKomp').innerHTML = [''].concat(daftar).map(function (k) {
+    return '<button type="button" data-v="' + esc(k) + '"' + (k === S.komp ? ' class="active"' : '') + '>' +
+      (k ? esc(k) : 'Nilai keseluruhan') + '</button>';
+  }).join('');
+  el('kompHint').hidden = !!S.alat;
 }
 function nilaiDari(o) {
   if (!S.komp) return o.nilai;
@@ -688,26 +740,95 @@ function muatHof() {
     .then(tampilHof)
     .catch(function (e) { el('hofIsi').innerHTML = '<div class="card kosong">' + pesanGagal(e) + '</div>'; });
 }
+var MEDALI = '<svg viewBox="0 0 36 36" aria-hidden="true">' +
+  '<path d="M11 21 7 34l5-2.2 3.2 4L18 24z" fill="#b06f00"/><path d="M25 21l4 13-5-2.2-3.2 4L18 24z" fill="#b06f00"/>' +
+  '<circle cx="18" cy="16" r="11.5" fill="#E8920A" stroke="#0a332e" stroke-width="2.2"/>' +
+  '<path d="m18 9.6 1.9 3.9 4.3.6-3.1 3 .7 4.2-3.8-2-3.8 2 .7-4.2-3.1-3 4.3-.6z" fill="#fff"/></svg>';
+
+function namaDaftar(arr) {
+  if (!arr || !arr.length) return '';
+  if (arr.length <= 3) return arr.join(', ');
+  return arr.slice(0, 3).join(', ') + ' dan ' + (arr.length - 3) + ' lainnya';
+}
+function heroJuara(b) {
+  return ['exca', 'truck'].map(function (a) {
+    var x = b[a] || {}, j = x.juara || [], isi;
+    if (!j.length) {
+      isi = '<div class="kosong">Tidak ada operator yang memenuhi syarat bulan ini.</div>';
+    } else {
+      isi = '<div class="para' + (j.length > 1 ? ' banyak' : '') + '">' + j.slice(0, 4).map(function (o) {
+        return '<button type="button" class="orang" data-badge="' + esc(o.badge) + '">' +
+          '<span class="medali">' + avatar(o) + MEDALI + '</span>' +
+          '<span class="nm">' + esc(o.name) + '</span>' +
+          '<span class="co ' + esc(o.company) + '">' + esc(o.company) + '</span>' +
+          '<span class="skor">' + angka(o.nilai) + '</span>' +
+          '<span class="ket">nilai rata-rata · ' + o.hari_valid + ' hari kerja</span>' +
+        '</button>';
+      }).join('') + '</div>' +
+      (j.length > 4 ? '<div class="ket">bersama ' + (j.length - 4) + ' operator lain dengan nilai sama</div>' : '');
+      if (x.kedua && x.kedua.length) isi += '<div class="runner">Peringkat 2: ' + esc(namaDaftar(x.kedua)) + '</div>';
+    }
+    return '<div class="hof-champ"><div class="alat">' + ALAT[a] + (j.length > 1 ? ' · juara bersama' : '') + '</div>' + isi + '</div>';
+  }).join('');
+}
+function palingSering() {
+  var hit = {};
+  S.hof.forEach(function (b) {
+    ['exca', 'truck'].forEach(function (a) {
+      ((b[a] && b[a].juara) || []).forEach(function (o) {
+        var k = o.badge + '|' + a;
+        if (!hit[k]) hit[k] = { o: o, a: a, n: 0 };
+        hit[k].n++;
+      });
+    });
+  });
+  return Object.keys(hit).map(function (k) { return hit[k]; })
+    .filter(function (h) { return h.n >= 2; })
+    .sort(function (x, y) { return (y.n - x.n) || x.o.name.localeCompare(y.o.name); })
+    .slice(0, 8);
+}
 function tampilHof() {
   if (!S.hof || !S.hof.length) {
     el('hofIsi').innerHTML = '<div class="card kosong">Belum ada bulan yang selesai dengan data lengkap. ' +
       'Juara pertama akan tampil sesudah bulan berjalan berakhir.</div>';
     return;
   }
-  el('hofIsi').innerHTML = '<div class="hof">' + S.hof.map(function (b) {
-    return '<div class="card bulan"><h3>' + esc(namaBulan(b.bulan)) + '</h3><div class="dua">' +
-      ['exca', 'truck'].map(function (a) {
-        var x = b[a] || {}, j = x.juara || [];
-        if (!j.length) return '<div class="juara-hof"><div class="lbl">' + ALAT[a] + '</div><div class="kosong">Tidak ada yang memenuhi syarat.</div></div>';
-        return '<div class="juara-hof"><div class="lbl">' + ALAT[a] + (j.length > 1 ? ' · juara bersama' : '') + '</div>' +
-          j.map(function (o) {
-            return tombolOp(o, avatar(o) + '<span class="nama"><b>' + esc(o.name) + '</b>' +
-              '<small><span class="co ' + o.company + '">' + o.company + '</span> ' + angka(o.nilai) + ' · ' + o.hari_valid + ' hari</small></span>');
-          }).join('') +
-          (x.kedua && x.kedua.length ? '<div class="kedua">Peringkat 2: ' + esc(x.kedua.join(', ')) + '</div>' : '') +
-        '</div>';
-      }).join('') + '</div></div>';
-  }).join('') + '</div>';
+  var terbaru = S.hof[0], lama = S.hof.slice(1);
+  var html = '<section class="hof-hero" aria-label="Juara ' + esc(namaBulan(terbaru.bulan)) + '">' +
+    '<div class="hof-top"><div class="kecil">Hall of Fame · juara bulan terakhir</div>' +
+      '<h3>' + esc(namaBulan(terbaru.bulan)) + '</h3>' +
+      '<p>Terima kasih atas kinerja terbaik di Pulau Pakal sepanjang ' + esc(namaBulan(terbaru.bulan)) + '. ' +
+      'ANTAM dan PCM dinilai bersama, dari rata-rata nilai harian scorecard Minerva yang sah.</p></div>' +
+    '<div class="hof-duo">' + heroJuara(terbaru) + '</div>' +
+  '</section>';
+
+  var sering = palingSering();
+  if (sering.length) {
+    html += '<div class="hof-sering"><h4>Paling sering juara</h4>' + sering.map(function (h) {
+      return '<button type="button" class="sering" data-badge="' + esc(h.o.badge) + '">' + avatar(h.o) +
+        '<b>' + esc(h.o.name) + '</b><span class="n">' + h.n + '× ' + ALAT[h.a].toLowerCase() + '</span></button>';
+    }).join('') + '</div>';
+  }
+
+  if (lama.length) {
+    html += '<div class="section-head"><h2>Juara bulan-bulan sebelumnya</h2></div><div class="plakat-grid">' +
+      lama.map(function (b) {
+        var p = b.bulan.split('-');
+        return '<article class="plakat"><div class="plakat-head"><b>' + BULAN_PANJANG[+p[1] - 1] + '</b><span>' + p[0] + '</span></div>' +
+          '<div class="plakat-body">' + ['exca', 'truck'].map(function (a) {
+            var x = b[a] || {}, j = x.juara || [];
+            return '<div class="plakat-row"><div class="alat">' + ALAT[a] + (j.length > 1 ? '<br>bersama' : '') + '</div><div class="siapa">' +
+              (j.length ? j.map(function (o) {
+                return tombolOp(o, avatar(o) + '<span class="nama"><b>' + esc(o.name) + '</b>' +
+                  '<small><span class="co ' + esc(o.company) + '">' + esc(o.company) + '</span>' + o.hari_valid + ' hari kerja</small></span>' +
+                  '<span class="nilai">' + angka(o.nilai) + '</span>');
+              }).join('') : '<span class="muted">Tidak ada yang memenuhi syarat</span>') +
+              (x.kedua && x.kedua.length ? '<div class="kedua">Peringkat 2: ' + esc(namaDaftar(x.kedua)) + '</div>' : '') +
+            '</div></div>';
+          }).join('') + '</div></article>';
+      }).join('') + '</div>';
+  }
+  el('hofIsi').innerHTML = html;
 }
 
 /* ---------- detail operator ---------- */
@@ -850,7 +971,7 @@ el('inDari').addEventListener('change', muat);
 el('inSampai').addEventListener('change', muat);
 segmen('segCo', function (v) { S.co = v; tampilRanking(); });
 segmen('segAlat', function (v) { S.alat = v; isiKomponen(); tampilRanking(); });
-el('selKomp').addEventListener('change', function () { S.komp = this.value; tampilRanking(); });
+segmen('segKomp', function (v) { S.komp = v; tampilRanking(); });
 el('inCari').addEventListener('input', function () { S.cari = this.value; tampilRanking(); });
 
 document.body.addEventListener('click', function (e) {
