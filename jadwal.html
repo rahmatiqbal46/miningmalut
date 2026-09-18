@@ -3,15 +3,26 @@
 <head>
 <script>(function(){try{var _emb=false;try{_emb=window.self!==window.top;}catch(e){_emb=true;}if(!_emb&&localStorage.getItem('pakal_auth_required')==='1'){var a=null;try{a=JSON.parse(localStorage.getItem('pakal_auth')||'null');}catch(e){}var ok=a&&a.access_token&&(!a.expires_at||a.expires_at*1000>Date.now());if(!ok){location.replace('./index.html');}}}catch(e){}})();</script>
 <style id="embed-css">
+/* Dipakai HANYA saat berkas ditanam di dalam iframe induk: skrip di bawah
+   memasang kelas .embedded lalu merakit bilah tab #embtabs sendiri, karena
+   sidebar asli disembunyikan. Tombol .side tetap ada di DOM — skrip itu
+   meneruskan klik ke sana lewat querySelector('.side [data-v=...]'), jadi
+   menghapus sidebar akan mematikan seluruh navigasi mode tertanam. */
 html.embedded,html.embedded body{background:transparent!important}
 html.embedded .side{display:none!important}
 html.embedded .app{display:block!important}
 html.embedded main{width:100%!important;min-height:100vh}
-html.embedded #embtabs{display:flex;gap:8px;padding:12px 16px 2px;flex-wrap:wrap;position:sticky;top:0;z-index:5;background:var(--bg,#f6f8f7)}
-html.embedded #embtabs button{font:inherit;font-size:12px;padding:7px 12px;border:1px solid #d6e0dd;border-radius:8px;background:#fff;color:#12201d;cursor:pointer}
-html.embedded #embtabs button.on{background:#0f6e63;color:#fff;border-color:#0f6e63}
-html.embedded #embtabs button.adm{border-style:dashed}
+/* Bilah tab tertanam = lapisan kontrol, jadi berkaca seperti bilah atas. */
+html.embedded #embtabs{display:flex;gap:2px;padding:8px 16px;flex-wrap:wrap;position:sticky;top:0;z-index:5;background:var(--kaca,rgba(255,255,255,.72));backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7);box-shadow:inset 0 -1px 0 var(--kaca-tepi,rgba(0,60,60,.1))}
+html.embedded #embtabs button{font-family:inherit;font-size:var(--f-callout,12px);font-weight:560;height:26px;padding:0 12px;border:0;border-radius:var(--r-kecil,7px);background:none;color:var(--ink-2,#33484a);cursor:pointer}
+html.embedded #embtabs button.on{background:var(--surf,#fff);color:var(--ink,#0b1c1c);font-weight:620;box-shadow:0 1px 2px rgba(0,48,47,.12),0 0 0 .5px rgba(0,0,0,.05)}
+/* Tanda "khusus admin". Pigura sudah tidak ada, jadi garis putus-putusnya
+   digambar outline — border-style saja tidak akan kelihatan lagi. */
+html.embedded #embtabs button.adm{border-style:dashed;outline:1px dashed var(--line,#d9e3e2);outline-offset:-1px}
 html[data-peran="viewer"] #embtabs button.adm,html[data-peran="editor"] #embtabs button.adm{display:none}
+@media (prefers-reduced-transparency:reduce){
+html.embedded #embtabs{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surf,#fff)}
+}
 </style>
 <script>(function(){
  var inFrame=true;try{inFrame=window.self!==window.top;}catch(e){}
@@ -39,201 +50,383 @@ html[data-peran="viewer"] #embtabs button.adm,html[data-peran="editor"] #embtabs
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sistem Jadwal Biro Mining — ANTAM UBPN Maluku Utara</title>
 <style>
+/* ==========================================================================
+   Sistem Jadwal Biro Mining — lapisan tampilan dalam bahasa desain Apple,
+   MODE TERANG. Disamakan sistemnya dengan gaya-dm.css (Dispatch Monitoring).
+
+   Yang memandu berkas ini:
+
+   1. Palet dilabuhkan ke logo ANTAM: teal #003c3c, amber #ea9000. Teal lama
+      (#00713C di lembar ini, #0d4a42 di blok theme-override) lebih hijau
+      daripada logonya.
+
+   2. NAMA token tidak diubah, hanya nilainya. Empat di antaranya dibaca dari
+      JavaScript sebagai teks 'var(--ds)' dst. untuk mewarnai sparkline roster
+      dan pita shift — mengganti namanya akan memutus warna itu tanpa pesan.
+      Token baru ditambahkan, yang lama tidak ada yang dihapus.
+
+   3. Kaca hanya untuk lapisan kontrol: bilah atas yang menempel, bilah tab
+      mode tertanam, dan latar modal. Panel isi memakai bayangan tipis
+      berrim 1px, bukan pigura garis. Kaca tidak ditumpuk di atas kaca.
+
+   4. Radius konsentris: radius dalam = radius induk dikurangi sisipan.
+
+   5. Ramp tipografi macOS dipakai apa adanya; tinggi kontrol baku 28px.
+
+   6. Label mikro huruf-besar-semua dibuang. Pemilik berkas sudah menyatakan
+      tidak menyukainya. Yang diubah kapitalisasi dan hurufnya — TEKSNYA
+      TIDAK, satu kata pun.
+   ========================================================================== */
 :root{
-  --brand:#00713C; --brand-d:#004E29; --brand-l:#E8F1EC;
-  --ink:#0F1D18; --ink-2:#3C4B45; --mute:#77877F;
-  --line:#DCE4E0; --line-2:#EDF2EF; --bg:#F2F5F3; --surf:#FFFFFF;
-  --ds:#B5811A; --ns:#33478F; --off:#9AA8A1; --ovr:#0F6E80;
-  --free:#0E9F6E; --warn:#A32C2C; --gold:#C8891B;
-  --r:6px; --sh:0 1px 2px rgba(15,29,24,.06), 0 1px 8px rgba(15,29,24,.04);
+  /* ---- Palet ANTAM. Nama lama, nilai baru. ---- */
+  --brand:#003c3c; --brand-d:#00302f; --brand-l:#e2edeb;
+  --ink:#0b1c1c; --ink-2:#33484a; --mute:#47595a;
+  --line:#d9e3e2; --line-2:#e7eeed; --bg:#eef3f2; --surf:#ffffff;
+
+  /* Empat token di bawah ini dirakit JavaScript jadi string 'var(--ds)' dst.
+     (peta warna sparkline roster & pita shift). Semuanya BIDANG, tidak pernah
+     teks, jadi amber penuh aman dipakai di sini. */
+  --ds:#ea9000;   /* shift siang   */
+  --ns:#2f4a8c;   /* shift malam   */
+  --off:#a7b6b3;  /* libur         */
+  --ovr:#0a5a56;  /* overshift     */
+
+  --free:#0f6b46;                 /* waktu kosong — juga dipakai sebagai teks */
+  --free-l:#e4f2ea;
+  /* --warn di berkas ini berarti "bahaya/tabrakan", bukan peringatan amber.
+     Nilainya karena itu merah tua kontrak (--bad), bukan --warn kontrak. */
+  --warn:#a01c14; --warn-l:#fbe6e4;
+  --gold:#ea9000;                 /* nama lama dipertahankan; kini = amber ANTAM */
+
+  --amber:#ea9000;
+  --amber-dk:#996000;             /* amber untuk TEKS di latar terang (5,21:1) */
+  --amber-l:#fbeed6;
+  --ns-l:#e7ebf6; --ns-dk:#28407e;
+  --ovr-l:#ddeceb;
+  --good:#0f6b46; --good-l:#e4f2ea;
+  --surf-2:#f4f8f7; --surf-3:#e8f0ef;
+
+  /* Isian kontrol di atas panel terang, dan lapisan kaca. */
+  --isi:#0000000d; --isi-2:#00000014;
+  --kaca:rgba(255,255,255,.72);
+  --kaca-tepi:rgba(0,60,60,.10);
+
+  /* Permukaan sidebar gelap: tinta sendiri supaya tidak menebak dari --ink. */
+  --nav-ink:#dce8e6; --nav-ink-2:#9fb8b4; --nav-ink-3:#87a29e;
+  --nav-on:#0a5a56;               /* pil terpilih; --brand terlalu dekat ke --brand-d */
+
+  /* ---- Tipografi: ramp macOS, huruf sistem ----
+     Mesin Apple memakai SF asli lewat -apple-system; SF Pro tidak boleh
+     di-embed untuk web, selebihnya jatuh ke tumpukan sistem. */
+  --font:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,'SFMono-Regular','Roboto Mono',Menlo,Consolas,monospace;
+  --f-large:26px; --lh-large:32px;
+  --f-t1:22px;    --lh-t1:26px;
+  --f-t2:17px;    --lh-t2:22px;
+  --f-t3:15px;    --lh-t3:20px;
+  --f-head:13px;  --lh-head:16px;
+  --f-body:13px;  --lh-body:16px;
+  --f-callout:12px; --lh-callout:15px;
+  --f-sub:11px;   --lh-sub:14px;
+  --f-foot:10px;  --lh-foot:13px;
+
+  /* ---- Bentuk: radius konsentris, tinggi kontrol baku macOS ---- */
+  --r:7px;                        /* nama lama = radius kontrol kecil */
+  --r-panel:14px; --r-inner:10px; --r-kecil:7px; --r-pil:999px;
+  --h-kontrol:28px;               /* baku macOS 28pt, minimum 20pt */
+
+  /* Panel = lapisan isi: bayangan sangat tipis + rim 1px, bukan pigura. */
+  --sh:0 1px 2px rgba(0,48,47,.07), 0 0 0 1px rgba(0,60,60,.07);
+  --sh-naik:0 8px 24px rgba(0,48,47,.12), 0 0 0 1px rgba(0,60,60,.12);
+
   --nav:236px;
+  --ease:cubic-bezier(.16,1,.3,1);
 }
+/* Halaman terang wajib menyatakan skemanya, supaya kalender input[type=date],
+   daftar select dan batang gulir bawaan peramban digambar dalam gaya terang. */
+html{color-scheme:light}
+
 *{box-sizing:border-box}
 html,body{height:100%}
+/* Singkatan font: dihindari — 'font:600 13px inherit' membatalkan seluruh
+   baris kalau keluarga hurufnya tidak disebut. Properti terpisah saja. */
 body{margin:0;background:var(--bg);color:var(--ink);
-  font:13.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-family:var(--font);font-size:var(--f-body);line-height:1.5;
   -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-button,input,select{font:inherit;color:inherit}
-h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.012em}
-:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.015em}
+::selection{background:var(--brand);color:#fff}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* ---------- kerangka ---------- */
 .app{display:grid;grid-template-columns:var(--nav) 1fr;min-height:100vh}
-nav.side{background:var(--brand-d);color:#DCE9E1;display:flex;flex-direction:column;
+nav.side{background:var(--brand-d);color:var(--nav-ink);display:flex;flex-direction:column;
   position:sticky;top:0;height:100vh}
-.mark{padding:18px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
-.mark .org{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#8FB9A3;font-weight:650}
-.mark .nm{font-size:14.5px;font-weight:650;color:#fff;margin-top:3px;letter-spacing:-.01em}
-.mark .site{font-size:11px;color:#8FB9A3;margin-top:1px}
+.mark{padding:18px 18px 16px;box-shadow:inset 0 -1px 0 rgba(255,255,255,.09)}
+.mark .org{font-size:var(--f-foot);line-height:var(--lh-foot);letter-spacing:0;
+  text-transform:none;color:var(--nav-ink-2);font-weight:590}
+.mark .nm{font-size:var(--f-t3);line-height:var(--lh-t3);font-weight:650;color:#fff;
+  margin-top:3px;letter-spacing:-.018em;text-wrap:balance}
+.mark .site{font-size:var(--f-sub);line-height:var(--lh-sub);color:var(--nav-ink-2);margin-top:2px}
 .menu{padding:12px 10px;display:flex;flex-direction:column;gap:1px}
-.menu>span{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#6F9A82;
-  padding:12px 8px 5px;font-weight:650}
+.menu>span{font-size:var(--f-sub);line-height:var(--lh-sub);letter-spacing:0;
+  text-transform:none;color:var(--nav-ink-3);padding:13px 9px 5px;font-weight:600}
+/* Radius pil sidebar 7 di dalam sisipan 10 dari tepi panel — konsentris. */
 .menu button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
-  background:none;border:0;padding:8px 9px;border-radius:var(--r);color:#C9DCD2;cursor:pointer;
-  font-size:13px;font-weight:520;transition:background .14s}
-.menu button:hover{background:rgba(255,255,255,.07);color:#fff}
-.menu button.on{background:var(--brand);color:#fff;font-weight:620}
+  background:none;border:0;padding:0 9px;height:32px;border-radius:var(--r-kecil);
+  color:var(--nav-ink);cursor:pointer;font-size:var(--f-body);font-weight:520;
+  transition:background-color .16s var(--ease),color .16s var(--ease)}
+.menu button:hover{background:rgba(255,255,255,.08);color:#fff}
+/* --brand (#003c3c) nyaris tak terbedakan dari --brand-d (#00302f) di sini,
+   jadi pil terpilih memakai teal yang jelas lebih terang. */
+.menu button.on{background:var(--nav-on);color:#fff;font-weight:620}
 .menu button svg{width:15px;height:15px;flex:none;stroke-width:1.7}
-.side .kaki{margin-top:auto;padding:12px 14px 16px;border-top:1px solid rgba(255,255,255,.1);
+.side .kaki{margin-top:auto;padding:12px 14px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.09);
   display:flex;flex-wrap:wrap;gap:6px 12px}
-.side .kaki button{background:none;border:0;color:#7FA893;font-size:11.5px;cursor:pointer;padding:2px 0}
+.side .kaki button{background:none;border:0;color:var(--nav-ink-2);
+  font-size:var(--f-sub);line-height:var(--lh-sub);cursor:pointer;padding:2px 0;
+  transition:color .16s var(--ease)}
 .side .kaki button:hover{color:#fff;text-decoration:underline}
-.side .kaki .v{width:100%;font-size:10.5px;color:#5D8770;margin-top:5px}
+.side .kaki .v{width:100%;font-size:var(--f-foot);line-height:var(--lh-foot);
+  color:var(--nav-ink-3);margin-top:6px}
 
 main{min-width:0}
-header.bar{background:var(--surf);border-bottom:1px solid var(--line);padding:13px 24px;
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
-header.bar h1{font-size:16px}
-header.bar .ket{font-size:12px;color:var(--mute)}
+/* Bilah atas: kaca, isinya lewat di bawahnya. Rim bawah menggantikan garis. */
+header.bar{background:var(--kaca);
+  backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7);
+  box-shadow:inset 0 -1px 0 var(--kaca-tepi);border-bottom:0;
+  padding:11px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:20}
+header.bar h1{font-size:var(--f-t2);line-height:var(--lh-t2);font-weight:640;letter-spacing:-.018em}
+header.bar .ket{font-size:var(--f-callout);line-height:var(--lh-callout);color:var(--mute);margin-top:1px}
 .kontrol{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .isi{padding:20px 24px 56px;max-width:1440px}
 
 /* ---------- elemen ---------- */
-label.fl{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--mute);font-weight:650;margin-bottom:4px}
+/* Label mikro: sentence case dengan --f-sub, bukan huruf-besar-semua. */
+label.fl{display:block;font-size:var(--f-sub);line-height:var(--lh-sub);letter-spacing:0;
+  text-transform:none;color:var(--mute);font-weight:560;margin-bottom:5px}
+/* Kolom isian macOS: isian lembut berrim tipis, bukan kotak berpigura. */
 select,input[type=date],input[type=time],input[type=text]{
-  padding:6px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--surf);
-  font-size:12.5px;min-height:32px}
-select{cursor:pointer}
-.btn{padding:6px 12px;min-height:32px;border-radius:var(--r);border:1px solid var(--line);
-  background:var(--surf);cursor:pointer;font-size:12.5px;font-weight:560;transition:.14s}
-.btn:hover{border-color:var(--brand);color:var(--brand)}
-.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
-.btn.pri:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
-.btn.xs{padding:3px 8px;min-height:26px;font-size:11.5px}
-.btn.danger:hover{border-color:var(--warn);color:var(--warn)}
+  padding:0 9px;border:0;box-shadow:inset 0 0 0 1px var(--line);
+  background:var(--isi);color:var(--ink);border-radius:var(--r-kecil);
+  font-size:var(--f-callout);min-height:var(--h-kontrol);
+  transition:box-shadow .15s var(--ease)}
+select:focus,input[type=date]:focus,input[type=time]:focus,input[type=text]:focus{
+  outline:none;box-shadow:inset 0 0 0 1px var(--brand),0 0 0 3px var(--brand-l)}
+select{cursor:pointer;padding-right:6px}
+input::placeholder,textarea::placeholder{color:var(--mute);opacity:1}
+/* Autofill peramban memaksa latar biru muda dengan teks gelap, dan
+   'background' biasa tidak menimpanya. ':-webkit-autofill' dan ':autofill'
+   WAJIB jadi dua aturan terpisah — satu pemilih tak dikenal membatalkan
+   seluruh daftar koma. */
+input:-webkit-autofill{-webkit-text-fill-color:var(--ink);
+  -webkit-box-shadow:inset 0 0 0 1px var(--line),inset 0 0 0 100px var(--surf);
+  background-clip:text;transition:background-color 100000s 0s}
+input:autofill{-webkit-text-fill-color:var(--ink);
+  background-clip:text;transition:background-color 100000s 0s}
 
-.panel{background:var(--surf);border:1px solid var(--line);border-radius:8px;box-shadow:var(--sh);
+.btn{padding:0 12px;min-height:var(--h-kontrol);border-radius:var(--r-kecil);border:0;
+  background:var(--surf);color:var(--ink);box-shadow:var(--sh);cursor:pointer;
+  font-size:var(--f-callout);font-weight:560;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  transition:box-shadow .15s var(--ease),background-color .15s var(--ease),color .15s var(--ease)}
+.btn:hover{box-shadow:var(--sh-naik);color:var(--brand)}
+.btn.pri{background:var(--brand);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.btn.pri:hover{background:var(--brand-d);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.btn.xs{padding:0 10px;min-height:24px;font-size:var(--f-sub)}
+.btn.danger:hover{color:var(--warn);box-shadow:var(--sh-naik)}
+
+/* Panel adalah lapisan ISI: bayangan tipis + rim 1px, tanpa garis pigura. */
+.panel{background:var(--surf);border:0;border-radius:var(--r-panel);box-shadow:var(--sh);
   margin-bottom:16px;overflow:hidden}
-.panel>hgroup{padding:14px 16px;border-bottom:1px solid var(--line-2);display:flex;
+.panel>hgroup{padding:14px 16px 12px;box-shadow:inset 0 -1px 0 var(--line-2);display:flex;
   align-items:center;gap:12px;flex-wrap:wrap}
-.panel>hgroup h2{font-size:13px;letter-spacing:.02em}
-.panel>hgroup p{margin:2px 0 0;font-size:11.5px;color:var(--mute)}
+.panel>hgroup h2{font-size:var(--f-t3);line-height:var(--lh-t3);letter-spacing:-.014em;font-weight:640}
+.panel>hgroup p{margin:3px 0 0;font-size:var(--f-callout);line-height:var(--lh-callout);
+  color:var(--mute);max-width:78ch;text-wrap:pretty}
 .panel>.body{padding:16px}
 .panel>.body.rapat{padding:0}
 .kanan{margin-left:auto;display:flex;gap:8px;align-items:center}
 
 .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(154px,1fr));gap:1px;
-  background:var(--line-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
+  background:var(--line-2);border:0;border-radius:var(--r-panel);overflow:hidden;
+  margin-bottom:16px;box-shadow:var(--sh)}
 .stat>div{background:var(--surf);padding:13px 15px}
 .stat .n{font-size:23px;font-weight:660;letter-spacing:-.03em;line-height:1.2}
-.stat .n small{font-size:12px;color:var(--mute);font-weight:500;letter-spacing:0}
-.stat .l{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);font-weight:640;margin-top:2px}
+.stat .n small{font-size:var(--f-callout);color:var(--mute);font-weight:500;letter-spacing:0}
+.stat .l{font-size:var(--f-sub);line-height:var(--lh-sub);letter-spacing:0;
+  text-transform:none;color:var(--mute);font-weight:560;margin-top:3px}
 
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);
-  font-weight:650;padding:9px 14px;border-bottom:1px solid var(--line);background:#FAFCFB;white-space:nowrap}
-td{padding:8px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+table{width:100%;border-collapse:collapse;font-size:var(--f-callout)}
+th{text-align:left;font-size:var(--f-sub);line-height:var(--lh-sub);letter-spacing:0;
+  text-transform:none;color:var(--mute);font-weight:560;padding:9px 14px;
+  border-bottom:1px solid var(--line);background:var(--surf);white-space:nowrap}
+td{padding:9px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
 tbody tr:last-child td{border-bottom:0}
-tbody tr:hover{background:#FAFCFB}
+tbody tr:hover{background:var(--isi)}
 td.num{text-align:right}
-.chip{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10.5px;font-weight:620;
-  letter-spacing:.02em;border:1px solid transparent;white-space:nowrap}
-.chip.ds{background:#FBF2DF;color:#8A6212}.chip.ns{background:#E7EAF7;color:#2A3B78}
-.chip.off{background:#F0F3F1;color:#5E6E67}.chip.ovr{background:#DFF0F2;color:#0B5866}
-.chip.brand{background:var(--brand-l);color:var(--brand-d)}
-.chip.netral{background:#F0F3F1;color:#48574F}
-.chip.buli{background:#EDEBF7;color:#453B85}.chip.pakal{background:#E9F1EC;color:#1D5E3C}
+.chip{display:inline-block;padding:2px 8px;border-radius:var(--r-pil);
+  font-size:var(--f-foot);line-height:var(--lh-foot);font-weight:620;
+  letter-spacing:0;border:0;white-space:nowrap}
+/* Amber tidak pernah jadi teks di latar terang: #ea9000 cuma 2,3:1 terhadap
+   putih. Teks amber memakai --amber-dk (#996000 = 5,21:1). */
+.chip.ds{background:var(--amber-l);color:var(--amber-dk)}
+.chip.ns{background:var(--ns-l);color:var(--ns-dk)}
+.chip.off{background:var(--surf-3);color:var(--mute)}
+.chip.ovr{background:var(--ovr-l);color:var(--ovr)}
+.chip.brand{background:var(--brand-l);color:var(--brand)}
+.chip.netral{background:var(--isi);color:var(--ink-2)}
+.chip.buli{background:#ecebf7;color:#3f3580}
+.chip.pakal{background:var(--good-l);color:var(--good)}
 
 /* ---------- kalender beban ---------- */
-.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.hm .dw{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);
-  text-align:center;font-weight:650;padding-bottom:3px}
-.hm .sel{border:1px solid var(--line);border-radius:4px;min-height:52px;padding:5px 6px;cursor:pointer;
-  display:flex;flex-direction:column;background:var(--surf);transition:.12s;position:relative}
-.hm .sel:hover{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-l)}
-.hm .sel.void{border:0;background:none;cursor:default}
-.hm .sel.now{outline:2px solid var(--brand);outline-offset:-2px}
-.hm .d{font-size:12px;font-weight:620}
-.hm .j{margin-top:auto;font-size:10px;color:var(--ink-2);font-weight:600}
+.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.hm .dw{font-size:var(--f-sub);line-height:var(--lh-sub);letter-spacing:0;
+  text-transform:none;color:var(--mute);text-align:center;font-weight:560;padding-bottom:4px}
+/* Sel di dalam panel 14 dengan sisipan 16 -> radius kecil, rim bukan pigura. */
+.hm .sel{border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-kecil);
+  min-height:54px;padding:6px 7px;cursor:pointer;display:flex;flex-direction:column;
+  background:var(--surf);position:relative;
+  transition:box-shadow .14s var(--ease)}
+.hm .sel:hover{box-shadow:inset 0 0 0 1px var(--brand),0 0 0 3px var(--brand-l)}
+.hm .sel.void{box-shadow:none;background:none;cursor:default}
+.hm .sel.now{box-shadow:inset 0 0 0 2px var(--brand)}
+.hm .d{font-size:var(--f-callout);line-height:var(--lh-callout);font-weight:620}
+.hm .j{margin-top:auto;font-size:var(--f-foot);line-height:var(--lh-foot);font-weight:590}
 .hm .sel.lib .d{color:var(--warn)}
-.skala{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--mute);margin-top:10px}
-.skala i{width:16px;height:9px;border-radius:2px;border:1px solid var(--line)}
+.skala{display:flex;align-items:center;gap:5px;font-size:var(--f-sub);
+  line-height:var(--lh-sub);color:var(--mute);margin-top:12px;flex-wrap:wrap}
+.skala i{width:16px;height:9px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--line)}
 
-.prof{display:flex;flex-direction:column;gap:7px}
-.prof .r{display:grid;grid-template-columns:34px 1fr 52px;align-items:center;gap:9px;font-size:11.5px}
-.prof .lbl{color:var(--ink-2);font-weight:600}
-.prof .tr{background:var(--line-2);border-radius:3px;height:14px;overflow:hidden}
-.prof .bar{height:100%;background:var(--brand);border-radius:3px;transition:width .3s ease-out}
-.prof .vl{text-align:right;color:var(--ink-2);font-weight:600}
+/* Dua kolom ringkasan. Dulu ini gaya sebaris di markup tanpa titik putus, dan
+   di layar sempit kolom kanan menyusut sampai jalur batangnya tinggal belasan
+   piksel — batangnya jadi tidak terbaca justru di layar yang paling butuh
+   ringkas. Sekarang ia menumpuk sebelum sampai ke sana. */
+#ringkasGrid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px}
+@media(max-width:1100px){#ringkasGrid{grid-template-columns:1fr}}
+
+.prof{display:flex;flex-direction:column;gap:8px}
+.prof .r{display:grid;grid-template-columns:34px 1fr 52px;align-items:center;gap:10px;
+  font-size:var(--f-sub);line-height:var(--lh-sub)}
+.prof .lbl{color:var(--ink-2);font-weight:590}
+.prof .tr{display:block;background:var(--surf-3);border-radius:var(--r-pil);
+  height:14px;overflow:hidden}
+/* .bar ditulis markup sebagai <span> DI DALAM .tr. .tr sendiri jadi kotak blok
+   karena ia anak grid, tapi .bar tidak — tanpa display:block ia tetap kotak
+   sebaris, dan lebar% maupun tinggi% diabaikan diam-diam: batangnya
+   menggambar 0x0 dan panel bebannya tampak berisi jalur kosong belaka. */
+.prof .bar{display:block;height:100%;background:var(--brand);border-radius:var(--r-pil);
+  transition:width .3s var(--ease)}
+.prof .vl{text-align:right;color:var(--ink-2);font-weight:590}
 
 /* ---------- timeline ---------- */
 .tlw{overflow-x:auto}
 .tlg{min-width:840px}
-.tlhead{display:grid;grid-template-columns:var(--lane,214px) 1fr;margin-bottom:5px;align-items:end}
+/* Lajur nama dilebarkan 214 -> 238. Tumpukan huruf kontrak berakhir di
+   system-ui, bukan Arial seperti sebelumnya; di mesin yang tidak punya SF
+   maupun Segoe, system-ui jatuh ke huruf yang ~19% lebih lebar dan
+   "Mine Development & Production" mulai terpotong elipsis padahal tidak ada
+   title yang menolongnya. 238 memberi ruang untuk kedua metrik. */
+.tlhead{display:grid;grid-template-columns:var(--lane,238px) 1fr;margin-bottom:6px;align-items:end}
 .tlhead .jm{display:flex}
-.tlhead .jm i{flex:1;font-size:9.5px;color:var(--mute);border-left:1px solid var(--line);
-  padding-left:3px;font-style:normal;font-weight:600}
-.grp{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:680;
-  padding:11px 0 5px;border-bottom:1px solid var(--line-2);margin-bottom:6px}
-.tlr{display:grid;grid-template-columns:var(--lane,214px) 1fr;align-items:center;margin-bottom:4px}
-.tln{padding-right:12px;line-height:1.3;min-width:0}
-.tln b{font-size:12px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tln s{display:block;font-size:10.5px;color:var(--mute);text-decoration:none}
-.lane{position:relative;height:26px;border-radius:4px;background:#F7FAF8;
-  border:1px solid var(--line-2);overflow:hidden}
+.tlhead .jm i{flex:1;font-size:var(--f-foot);line-height:var(--lh-foot);color:var(--mute);
+  border-left:1px solid var(--line);padding-left:4px;font-style:normal;font-weight:560}
+.grp{font-size:var(--f-sub);line-height:var(--lh-sub);letter-spacing:0;text-transform:none;
+  color:var(--mute);font-weight:620;padding:13px 0 6px;
+  border-bottom:1px solid var(--line-2);margin-bottom:7px}
+.tlr{display:grid;grid-template-columns:var(--lane,238px) 1fr;align-items:center;margin-bottom:5px}
+.tln{padding-right:12px;line-height:1.35;min-width:0}
+.tln b{font-size:var(--f-callout);line-height:var(--lh-callout);font-weight:600;display:block;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tln s{display:block;font-size:var(--f-sub);line-height:var(--lh-sub);color:var(--mute);
+  text-decoration:none}
+.lane{position:relative;height:26px;border-radius:var(--r-kecil);background:var(--surf-2);
+  border:0;box-shadow:inset 0 0 0 1px var(--line-2);overflow:hidden}
 .lane .grid{position:absolute;inset:0;display:flex;pointer-events:none}
-.lane .grid i{flex:1;border-left:1px solid #EEF3F0}
-.blk{position:absolute;top:3px;bottom:3px;border-radius:3px;font-size:10px;font-weight:640;color:#fff;
+.lane .grid i{flex:1;border-left:1px solid var(--line-2)}
+.blk{position:absolute;top:3px;bottom:3px;border-radius:4px;
+  font-size:var(--f-foot);line-height:var(--lh-foot);font-weight:620;color:#fff;
   padding:0 5px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:default}
 .blk.sh{top:0;bottom:0;border-radius:0;opacity:.16;color:transparent}
-.gap{position:absolute;top:3px;bottom:3px;border:1px dashed var(--free);border-radius:3px;
-  background:rgba(14,159,110,.09);font-size:10px;font-weight:650;color:#07724F;
+.gap{position:absolute;top:3px;bottom:3px;border:1px dashed var(--free);border-radius:4px;
+  background:var(--free-l);font-size:var(--f-foot);line-height:var(--lh-foot);
+  font-weight:620;color:var(--free);
   display:flex;align-items:center;justify-content:center;overflow:hidden}
-.leg{display:flex;gap:15px;flex-wrap:wrap;font-size:11px;color:var(--mute);margin-top:12px;
-  padding-top:11px;border-top:1px solid var(--line-2)}
-.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.leg{display:flex;gap:15px;flex-wrap:wrap;font-size:var(--f-sub);line-height:var(--lh-sub);
+  color:var(--mute);margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2)}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
 /* ---------- bentrok ---------- */
-.bt{border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:6px;
-  padding:13px 15px;margin-bottom:10px;background:#FDFAFA}
+.bt{border:0;box-shadow:inset 0 0 0 1px var(--line),inset 3px 0 0 var(--warn);
+  border-radius:var(--r-inner);padding:13px 15px 13px 17px;margin-bottom:10px;background:var(--surf)}
 .bt .hd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:3px}
-.bt .hd b{font-size:13px;font-weight:640}
-.bt .sub{font-size:11.5px;color:var(--ink-2);margin-bottom:9px}
-.bt .vis{position:relative;height:34px;margin:9px 0 8px;background:#F7FAF8;border:1px solid var(--line-2);
-  border-radius:4px;overflow:hidden}
-.bt .vis .b{position:absolute;height:12px;border-radius:2px;font-size:9.5px;color:#fff;font-weight:640;
+.bt .hd b{font-size:var(--f-head);line-height:var(--lh-head);font-weight:640}
+.bt .sub{font-size:var(--f-sub);line-height:1.5;color:var(--ink-2);margin-bottom:9px}
+.bt .vis{position:relative;height:34px;margin:9px 0 8px;background:var(--surf-2);border:0;
+  box-shadow:inset 0 0 0 1px var(--line-2);border-radius:var(--r-kecil);overflow:hidden}
+.bt .vis .b{position:absolute;height:12px;border-radius:3px;
+  font-size:var(--f-foot);line-height:var(--lh-foot);color:#fff;font-weight:620;
   padding:0 4px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
-.bt .vis .ov{position:absolute;top:0;bottom:0;background:rgba(163,44,44,.13);
+.bt .vis .ov{position:absolute;top:0;bottom:0;background:var(--warn-l);
   border-left:1px solid var(--warn);border-right:1px solid var(--warn)}
-.bt .vis .tk{position:absolute;bottom:1px;font-size:9px;color:var(--mute)}
-.bt .who{font-size:11.5px;color:var(--ink-2);line-height:1.6}
+.bt .vis .tk{position:absolute;bottom:1px;font-size:var(--f-foot);
+  line-height:var(--lh-foot);color:var(--mute)}
+.bt .who{font-size:var(--f-sub);color:var(--ink-2);line-height:1.65}
 .bt .who em{font-style:normal;color:var(--mute)}
 
 /* ---------- slot ---------- */
-.hari{border:1px solid var(--line);border-radius:6px;margin-bottom:12px;overflow:hidden}
-.hari>.h{padding:9px 14px;background:#FAFCFB;border-bottom:1px solid var(--line-2);
+.hari{border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-inner);
+  margin-bottom:12px;overflow:hidden}
+.hari>.h{padding:9px 14px;background:var(--surf-2);box-shadow:inset 0 -1px 0 var(--line-2);
   display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.hari>.h b{font-size:12.5px}
-.hari>.h .n{font-size:11.5px;color:var(--mute)}
+.hari>.h b{font-size:var(--f-callout);line-height:var(--lh-callout);font-weight:640}
+.hari>.h .n{font-size:var(--f-sub);line-height:var(--lh-sub);color:var(--mute)}
 .hari>.h .pilih{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
 .hari>.b{padding:12px 14px}
-.slotpil{padding:3px 9px;border-radius:99px;border:1px solid var(--free);background:rgba(14,159,110,.08);
-  color:#07724F;font-size:11.5px;font-weight:640;cursor:pointer}
-.slotpil:hover{background:rgba(14,159,110,.18)}
+.slotpil{padding:0 11px;min-height:24px;border-radius:var(--r-pil);border:0;
+  box-shadow:inset 0 0 0 1px var(--free);background:var(--free-l);color:var(--free);
+  font-size:var(--f-sub);font-weight:620;cursor:pointer;
+  display:inline-flex;align-items:center;
+  transition:background-color .15s var(--ease),box-shadow .15s var(--ease)}
+.slotpil:hover{background:var(--good-l);box-shadow:inset 0 0 0 1px var(--free),var(--sh-naik)}
 
-.kosong{padding:26px 14px;text-align:center;color:var(--mute);font-size:12.5px}
-.catat{background:#FCFAF3;border:1px solid #EADFC0;color:#6A5316;border-radius:6px;
-  padding:9px 13px;font-size:11.5px;margin-bottom:14px}
+.kosong{padding:26px 14px;text-align:center;color:var(--mute);font-size:var(--f-callout)}
+.catat{background:var(--amber-l);border:0;box-shadow:inset 0 0 0 1px rgba(153,96,0,.22);
+  color:var(--amber-dk);border-radius:var(--r-inner);
+  padding:10px 13px;font-size:var(--f-callout);line-height:var(--lh-callout);margin-bottom:14px}
 
 /* ---------- modal ---------- */
-.mod{position:fixed;inset:0;background:rgba(15,29,24,.5);display:none;align-items:flex-start;
-  justify-content:center;padding:32px 16px;overflow-y:auto;z-index:100}
+/* Latar modal: lapisan kontrol, jadi boleh berkaca. Kotaknya panel isi — pekat. */
+.mod{position:fixed;inset:0;background:rgba(0,31,31,.42);
+  backdrop-filter:blur(6px) saturate(1.2);-webkit-backdrop-filter:blur(6px) saturate(1.2);
+  display:none;align-items:flex-start;justify-content:center;
+  padding:32px 16px;overflow-y:auto;z-index:100}
 .mod.on{display:flex}
-.mod .box{background:var(--surf);border-radius:8px;max-width:620px;width:100%;box-shadow:0 18px 48px rgba(0,0,0,.22)}
-.mod .box>h3{padding:15px 18px;border-bottom:1px solid var(--line-2);font-size:14px}
+.mod .box{background:var(--surf);border-radius:var(--r-panel);max-width:620px;width:100%;
+  box-shadow:0 20px 56px rgba(0,16,15,.26),0 0 0 1px rgba(0,60,60,.09)}
+.mod .box>h3{padding:15px 18px;box-shadow:inset 0 -1px 0 var(--line-2);
+  font-size:var(--f-t3);line-height:var(--lh-t3);letter-spacing:-.014em}
 .mod .box>.f{padding:18px}
-.mod .box>.a{padding:13px 18px;border-top:1px solid var(--line-2);display:flex;gap:8px;background:#FAFCFB}
+.mod .box>.a{padding:13px 18px;box-shadow:inset 0 1px 0 var(--line-2);display:flex;gap:8px;
+  background:var(--surf-2);border-radius:0 0 var(--r-panel) var(--r-panel)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
 .span{grid-column:1/-1}
-.box2{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;max-height:132px;overflow-y:auto}
-.box2 label{display:flex;gap:7px;align-items:center;font-size:12.5px;padding:2.5px 0;cursor:pointer}
-.hint{font-size:11px;color:var(--mute);margin-top:4px}
-.hari-pil{display:flex;gap:4px;flex-wrap:wrap}
-.hari-pil label{display:flex;gap:5px;align-items:center;font-size:12px;border:1px solid var(--line);
-  border-radius:var(--r);padding:5px 9px;cursor:pointer}
-.hari-pil label:has(input:checked){border-color:var(--brand);background:var(--brand-l);color:var(--brand-d);font-weight:600}
+/* Kotak di dalam kotak 14 dengan sisipan 18 -> 10. */
+.box2{border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-inner);
+  padding:8px 10px;max-height:132px;overflow-y:auto;background:var(--isi)}
+.box2 label{display:flex;gap:8px;align-items:center;font-size:var(--f-callout);
+  padding:3px 0;cursor:pointer}
+.hint{font-size:var(--f-sub);line-height:1.5;color:var(--mute);margin-top:5px}
+.hari-pil{display:flex;gap:5px;flex-wrap:wrap}
+.hari-pil label{display:flex;gap:6px;align-items:center;font-size:var(--f-callout);
+  border:0;box-shadow:inset 0 0 0 1px var(--line);background:var(--isi);
+  border-radius:var(--r-kecil);padding:0 9px;min-height:var(--h-kontrol);cursor:pointer;
+  transition:box-shadow .15s var(--ease),background-color .15s var(--ease)}
+.hari-pil label:has(input:checked){box-shadow:inset 0 0 0 1px var(--brand);
+  background:var(--brand-l);color:var(--brand);font-weight:600}
+input[type=checkbox]{accent-color:var(--brand);width:15px;height:15px;margin:0;flex-shrink:0}
 
 .sparkl{display:flex;gap:1px}
 .sparkl i{width:5px;height:13px;border-radius:1px}
@@ -241,15 +434,31 @@ td.num{text-align:right}
 @media(max-width:960px){
   .app{grid-template-columns:1fr}
   nav.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}
-  .mark{border:0;padding:12px 16px}
+  .mark{box-shadow:none;padding:12px 16px}
   .menu{flex-direction:row;padding:8px;flex-wrap:wrap}
   .menu>span{display:none}
-  .side .kaki{margin:0;border:0;padding:8px 16px}
+  .side .kaki{margin:0;box-shadow:none;padding:8px 16px}
   .isi{padding:16px}
-  header.bar{padding:11px 16px}
+  header.bar{padding:10px 16px}
+}
+/* Pengguna yang meminta transparansi dikurangi mendapat permukaan padat. */
+@media (prefers-reduced-transparency:reduce){
+  header.bar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surf)}
+  .mod{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(0,31,31,.55)}
 }
 </style>
-<link rel="icon" type="image/png" href="data:image/png;base64,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"><style id="theme-override">:root{--brand:#0d4a42;--brand-d:#06211d;--brand-l:#e7f0ec;--gold:#E8920A;--ds:#b06f00;--ovr:#0f6e63;}*{-webkit-font-smoothing:antialiased}button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#0a332e2e;border-radius:6px}::-webkit-scrollbar-thumb:hover{background:#0a332e4d}</style></head>
+<link rel="icon" type="image/png" href="data:image/png;base64,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"><style id="theme-override">
+/* Lapisan terakhir <head>, jadi ia yang menang atas lembar utama. Sebelumnya
+   ia memasang teal lama #0d4a42 dan diam-diam membatalkan palet lembar utama;
+   nilainya kini disamakan persis dengan :root di atas supaya tidak ada dua
+   sumber kebenaran. Keenam selektornya dipertahankan apa adanya. */
+:root{--brand:#003c3c;--brand-d:#00302f;--brand-l:#e2edeb;--gold:#ea9000;--ds:#ea9000;--ovr:#0a5a56;}
+*{-webkit-font-smoothing:antialiased}
+button{transition:background-color .15s cubic-bezier(.16,1,.3,1),box-shadow .15s cubic-bezier(.16,1,.3,1),color .15s cubic-bezier(.16,1,.3,1)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#003c3c2e;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#003c3c4d}
+</style></head>
 <body>
 <div class="app">
 
@@ -297,22 +506,22 @@ td.num{text-align:right}
   <!-- ============ RINGKASAN ============ -->
   <section id="v-ringkas">
     <div class="stat" id="stat"></div>
-    <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:16px" id="ringkasGrid">
+    <div id="ringkasGrid">
       <div class="panel">
         <hgroup><div><h2>Peta beban jadwal</h2><p id="hmKet"></p></div>
           <div class="kanan"><button class="btn xs" onclick="geserBulan(-1)">‹</button>
-          <span id="lblBulan" style="font-size:12px;font-weight:620;min-width:104px;text-align:center"></span>
+          <span id="lblBulan" style="font-size:var(--f-callout);font-weight:620;min-width:104px;text-align:center"></span>
           <button class="btn xs" onclick="geserBulan(1)">›</button></div></hgroup>
         <div class="body"><div class="hm" id="hm"></div>
           <div class="skala">Beban jam kerja 07.00–17.00
-            <i style="background:#fff"></i><i style="background:#D6E9DE"></i><i style="background:#9CCDB2"></i>
-            <i style="background:#57AB80"></i><i style="background:#00713C"></i>
+            <i style="background:#fff"></i><i style="background:#bacaca"></i><i style="background:#85a1a1"></i>
+            <i style="background:#4f7878"></i><i style="background:#1a5050"></i>
             <span>ringan → padat</span></div></div>
       </div>
       <div class="panel">
         <hgroup><div><h2>Beban rata-rata per hari</h2><p>Jam terpakai dalam sehari kerja</p></div></hgroup>
         <div class="body"><div class="prof" id="prof"></div>
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);font-size:11.5px;color:var(--ink-2)"
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);font-size:var(--f-sub);line-height:1.55;color:var(--ink-2)"
                id="profKet"></div></div>
       </div>
     </div>
@@ -334,11 +543,11 @@ td.num{text-align:right}
         <div class="tlw"><div class="tlg" id="tl"></div></div>
         <div class="leg">
           <span><i style="background:var(--brand)"></i>Rapat rutin</span>
-          <span><i style="background:#2A4B8D"></i>Koordinasi shift</span>
-          <span><i style="background:#A8621B"></i>Inspeksi lapangan</span>
-          <span><i style="background:#B02A2A"></i>Safety</span>
+          <span><i style="background:#2f4a8c"></i>Koordinasi shift</span>
+          <span><i style="background:#8a5210"></i>Inspeksi lapangan</span>
+          <span><i style="background:#a01c14"></i>Safety</span>
           <span><i style="background:var(--ds);opacity:.3"></i>Blok shift kerja</span>
-          <span><i style="border:1px dashed var(--free);background:rgba(14,159,110,.09)"></i>Kosong</span>
+          <span><i style="border:1px dashed var(--free);background:var(--free-l)"></i>Kosong</span>
         </div>
       </div>
     </div>
@@ -349,7 +558,7 @@ td.num{text-align:right}
     <div class="panel">
       <hgroup><div><h2>Parameter pencarian</h2><p>Sistem menyisir roster dan seluruh kegiatan rutin, lalu menyisakan waktu yang benar-benar bebas.</p></div></hgroup>
       <div class="body">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;align-items:end">
           <div><label class="fl">Dari tanggal</label><input type="date" id="sDari" style="width:100%"></div>
           <div><label class="fl">Sampai tanggal</label><input type="date" id="sSampai" style="width:100%"></div>
           <div><label class="fl">Sasaran</label><select id="sSasaran" style="width:100%"></select></div>
@@ -476,8 +685,14 @@ const LEVEL=[{id:'manager',n:'Level Manager'},{id:'departemen',n:'Level Departem
 const HARI=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
 const HARIP=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 const BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const WARNA={'Rapat rutin':'#00713C','Koordinasi shift':'#2A4B8D','Inspeksi lapangan':'#A8621B',
-             'Safety':'#B02A2A','Jadwal kerja':'#9AA8A1','Lainnya':'#6D4AA8'};
+/* Warna kategori = bidang blok gantt yang tulisannya PUTIH, jadi tiap nilai
+   harus kuat. Yang lama 'Jadwal kerja' #9AA8A1 cuma 2,47:1 terhadap putih —
+   tulisannya praktis tidak terbaca. Nilai baru dilabuhkan ke palet ANTAM dan
+   semuanya di atas 4,5:1. 'Rapat rutin' sengaja sama persis dengan --brand
+   supaya petak legendanya (yang memakai var(--brand)) tidak lagi berbeda
+   warna dari blok yang diwakilinya. */
+const WARNA={'Rapat rutin':'#003c3c','Koordinasi shift':'#2f4a8c','Inspeksi lapangan':'#8a5210',
+             'Safety':'#a01c14','Jadwal kerja':'#566a67','Lainnya':'#54459c'};
 /* Cut-off shift WIT: Day 06.30–18.30, Night 18.30–06.30 */
 const JS={D:[390,1110],N:[1110,1830],V:[390,1110],K:[420,1020]};
 const T0=360,T1=1440;          // jendela timeline 06.00–24.00
@@ -740,7 +955,7 @@ function lajur(sesiList,opt){
   }
   rapat.forEach(s=>{
     const w=lb(s.a,s.b);
-    h+=`<div class="blk" style="left:${ps(s.a)}%;width:${w}%;background:${WARNA[s.k.kat]||'#00713C'}"
+    h+=`<div class="blk" style="left:${ps(s.a)}%;width:${w}%;background:${WARNA[s.k.kat]||'#003c3c'}"
       title="${esc(s.nama)} · ${jam(s.a)}–${jam(s.b)} · ${s.org.length} orang">${
       label&&w>7?esc(s.nama):''}</div>`;});
   return `<div class="lane"${tinggi?` style="height:${tinggi}px"`:''}>${h}</div>`;
@@ -851,12 +1066,22 @@ function vRingkas(){
   for(let i=1;i<dow(iso(bln.y,bln.m,1));i++)h+='<div class="sel void"></div>';
   for(let d=1;d<=n;d++){
     const t=iso(bln.y,bln.m,d),b=beban[t],r=b.menit/maks;
-    const bg=b.menit===0?'#fff':`rgba(0,113,60,${(0.10+r*0.80).toFixed(2)})`;
-    const fg=r>0.55?'#fff':'var(--ink)';
+    /* Rampa panas dilabuhkan ke teal ANTAM (0,60,60). Angka 0,06 + r*0,84 dan
+       ambang 0,69 bukan tebakan: itu pasangan yang, disapu menyeluruh,
+       memberi kontras terburuk paling tinggi antara tulisan gelap di sel
+       muda dan tulisan putih di sel tua — 4,21:1, naik dari 2,45:1 pada
+       rampa hijau lama yang berpindah warna terlalu awal (r>0,55) ketika
+       latarnya masih setengah jalan. */
+    const bg=b.menit===0?'#fff':`rgba(0,60,60,${(0.06+r*0.84).toFixed(2)})`;
+    const fg=r>0.69?'#fff':'var(--ink)';
+    /* Jam terpakai dulu diredupkan opacity .85/.4, yang memangkas lagi kontras
+       yang sudah tipis di sel tua. Sel berisi kini memakai warna penuh; sel
+       kosong memakai --mute yang memang untuk teks sekunder di latar terang. */
+    const fgJ=b.menit?fg:'var(--mute)';
     h+=`<div class="sel ${t===tglAktif?'now':''} ${dow(t)===7?'lib':''}" style="background:${bg};color:${fg}"
          onclick="tglAktif='${t}';tlTanggal='${t}';gambar()" tabindex="0"
          title="${tglPjg(t)} · ${jamDes(b.menit)} jam · ${b.sesi} sesi">
-        <div class="d">${d}</div><div class="j" style="color:${fg};opacity:${b.menit?.85:.4}">${
+        <div class="d">${d}</div><div class="j" style="color:${fgJ}">${
           b.menit?jamDes(b.menit)+' j':'–'}</div></div>`;
   }
   document.getElementById('hm').innerHTML=h;
@@ -971,8 +1196,8 @@ function cariSlot(){
           const id=new Set(a.org.map(o=>o.id));
           const ss=sesiHari(t).filter(x=>!x.blok&&x.org.some(o=>id.has(o.id)));
           const hadir=a.org.filter(o=>siang(shiftHari(o,t))).length;
-          bawah+=`<div class="tlr" style="--lane:186px"><div class="tln">
-            <b style="font-size:11.5px">${esc(a.nama)}</b>
+          bawah+=`<div class="tlr" style="--lane:224px"><div class="tln">
+            <b style="font-size:var(--f-sub)">${esc(a.nama)}</b>
             <s>${L.level.replace('Level ','')} · ${hadir} dari ${a.org.length} siap</s></div>
             ${lajur(ss,{t0:j1,t1:j2,label:false,tinggi:20})}</div>`;
         });
@@ -1017,7 +1242,7 @@ function vKegiatan(){
   document.getElementById('tKeg').innerHTML=db.keg.map(k=>{
     let pl;const p=k.pola;
     if(p.t==='mingguan')pl=p.hari.length===7?'Setiap hari':'Setiap '+p.hari.map(d=>HARI[d-1]).join(', ');
-    else if(p.t==='dua_mingguan')pl=HARIP[p.hari-1]+', dua mingguan<br><span style="color:var(--mute);font-size:11px">acuan '+p.anchor+'</span>';
+    else if(p.t==='dua_mingguan')pl=HARIP[p.hari-1]+', dua mingguan<br><span style="color:var(--mute);font-size:var(--f-sub)">acuan '+p.anchor+'</span>';
     else if(p.t==='bulanan')pl='Bulanan · '+(p.tgl||[]).join(', ');
     else if(p.t==='sekali')pl='Sekali · '+p.tgl;
     else pl='Mengikuti roster shift';
@@ -1027,9 +1252,9 @@ function vKegiatan(){
       ...(s.sk||[]).map(x=>`<span class="chip brand">${(SATKER.find(z=>z.id===x)||{}).s||x}</span>`)].join(' ')||'—';
     const ar={onsite:'Di site',sesuai:'Sesuai shift',abaikan:'Abaikan'}[k.shift];
     return `<tr style="${k.aktif?'':'opacity:.5'}">
-      <td><b>${esc(k.nama)}</b><br><span style="color:var(--mute);font-size:11px">
+      <td><b>${esc(k.nama)}</b><br><span style="color:var(--mute);font-size:var(--f-sub)">
         <span style="display:inline-block;width:6px;height:6px;border-radius:2px;background:${WARNA[k.kat]};margin-right:5px"></span>${k.kat}</span></td>
-      <td>${pl}${k.mirror?'<br><span style="color:var(--mute);font-size:11px">digandakan ke shift malam</span>':''}</td>
+      <td>${pl}${k.mirror?'<br><span style="color:var(--mute);font-size:var(--f-sub)">digandakan ke shift malam</span>':''}</td>
       <td style="white-space:nowrap"><b>${k.m1.replace(':','.')}–${k.m2.replace(':','.')}</b></td>
       <td>${sas}</td><td><span class="chip netral">${ar}</span></td>
       <td style="text-align:right;white-space:nowrap">
@@ -1059,7 +1284,7 @@ function vPersonel(){
     const sp=o.sh?`<span class="sparkl">${[...o.sh].map((c,i)=>
       `<i style="background:${W[c]||'#E7EDEA'}" title="${i+1} Agt · ${
         ({D:'Siang',N:'Malam',O:'Off',V:'Overshift'})[c]||'—'}"></i>`).join('')}</span>`
-      : '<span style="color:var(--mute);font-size:11.5px">Jam kantor</span>';
+      : '<span style="color:var(--mute);font-size:var(--f-sub)">Jam kantor</span>';
     return `<tr><td>${esc(o.nama)}</td>
       <td style="color:var(--ink-2)">${esc(o.jab)}</td>
       <td style="color:var(--ink-2)">${(SATKER.find(s=>s.id===o.sk)||{}).s||o.sk}</td>
@@ -1294,16 +1519,19 @@ function bukaRoster(){
   let ov=document.getElementById('mRosterOv');
   if(!ov){
     ov=document.createElement('div');ov.id='mRosterOv';
-    ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(6,20,17,.55);display:flex;align-items:center;justify-content:center;padding:20px';
-    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:840px;width:100%;max-height:88vh;overflow:auto;padding:22px;font-family:system-ui,Segoe UI,Roboto,sans-serif">'
-      +'<h2 style="margin:0 0 4px;font-size:18px;color:#12201d">Impor Roster Bulanan</h2>'
-      +'<p style="margin:0 0 12px;font-size:12.5px;color:#5a6b67;line-height:1.5">Tempel dari PLAN POLA KERJA DINAMIS. Baris pertama boleh header. Kolom pertama <b>Nama</b>, lalu kolom tanggal 1..31; isi sel <b>DS</b>/<b>NS</b>/<b>OFF</b>/<b>OVR</b> (pemisah TAB, seperti hasil salin dari Excel). Nama dicocokkan ke personel; yang tidak cocok akan dilaporkan, bukan diabaikan.</p>'
-      +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><label style="font-size:12px;color:#42524f;font-weight:600">Bulan</label>'
-      +'<input id="rosBulan" type="month" value="'+(String(bln.y)+'-'+p2(bln.m))+'" style="padding:8px;border:1px solid #d5dcda;border-radius:8px"></div>'
-      +'<textarea id="rosText" placeholder="Nama&#9;1&#9;2&#9;3 ...&#10;Budi&#9;DS&#9;NS&#9;OFF ..." style="width:100%;height:230px;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;border:1px solid #d5dcda;border-radius:8px;padding:10px"></textarea>'
-      +'<div id="rosMsg" style="font-size:12px;color:#5a6b67;margin:10px 0;white-space:pre-wrap"></div>'
-      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button id="rosBatal" style="padding:10px 16px;border:1px solid #d5dcda;border-radius:9px;background:#fff;cursor:pointer">Batal</button>'
-      +'<button id="rosProses" style="padding:10px 18px;border:none;border-radius:9px;background:#0f6e63;color:#fff;font-weight:700;cursor:pointer">Proses &amp; simpan</button></div></div>';
+    /* Laci ini dirakit JavaScript dan gayanya seluruhnya sebaris, jadi ia
+       tidak ikut terbawa lembar gaya. Nilai mentahnya diganti token supaya
+       tidak jadi satu-satunya bidang yang masih memakai palet lama. */
+    ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,31,31,.42);backdrop-filter:blur(6px) saturate(1.2);-webkit-backdrop-filter:blur(6px) saturate(1.2);display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML='<div style="background:var(--surf);border-radius:var(--r-panel);max-width:840px;width:100%;max-height:88vh;overflow:auto;padding:22px;font-family:var(--font);box-shadow:0 20px 56px rgba(0,16,15,.26),0 0 0 1px rgba(0,60,60,.09)">'
+      +'<h2 style="margin:0 0 4px;font-size:var(--f-t2);line-height:var(--lh-t2);letter-spacing:-.018em;color:var(--ink)">Impor Roster Bulanan</h2>'
+      +'<p style="margin:0 0 14px;font-size:var(--f-callout);color:var(--mute);line-height:1.5;max-width:78ch">Tempel dari PLAN POLA KERJA DINAMIS. Baris pertama boleh header. Kolom pertama <b>Nama</b>, lalu kolom tanggal 1..31; isi sel <b>DS</b>/<b>NS</b>/<b>OFF</b>/<b>OVR</b> (pemisah TAB, seperti hasil salin dari Excel). Nama dicocokkan ke personel; yang tidak cocok akan dilaporkan, bukan diabaikan.</p>'
+      +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><label style="font-size:var(--f-sub);color:var(--mute);font-weight:560">Bulan</label>'
+      +'<input id="rosBulan" type="month" value="'+(String(bln.y)+'-'+p2(bln.m))+'" style="padding:0 9px;min-height:var(--h-kontrol);border:0;box-shadow:inset 0 0 0 1px var(--line);background:var(--isi);color:var(--ink);border-radius:var(--r-kecil);font-size:var(--f-callout)"></div>'
+      +'<textarea id="rosText" placeholder="Nama&#9;1&#9;2&#9;3 ...&#10;Budi&#9;DS&#9;NS&#9;OFF ..." style="width:100%;height:230px;box-sizing:border-box;font-family:var(--mono);font-size:var(--f-callout);line-height:1.6;border:0;box-shadow:inset 0 0 0 1px var(--line);background:var(--isi);color:var(--ink);border-radius:var(--r-inner);padding:10px 12px;resize:vertical"></textarea>'
+      +'<div id="rosMsg" style="font-size:var(--f-callout);line-height:1.5;color:var(--mute);margin:10px 0;white-space:pre-wrap"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button id="rosBatal" style="padding:0 12px;min-height:var(--h-kontrol);border:0;box-shadow:var(--sh);border-radius:var(--r-kecil);background:var(--surf);color:var(--ink);font-size:var(--f-callout);font-weight:560;cursor:pointer">Batal</button>'
+      +'<button id="rosProses" style="padding:0 14px;min-height:var(--h-kontrol);border:0;border-radius:var(--r-kecil);background:var(--brand);color:#fff;font-size:var(--f-callout);font-weight:620;box-shadow:inset 0 1px 0 rgba(255,255,255,.18);cursor:pointer">Proses &amp; simpan</button></div></div>';
     document.body.appendChild(ov);
     ov.querySelector('#rosBatal').onclick=()=>ov.remove();
     ov.querySelector('#rosProses').onclick=imporRoster;
