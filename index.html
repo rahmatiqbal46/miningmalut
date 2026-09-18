@@ -193,7 +193,14 @@ body{
 .frame{flex:1 1 auto;min-height:0;position:relative}
 /* Halaman modul tidak lewat di bawah sidebar; hanya Home yang sengaja begitu,
    karena di situlah refraksi kacanya terlihat. */
-iframe.page{position:absolute;inset:0 0 0 var(--sisip);width:auto;height:auto;border:0;
+/* Lebar dan tinggi WAJIB disebut eksplisit. <iframe> adalah elemen tergantikan
+   (replaced element): saat ia absolute dengan left+right terpasang tapi
+   width:auto, CSS memakai ukuran INTRINSIKNYA — 300x150 bawaan iframe — lalu
+   mengabaikan "right". inset:0 tidak pernah meregangkannya, dan seluruh halaman
+   modul menciut ke kotak kecil di pojok. Aturan ini tidak berlaku untuk div
+   biasa seperti .ph, yang memang meregang dengan inset saja. */
+iframe.page{position:absolute;top:0;left:var(--sisip);
+  width:calc(100% - var(--sisip));height:100%;border:0;
   display:none;background:#fff}
 iframe.page.show{display:block}
 
@@ -402,7 +409,10 @@ iframe.page.show{display:block}
   .toolbar h1{font-size:var(--f-t2);line-height:var(--lh-t2)}
   .tepi-gulir{left:0;top:52px}
   .isi{padding:16px 16px 28px}
-  iframe.page,.ph{inset:0}
+  /* Sidebar jadi laci di ponsel, jadi tidak ada sisipan kiri lagi. Iframe tetap
+     perlu lebar eksplisit — lihat catatan di aturan iframe.page di atas. */
+  .ph{inset:0}
+  iframe.page{left:0;width:100%}
   .bento{grid-template-columns:1fr}
   .stat{padding-right:18px;margin-right:18px}
 }
