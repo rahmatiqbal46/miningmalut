@@ -98,6 +98,12 @@ html[data-theme="gelap"]{
 }
 
 *{box-sizing:border-box}
+/* Tanpa baris ini peramban menggambar kendali BAWAANNYA dalam mode terang
+   walaupun halaman gelap: kalender pada input datetime-local, daftar
+   dropdown select, dan batang gulir. Akibatnya jendela pemilih tanggal
+   muncul terang di atas halaman gelap dan ikonnya nyaris tak terlihat.
+   color-scheme memberi tahu peramban tema halaman ini. */
+html{color-scheme:dark}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);
   font-size:var(--f-body);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;
@@ -467,7 +473,6 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
       <button role="tab" id="tab-live" aria-selected="true" aria-controls="view-live">Armada</button>
       <button role="tab" id="tab-events" aria-selected="false" aria-controls="view-events">Kejadian</button>
       <button role="tab" id="tab-reject" aria-selected="false" aria-controls="view-reject">Ditolak</button>
-      <button role="tab" id="tab-history" aria-selected="false" aria-controls="view-history">Riwayat</button>
     </div>
 
     <div class="pane-body">
@@ -527,31 +532,6 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
         <table>
           <thead><tr><th>Waktu</th><th>Unit</th><th>Lapor</th><th>Hitung</th><th>Alasan</th></tr></thead>
           <tbody id="rejectRows"></tbody>
-        </table>
-      </div>
-
-      <!-- ---------- RIWAYAT ---------- -->
-      <div class="view" id="view-history" role="tabpanel" aria-labelledby="tab-history" hidden>
-        <p class="note">Menarik seluruh pesan GPS satu unit pada rentang waktu tertentu, lalu menjalankan validasi dan deteksi yang sama seperti pemantauan langsung.</p>
-        <div class="toolrow" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <select id="hUnit" style="grid-column:1/-1;padding:8px 28px 8px 10px;font-size:12px"><option value="">Pilih unit…</option></select>
-          <input id="hFrom" type="datetime-local" style="font-size:12px;padding:8px 10px">
-          <input id="hTo" type="datetime-local" style="font-size:12px;padding:8px 10px">
-          <input id="hLimit" type="number" value="60" title="Batas kecepatan" style="font-size:12px;padding:8px 10px">
-          <button class="btn primary" id="btnRunHistory">Jalankan</button>
-          <button class="btn sm" id="btnExportHistory" style="grid-column:1/-1">Unduh CSV</button>
-        </div>
-        <div class="stats" id="hStats" hidden>
-          <div class="stat"><b class="num" id="hMsg">0</b><span>Pesan</span></div>
-          <div class="stat ok"><b class="num" id="hValid">0</b><span>Sah</span></div>
-          <div class="stat warn"><b class="num" id="hReject">0</b><span>Dibuang</span></div>
-          <div class="stat alarm"><b class="num" id="hEvents">0</b><span>Kejadian</span></div>
-          <div class="stat alarm"><b class="num" id="hMax">0</b><span>Tertinggi</span></div>
-          <div class="stat"><b class="num" id="hDur">0</b><span>Menit</span></div>
-        </div>
-        <table>
-          <thead><tr><th>Mulai</th><th>Maks</th><th>Lebih</th><th>Durasi</th><th>Ruas</th></tr></thead>
-          <tbody id="historyRows"></tbody>
         </table>
       </div>
 
@@ -807,7 +787,6 @@ const App = {
   units: new Map(),      // id -> objek unit
   events: [],            // kejadian overspeed (terbaru di depan)
   rejects: [],           // sampel yang dibuang validasi
-  history: [],           // hasil analisa riwayat
   zones: [],             // geofence dari peta: ruas jalan dan areanya
   connected: false,
   demo: false,
@@ -1657,116 +1636,6 @@ function refreshDataFlags() {
 }
 
 /* ==========================================================================
-   ANALISA RIWAYAT — tarik pesan satu unit pada rentang waktu tertentu
-   ========================================================================== */
-function runHistory() {
-  const cfg = readConfig();
-  const id = parseInt($("hUnit").value, 10);
-  const u = App.units.get(id);
-  if (!u) { log("Pilih unit dulu untuk analisa riwayat.", true); return; }
-
-  const from = Math.floor(new Date($("hFrom").value).getTime() / 1000);
-  const to = Math.floor(new Date($("hTo").value).getTime() / 1000);
-  if (!isFinite(from) || !isFinite(to) || to <= from) {
-    log("Rentang waktu belum benar — waktu selesai harus setelah waktu mulai.", true);
-    return;
-  }
-
-  $("btnRunHistory").disabled = true;
-  $("historyRows").innerHTML = '<tr><td colspan="5"><div class="empty"><b>Sedang mengambil data…</b>Menarik pesan dari rentang yang dipilih.</div></td></tr>';
-
-  const done = msgs => {
-    $("btnRunHistory").disabled = false;
-    analyzeHistory(u, msgs, num($("hLimit").value, cfg.limit), cfg);
-  };
-
-  if (App.demo) {
-    // Bangkitkan deret pesan tiruan setiap 10 detik pada rentang tersebut.
-    const msgs = [];
-    const tmp = { demo: u.demo, lat: u.lat, lon: u.lon, phase: u.phase || 0 };
-    for (let t = from; t <= to; t += 10) {
-      const p = demoPosition(tmp, t);
-      msgs.push({ t: t, pos: { y: p.lat, x: p.lon, s: p.speed, c: 0, sc: p.sats } });
-    }
-    setTimeout(() => done(msgs), 300);
-    return;
-  }
-
-  if (!App.connected) { $("btnRunHistory").disabled = false; log("Hubungkan ke Wialon dulu.", true); return; }
-
-  const W = window.wialon;
-  sess().loadLibrary("messagesLoader");
-  const ml = sess().getMessagesLoader();
-  ml.loadInterval(id, from, to, 0, 0, 0xffffffff, (code, data) => {
-    if (code) {
-      $("btnRunHistory").disabled = false;
-      log("Gagal menarik pesan: " + W.core.Errors.getErrorText(code), true);
-      return;
-    }
-    const count = data && data.count ? data.count : 0;
-    if (!count) { done([]); return; }
-    ml.getMessages(0, count, (c2, msgs) => {
-      if (c2) {
-        $("btnRunHistory").disabled = false;
-        log("Gagal membaca pesan: " + W.core.Errors.getErrorText(c2), true);
-        return;
-      }
-      done(msgs || []);
-    });
-  });
-}
-
-function analyzeHistory(u, msgs, limit, cfg) {
-  const probe = newUnit(u.id, u.name);
-  probe.limitOverride = limit;
-  const collected = [];
-  const rejects = [];
-  let valid = 0, rejected = 0, maxSpeed = 0;
-  const hcfg = Object.assign({}, cfg, { maxAge: 0 }); // data lama memang wajar di sini
-
-  msgs.forEach(m => {
-    const p = m.pos;
-    if (!p) return;
-    const raw = { t: m.t, lat: p.y, lon: p.x, speed: p.s == null ? 0 : p.s, course: p.c, sats: p.sc == null ? null : p.sc };
-    const s = pushSample(probe, raw, hcfg, m.t, { silent: true, collect: collected, source: "riwayat" });
-    if (!s) return;
-    if (s.valid) { valid++; maxSpeed = Math.max(maxSpeed, s.speed); }
-    else {
-      rejected++;
-      if (rejects.length < 400) rejects.push({
-        t: s.t, unit: u.name, unitId: u.id, speed: s.speed, implied: s.implied,
-        dist: s.dist, dt: s.dt, sats: s.sats, lat: s.lat, lon: s.lon,
-        reason: s.hard.concat(hcfg.strict ? s.soft : []).join("; "),
-      });
-    }
-  });
-  if (probe.active) closeEvent(probe, probe.lastValid, { silent: true });
-
-  collected.forEach(ev => {
-    if (ev.open) { ev.open = false; ev.duration = Math.max(0, ev.tEnd - ev.tStart); }
-    ev.avgSpeed = ev.n ? ev.sumSpeed / ev.n : ev.maxSpeed;
-  });
-
-  App.history = collected;
-  App.rejects = rejects.concat(App.rejects).slice(0, MAX_REJECT);
-
-  $("hStats").hidden = false;
-  $("hMsg").textContent = msgs.length;
-  $("hValid").textContent = valid;
-  $("hReject").textContent = rejected;
-  $("hEvents").textContent = collected.length;
-  $("hMax").textContent = Math.round(maxSpeed);
-  $("hDur").textContent = Math.round(collected.reduce((a, e) => a + (e.duration || 0), 0) / 60);
-
-  log("Analisa riwayat " + u.name + ": " + msgs.length + " pesan, " +
-      rejected + " ditolak, " + collected.length + " kejadian.");
-
-  if (cfg.nGeo) collected.slice(0, 12).filter(ev => !ev.zone).forEach(ev => resolveLocation(ev));
-  renderHistory();
-  renderRejects();
-}
-
-/* ==========================================================================
    TAMPILAN
    ========================================================================== */
 function setConn(cls, text) {
@@ -1817,8 +1686,6 @@ function renderUnitList() {
   $("evUnitFilter").innerHTML = opts;
   $("rjUnitFilter").innerHTML = opts;
   $("mapFocus").innerHTML = '<option value="">Semua unit</option>' +
-    [...App.units.values()].map(u => '<option value="' + u.id + '">' + esc(u.name) + "</option>").join("");
-  $("hUnit").innerHTML = '<option value="">Pilih unit…</option>' +
     [...App.units.values()].map(u => '<option value="' + u.id + '">' + esc(u.name) + "</option>").join("");
 }
 
@@ -1965,16 +1832,6 @@ function renderRejects() {
     "<td class='n'>" + (r.implied == null ? "\u2013" : Math.round(r.implied)) + "</td>" +
     '<td><span class="chip warn">' + esc(r.reason) + "</span></td></tr>"
   ).join("") : '<tr><td colspan="5"><div class="empty"><b>Semua data lolos</b>Belum ada pembacaan yang perlu dibuang.</div></td></tr>';
-}
-
-function renderHistory() {
-  $("historyRows").innerHTML = App.history.length ? App.history.map(ev =>
-    "<tr><td class='n'>" + fmtTime(ev.tStart) + "</td>" +
-    "<td class='n' style='color:var(--danger)'>" + Math.round(ev.maxSpeed) + "</td>" +
-    "<td class='n'>+" + Math.round(ev.maxSpeed - ev.limit) + "</td>" +
-    "<td class='n'>" + fmtDur(ev.duration || 0) + "</td>" +
-    "<td>" + (ev.zone ? esc(ev.zone) : (ev.location ? esc(ev.location) : "\u2013")) + "</td></tr>"
-  ).join("") : '<tr><td colspan="5"><div class="empty"><b>Tidak ada overspeed</b>Semua data sah pada rentang itu berada di bawah batas.</div></td></tr>';
 }
 
 /* ==========================================================================
@@ -2484,13 +2341,17 @@ function bukaLaci(buka) {
    PENGIKATAN ANTARMUKA
    ========================================================================== */
 function switchTab(id) {
-  ["live", "events", "reject", "history"].forEach(k => {
+  /* Daftar ini dirakit jadi id saat jalan ("tab-" + k), sehingga TIDAK terlihat
+     oleh pencarian nama elemen. Kalau sebuah tab dihapus dari markup, namanya
+     wajib dibuang dari kedua daftar di bawah — kalau tidak, $() mengembalikan
+     null dan seluruh blok skrip ini mati tanpa pesan. */
+  ["live", "events", "reject"].forEach(k => {
     const sel = k === id;
     $("tab-" + k).setAttribute("aria-selected", sel ? "true" : "false");
     $("view-" + k).hidden = !sel;
   });
 }
-["live", "events", "reject", "history"].forEach(k =>
+["live", "events", "reject"].forEach(k =>
   $("tab-" + k).addEventListener("click", () => switchTab(k)));
 
 $("host").addEventListener("change", e => {
@@ -2673,7 +2534,6 @@ $("btnClearEvents").addEventListener("click", () => { App.events = []; render();
 $("btnClearRejects").addEventListener("click", () => { App.rejects = []; render(); });
 $("btnExportLive").addEventListener("click", () => exportEvents(App.events, "overspeed-langsung.csv"));
 $("btnExportEvents").addEventListener("click", () => exportEvents(App.events, "overspeed-kejadian.csv"));
-$("btnExportHistory").addEventListener("click", () => exportEvents(App.history, "overspeed-riwayat.csv"));
 $("btnExportRejects").addEventListener("click", () => {
   if (!App.rejects.length) { log("Tidak ada baris untuk diunduh.", true); return; }
   const rows = [["Waktu data", "Unit", "Kec lapor", "Kec hitung", "Jarak (m)", "Selang (dtk)", "Satelit", "Alasan", "Lintang", "Bujur"]];
@@ -2681,7 +2541,6 @@ $("btnExportRejects").addEventListener("click", () => {
     r.dist == null ? "" : Math.round(r.dist), r.dt == null ? "" : r.dt, r.sats == null ? "" : r.sats, r.reason, r.lat, r.lon]));
   download("data-ditolak.csv", toCsv(rows));
 });
-$("btnRunHistory").addEventListener("click", runHistory);
 
 
 /* ==========================================================================
@@ -2943,13 +2802,6 @@ function bootstrap() {
   readConfig();
   setInterval(() => { $("clock").textContent = fmtClock(new Date()); }, 1000);
   $("clock").textContent = fmtClock(new Date());
-
-  const now = new Date(), earlier = new Date(now.getTime() - 6 * 3600 * 1000);
-  const iso = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
-                   "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
-  $("hFrom").value = iso(earlier);
-  $("hTo").value = iso(now);
-  $("hLimit").value = App.cfg.limit;
 
   try {
     if ("Notification" in window && Notification.permission === "default") {
@@ -3387,17 +3239,6 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     el('arsipMuat').addEventListener('click', function () { tarikArsip(false, true); });
   }
 
-  /* Tab Riwayat menarik pesan mentah lewat sesi Wialon di browser, dan sesi itu
-     sudah tidak ada. Dijelaskan apa adanya daripada membiarkan tombolnya gagal
-     diam-diam. */
-  function tandaiRiwayat() {
-    var v = el('view-history'); if (!v || v.querySelector('.riwayat-nb')) return;
-    var p = document.createElement('p');
-    p.className = 'note riwayat-nb';
-    p.textContent = 'Analisa riwayat membutuhkan sesi Wialon di browser, yang sudah tidak dipakai lagi. ' +
-                    'Untuk melihat pelanggaran hari-hari sebelumnya, pakai pemilih tanggal di tab Kejadian.';
-    v.insertBefore(p, v.firstChild);
-  }
 
 
   /* ------------------------------------------------- tip mengambang ("i") */
@@ -3874,7 +3715,7 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     pasangSite();
     setInterval(function () { pasangSite(); terapkanBatas(); }, 1200);
     tarikBatas();
-    pasangKontrol(); tandaiRiwayat();
+    pasangKontrol();
     setConn('warn', 'Menghubungkan…');
 
     tarikUnit();
