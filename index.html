@@ -332,6 +332,31 @@ iframe.page.show{display:block}
 .card-login input{flex:1 1 auto;min-width:0;border:0;background:transparent;outline:none;
   font:inherit;font-size:var(--f-body);color:#fff}
 .card-login input::placeholder{color:#7ea6a5}
+/* Isian otomatis. Chrome dan Edge memaksa latar biru muda dengan teks gelap
+   pada kolom yang diisi peramban, dan itu tidak bisa ditimpa "background"
+   biasa — warnanya dilukis di atas gaya kita. Kolom ini tembus pandang di atas
+   kaca, jadi menutupnya dengan bayangan dalam yang pekat justru mematikan
+   kacanya. Dua cara berikut menghilangkannya tanpa membuat kolom jadi buram:
+   - background-clip:text memotong latar itu supaya hanya jatuh di belakang
+     huruf, lalu -webkit-text-fill-color menimpanya dengan putih;
+   - latar itu dilukis lewat transisi background-color, jadi durasi yang sangat
+     panjang membuatnya tidak pernah sampai.
+   Dipisah jadi dua aturan dengan sengaja: satu pemilih yang tidak dikenal akan
+   membatalkan SELURUH aturan kalau digabung dalam satu daftar koma, sehingga
+   Firefox ikut kehilangan bagiannya. */
+.card-login input:-webkit-autofill,
+.card-login input:-webkit-autofill:hover,
+.card-login input:-webkit-autofill:focus,
+.card-login input:-webkit-autofill:active{
+  -webkit-text-fill-color:#fff; caret-color:#fff;
+  -webkit-background-clip:text; background-clip:text;
+  transition:background-color 100000s 0s, color 100000s 0s;
+}
+.card-login input:autofill{
+  -webkit-text-fill-color:#fff; caret-color:#fff;
+  background-clip:text;
+  transition:background-color 100000s 0s, color 100000s 0s;
+}
 .card-login .go{width:100%;margin-top:18px;height:38px;border:0;border-radius:var(--r-pil);
   font:inherit;font-size:var(--f-t3);font-weight:600;color:#1b1205;cursor:pointer;
   background:linear-gradient(180deg,#f0a423,#d4860a);box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
