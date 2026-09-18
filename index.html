@@ -641,6 +641,13 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     return String(t == null ? '' : t)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  /* Tengah malam WIT sebuah tanggal, dalam epoch UTC. Date.UTC() memberi jam
+     dinding WIT seolah-olah UTC, lalu selisih zonanya dikurangkan — sama
+     persis dengan jendelaTanggal() di Worker. */
+  function tengahMalamWIT(ymd) {
+    var p = String(ymd).split('-').map(Number);
+    return Date.UTC(p[0], p[1] - 1, p[2]) - 9 * 3600000;
+  }
 
   function baris(daftar) {
     if (!daftar || !daftar.length) return '<div class="rk-kosong">Tidak ada pelanggaran.</div>';
@@ -682,7 +689,13 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
                 '&sampai=' + encodeURIComponent(p.sampai), { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) {
-        if (d.dari !== p.dari || d.sampai !== p.sampai) {
+        /* Yang diperiksa jendela yang BENAR-BENAR dihitung Worker, bukan
+           tanggal yang ia kutip ulang. Jawaban /api/ringkas disusun
+           hitungRingkas() dan hanya memuat mulai/selesai; Worker versi lama
+           mengabaikan ?dari=&sampai= lalu menjawab jendela shift 07:00–19:00,
+           yang tidak akan pernah sama dengan tengah malam WIT. */
+        if (d.mulai !== tengahMalamWIT(p.dari) ||
+            d.selesai !== tengahMalamWIT(p.sampai) + 86400000) {
           kunciTerakhir = '';
           pesan('Worker Speed Watcher belum mendukung filter periode. ' +
                 'Perbarui speed-watcher-24-7 lalu muat ulang halaman ini.');
