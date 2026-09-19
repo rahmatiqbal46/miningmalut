@@ -479,7 +479,7 @@ iframe.page.show{display:block}
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Mine Development<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="reklamasi">Capaian Reklamasi</button><button class="leaf" data-page="smr">Jam Kerja SMR</button><button class="leaf" data-page="water">Water &amp; Road</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Mine Plan<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="evaluasi">Evaluasi Kepatuhan</button></div></div>
+    <div class="sub"><button class="leaf" data-page="evaluasi">Spatial Compliance</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M3 12h3M18 12h3M8 12l3 2 4-6"/></svg>ROC<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="amora">AMORA</button><button class="leaf" data-page="speed">Speed Watcher</button><button class="leaf" data-page="dispatch">Dispatch Monitoring</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M8 2v4M16 2v4M3.5 9h17"/></svg>Mining Bureau<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -521,7 +521,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_rtup" title="Real Time Unit Position"></iframe>
    <iframe class="page" id="if_speed" title="Speed Watcher"></iframe>
    <iframe class="page" id="if_minedev" title="Mine Development"></iframe>
-   <iframe class="page" id="if_evaluasi" title="Evaluasi Kepatuhan"></iframe>
+   <iframe class="page" id="if_evaluasi" title="Spatial Compliance"></iframe>
    <iframe class="page" id="if_amora" title="AMORA"></iframe>
    <iframe class="page" id="if_jadwal" title="Jadwal Mining Bureau"></iframe>
    <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
@@ -604,7 +604,7 @@ const BENTO=[
  ['speed','Speed Watcher','ROC','Pemantauan kecepatan unit & pelanggaran, live dari Wialon.',['Wialon','Speed']],
  ['dispatch','Dispatch Monitoring','ROC','Deviasi ritase Minerva vs checker, kepatuhan operator, log isu & tindak lanjut.',['Deviasi','Kepatuhan','Log Isu']],
  ['reklamasi','Mine Development','Reklamasi · SMR · Water','Capaian reklamasi, jam kerja SMR, water & road.',['Capaian Reklamasi','Jam Kerja SMR','Water & Road']],
- ['evaluasi','Evaluasi Kepatuhan','Mine Plan','Kepatuhan realisasi terhadap rencana tambang.',['Compliance']],
+ ['evaluasi','Spatial Compliance','Mine Plan','Kepatuhan realisasi terhadap rencana tambang.',['Compliance']],
  ['amora','AMORA','ROC','Asisten rute & operasi tambang.',['Routing']],
  ['jadwal','Jadwal Mining Bureau','Mining Bureau','Penjadwalan kegiatan Biro Mining.',['Kalender']]
 ];
@@ -1225,7 +1225,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
      'Selisih ritase Minerva terhadap hitungan checker, keaktifan operator, dan log isu per shift.'],
     ['reklamasi', 'Mine Development', 'Reklamasi · SMR · Water',
      'Capaian reklamasi, jam kerja SMR, serta kondisi water dan road.'],
-    ['evaluasi', 'Evaluasi Kepatuhan', 'Mine Plan',
+    ['evaluasi', 'Spatial Compliance', 'Mine Plan',
      'Realisasi tambang dibandingkan rencana, diringkas per periode.'],
     ['amora', 'AMORA', 'ROC',
      'Rute hauling dan jaringan jalan site dalam UTM 52N, lengkap dengan titik muat dan buang.'],

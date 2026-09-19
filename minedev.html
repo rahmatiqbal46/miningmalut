@@ -521,8 +521,21 @@ textarea.inp{text-align:left;font-variant-numeric:normal}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px}::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 </style>
 <script id="minedev-hash">
+/* Bingkai Spatial Compliance, AMORA, dan Jadwal dulu memakai src statis, jadi
+   ketiganya diunduh setiap kali halaman ini dibuka walaupun bagiannya
+   tersembunyi - Chrome sengaja memuat iframe display:none seketika,
+   sehingga loading="lazy" tidak menolong. Sekarang src baru dipasang saat
+   bagiannya pertama kali tampil, lewat go() MAUPUN showSec() di bawah. */
+window.muatAppFrame=function(sec,siap){
+  var f=document.querySelector("#sec-"+sec+" iframe[data-src]");
+  if(!f){ if(siap)siap(document.querySelector("#sec-"+sec+" iframe")); return; }
+  if(!f.getAttribute("src")){
+    if(siap)f.addEventListener("load",function(){siap(f);},{once:true});
+    f.setAttribute("src",f.getAttribute("data-src"));
+  } else if(siap) siap(f);
+};
 (function(){
- function showSec(h){var s=(h||'').replace(/^#/,'')||'rekla';var id='sec-'+s;var all=document.querySelectorAll('.sec');for(var i=0;i<all.length;i++)all[i].classList.remove('active');var el=document.getElementById(id)||document.getElementById('sec-rekla');if(el)el.classList.add('active');setTimeout(function(){try{window.dispatchEvent(new Event('resize'));}catch(e){}window.scrollTo(0,0);},60);}
+ function showSec(h){var s=(h||'').replace(/^#/,'')||'rekla';var id='sec-'+s;var all=document.querySelectorAll('.sec');for(var i=0;i<all.length;i++)all[i].classList.remove('active');var el=document.getElementById(id)||document.getElementById('sec-rekla');if(el)el.classList.add('active');if(el&&window.muatAppFrame)window.muatAppFrame(el.id.slice(4));setTimeout(function(){try{window.dispatchEvent(new Event('resize'));}catch(e){}window.scrollTo(0,0);},60);}
  function apply(){showSec(location.hash);}
  window.addEventListener('hashchange',apply);document.addEventListener('DOMContentLoaded',apply);
  window.addEventListener('load',function(){[120,500,1200,2500].forEach(function(ms){setTimeout(apply,ms);});});
@@ -569,7 +582,7 @@ textarea.inp{text-align:left;font-variant-numeric:normal}
       <button data-sec="smr"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 2.6 7"/></svg>Jam Kerja SMR</button>
       <button data-sec="wr"><svg viewBox="0 0 24 24"><path d="M1 6v15l7-3 8 3 7-3V3l-7 3-8-3-7 3z"/><path d="M8 3v15M16 6v15"/></svg>Water &amp; Road</button>
       <div class="nav-lbl">Aplikasi</div>
-      <button data-sec="evaluasi"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Evaluasi Kepatuhan</button>
+      <button data-sec="evaluasi"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Spatial Compliance</button>
       <button data-sec="amora"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>AMORA</button>
       <button data-sec="jadwal"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3.5 9h17"/><rect x="3.5" y="4.5" width="17" height="16" rx="2"/></svg>Jadwal Biro Mining</button>
       <div class="nav-lbl">Setting</div>
@@ -857,19 +870,19 @@ textarea.inp{text-align:left;font-variant-numeric:normal}
 
       <section class="sec" id="sec-evaluasi">
         <div class="card app-frame">
-          <iframe src="evaluasi.html" title="Evaluasi Kepatuhan Pit Limit" style="width:100%;height:calc(100vh - 92px);min-height:680px;border:0;display:block;background:transparent"></iframe>
+          <iframe data-src="evaluasi.html" title="Spatial Compliance" style="width:100%;height:calc(100vh - 92px);min-height:680px;border:0;display:block;background:transparent"></iframe>
         </div>
       </section>
 
       <section class="sec" id="sec-amora">
         <div class="card app-frame">
-          <iframe src="amora.html" title="AMORA" style="width:100%;height:calc(100vh - 92px);min-height:680px;border:0;display:block;background:transparent"></iframe>
+          <iframe data-src="amora.html" title="AMORA" style="width:100%;height:calc(100vh - 92px);min-height:680px;border:0;display:block;background:transparent"></iframe>
         </div>
       </section>
 
       <section class="sec" id="sec-jadwal">
         <div class="card app-frame">
-          <iframe src="jadwal.html" title="Sistem Jadwal Biro Mining" style="width:100%;height:calc(100vh - 92px);min-height:680px;border:0;display:block;background:transparent"></iframe>
+          <iframe data-src="jadwal.html" title="Sistem Jadwal Biro Mining" style="width:100%;height:calc(100vh - 92px);min-height:680px;border:0;display:block;background:transparent"></iframe>
         </div>
       </section>
 
@@ -2069,7 +2082,7 @@ const PAGES={
   smr:["Jam Kerja SMR","Ketersediaan alat dan jam kerja efektif"],
   wr:["Water & Road Management","Peta site 3D, kondisi infrastruktur, dan jadwal kegiatan"],
   input:["Input Data","Pusat pengisian seluruh data dashboard"],
-  evaluasi:["Evaluasi Kepatuhan Pit Limit","Aplikasi evaluasi kepatuhan penambangan terhadap pit limit"],
+  evaluasi:["Spatial Compliance","Kepatuhan penambangan terhadap pit limit \u00b7 Subtotal III"],
   amora:["AMORA","ANTAM Malut Operation & Routing Assistant"],
   jadwal:["Jadwal Biro Mining","Beban jadwal, timeline harian, dan pencarian slot kosong lintas satuan kerja"]
 };
@@ -2085,7 +2098,10 @@ function go(sec){
   const isApp=(sec==="evaluasi"||sec==="amora"||sec==="jadwal");
   const mw=document.querySelector(".main-wrap"); if(mw)mw.classList.toggle("app-page",isApp);
   if(sec==="wr"&&window._three)setTimeout(()=>window._three.onResize(),60);
-  if(sec==="jadwal"){const ifr=document.querySelector("#sec-jadwal iframe");try{ifr&&ifr.contentWindow&&ifr.contentWindow.postMessage({jadwalTab:"ringkas"},"*");}catch(e){}}
+  /* Tiga aplikasi tertanam baru diunduh saat bagiannya dibuka. Pesan tab
+     Jadwal dikirim sesudah bingkainya selesai dimuat - kalau dikirim ke
+     bingkai yang baru diberi src, pesannya jatuh ke about:blank dan hilang. */
+  if(isApp&&window.muatAppFrame)window.muatAppFrame(sec,sec==="jadwal"?function(ifr){try{ifr&&ifr.contentWindow&&ifr.contentWindow.postMessage({jadwalTab:"ringkas"},"*");}catch(e){}}:null);
   closeSidebar();
 }
 $$(".side-nav button[data-sec]").forEach(b=>b.onclick=()=>go(b.dataset.sec));
