@@ -576,7 +576,7 @@ async function prosesAntrean(tampil){
         it.galat=e.message; await antreanSimpan(it); toast('Form '+esc(it.form.unit)+' ditolak server: '+esc(e.message),true);
       }
     }
-  } finally { S.kirimJalan=false; render(); }
+  } finally { S.kirimJalan=false; S.progres=null; render(); }
 }
 
 function renderDone(){
