@@ -483,7 +483,7 @@ iframe.page.show{display:block}
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M3 12h3M18 12h3M8 12l3 2 4-6"/></svg>ROC<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="amora">AMORA</button><button class="leaf" data-page="speed">Speed Watcher</button><button class="leaf" data-page="dispatch">Dispatch Monitoring</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M8 2v4M16 2v4M3.5 9h17"/></svg>Mining Bureau<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="jadwal">Jadwal Mining Bureau</button></div></div>
+    <div class="sub"><button class="leaf" data-page="jadwal">Jadwal Mining Bureau</button><button class="leaf" data-page="asesmen">Asesmen Go/No-Go</button></div></div>
   </nav>
   <div class="side-credit"><span>FullStack Vibe Developer<b>Rahmat Iqbal</b></span><span>Speed Watcher contributor<b>Ariqsyah Rahman</b></span><span>Dispatch Monitoring contributor<b>Randy Caesario Simangunsong</b></span></div>
   <div class="setwrap">
@@ -524,6 +524,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_evaluasi" title="Spatial Compliance"></iframe>
    <iframe class="page" id="if_amora" title="AMORA"></iframe>
    <iframe class="page" id="if_jadwal" title="Jadwal Mining Bureau"></iframe>
+   <iframe class="page" id="if_asesmen" title="Asesmen Go/No-Go"></iframe>
    <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
    <iframe class="page" id="if_operator" title="Operator Performance"></iframe>
    <!-- placeholders -->
@@ -540,7 +541,7 @@ iframe.page.show{display:block}
    <h1>Masuk ke MiningMalut</h1>
    <div class="lead">Biro Mining · UBPN Maluku Utara, Pulau Pakal</div>
    <div class="gugus">
-     <label for="in_email"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 6.4h15.2v11.2H4.4zM4.4 7.2 12 12.8l7.6-5.6"/></svg><span class="kunci">Email</span><input id="in_email" type="email" autocomplete="username" placeholder="nama@antam.com"></label>
+     <label for="in_email"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 6.4h15.2v11.2H4.4zM4.4 7.2 12 12.8l7.6-5.6"/></svg><span class="kunci">Email / NPP</span><input id="in_email" type="text" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="username" placeholder="nama@antam.com atau NPP"></label>
      <label for="in_pw"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 10.6h10.8v8.8H6.6zM8.8 10.6V8.2a3.2 3.2 0 1 1 6.4 0v2.4"/></svg><span class="kunci">Sandi</span><input id="in_pw" type="password" autocomplete="current-password" placeholder="••••••••"></label>
    </div>
    <button class="go" id="btnLogin">Masuk</button>
@@ -575,6 +576,7 @@ const PAGES={
  evaluasi:{iframe:'if_evaluasi',url:'evaluasi.html'},
  amora:{iframe:'if_amora',url:'amora.html'},
  jadwal:{iframe:'if_jadwal',url:'jadwal.html'},
+ asesmen:{iframe:'if_asesmen',url:'asesmen.html'},
  dispatch:{iframe:'if_dispatch',url:'dispatch-monitoring.html'},
  operator:{iframe:'if_operator',url:'operator-performance.html'}
 };
@@ -606,7 +608,8 @@ const BENTO=[
  ['reklamasi','Mine Development','Reklamasi · SMR · Water','Capaian reklamasi, jam kerja SMR, water & road.',['Capaian Reklamasi','Jam Kerja SMR','Water & Road']],
  ['evaluasi','Spatial Compliance','Mine Plan','Kepatuhan realisasi terhadap rencana tambang.',['Compliance']],
  ['amora','AMORA','ROC','Asisten rute & operasi tambang.',['Routing']],
- ['jadwal','Jadwal Mining Bureau','Mining Bureau','Penjadwalan kegiatan Biro Mining.',['Kalender']]
+ ['jadwal','Jadwal Mining Bureau','Mining Bureau','Penjadwalan kegiatan Biro Mining.',['Kalender']],
+ ['asesmen','Asesmen Go/No-Go','Mining Bureau','Cek aman operator sebelum bekerja, persetujuan pengawas, dan arsipnya.',['Go/No-Go','Arsip']]
 ];
 function buildBento(){const b=document.getElementById('bento');b.innerHTML='';BENTO.forEach(c=>{const el=document.createElement('button');el.className='card';el.onclick=()=>showPage(c[0]);
  el.innerHTML='<div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="tag">'+c[2]+'</div><h3>'+c[1]+'</h3><p>'+c[3]+'</p><div class="sublist">'+c[4].map(s=>'<span>'+s+'</span>').join('')+'</div>';b.appendChild(el);});}
@@ -695,6 +698,34 @@ function showSwToast(text){var w=document.getElementById('swToastWrap');if(!w){w
 
 // boot
 if(authValid())showApp(); else document.getElementById('login').style.display='flex';
+</script><script id="login-npp">
+/* =============================================================================
+   Masuk dengan NPP untuk operator dan pengawas (Asesmen Go/No-Go).
+   Isian tanpa "@" dianggap NPP: diperiksa lewat fungsi SQL gng_masuk, lalu
+   pengguna dibawa ke cek-aman.html. Operator tanpa sandi; pengawas mengisi PIN
+   di kolom Sandi. Mereka TIDAK punya akun Supabase, jadi tidak pernah masuk shell.
+   ============================================================================= */
+(function(){
+  var btn=document.getElementById('btnLogin'), asli=btn.onclick,
+      em=document.getElementById('in_email'), pw=document.getElementById('in_pw'), er=document.getElementById('loginErr');
+  try{ var s=JSON.parse(localStorage.getItem('gng_sesi')||'null'); if(s&&s.token&&!authValid()){ location.replace('cek-aman'); return; } }catch(e){}
+  btn.onclick=async function(){
+    var v=em.value.trim();
+    if(!v||v.indexOf('@')>=0) return asli.apply(this,arguments);
+    er.textContent=''; btn.disabled=true; btn.textContent='Masuk…';
+    try{
+      var r=await fetch(CFG.url+'/rest/v1/rpc/gng_masuk',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+CFG.key,'Content-Type':'application/json'},
+        body:JSON.stringify({p_npp:v,p_pin:pw.value||null,p_perangkat:navigator.userAgent.slice(0,180)})});
+      var j=await r.json().catch(function(){return {};});
+      if(!r.ok) throw new Error(j.message||'Gagal masuk. Periksa sinyal.');
+      if(j.galat) throw new Error(j.perlu_pin&&!pw.value?'Akun pengawas: isi PIN di kolom Sandi.':j.galat);
+      localStorage.setItem('gng_sesi',JSON.stringify(j));
+      location.href='cek-aman';
+    }catch(e){ er.textContent=e.message==='Failed to fetch'?'Tidak ada sinyal.':e.message; }
+    finally{ btn.disabled=false; btn.textContent='Masuk'; }
+  };
+  em.addEventListener('keydown',function(e){ if(e.key==='Enter') btn.click(); });
+})();
 </script><script id="home-periode">
 /* =============================================================================
    Baris paling atas halaman Home: tiga kartu berdampingan dengan SATU filter
@@ -1160,7 +1191,8 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     reklamasi:'<path d="M12 21c0-5 3-8 7-9-1 5-3 8-7 9Z"/><path d="M12 21c0-5-3-8-7-9 1 5 3 8 7 9Z"/><path d="M12 21v-6"/>',
     evaluasi: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 12l2.5 2.5L16 9"/>',
     amora:    '<circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="17" r="2.2"/><path d="M8 8.5c3 1.5 3 5.5 8 7"/><path d="M6 9.2V15a2 2 0 0 0 2 2h3"/>',
-    jadwal:   '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M8 14h3v3H8z"/>'
+    jadwal:   '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M8 14h3v3H8z"/>',
+    asesmen:  '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/>'
   };
 
   /* Pratinjau: bentuknya mengikuti data yang benar-benar ada di modul itu,
@@ -1211,7 +1243,16 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
           var v = (c * 3 + r) % 4;
           return '<rect x="' + (14 + c * 26) + '" y="' + (12 + r * 15) + '" width="20" height="11" rx="2.5" class="v' + v + '"/>';
         }).join('');
-      }).join('') + '</g>'
+      }).join('') + '</g>',
+    /* daftar periksa: tiap baris satu pertanyaan, kotak kanan jawabannya;
+       baris ketiga TIDAK (amber) sehingga form itu menunggu keputusan */
+    asesmen:
+      '<g class="sel">' +
+      [0,1,2,3].map(function (r) {
+        return '<rect x="14" y="' + (7 + r * 12) + '" width="' + [132,118,140,104][r] + '" height="7" rx="2.5" class="v0"/>' +
+               (r === 2 ? '' : '<rect x="164" y="' + (6 + r * 12) + '" width="20" height="9" rx="2.5" class="v3"/>');
+      }).join('') + '</g>' +
+      '<circle class="simpul buang" cx="174" cy="34.5" r="5"/>'
   };
 
   var MOD = [
@@ -1230,7 +1271,9 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     ['amora', 'AMORA', 'ROC',
      'Rute hauling dan jaringan jalan site dalam UTM 52N, lengkap dengan titik muat dan buang.'],
     ['jadwal', 'Jadwal Mining Bureau', 'Mining Bureau',
-     'Beban bulanan, timeline harian, dan pencarian slot kosong untuk personel biro.']
+     'Beban bulanan, timeline harian, dan pencarian slot kosong untuk personel biro.'],
+    ['asesmen', 'Asesmen Go/No-Go', 'Mining Bureau',
+     'Cek aman operator sebelum bekerja: yang menunggu persetujuan, pekerjaan yang dihentikan, dan arsip form.']
   ];
 
   function gaya() {
