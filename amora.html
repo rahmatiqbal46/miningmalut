@@ -11,10 +11,18 @@ html.embedded,html.embedded body{background:transparent!important}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>AMORA — ANTAM Malut Operation & Routing Assistant</title>
-<!-- Google Fonts dibuang: huruf chrome memakai tumpukan sistem (--ui/--ui-mono).
-     --display/--body/--mono SENGAJA tetap menyebut nama lamanya karena
-     .pt-marker dan .leaflet-container membacanya untuk mengunci huruf di
-     dalam peta (KONTRAK §5.5). -->
+<!-- Huruf chrome memakai tumpukan sistem (--ui/--ui-mono), bukan Google Fonts.
+     Peta tetap: .pt-marker membaca --display (Saira) dan .map-wrap /
+     .leaflet-container membaca --body (Plus Jakarta Sans) — nama lamanya
+     (KONTRAK §5.5). Menyebut nama saja TIDAK cukup: tanpa berkasnya, peramban
+     diam-diam jatuh ke sans-serif dan angka di penanda berganti rupa. Karena
+     itu kedua keluarga dimuat lagi dengan bobot yang sama persis dengan
+     sebelum perombakan. Tidak ada chrome yang memakainya, jadi rujukan ini
+     hanya menyentuh peta. JetBrains Mono dulu hanya dipakai chrome dan tidak
+     ikut dimuat. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
