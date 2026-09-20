@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 6 (17 September 2026)
+// Versi 7 (21 September 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -80,6 +80,50 @@
 //    ditutup. Sekarang putaran menit itu dilewati utuh.
 //  - Kejadian yatim (masih berjalan tapi tidak diperbarui lebih dari satu jam)
 //    ditutup sekali sehari bersama pembersihan data lama.
+//
+// Versi 7 memperbaiki BATAS CPU lagi — 21 September 2026, 1.000+ pelampauan
+// dalam 24 jam, 8,3% pemanggilan gagal, dan seluruhnya bertipe "Exceeded CPU
+// Time Limits". Errornya rata ±14 per 15 menit sementara jumlah pemanggilan
+// naik-turun antara 100 dan 260: laju tetap seperti itu hanya mungkin datang
+// dari cron, bukan dari permintaan halaman.
+//
+// Yang DIUKUR lebih dulu, supaya perbaikannya tidak menebak. Jalur panas v6
+// direplikasi di Node dengan armada 45 unit, 6 putaran, state ±25 KB, 12 kali
+// ulang:
+//
+//    seluruh hitungan JS enam putaran ........ ±1,6 ms
+//    parsing jawaban Wialon 6× (33 KB) ....... ±1,0 ms
+//    ------------------------------------------------
+//    total kerja hitung ...................... ±2,6 ms dari anggaran 10 ms
+//
+// Jadi pencocokan ruas BUKAN penyebabnya: indeks grid 55 m dari versi 5 bekerja
+// (589 sel, rata-rata 4,3 penggal per sel). Sisanya habis di operasi I/O yang
+// keenam putarannya ditagih ke SATU anggaran — dan yang paling banyak di situ
+// adalah penulisan D1.
+//
+//  1. Selama sebuah unit melanggar, barisnya DITULIS ULANG ke D1 pada setiap
+//     putaran — 6 kali per menit per unit. Empat unit melanggar berarti ±24
+//     penulisan per menit, padahal nilainya sudah diperbarui di memori dan
+//     hasil akhirnya sama saja. Sekarang penulisan dikumpulkan lalu dikirim
+//     SEKALI di akhir pemanggilan, dalam satu `batch` D1.
+//     Deteksi tidak disentuh sedikit pun: aturan, ambang, dan urutannya sama.
+//     Yang berubah hanya KAPAN barisnya menyentuh D1.
+//  2. `ambilUnit()` mencocokkan ruas untuk SETIAP unit pada setiap panggilan —
+//     termasuk enam panggilan cron per menit, yang sudah punya pencocokan
+//     sendiri di jalur deteksi dan sengaja dilewati untuk unit di bawah
+//     BATAS_MIN. Penjaga anggaran versi 5 itu jadi percuma. Sekarang cron
+//     memanggil `ambilUnit(env, false)`; hanya /api/unit yang butuh kolom ruas.
+//  3. Enam baris log per pemanggilan digabung jadi SATU. Angka `sah` per putaran
+//     tetap tercatat — justru itu yang dipakai menilai apakah enam kali tanya
+//     per menit masih sepadan — tapi peristiwa observability turun dari ±8.640
+//     jadi ±1.440 per hari.
+//
+// Kalau setelah ini error CPU belum nol, sisanya ada di enam panggilan Wialon
+// itu sendiri, dan pilihan berikutnya adalah menurunkan TICK_COUNT menjadi 3
+// (resolusi 10 → 20 detik) atau pindah ke Workers Paid.
+//
+// > Pelajaran umum, sama dengan §21.6: pekerjaan yang benar tapi diulang pada
+// > tiap putaran menghabiskan anggaran yang tidak kelihatan di kode.
 //
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Cron: * * * * *
@@ -269,7 +313,12 @@ async function login(env) {
   return r.eid;
 }
 
-async function ambilUnit(env) {
+/* `denganRuas` hanya perlu true untuk /api/unit, yang mengirim kolom ruas dan
+   batas ke layar. Cron memanggilnya false: jalur deteksi sudah mencocokkan ruas
+   sendiri di dalam satuPutaran(), dan di sana pencocokan itu SENGAJA dilewati
+   untuk unit di bawah BATAS_MIN. Mencocokkan di sini lebih dulu membatalkan
+   penjaga anggaran tersebut — enam kali per menit, untuk seluruh armada. */
+async function ambilUnit(env, denganRuas = true) {
   let sid = sidCache || (await ambilKV(env, "sid"));
   if (!sid) sid = await login(env);
   sidCache = sid;
@@ -299,6 +348,7 @@ async function ambilUnit(env) {
   })).map((u) => {
     // Ruas dan batas yang berlaku ikut dikirim supaya layar tidak perlu
     // menghitung sendiri dan tidak bisa berbeda dengan penilaian server.
+    if (!denganRuas) return u;
     const rz = (u.lat != null && u.lon != null) ? cariRuas(u.lat, u.lon)
                                                 : { nama: null, batas: BATAS_LUAR };
     u.ruas = rz.nama;
@@ -465,12 +515,44 @@ async function bukaPelanggaran(env, u, ev) {
   return r.meta.last_row_id;
 }
 
-async function perbaruiPelanggaran(env, id, ev, tutup) {
-  await env.DB.prepare(
+function perintahPerbarui(env, id, ev, tutup) {
+  return env.DB.prepare(
     `UPDATE pelanggaran SET selesai=?, kecepatan_max=?, kecepatan_rata=?,
        sampel=?, lat=?, lon=?, berjalan=? WHERE id=?`
   ).bind(ev.tEnd * 1000, ev.maxSpeed, ev.sum / ev.n, ev.n, ev.lat, ev.lon,
-         tutup ? 0 : 1, id).run();
+         tutup ? 0 : 1, id);
+}
+
+/* Pembaruan baris pelanggaran DITUNDA sampai akhir pemanggilan (§21.9).
+
+   Selama sebuah unit melanggar, versi 6 menulis ulang barisnya pada tiap
+   putaran — enam kali per menit per unit — padahal nilai yang ditulis sudah
+   diperbarui di memori dan hanya keadaan TERAKHIR yang berarti. Enam putaran
+   berbagi satu anggaran CPU 10 ms, jadi penulisan berulang itulah yang paling
+   besar memakannya.
+
+   Kuncinya nomor baris, bukan nomor unit: satu unit bisa menutup satu kejadian
+   lalu membuka kejadian baru dalam menit yang sama, dan keduanya harus tetap
+   tertulis masing-masing. Nilai yang disimpan adalah RUJUKAN ke objek `ev`,
+   jadi kejadian yang masih berjalan otomatis terbawa nilai terbarunya saat
+   disiram; kejadian yang sudah ditutup tidak berubah lagi.
+
+   INSERT pembuka TIDAK ditunda — nomor barisnya dibutuhkan saat itu juga. */
+function tundaTulis(tunda, id, ev, tutup) {
+  if (id == null || !ev) return;
+  tunda.set(id, { ev, tutup });
+}
+
+async function siramTunda(env, tunda) {
+  if (!tunda.size) return 0;
+  const perintah = [];
+  for (const [id, t] of tunda) perintah.push(perintahPerbarui(env, id, t.ev, t.tutup));
+  tunda.clear();
+  // Dipecah karena satu batch D1 punya batas jumlah perintah.
+  for (let i = 0; i < perintah.length; i += 50) {
+    await env.DB.batch(perintah.slice(i, i + 50));
+  }
+  return perintah.length;
 }
 
 /* State dibaca sekali di awal pemanggilan dan ditulis sekali di akhir. Membaca
@@ -495,8 +577,8 @@ async function simpanState(env, state, jumlahUnit) {
 
 /* Satu putaran pemeriksaan seluruh armada. `state` dibawa masuk dan diubah di
    tempat; pemanggilnya yang bertanggung jawab menyimpannya. */
-async function satuPutaran(env, state) {
-  const units = await ambilUnit(env);
+async function satuPutaran(env, state, tunda) {
+  const units = await ambilUnit(env, false);
   const nowDetik = Math.floor(Date.now() / 1000);
 
   let sah = 0, ditolak = 0, basi = 0, melanggar = 0;
@@ -535,7 +617,7 @@ async function satuPutaran(env, state) {
        pelanggaran harus terikat pada satu ruas dan satu angka batas, kalau tidak
        catatannya tidak bisa dipertanggungjawabkan. */
     if (st.ev && rz && st.ev.batas !== rz.batas) {
-      await perbaruiPelanggaran(env, st.id, st.ev, true);
+      tundaTulis(tunda, st.id, st.ev, true);
       st.ev = null; st.id = null; st.un = 0; st.ov = 0;
     }
 
@@ -563,7 +645,7 @@ async function satuPutaran(env, state) {
         if (s.speed >= st.ev.maxSpeed) { st.ev.lat = s.lat; st.ev.lon = s.lon; }
         st.ev.maxSpeed = Math.max(st.ev.maxSpeed, s.speed);
         st.ev.sum += s.speed; st.ev.n++;
-        await perbaruiPelanggaran(env, st.id, st.ev, false);
+        tundaTulis(tunda, st.id, st.ev, false);
         melanggar++;
       }
     } else {
@@ -571,7 +653,7 @@ async function satuPutaran(env, state) {
       if (st.ev && nilai <= st.ev.batas - HISTERESIS) {
         st.un++;
         if (st.un >= KONFIRMASI) {
-          await perbaruiPelanggaran(env, st.id, st.ev, true);
+          tundaTulis(tunda, st.id, st.ev, true);
           st.ev = null; st.id = null; st.un = 0;
         }
       }
@@ -583,7 +665,7 @@ async function satuPutaran(env, state) {
   for (const k of Object.keys(state)) {
     const st = state[k];
     if (st.ev && nowDetik - st.ev.tEnd > 900) {
-      await perbaruiPelanggaran(env, st.id, st.ev, true);
+      tundaTulis(tunda, st.id, st.ev, true);
       st.ev = null; st.id = null; st.ov = 0; st.un = 0;
     }
   }
@@ -594,7 +676,9 @@ async function satuPutaran(env, state) {
 /* Dipakai /api/uji: satu putaran lengkap berikut baca dan tulis state. */
 async function periksa(env) {
   const state = await muatState(env);
-  const h = await satuPutaran(env, state);
+  const tunda = new Map();
+  const h = await satuPutaran(env, state, tunda);
+  await siramTunda(env, tunda);
   await simpanState(env, state, h.unit);
   return h;
 }
@@ -937,18 +1021,46 @@ export default {
       }
       let unitTerakhir = 0;
 
+      /* Enam baris log digabung jadi satu. Angka `sah` per putaran tetap
+         tercatat — dari deret itu kelihatan apakah putaran 2–6 benar-benar
+         membawa data baru atau hanya menanyakan ulang yang sama — tapi
+         peristiwa observability turun dari ±8.640 jadi ±1.440 per hari. */
+      const tunda = new Map();
+      const deretSah = [], deretTolak = [], gagal = [];
+      let totalLanggar = 0;
+
       for (let i = 0; i < TICK_COUNT; i++) {
         try {
-          const h = await satuPutaran(env, state);
+          const h = await satuPutaran(env, state, tunda);
           unitTerakhir = h.unit;
-          console.log(`cek ${i + 1}/${TICK_COUNT} unit=${h.unit} sah=${h.sah} tolak=${h.ditolak} langgar=${h.melanggar}`);
+          deretSah.push(h.sah); deretTolak.push(h.ditolak);
+          totalLanggar += h.melanggar;
         } catch (e) {
-          console.log(`cek ${i + 1} gagal: ${String(e.message || e)}`);
+          deretSah.push("x"); deretTolak.push("x");
+          gagal.push(`${i + 1}: ${String(e.message || e)}`);
         }
         if (i < TICK_COUNT - 1) await sleep(TICK_MS);
       }
 
+      /* Disiram sebelum state disimpan, tapi kegagalannya tidak boleh
+         membatalkan penyimpanan state: state-lah yang memegang kejadian yang
+         sedang terbuka. Baris yang gagal diperbarui akan tersusul menit
+         berikutnya, dan kalau unitnya berhenti mengirim data, pembersihan
+         harian menutup kejadian yatim. */
+      let ditulis = 0;
+      try {
+        ditulis = await siramTunda(env, tunda);
+      } catch (e) {
+        gagal.push(`tulis: ${String(e.message || e)}`);
+      }
+
       await simpanState(env, state, unitTerakhir);
+
+      console.log(
+        `unit=${unitTerakhir} sah=${deretSah.join(",")} tolak=${deretTolak.join(",")} ` +
+        `langgar=${totalLanggar} tulis=${ditulis}` +
+        (gagal.length ? ` | gagal ${gagal.join(" ; ")}` : "")
+      );
 
       const d = new Date();
       if (d.getUTCHours() === 15 && d.getUTCMinutes() < 2) await bersihkan(env);
