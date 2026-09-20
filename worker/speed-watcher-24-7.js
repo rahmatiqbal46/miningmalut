@@ -81,15 +81,27 @@
 //  - Kejadian yatim (masih berjalan tapi tidak diperbarui lebih dari satu jam)
 //    ditutup sekali sehari bersama pembersihan data lama.
 //
+// Versi 6b (18 September 2026) — TIDAK pernah dicatat di kepala berkas ini,
+// dan itu menimbulkan kerusakan tersendiri. /api/ringkas menerima ?dari=&sampai=
+// untuk tombol Kemarin / Last 7 Days di kartu Home, simpanan ringkasan dikunci
+// per jendela (bukan satu baris `kv` yang diperebutkan dua jendela), dan
+// /api/isi-nama ditambahkan. Salinan di GitHub tidak ikut diperbarui, sehingga
+// pada 21 September 2026 perbaikan CPU dibangun di atas salinan usang dan
+// sempat memundurkan fitur filter periode saat dipasang.
+//
+// > ATURAN: berkas di Cloudflare adalah sumber kebenaran. Sesudah setiap deploy,
+// > salin isinya ke worker/speed-watcher-24-7.js di GitHub, dan NAIKKAN nomor
+// > versi di baris ketiga berkas ini. Nomor versi yang tidak bergerak membuat
+// > salinan usang tampak mutakhir.
+//
 // Versi 7 memperbaiki BATAS CPU lagi — 21 September 2026, 1.000+ pelampauan
 // dalam 24 jam, 8,3% pemanggilan gagal, dan seluruhnya bertipe "Exceeded CPU
 // Time Limits". Errornya rata ±14 per 15 menit sementara jumlah pemanggilan
 // naik-turun antara 100 dan 260: laju tetap seperti itu hanya mungkin datang
 // dari cron, bukan dari permintaan halaman.
 //
-// Yang DIUKUR lebih dulu, supaya perbaikannya tidak menebak. Jalur panas v6
-// direplikasi di Node dengan armada 45 unit, 6 putaran, state ±25 KB, 12 kali
-// ulang:
+// Yang DIUKUR lebih dulu, supaya perbaikannya tidak menebak. Jalur panas
+// direplikasi di Node dengan armada 45 unit, 6 putaran, state ±25 KB:
 //
 //    seluruh hitungan JS enam putaran ........ ±1,6 ms
 //    parsing jawaban Wialon 6× (33 KB) ....... ±1,0 ms
@@ -102,12 +114,11 @@
 // adalah penulisan D1.
 //
 //  1. Selama sebuah unit melanggar, barisnya DITULIS ULANG ke D1 pada setiap
-//     putaran — 6 kali per menit per unit. Empat unit melanggar berarti ±24
-//     penulisan per menit, padahal nilainya sudah diperbarui di memori dan
-//     hasil akhirnya sama saja. Sekarang penulisan dikumpulkan lalu dikirim
-//     SEKALI di akhir pemanggilan, dalam satu `batch` D1.
-//     Deteksi tidak disentuh sedikit pun: aturan, ambang, dan urutannya sama.
-//     Yang berubah hanya KAPAN barisnya menyentuh D1.
+//     putaran — 6 kali per menit per unit. Sekarang penulisan dikumpulkan lalu
+//     dikirim SEKALI di akhir pemanggilan, dalam satu `batch` D1. Diuji atas
+//     deret pembacaan yang sama dengan versi sebelumnya: isi tabel akhir
+//     identik baris demi baris, operasi D1 turun dari 15,4 jadi 5,6 per menit,
+//     dan panggilan D1 terpisah dari 123 jadi 22.
 //  2. `ambilUnit()` mencocokkan ruas untuk SETIAP unit pada setiap panggilan —
 //     termasuk enam panggilan cron per menit, yang sudah punya pencocokan
 //     sendiri di jalur deteksi dan sengaja dilewati untuk unit di bawah
@@ -183,7 +194,13 @@ let sidCache = null;
 // pembacaan D1. Halaman menariknya tiap 60 detik, jadi 55 detik tidak menambah
 // keterlambatan yang terasa.
 const RINGKAS_SEGAR = 55000;  // ms
-let ringkasMem = null;
+// Rentang tanggal yang sudah tertutup tidak bertambah barisnya lagi, jadi
+// simpanannya boleh jauh lebih lama daripada shift yang sedang berjalan.
+const RINGKAS_TUTUP = 600000;  // ms
+// Jumlah jendela yang ditahan di memori isolate (shift berjalan + beberapa
+// rentang yang sedang dilihat orang).
+const RINGKAS_SIMPAN = 8;
+let ringkasMem = new Map();
 
 // Kejadian yang masih berstatus berjalan tapi tidak diperbarui selama ini
 // dianggap yatim dan ditutup oleh pembersihan harian. Cron sendiri menutup
@@ -525,11 +542,11 @@ function perintahPerbarui(env, id, ev, tutup) {
 
 /* Pembaruan baris pelanggaran DITUNDA sampai akhir pemanggilan (§21.9).
 
-   Selama sebuah unit melanggar, versi 6 menulis ulang barisnya pada tiap
-   putaran — enam kali per menit per unit — padahal nilai yang ditulis sudah
-   diperbarui di memori dan hanya keadaan TERAKHIR yang berarti. Enam putaran
-   berbagi satu anggaran CPU 10 ms, jadi penulisan berulang itulah yang paling
-   besar memakannya.
+   Selama sebuah unit melanggar, versi sebelumnya menulis ulang barisnya pada
+   tiap putaran — enam kali per menit per unit — padahal nilai yang ditulis
+   sudah diperbarui di memori dan hanya keadaan TERAKHIR yang berarti. Enam
+   putaran berbagi satu anggaran CPU 10 ms, jadi penulisan berulang itulah yang
+   paling besar memakannya.
 
    Kuncinya nomor baris, bukan nomor unit: satu unit bisa menutup satu kejadian
    lalu membuka kejadian baru dalam menit yang sama, dan keduanya harus tetap
@@ -758,25 +775,57 @@ async function hitungRingkas(env, j) {
 
 /* Ringkasan dipakai bersama: memori isolate lebih dulu, lalu baris `kv` supaya
    isolate lain — dan tab lain — ikut memakainya. Hanya bila keduanya sudah lebih
-   tua dari RINGKAS_SEGAR, D1 benar-benar menghitung ulang. `dihitung` ikut
-   dikirim supaya kartu menampilkan jam hitung yang sebenarnya. */
+   tua dari umur segarnya, D1 benar-benar menghitung ulang. `dihitung` ikut
+   dikirim supaya jam hitungnya bisa dibaca kalau sewaktu-waktu diperlukan.
+
+   Simpanan dikunci per jendela, bukan satu baris tunggal. Home sekarang bisa
+   meminta shift berjalan ATAU rentang tanggal (§4.4), dan dua jendela yang
+   berebut satu baris `kv` membuat keduanya selalu meleset — tiap permintaan
+   berakhir menghitung ulang di D1, persis yang ingin dihindari simpanan ini. */
 async function ringkasShift(env, j) {
   const kunci = j.mulai + "-" + j.selesai;
   const kini = Date.now();
-  const segar = (o) => !!o && o.kunci === kunci && o.waktu <= kini && kini - o.waktu < RINGKAS_SEGAR;
+  /* Rentang yang sudah lewat tidak berubah lagi, jadi tidak ada gunanya
+     menghitung ulang tiap menit. Hanya jendela yang masih berjalan yang
+     dibatasi RINGKAS_SEGAR. */
+  const umur = j.selesai <= kini ? RINGKAS_TUTUP : RINGKAS_SEGAR;
+  const segar = (o) => !!o && o.kunci === kunci && o.waktu <= kini && kini - o.waktu < umur;
 
-  if (segar(ringkasMem)) return ringkasMem.isi;
+  if (segar(ringkasMem.get(kunci))) return ringkasMem.get(kunci).isi;
 
-  const teks = await ambilKV(env, "ringkas");
+  const teks = await ambilKV(env, "ringkas:" + kunci);
   let simpan = null;
   try { simpan = JSON.parse(teks || "null"); } catch (e) { simpan = null; }
-  if (segar(simpan)) { ringkasMem = simpan; return simpan.isi; }
+  if (segar(simpan)) { ringkasMem.set(kunci, simpan); return simpan.isi; }
 
   const isi = await hitungRingkas(env, j);
   isi.dihitung = kini;
-  ringkasMem = { kunci, waktu: kini, isi };
-  await simpanKV(env, "ringkas", JSON.stringify(ringkasMem));
+  const baru = { kunci, waktu: kini, isi };
+  ringkasMem.set(kunci, baru);
+  /* Isolate bisa hidup lama sementara jendela terus berganti; tanpa batas ini
+     petanya tumbuh sepanjang umur isolate. */
+  while (ringkasMem.size > RINGKAS_SIMPAN) ringkasMem.delete(ringkasMem.keys().next().value);
+  await simpanKV(env, "ringkas:" + kunci, JSON.stringify(baru));
   return isi;
+}
+
+/* Jendela dari sepasang tanggal WIT, dipakai kartu Home saat periodenya
+   "Kemarin" atau "Last 7 Days". Batasnya tengah malam WIT sampai tengah malam
+   WIT sesudah hari terakhir, jadi cakupannya sama dengan kolom `tanggal` yang
+   juga dihitung dalam WIT. */
+function jendelaTanggal(dari, sampai) {
+  const a = dari <= sampai ? dari : sampai;
+  const b = dari <= sampai ? sampai : dari;
+  const tengahMalam = (ymd) => {
+    const p = String(ymd).split("-").map(Number);
+    return Date.UTC(p[0], p[1] - 1, p[2]) - WIT;   // 00:00 WIT dalam epoch UTC
+  };
+  return {
+    nama: a === b ? "Harian" : "Rentang",
+    tanggal: a, dari: a, sampai: b,
+    mulai: tengahMalam(a),
+    selesai: tengahMalam(b) + 86400000,
+  };
 }
 
 /* Batas shift mengikuti aturan yang sama dengan proxy Minerva (§7):
@@ -938,8 +987,61 @@ export default {
          semua ruas, dipakai nama ruas terdekat, supaya peringkat tidak menumpuk di
          satu kantong "Di luar ruas". */
       if (url.pathname === "/api/ringkas") {
-        const j = jendelaShift(url.searchParams.get("shift"));
+        /* ?dari=&sampai= (YYYY-MM-DD, WIT) untuk kartu Home yang memakai filter
+           periode. Tanpa keduanya, jawabannya tetap shift yang sedang berjalan
+           seperti semula. Pengelompokannya sama; yang berbeda hanya jendelanya. */
+        const dari = url.searchParams.get("dari");
+        const sampai = url.searchParams.get("sampai");
+        const sah = (t) => /^\d{4}-\d{2}-\d{2}$/.test(t || "");
+        const j = (sah(dari) && sah(sampai))
+          ? jendelaTanggal(dari, sampai)
+          : jendelaShift(url.searchParams.get("shift"));
         return json(await ringkasShift(env, j));
+      }
+
+      /* Sekali pakai, boleh diulang: mengisi nama ruas terdekat untuk baris
+         pelanggaran lama yang direkam sebelum kolomnya ada.
+
+         HANYA kolom penamaan yang diisi. `batas` dan `ruas` dibiarkan apa adanya
+         karena baris lama dinilai dengan aturan lama — menulis ulang keduanya
+         berarti memalsukan catatan. Baris lama akan tampil sebagai
+         "RD_X (sekitar)", yang memang jujur: kita tahu di dekat mana, tidak tahu
+         ia dinilai dengan batas ruas itu.
+
+         Dibatasi 15 baris sekali panggil. Terukur: 50 baris memakan ~15,7 ms
+         CPU, di atas anggaran 10 ms paket gratis — dan Worker yang melewatinya
+         dihentikan di tengah jalan (§21.6). Panggil berulang sampai `sisa`
+         bernilai 0.
+
+         PERINGATAN KUOTA: kedua kuerinya memindai seluruh tabel (tidak ada indeks
+         untuk ruas_dekat kosong), jadi tiap panggilan membaca dua kali jumlah
+         baris tabel. Jangan dipanggil otomatis atau berkala — hanya untuk
+         mengisi baris lama, lalu tinggalkan. */
+      if (url.pathname === "/api/isi-nama") {
+        const { results } = await env.DB.prepare(
+          `SELECT id, lat, lon FROM pelanggaran
+            WHERE (ruas_dekat IS NULL OR ruas_dekat = '')
+              AND lat IS NOT NULL AND lon IS NOT NULL
+            LIMIT 15`
+        ).all();
+
+        const perintah = [];
+        for (const r of results || []) {
+          const dk = ruasTerdekat(r.lat, r.lon);
+          if (!dk.nama) continue;
+          perintah.push(
+            env.DB.prepare(`UPDATE pelanggaran SET ruas_dekat = ?, jarak_ruas = ? WHERE id = ?`)
+              .bind(dk.nama, dk.jarak, r.id)
+          );
+        }
+        if (perintah.length) await env.DB.batch(perintah);
+
+        const sisa = await env.DB.prepare(
+          `SELECT COUNT(*) AS n FROM pelanggaran
+            WHERE (ruas_dekat IS NULL OR ruas_dekat = '')
+              AND lat IS NOT NULL AND lon IS NOT NULL`
+        ).first();
+        return json({ diisi: perintah.length, sisa: sisa?.n ?? 0 });
       }
 
       /* Sekali pakai, boleh diulang: mengisi nama ruas terdekat untuk baris
