@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 7 (21 September 2026)
+// Versi 8 (21 September 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -129,15 +129,48 @@
 //     per menit masih sepadan — tapi peristiwa observability turun dari ±8.640
 //     jadi ±1.440 per hari.
 //
-// Kalau setelah ini error CPU belum nol, sisanya ada di enam panggilan Wialon
-// itu sendiri, dan pilihan berikutnya adalah menurunkan TICK_COUNT menjadi 3
-// (resolusi 10 → 20 detik) atau pindah ke Workers Paid.
-//
 // > Pelajaran umum, sama dengan §21.6: pekerjaan yang benar tapi diulang pada
 // > tiap putaran menghabiskan anggaran yang tidak kelihatan di kode.
 //
+// Versi 8 MEMBAGI MENIT KE TIGA PEMICU (§21.11). v7 menghapus error CPU selama
+// 3,5 jam setelah dipasang, lalu error kembali tiap menit — saat dua tab Speed
+// Watcher terbuka dan front mulai bergerak. Enam putaran di SATU pemanggilan
+// memang tidak punya ruang: sedikit tambahan kerja saja sudah melewati 10 ms.
+//
+// Menurunkan jumlah cek (3 kali per menit) atau membayar Workers Paid sama-sama
+// ditolak: yang dibagi adalah JATAH CPU-nya, bukan jumlah cek-nya.
+//
+//  1. Tiga pemicu cron, masing-masing menjalankan satu BLOK berisi dua putaran:
+//       */1 * * * *   → blok A, detik 0 dan 10
+//       * * * * *     → blok B, detik 20 dan 30
+//       0-59 * * * *  → blok C, detik 40 dan 50
+//     Ketiganya berarti "tiap menit"; tulisannya dibedakan supaya Cloudflare
+//     menyimpannya sebagai tiga pemicu. Paket gratis mengizinkan 5 pemicu per
+//     akun, dan tiap pemanggilan punya jatah 10 ms sendiri. Jadwal cek tidak
+//     berubah sedikit pun: enam kali per menit, jeda 10 detik, aturan sama.
+//  2. Tiap blok diklaim ATOMIK di D1 sebelum dijalankan (INSERT … ON CONFLICT
+//     … WHERE), jadi satu blok tidak pernah dijalankan dua kali.
+//  3. Blok A adalah jangkar: sesudah bloknya sendiri ia mencoba mengklaim blok B
+//     dan C. Pemilik yang hadir sudah mengklaim sejak detik 0, jadi percobaan A
+//     gagal dan tidak terjadi apa-apa. Pemilik yang tidak muncul — pemicunya
+//     belum ditambahkan, ditolak, atau sesekali tidak berjalan — bloknya
+//     diambil alih A. Cek TIDAK PERNAH berkurang diam-diam; paling buruk A
+//     kembali memikul enam putaran seperti v7.
+//  4. Sesi Wialon dibagi lewat kv. Bila sebuah panggilan ditolak, nomor sesi
+//     terbaru dibaca dulu dari kv — mungkin bagian lain Worker baru saja login —
+//     dan login ulang hanya dilakukan bila memang belum ada yang lebih baru.
+//     Tanpa ini, isolate yang berbeda bisa saling membuat sesi lawannya basi
+//     (§6.5), dan tiap putaran membayar tiga panggilan Wialon tambahan.
+//  5. Batas tunggu 5 detik per panggilan Wialon, supaya satu jawaban yang
+//     menggantung tidak menahan sebuah blok melewati giliran blok berikutnya.
+//  6. Cron tidak lagi menjalankan siapkanTabel(): tabel sudah ada, dan
+//     pemeriksaan skema itu memakan tiga panggilan D1 pada setiap isolate baru.
+//     Jalur HTTP selain /api/unit dan /api/batas tetap menjalankannya.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
-// Cron: * * * * *
+// Cron (Settings → Triggers), TIGA-TIGANYA:  */1 * * * *  ·  * * * * *  ·  0-59 * * * *
+// Bila dasbor menolak salah satunya, cadangannya: B = * 0-23 * * *, C = * * 1-31 * *
+// Dengan hanya pemicu pertama, Worker tetap bekerja penuh (A memikul semua blok).
 // =============================================================================
 
 const HOST = "https://hst-api.wialon.com";
@@ -171,7 +204,32 @@ const RUAS = [{"n":"RD_EFO","b":15,"bb":[128.325754,0.792975,128.325759,0.793106
 
 const FLAGS      = 1025;      // 1 = nama unit, 1024 = pesan terakhir + lokasi
 const TICK_MS    = 10000;     // ambil data tiap 10 detik
-const TICK_COUNT = 6;         // 6 kali per menit
+const TICK_COUNT = 6;         // 6 kali per menit, dibagi ke tiga blok di bawah
+
+/* Satu menit = tiga blok × dua putaran. Setiap blok dijalankan pemicu cron
+   miliknya sendiri, jadi masing-masing punya jatah CPU 10 ms sendiri (§21.11). */
+const BLOK = [
+  { nama: "A", mulai: 0 },        // detik 0 dan 10
+  { nama: "B", mulai: 20000 },    // detik 20 dan 30
+  { nama: "C", mulai: 40000 },    // detik 40 dan 50
+];
+const PUTARAN_PER_BLOK = TICK_COUNT / BLOK.length;
+const BLOK_PETA = Object.fromEntries(BLOK.map((b) => [b.nama, b]));
+
+/* Ekspresi cron → blok. WAJIB sama persis dengan yang tertulis di
+   Settings → Triggers. Ekspresi yang tidak dikenal diperlakukan sebagai A:
+   klaim atomik membuat A kembar pun tidak menjalankan blok yang sama dua kali. */
+const PEMICU = {
+  "*/1 * * * *":  "A",
+  "* * * * *":    "B",
+  "0-59 * * * *": "C",
+  // Cadangan, bila dasbor menolak salah satu ekspresi di atas sebagai kembar.
+  "* 0-23 * * *": "B",
+  "* * 1-31 * *": "C",
+};
+
+// Batas tunggu satu panggilan Wialon. Biasanya ±200 ms.
+const BATAS_TUNGGU_MS = 5000;
 const WIT        = 9 * 60 * 60000;
 
 // Aturan deteksi — menyalin nilai bawaan readConfig() di speed-watcher.html.
@@ -227,7 +285,13 @@ async function wialon(svc, params, sid) {
   u.searchParams.set("svc", svc);
   u.searchParams.set("params", JSON.stringify(params));
   if (sid) u.searchParams.set("sid", sid);
-  return (await fetch(u, { method: "POST" })).json();
+  /* Tanpa batas tunggu, satu jawaban yang menggantung bisa menahan sebuah blok
+     melewati giliran blok berikutnya, lalu menimpa state yang lebih baru. */
+  const opsi = { method: "POST" };
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    opsi.signal = AbortSignal.timeout(BATAS_TUNGGU_MS);
+  }
+  return (await fetch(u, opsi)).json();
 }
 
 // ------------------------------------------------------------------ database
@@ -347,10 +411,25 @@ async function ambilUnit(env, denganRuas = true) {
 
   let r = await wialon("core/search_items", spec, sid);
   if (r.error) {
-    sidCache = null;
-    sid = await login(env);
-    r = await wialon("core/search_items", spec, sid);
-    if (r.error) throw new Error(`ambil unit gagal, kode ${r.error}`);
+    /* Sesi ditolak. Sebelum login ulang, lihat dulu apakah bagian lain Worker
+       — cron di mesin lain, atau /api/unit dari tab yang terbuka — baru saja
+       login dan menyimpan sesi yang lebih baru. Login dengan token yang sama
+       membuat sesi sebelumnya basi (§6.5); kalau setiap isolate langsung login
+       sendiri, keduanya saling menjatuhkan tanpa henti dan tiap putaran
+       membayar tiga panggilan Wialon tambahan. */
+    const terbaru = await ambilKV(env, "sid");
+    if (terbaru && terbaru !== sid) {
+      sid = terbaru;
+      sidCache = terbaru;
+      r = await wialon("core/search_items", spec, sid);
+    }
+    if (r.error) {
+      sidCache = null;
+      console.log(`sesi Wialon ditolak (kode ${r.error}), login ulang`);
+      sid = await login(env);
+      r = await wialon("core/search_items", spec, sid);
+      if (r.error) throw new Error(`ambil unit gagal, kode ${r.error}`);
+    }
   }
 
   return (r.items || []).map((it) => ({
@@ -575,7 +654,7 @@ async function siramTunda(env, tunda) {
 /* State dibaca sekali di awal pemanggilan dan ditulis sekali di akhir. Membaca
    lalu menulis ulang ±25 KB JSON pada tiap putaran menghabiskan anggaran CPU
    10 ms sebelum enam putaran selesai. */
-async function muatState(env) {
+async function muatSimpanan(env) {
   /* Galat baca D1 SENGAJA dibiarkan naik. Versi 5 membungkus pembacaan ini di
      dalam try, sehingga saat kuota baca habis state dianggap kosong: cron lalu
      berjalan tanpa ingatan dan bisa menimpa state tersimpan, dan kejadian yang
@@ -584,12 +663,17 @@ async function muatState(env) {
   const teks = await ambilKV(env, "state");
   let simpan = {};
   try { simpan = JSON.parse(teks || "{}"); } catch (e) { simpan = {}; }
-  return (simpan && typeof simpan.u === "object" && simpan.u) ? simpan.u : {};
+  if (!simpan || typeof simpan !== "object") simpan = {};
+  const obj = (x) => (x && typeof x === "object") ? x : {};
+  /* `blok` dan `oleh` mencatat menit terakhir tiap blok dijalankan dan oleh
+     pemicu mana — dibaca /api/status untuk memastikan ketiga pemicu hidup. */
+  return { u: obj(simpan.u), blok: obj(simpan.blok), oleh: obj(simpan.oleh) };
 }
 
-async function simpanState(env, state, jumlahUnit) {
-  await simpanKV(env, "state",
-    JSON.stringify({ u: state, cek: Date.now(), jumlah: jumlahUnit }));
+async function simpanState(env, s, jumlahUnit) {
+  await simpanKV(env, "state", JSON.stringify({
+    u: s.u, cek: Date.now(), jumlah: jumlahUnit, blok: s.blok, oleh: s.oleh,
+  }));
 }
 
 /* Satu putaran pemeriksaan seluruh armada. `state` dibawa masuk dan diubah di
@@ -692,12 +776,104 @@ async function satuPutaran(env, state, tunda) {
 
 /* Dipakai /api/uji: satu putaran lengkap berikut baca dan tulis state. */
 async function periksa(env) {
-  const state = await muatState(env);
+  const s = await muatSimpanan(env);
   const tunda = new Map();
-  const h = await satuPutaran(env, state, tunda);
+  const h = await satuPutaran(env, s.u, tunda);
   await siramTunda(env, tunda);
-  await simpanState(env, state, h.unit);
+  await simpanState(env, s, h.unit);
   return h;
+}
+
+// ------------------------------------------------- pembagian menit (§21.11)
+
+const tidurSampai = async (t) => {
+  const d = t - Date.now();
+  if (d > 0) await sleep(d);
+};
+
+/* Klaim atomik: berhasil hanya bila blok itu belum diklaim untuk menit `m`.
+   Dua pemanggilan yang berebut blok yang sama — pemilik yang terlambat dan A
+   yang mengambil alih, atau dua pemicu yang kebetulan dipetakan ke blok yang
+   sama — tidak mungkin sama-sama menang, karena SQLite menjalankan upsert ini
+   sebagai satu langkah. */
+function perintahKlaim(env, nama, m, oleh) {
+  return env.DB.prepare(
+    `INSERT INTO kv (k, v) VALUES (?, ?)
+       ON CONFLICT(k) DO UPDATE SET v = excluded.v
+       WHERE json_extract(kv.v, '$.m') IS NOT json_extract(excluded.v, '$.m')`
+  ).bind("blok:" + nama, JSON.stringify({ m, o: oleh }));
+}
+const menang = (r) => Number(r?.meta?.changes || 0) > 0;
+
+/* Pembaruan pelanggaran yang tertunda, sebagai daftar perintah — supaya bisa
+   dikirim dalam SATU batch bersama penyimpanan state dan klaim blok. */
+function ambilPerintahTunda(env, tunda) {
+  const perintah = [];
+  for (const [id, t] of tunda) perintah.push(perintahPerbarui(env, id, t.ev, t.tutup));
+  tunda.clear();
+  return perintah;
+}
+
+function perintahSimpanState(env, s, jumlahUnit) {
+  return env.DB.prepare(
+    `INSERT INTO kv (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v`
+  ).bind("state", JSON.stringify({
+    u: s.u, cek: Date.now(), jumlah: jumlahUnit, blok: s.blok, oleh: s.oleh,
+  }));
+}
+
+/* Dua putaran satu blok, dengan state `s` yang dibawa masuk.
+
+   Semua penulisan akhir blok — pembaruan pelanggaran, `tambahan` (klaim ambil
+   alih milik A), dan penyimpanan state bila `simpan` — dikirim dalam SATU
+   batch D1. Satu batch adalah satu transaksi: state dan baris pelanggaran
+   tidak pernah tersimpan setengah. Mengembalikan hasil untuk `tambahan`,
+   atau null bila penulisan gagal. */
+async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [] } = {}) {
+  const b = BLOK_PETA[nama];
+  const tunda = new Map();
+  const deretSah = [], deretTolak = [], gagal = [];
+  let langgar = 0, unit = 0;
+
+  for (let i = 0; i < PUTARAN_PER_BLOK; i++) {
+    await tidurSampai(T + b.mulai + i * TICK_MS);
+    try {
+      const h = await satuPutaran(env, s.u, tunda);
+      unit = h.unit;
+      deretSah.push(h.sah); deretTolak.push(h.ditolak);
+      langgar += h.melanggar;
+    } catch (e) {
+      deretSah.push("x"); deretTolak.push("x");
+      gagal.push(`${i + 1}: ${String(e.message || e)}`);
+    }
+  }
+
+  s.blok[nama] = T;
+  s.oleh[nama] = oleh;
+  if (unit) s.jumlah = unit;
+
+  const perintah = ambilPerintahTunda(env, tunda);
+  const ditulis = perintah.length;
+  perintah.push(...tambahan);
+  if (simpan) perintah.push(perintahSimpanState(env, s, s.jumlah || 0));
+
+  let hasil = [];
+  try {
+    for (let i = 0; i < perintah.length; i += 50) {
+      hasil.push(...(await env.DB.batch(perintah.slice(i, i + 50))));
+    }
+  } catch (e) {
+    gagal.push(`tulis: ${String(e.message || e)}`);
+    hasil = null;
+  }
+
+  console.log(
+    `blok=${nama}${oleh !== nama ? ` oleh=${oleh}` : ""} unit=${unit} ` +
+    `sah=${deretSah.join(",")} tolak=${deretTolak.join(",")} ` +
+    `langgar=${langgar} tulis=${ditulis}` +
+    (gagal.length ? ` | gagal ${gagal.join(" ; ")}` : "")
+  );
+  return hasil ? hasil.slice(ditulis, ditulis + tambahan.length) : null;
 }
 
 async function bersihkan(env) {
@@ -895,13 +1071,32 @@ export default {
         const p = await env.DB.prepare(
           `SELECT COUNT(*) AS n FROM pelanggaran WHERE tanggal=?`
         ).bind(hariIni).first();
+        /* Tiap blok: menit terakhir ia dijalankan (0 = menit ini, 1 = menit
+           lalu) dan oleh pemicu mana. Yang dicatat adalah MENIT, bukan detik:
+           blok C baru tersimpan di detik ke-50, jadi catatannya wajar berumur
+           hampir dua menit tepat sebelum C berikutnya selesai. `terbagi` benar
+           bila ketiga blok berjalan di menit ini atau menit lalu, masing-masing
+           oleh pemicunya sendiri — tanda ketiga pemicu cron hidup (§21.11). */
+        const kini = Date.now();
+        const menitIni = Math.floor(kini / 60000) * 60000;
+        const blok = {};
+        let terbagi = true;
+        for (const b of BLOK) {
+          const m = Number(meta.blok?.[b.nama]) || null;
+          const oleh = meta.oleh?.[b.nama] || null;
+          const lalu = m ? Math.round((menitIni - m) / 60000) : null;
+          blok[b.nama] = { menit_lalu: lalu, oleh };
+          if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
+        }
         return json({
-          terhubung: !!cek && Date.now() - cek < 120000,
+          terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
           pelanggaran_hari_ini: p?.n ?? 0,
           batas_luar: BATAS_LUAR,
           jumlah_ruas: RUAS.length,
+          terbagi,
+          blok,
         });
       }
 
@@ -1103,68 +1298,73 @@ export default {
     }
   },
 
-  // Cron menyala tiap menit, lalu memeriksa 6 kali dengan jeda 10 detik.
+  /* Tiap menit tiga pemicu menyala bersamaan; masing-masing menjalankan
+     bloknya sendiri dengan jatah CPU 10 ms sendiri (§21.11). */
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
-      await siapkanTabel(env);
+      let saya = PEMICU[event.cron];
+      if (!saya) {
+        console.log(`pemicu "${event.cron}" tidak dikenal, dijalankan sebagai blok A`);
+        saya = "A";
+      }
+      // Diratakan ke awal menit, supaya ketiga pemicu sepakat menit mana yang dikerjakan.
+      const T = Math.floor((Number(event.scheduledTime) || Date.now()) / 60000) * 60000;
 
-      /* Enam putaran berbagi satu anggaran CPU, jadi state hanya dibaca sekali
-         di awal dan ditulis sekali di akhir. Baris pelanggaran tetap ditulis
-         seketika saat kejadiannya terjadi. */
-      /* Kalau state tidak terbaca — misalnya kuota baca D1 habis — menit ini
-         dilewati utuh. Berjalan dengan state kosong berarti melupakan kejadian
-         yang sedang terbuka, lalu menimpa state yang masih benar. */
-      let state;
+      /* Klaim blok sendiri SEKARANG, di detik 0, jauh sebelum A mencoba
+         mengambil alihnya di detik ±10. Pemilik yang hadir selalu menang. */
+      let milik;
       try {
-        state = await muatState(env);
+        milik = menang(await perintahKlaim(env, saya, T, saya).run());
       } catch (e) {
-        console.log(`state tidak terbaca, menit ini dilewati: ${String(e.message || e)}`);
+        console.log(`blok=${saya} klaim gagal, menit ini dilewati: ${String(e.message || e)}`);
         return;
       }
-      let unitTerakhir = 0;
-
-      /* Enam baris log digabung jadi satu. Angka `sah` per putaran tetap
-         tercatat — dari deret itu kelihatan apakah putaran 2–6 benar-benar
-         membawa data baru atau hanya menanyakan ulang yang sama — tapi
-         peristiwa observability turun dari ±8.640 jadi ±1.440 per hari. */
-      const tunda = new Map();
-      const deretSah = [], deretTolak = [], gagal = [];
-      let totalLanggar = 0;
-
-      for (let i = 0; i < TICK_COUNT; i++) {
-        try {
-          const h = await satuPutaran(env, state, tunda);
-          unitTerakhir = h.unit;
-          deretSah.push(h.sah); deretTolak.push(h.ditolak);
-          totalLanggar += h.melanggar;
-        } catch (e) {
-          deretSah.push("x"); deretTolak.push("x");
-          gagal.push(`${i + 1}: ${String(e.message || e)}`);
-        }
-        if (i < TICK_COUNT - 1) await sleep(TICK_MS);
+      if (!milik) {
+        console.log(`blok=${saya} sudah dijalankan pemicu lain pada menit ini, dilewati`);
+        return;
       }
 
-      /* Disiram sebelum state disimpan, tapi kegagalannya tidak boleh
-         membatalkan penyimpanan state: state-lah yang memegang kejadian yang
-         sedang terbuka. Baris yang gagal diperbarui akan tersusul menit
-         berikutnya, dan kalau unitnya berhenti mengirim data, pembersihan
-         harian menutup kejadian yatim. */
-      let ditulis = 0;
+      // Blok sendiri. Kalau state tidak terbaca, menit ini dilewati utuh (§21.8).
+      await tidurSampai(T + BLOK_PETA[saya].mulai);
+      let s;
       try {
-        ditulis = await siramTunda(env, tunda);
+        s = await muatSimpanan(env);
       } catch (e) {
-        gagal.push(`tulis: ${String(e.message || e)}`);
+        console.log(`blok=${saya} dilewati, state tidak terbaca: ${String(e.message || e)}`);
+        return;
+      }
+      if (saya !== "A") {
+        await jalankanBlok(env, saya, T, saya, s);
+        return;
       }
 
-      await simpanState(env, state, unitTerakhir);
+      /* A: bloknya sendiri, lalu percobaan mengambil alih B dan C — ikut dalam
+         batch yang sama dengan penyimpanan state A. Pemilik yang hadir sudah
+         mengklaim di detik 0, jadi percobaan ini gagal dan tidak terjadi apa-apa.
+         State tetap disimpan di batch itu karena pemilik B memuatnya di detik 20. */
+      const hasil = await jalankanBlok(env, "A", T, "A", s, {
+        tambahan: ["B", "C"].map((x) => perintahKlaim(env, x, T, "A")),
+      });
+      const ambilB = !!hasil && menang(hasil[0]);
+      const ambilC = !!hasil && menang(hasil[1]);
 
-      console.log(
-        `unit=${unitTerakhir} sah=${deretSah.join(",")} tolak=${deretTolak.join(",")} ` +
-        `langgar=${totalLanggar} tulis=${ditulis}` +
-        (gagal.length ? ` | gagal ${gagal.join(" ; ")}` : "")
-      );
+      if (ambilB) {
+        console.log("blok=B tidak diklaim pemiliknya pada menit ini — diambil alih A");
+        // Tidak ada pemicu lain yang menyentuh state di antaranya: yang dipegang masih segar.
+        await jalankanBlok(env, "B", T, "A", s, { simpan: !ambilC });
+      }
+      if (ambilC) {
+        console.log("blok=C tidak diklaim pemiliknya pada menit ini — diambil alih A");
+        if (!ambilB) {
+          // B dijalankan pemiliknya di antaranya: state yang dipegang sudah basi.
+          await tidurSampai(T + BLOK_PETA.C.mulai);
+          try { s = await muatSimpanan(env); }
+          catch (e) { console.log(`blok=C dilewati, state tidak terbaca: ${String(e.message || e)}`); s = null; }
+        }
+        if (s) await jalankanBlok(env, "C", T, "A", s);
+      }
 
-      const d = new Date();
+      const d = new Date(T);
       if (d.getUTCHours() === 15 && d.getUTCMinutes() < 2) await bersihkan(env);
     })());
   },
