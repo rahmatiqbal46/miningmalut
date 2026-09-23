@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 8 (21 September 2026)
+// Versi 8.1 (21 September 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -167,10 +167,19 @@
 //     pemeriksaan skema itu memakan tiga panggilan D1 pada setiap isolate baru.
 //     Jalur HTTP selain /api/unit dan /api/batas tetap menjalankannya.
 //
+// Versi 8.1 — blok dibagikan menurut URUTAN KEDATANGAN, bukan tulisan cron.
+// v8 memetakan tulisan ekspresi cron ke blok (`*/1 * * * *` → A, dst.). Dua
+// puluh menit sesudah dua pemicu ditambahkan, blok B dan C masih dijalankan A:
+// tulisan yang sampai ke Worker tidak sama dengan yang dipetakan, atau pemicunya
+// tidak berjalan sama sekali — dari luar keduanya tampak sama. Sekarang setiap
+// pemanggilan mengklaim blok kosong pertama dengan urutan A → B → C, jadi
+// tulisan cron-nya tidak lagi berpengaruh apa pun. Tulisan itu tetap dicatat
+// dan ditampilkan /api/status (`pemicu`), supaya bisa dibaca dari luar.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
-// Cron (Settings → Triggers), TIGA-TIGANYA:  */1 * * * *  ·  * * * * *  ·  0-59 * * * *
-// Bila dasbor menolak salah satunya, cadangannya: B = * 0-23 * * *, C = * * 1-31 * *
-// Dengan hanya pemicu pertama, Worker tetap bekerja penuh (A memikul semua blok).
+// Cron (Settings → Triggers): TIGA pemicu yang masing-masing menyala tiap menit,
+// tulisannya bebas asal berbeda, misalnya  */1 * * * *  ·  * * * * *  ·  0-59 * * * *
+// Dengan hanya satu pemicu, Worker tetap bekerja penuh (blok A memikul semuanya).
 // =============================================================================
 
 const HOST = "https://hst-api.wialon.com";
@@ -216,17 +225,9 @@ const BLOK = [
 const PUTARAN_PER_BLOK = TICK_COUNT / BLOK.length;
 const BLOK_PETA = Object.fromEntries(BLOK.map((b) => [b.nama, b]));
 
-/* Ekspresi cron → blok. WAJIB sama persis dengan yang tertulis di
-   Settings → Triggers. Ekspresi yang tidak dikenal diperlakukan sebagai A:
-   klaim atomik membuat A kembar pun tidak menjalankan blok yang sama dua kali. */
-const PEMICU = {
-  "*/1 * * * *":  "A",
-  "* * * * *":    "B",
-  "0-59 * * * *": "C",
-  // Cadangan, bila dasbor menolak salah satu ekspresi di atas sebagai kembar.
-  "* 0-23 * * *": "B",
-  "* * 1-31 * *": "C",
-};
+/* Blok TIDAK dipetakan dari tulisan ekspresi cron. Setiap pemanggilan
+   mengklaim blok kosong pertama (A → B → C), jadi pemicu mana pun yang datang
+   duluan menjadi A. Tulisan cron-nya hanya dicatat untuk /api/status. */
 
 // Batas tunggu satu panggilan Wialon. Biasanya ±200 ms.
 const BATAS_TUNGGU_MS = 5000;
@@ -796,12 +797,12 @@ const tidurSampai = async (t) => {
    yang mengambil alih, atau dua pemicu yang kebetulan dipetakan ke blok yang
    sama — tidak mungkin sama-sama menang, karena SQLite menjalankan upsert ini
    sebagai satu langkah. */
-function perintahKlaim(env, nama, m, oleh) {
+function perintahKlaim(env, nama, m, oleh, cron) {
   return env.DB.prepare(
     `INSERT INTO kv (k, v) VALUES (?, ?)
        ON CONFLICT(k) DO UPDATE SET v = excluded.v
        WHERE json_extract(kv.v, '$.m') IS NOT json_extract(excluded.v, '$.m')`
-  ).bind("blok:" + nama, JSON.stringify({ m, o: oleh }));
+  ).bind("blok:" + nama, JSON.stringify({ m, o: oleh, c: cron ?? null }));
 }
 const menang = (r) => Number(r?.meta?.changes || 0) > 0;
 
@@ -1079,13 +1080,24 @@ export default {
            oleh pemicunya sendiri — tanda ketiga pemicu cron hidup (§21.11). */
         const kini = Date.now();
         const menitIni = Math.floor(kini / 60000) * 60000;
+        /* Tulisan cron yang terakhir mengklaim tiap blok — untuk membaca dari
+           luar pemicu mana yang benar-benar menyala (§21.11). */
+        const klaim = {};
+        try {
+          const { results } = await env.DB.prepare(
+            `SELECT k, v FROM kv WHERE k IN ('blok:A', 'blok:B', 'blok:C')`
+          ).all();
+          for (const r of results || []) {
+            try { klaim[String(r.k).slice(5)] = JSON.parse(r.v); } catch (e) {}
+          }
+        } catch (e) {}
         const blok = {};
         let terbagi = true;
         for (const b of BLOK) {
           const m = Number(meta.blok?.[b.nama]) || null;
           const oleh = meta.oleh?.[b.nama] || null;
           const lalu = m ? Math.round((menitIni - m) / 60000) : null;
-          blok[b.nama] = { menit_lalu: lalu, oleh };
+          blok[b.nama] = { menit_lalu: lalu, oleh, pemicu: klaim[b.nama]?.c ?? null };
           if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
         }
         return json({
@@ -1298,31 +1310,32 @@ export default {
     }
   },
 
-  /* Tiap menit tiga pemicu menyala bersamaan; masing-masing menjalankan
-     bloknya sendiri dengan jatah CPU 10 ms sendiri (§21.11). */
+  /* Tiap menit beberapa pemicu menyala bersamaan. Masing-masing mengklaim blok
+     kosong pertama (A → B → C) dan menjalankannya dengan jatah CPU 10 ms
+     sendiri (§21.11). Tulisan ekspresi cron-nya tidak berpengaruh. */
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
-      let saya = PEMICU[event.cron];
-      if (!saya) {
-        console.log(`pemicu "${event.cron}" tidak dikenal, dijalankan sebagai blok A`);
-        saya = "A";
-      }
-      // Diratakan ke awal menit, supaya ketiga pemicu sepakat menit mana yang dikerjakan.
+      const cron = String(event.cron ?? "");
+      // Diratakan ke awal menit, supaya semua pemicu sepakat menit mana yang dikerjakan.
       const T = Math.floor((Number(event.scheduledTime) || Date.now()) / 60000) * 60000;
 
-      /* Klaim blok sendiri SEKARANG, di detik 0, jauh sebelum A mencoba
-         mengambil alihnya di detik ±10. Pemilik yang hadir selalu menang. */
-      let milik;
+      /* Klaim SEKARANG, di detik 0, jauh sebelum pemegang A mencoba mengambil
+         alih blok kosong di detik ±10. Tiap klaim satu langkah atomik di D1,
+         jadi dua pemanggilan tidak pernah memegang blok yang sama. */
+      let saya = null;
       try {
-        milik = menang(await perintahKlaim(env, saya, T, saya).run());
+        for (const b of BLOK) {
+          if (menang(await perintahKlaim(env, b.nama, T, b.nama, cron).run())) { saya = b.nama; break; }
+        }
       } catch (e) {
-        console.log(`blok=${saya} klaim gagal, menit ini dilewati: ${String(e.message || e)}`);
+        console.log(`pemicu "${cron}" klaim gagal, menit ini dilewati: ${String(e.message || e)}`);
         return;
       }
-      if (!milik) {
-        console.log(`blok=${saya} sudah dijalankan pemicu lain pada menit ini, dilewati`);
+      if (!saya) {
+        console.log(`pemicu "${cron}": ketiga blok menit ini sudah dipegang, dilewati`);
         return;
       }
+      console.log(`blok=${saya} diklaim pemicu "${cron}"`);
 
       // Blok sendiri. Kalau state tidak terbaca, menit ini dilewati utuh (§21.8).
       await tidurSampai(T + BLOK_PETA[saya].mulai);
@@ -1343,7 +1356,7 @@ export default {
          mengklaim di detik 0, jadi percobaan ini gagal dan tidak terjadi apa-apa.
          State tetap disimpan di batch itu karena pemilik B memuatnya di detik 20. */
       const hasil = await jalankanBlok(env, "A", T, "A", s, {
-        tambahan: ["B", "C"].map((x) => perintahKlaim(env, x, T, "A")),
+        tambahan: ["B", "C"].map((x) => perintahKlaim(env, x, T, "A", cron)),
       });
       const ambilB = !!hasil && menang(hasil[0]);
       const ambilC = !!hasil && menang(hasil[1]);
