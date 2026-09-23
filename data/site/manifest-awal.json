@@ -1,0 +1,149 @@
+{
+ "v": 1,
+ "catatan": "Data awal gudang data site. Berkas disajikan dari repo (Cloudflare Pages). Admin menyemainya ke Supabase dari Digital Twin.",
+ "jenis": {
+  "topo": {
+   "aktif": 2,
+   "versi": [
+    {
+     "versi": 1,
+     "judul": "Topo 15 Sep 2026",
+     "tanggal": "2026-09-15",
+     "berkas": {
+      "grid": "repo:data/site/topo-2026-09-15.dtg"
+     },
+     "meta": {
+      "e0": 424480.0,
+      "n0": 85380.0,
+      "dx": 3.0,
+      "crs": "EPSG:32652",
+      "tanggal": "2026-09-15",
+      "judul": "Topo 15 Sep 2026",
+      "sumber": "pakal_15_september_2026.str",
+      "format": "DTG1",
+      "nx": 1216,
+      "ny": 1141,
+      "z0": 0.0,
+      "skala": 0.01,
+      "nodata": 0,
+      "prediksi": "2d",
+      "shuffle": true
+     }
+    },
+    {
+     "versi": 2,
+     "judul": "Topo 22 Sep 2026 siang",
+     "tanggal": "2026-09-22",
+     "berkas": {
+      "grid": "repo:data/site/topo-2026-09-22.dtg"
+     },
+     "meta": {
+      "e0": 424480.0,
+      "n0": 85380.0,
+      "dx": 3.0,
+      "crs": "EPSG:32652",
+      "tanggal": "2026-09-22",
+      "judul": "Topo 22 Sep 2026 siang",
+      "sumber": "pakal_22_september_2026_siang.str",
+      "format": "DTG1",
+      "nx": 1216,
+      "ny": 1141,
+      "z0": 0.0,
+      "skala": 0.01,
+      "nodata": 0,
+      "prediksi": "2d",
+      "shuffle": true
+     }
+    }
+   ]
+  },
+  "citra": {
+   "aktif": 2,
+   "versi": [
+    {
+     "versi": 1,
+     "judul": "Citra lama AMORA",
+     "tanggal": null,
+     "berkas": {
+      "gambar": "repo:data/site/citra-2026-05-amora.webp"
+     },
+     "meta": {
+      "e_min": 424500.768191,
+      "e_max": 427196.171189,
+      "n_min": 85716.13078,
+      "n_max": 87983.494964,
+      "lebar": 3000,
+      "tinggi": 2523,
+      "sumber": "BASEMAP_B64 amora.html"
+     }
+    },
+    {
+     "versi": 2,
+     "judul": "Citra satelit 21 Agu 2026",
+     "tanggal": "2026-08-21",
+     "berkas": {
+      "gambar": "repo:data/site/citra-2026-08-21.webp"
+     },
+     "meta": {
+      "e_min": 424480.0,
+      "e_max": 428125.0,
+      "n_min": 85380.0,
+      "n_max": 88800.0,
+      "lebar": 4096,
+      "tinggi": 3843,
+      "px": 0.889892578125,
+      "cakupan": 0.5864,
+      "sumber": "Pakal_21_08_2026.tif (EPSG:4326, 0,4 m) diproyeksikan ke UTM 52N"
+     }
+    }
+   ]
+  },
+  "jalan": {
+   "aktif": 1,
+   "versi": [
+    {
+     "versi": 1,
+     "judul": "Jalan Mei 2026 (AMORA)",
+     "tanggal": "2026-05-31",
+     "berkas": {
+      "data": "repo:data/site/jalan-v1.json"
+     },
+     "meta": {
+      "ruas": 20,
+      "bagian": 30
+     }
+    }
+   ]
+  },
+  "area": {
+   "aktif": 1,
+   "versi": [
+    {
+     "versi": 1,
+     "judul": "Area kerja awal",
+     "tanggal": "2026-09-23",
+     "berkas": {
+      "data": "repo:data/site/area-v1.json"
+     },
+     "meta": {
+      "area": 12
+     }
+    }
+   ]
+  },
+  "armada": {
+   "aktif": 1,
+   "versi": [
+    {
+     "versi": 1,
+     "judul": "Model 3D dari master unit EVA",
+     "tanggal": "2026-09-23",
+     "berkas": {
+      "data": "repo:data/site/armada-v1.json"
+     },
+     "meta": {}
+    }
+   ]
+  }
+ }
+}

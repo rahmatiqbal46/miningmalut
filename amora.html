@@ -842,7 +842,8 @@ const map=L.map('map',{
 });
 map.attributionControl.setPrefix('AMORA v1.0');
 const imgBounds=[[IMG_BOUNDS.y_min,IMG_BOUNDS.x_min],[IMG_BOUNDS.y_max,IMG_BOUNDS.x_max]];
-L.imageOverlay('data:image/jpeg;base64,'+BASEMAP_B64,imgBounds,{opacity:1,interactive:false}).addTo(map);
+/* Diberi nama supaya citra dari gudang data site bisa ditumpuk di atasnya (skrip amora-gudang). */
+const petaDasar=L.imageOverlay('data:image/jpeg;base64,'+BASEMAP_B64,imgBounds,{opacity:1,interactive:false}).addTo(map);
 
 function getRoadBounds(){
   let xmn=Infinity,xmx=-Infinity,ymn=Infinity,ymx=-Infinity;
@@ -856,7 +857,8 @@ const rb=getRoadBounds();const PAD=150;
 map.fitBounds([[rb.ymn-PAD,rb.xmn-PAD],[rb.ymx+PAD,rb.xmx+PAD]],{animate:false});
 map.setMaxBounds([[IMG_BOUNDS.y_min-200,IMG_BOUNDS.x_min-200],[IMG_BOUNDS.y_max+200,IMG_BOUNDS.x_max+200]]);
 
-const graph=buildGraph(ROAD_DATA.polylines);
+/* let: dibangun ulang bila jalan dari gudang data site berganti (skrip amora-gudang). */
+let graph=buildGraph(ROAD_DATA.polylines);
 
 // === STATE ===
 const state={
@@ -1091,6 +1093,585 @@ function updateUI(){
     `<span class="pill">${distFmt}</span>`;
 }
 updateUI();
+</script>
+<script id="gudang-site">
+/* =============================================================================
+   GudangSite — klien gudang data site MiningMalut (23 September 2026)
+
+   Dipakai bersama oleh digital-twin.html, speed-watcher.html, amora.html, dan
+   minedev.html. Salinan yang sama ditanam di tiap berkas (aturan satu berkas
+   per halaman); kalau diubah, ubah keempatnya.
+
+   - Daftar isi (versi aktif tiap jenis) dari Supabase lewat site_manifest().
+     Gagal atau belum disemai → data awal di repo (data/site/manifest-awal.json).
+   - Berkas besar (topo .dtg, citra .webp) disimpan di Cache Storage peramban
+     per jalur. Jalur tiap versi tidak pernah dipakai ulang, jadi berkas cukup
+     diunduh sekali per perangkat per versi — kuota unduh Supabase gratis 5 GB
+     per bulan tidak habis oleh orang yang membuka halaman berkali-kali.
+   - "repo:<jalur>" = berkas statis di Cloudflare Pages (gratis, tanpa kuota).
+     "sb:<jalur>"   = bucket privat site-data di Supabase (butuh login).
+   ============================================================================= */
+(function (global) {
+  'use strict';
+  var KONFIG = Object.assign({
+    supaUrl: 'https://qblivboqavhlugydhmjr.supabase.co',
+    supaKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE',
+    bucket: 'site-data',
+    dasarRepo: '',                 // '' = relatif terhadap halaman (semua modul ada di akar situs)
+    manifestAwal: 'data/site/manifest-awal.json',
+    cache: 'miningmalut-site-v1'
+  }, global.__GUDANG_KONFIG || {});
+
+  var JENIS = ['topo', 'citra', 'jalan', 'area', 'armada'];
+
+  // ------------------------------------------------------------------ sesi
+  function sesi() {
+    try {
+      var a = JSON.parse(localStorage.getItem('pakal_auth') || 'null');
+      if (a && a.access_token && (!a.expires_at || a.expires_at * 1000 > Date.now() + 5000)) {
+        return { token: a.access_token, email: String((a.user && a.user.email) || '').toLowerCase() };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function galat(pesan, kode, status) {
+    var e = new Error(pesan);
+    e.kode = kode; e.status = status;
+    return e;
+  }
+
+  // ------------------------------------------------------------------ RPC
+  async function rpc(nama, args, opsi) {
+    opsi = opsi || {};
+    var s = sesi();
+    if (!s && !opsi.anon) throw galat('Sesi login berakhir', 'sesi', 401);
+    var r;
+    try {
+      r = await fetch(KONFIG.supaUrl + '/rest/v1/rpc/' + nama, {
+        method: 'POST',
+        headers: {
+          'apikey': KONFIG.supaKey,
+          'Authorization': 'Bearer ' + (s ? s.token : KONFIG.supaKey),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(args || {}),
+        signal: opsi.signal
+      });
+    } catch (e) {
+      throw galat('Supabase tidak terjangkau', 'jaringan', 0);
+    }
+    var teks = await r.text();       // RPC tanpa nilai kembali dibalas 204 tanpa isi (§16)
+    var isi = null;
+    if (teks) { try { isi = JSON.parse(teks); } catch (e) { isi = teks; } }
+    if (!r.ok) {
+      var msg = (isi && (isi.message || isi.hint || isi.error)) || ('HTTP ' + r.status);
+      if (r.status === 401 || /JWT/i.test(String(msg))) throw galat('Sesi login berakhir', 'sesi', r.status);
+      if (r.status === 404 && /function|could not find/i.test(String(msg))) throw galat('Gudang data site belum dipasang di Supabase', 'belum', 404);
+      throw galat(String(msg), 'server', r.status);
+    }
+    return isi;
+  }
+
+  // ------------------------------------------------------------------ Cache Storage
+  /* Satu cache untuk semua modul (satu asal), jadi berkas yang sudah diunduh
+     Digital Twin langsung dipakai AMORA, Speed Watcher, dan Water & Road.
+     Hari terakhir tiap kunci dipakai dicatat di localStorage; berkas yang 30
+     hari tidak dipakai di perangkat ini dibuang, paling sering sekali sehari. */
+  var AWALAN = 'https://gudang-site.miningmalut/', PAKAI = 'gudang_site_pakai', RAPI = 'gudang_site_rapi';
+  function kunciCache(k) { return AWALAN + encodeURIComponent(k); }
+  function hariIni() { return Math.floor(Date.now() / 86400000); }
+  function tandaiPakai(k) {
+    try {
+      var m = JSON.parse(localStorage.getItem(PAKAI) || '{}');
+      if (m[k] === hariIni()) return;
+      m[k] = hariIni();
+      localStorage.setItem(PAKAI, JSON.stringify(m));
+    } catch (e) {}
+  }
+  async function dariCache(k) {
+    try {
+      if (!global.caches) return null;
+      var c = await caches.open(KONFIG.cache);
+      var r = await c.match(kunciCache(k));
+      if (r) tandaiPakai(k);
+      return r || null;
+    } catch (e) { return null; }
+  }
+  async function keCache(k, blob, tipe) {
+    try {
+      if (!global.caches) return;
+      var c = await caches.open(KONFIG.cache);
+      await c.put(kunciCache(k), new Response(blob, { headers: { 'Content-Type': tipe || 'application/octet-stream' } }));
+      tandaiPakai(k);
+    } catch (e) { /* kuota penuh / mode privat: berjalan tanpa cache */ }
+  }
+  async function rapikanCache(hari) {
+    if (!global.caches) return 0;
+    hari = hari || 30;
+    var m; try { m = JSON.parse(localStorage.getItem(PAKAI) || '{}'); } catch (e) { m = {}; }
+    var kini = hariIni(), c = await caches.open(KONFIG.cache), daftar = await c.keys(), ada = {}, buang = 0;
+    for (var i = 0; i < daftar.length; i++) {
+      var k = decodeURIComponent(daftar[i].url.slice(AWALAN.length));
+      ada[k] = 1;
+      if (m[k] == null) { m[k] = kini; continue; }              // belum tercatat: mulai dihitung hari ini
+      if (kini - m[k] > hari) { await c.delete(daftar[i]); delete m[k]; buang++; }
+    }
+    Object.keys(m).forEach(function (k) { if (!ada[k]) delete m[k]; });
+    try { localStorage.setItem(PAKAI, JSON.stringify(m)); localStorage.setItem(RAPI, String(kini)); } catch (e) {}
+    return buang;
+  }
+  function jadwalRapikan() {
+    try { if (localStorage.getItem(RAPI) === String(hariIni())) return; } catch (e) { return; }
+    setTimeout(function () { rapikanCache(30).catch(function () {}); }, 15000);
+  }
+
+  // ------------------------------------------------------------------ berkas
+  function urlRepo(jalur) {
+    return (KONFIG.dasarRepo || '') + jalur;
+  }
+
+  /* Mengambil berkas dari lokasi "repo:…" atau "sb:…". Mengembalikan Blob.
+     `tiap` (opsional) dipanggil dengan (byte diterima, byte total) untuk progres. */
+  async function ambilBerkas(lokasi, tiap) {
+    if (!lokasi || typeof lokasi !== 'string') throw galat('Lokasi berkas kosong', 'berkas');
+    var ada = await dariCache(lokasi);
+    if (ada) return await ada.blob();
+    var r, i = lokasi.indexOf(':'), skema = lokasi.slice(0, i), jalur = lokasi.slice(i + 1);
+    if (skema === 'repo') {
+      r = await fetch(urlRepo(jalur), { cache: 'force-cache' });
+    } else if (skema === 'sb') {
+      var s = sesi();
+      if (!s) throw galat('Sesi login berakhir', 'sesi', 401);
+      r = await fetch(KONFIG.supaUrl + '/storage/v1/object/authenticated/' + KONFIG.bucket + '/' + jalur.split('/').map(encodeURIComponent).join('/'), {
+        headers: { 'apikey': KONFIG.supaKey, 'Authorization': 'Bearer ' + s.token }
+      });
+    } else {
+      throw galat('Lokasi berkas tidak dikenal: ' + lokasi, 'berkas');
+    }
+    if (!r.ok) throw galat('Berkas tidak bisa diambil (' + r.status + ')', 'berkas', r.status);
+    var total = Number(r.headers.get('Content-Length')) || 0, blob;
+    if (tiap && r.body && r.body.getReader) {
+      var rd = r.body.getReader(), potong = [], n = 0;
+      for (;;) {
+        var x = await rd.read();
+        if (x.done) break;
+        potong.push(x.value); n += x.value.length;
+        try { tiap(n, total); } catch (e) {}
+      }
+      blob = new Blob(potong, { type: r.headers.get('Content-Type') || '' });
+    } else {
+      blob = await r.blob();
+    }
+    await keCache(lokasi, blob, blob.type);
+    return blob;
+  }
+
+  // ------------------------------------------------------------------ daftar isi
+  /* Bentuk daftar isi yang dipakai semua modul:
+       { sumber:'server'|'awal', cap:'area:1,…', jenis:{ topo:{versi,judul,tanggal,meta,berkas,…}, … } } */
+  var awalMemo = null;
+  async function manifestAwal() {
+    if (awalMemo) return awalMemo;
+    var r = await fetch(urlRepo(KONFIG.manifestAwal), { cache: 'no-cache' });
+    if (!r.ok) throw galat('Data awal tidak ditemukan', 'awal', r.status);
+    var m = await r.json(), jenis = {}, cap = [];
+    Object.keys(m.jenis || {}).sort().forEach(function (k) {
+      var j = m.jenis[k], akt = (j.versi || []).filter(function (v) { return v.versi === j.aktif; })[0];
+      if (akt) {
+        jenis[k] = Object.assign({ jumlah_versi: (j.versi || []).length, dibuat_oleh: 'data awal' }, akt);
+        cap.push(k + ':' + akt.versi);
+      }
+    });
+    awalMemo = { sumber: 'awal', cap: cap.join(','), jenis: jenis, lengkap: m };
+    return awalMemo;
+  }
+
+  /* Daftar isi aktif. Server lebih dulu; bila gagal, belum dipasang, atau belum
+     disemai, data awal repo. `alasan` menjelaskan kenapa jatuh ke data awal. */
+  async function manifest() {
+    var alasan = null;
+    jadwalRapikan();
+    try {
+      var m = await rpc('site_manifest', {});
+      if (m && m.jenis && Object.keys(m.jenis).length) {
+        m.sumber = 'server';
+        // jenis yang belum pernah diterbitkan di server diisi dari data awal repo
+        var kurang = JENIS.filter(function (k) { return !m.jenis[k]; });
+        if (kurang.length) {
+          try {
+            var aw = await manifestAwal();
+            kurang.forEach(function (k) { if (aw.jenis[k]) m.jenis[k] = Object.assign({ dariAwal: true }, aw.jenis[k]); });
+          } catch (e) { /* biarkan kosong */ }
+        }
+        return m;
+      }
+      alasan = 'kosong';
+    } catch (e) {
+      alasan = e.kode || 'server';
+    }
+    var a = await manifestAwal();
+    return Object.assign({}, a, { alasan: alasan });
+  }
+
+  async function cap() {
+    return await rpc('site_cap', {});
+  }
+
+  /* Isi data kecil (jalan, area, armada) untuk sebuah entri daftar isi. */
+  async function ambilData(jenis, entri) {
+    if (!entri) throw galat('Tidak ada ' + jenis, 'data');
+    var lok = entri.berkas && entri.berkas.data;
+    var kunci = lok ? lok : ('data:' + jenis + ':' + entri.versi);
+    var ada = await dariCache(kunci);
+    if (ada) return JSON.parse(await ada.text());
+    var isi;
+    if (lok) {
+      var blob = await ambilBerkas(lok);
+      isi = JSON.parse(await blob.text());
+      if (jenis === 'jalan' && isi.jalan) isi = isi.jalan;       // berkas awal memuat {jalan, worker}
+      await keCache(kunci, new Blob([JSON.stringify(isi)]), 'application/json');
+      return isi;
+    }
+    var r = await rpc('site_data', { p_jenis: jenis, p_versi: entri.versi });
+    isi = r && r.data;
+    if (!isi) throw galat('Isi ' + jenis + ' v' + entri.versi + ' kosong', 'data');
+    await keCache(kunci, new Blob([JSON.stringify(isi)]), 'application/json');
+    return isi;
+  }
+
+  // ------------------------------------------------------------------ topo DTG1
+  async function gunzipKe(buf) {
+    var u = new Uint8Array(buf);
+    if (u[0] === 0x1f && u[1] === 0x8b) {
+      var ds = new DecompressionStream('gzip');
+      var out = new Response(new Blob([u]).stream().pipeThrough(ds));
+      return new Uint8Array(await out.arrayBuffer());
+    }
+    return u;
+  }
+
+  /* Membaca grid topo DTG1 → {h, z:Float32Array (NaN = kosong), nx, ny}.
+     Isi: 'DTG1' + panjang header (uint32 LE) + header JSON + nilai uint16
+     berprediksi-2D (a+b-c) yang byte-nya dipisah rendah/tinggi, lalu gzip. */
+  async function bacaDTG(bufAtauBlob) {
+    var buf = bufAtauBlob instanceof Blob ? await bufAtauBlob.arrayBuffer() : bufAtauBlob;
+    var u = await gunzipKe(buf);
+    if (u[0] !== 68 || u[1] !== 84 || u[2] !== 71 || u[3] !== 49) throw galat('Bukan berkas topo DTG1', 'topo');
+    var L = u[4] | (u[5] << 8) | (u[6] << 16) | (u[7] << 24);
+    var h = JSON.parse(new TextDecoder().decode(u.subarray(8, 8 + L)));
+    var nx = h.nx, ny = h.ny, n = nx * ny, off = 8 + L;
+    if (u.length < off + 2 * n) throw galat('Berkas topo terpotong', 'topo');
+    var lo = u.subarray(off, off + n), hi = u.subarray(off + n, off + 2 * n);
+    var a = new Uint16Array(n);
+    for (var i = 0; i < n; i++) a[i] = lo[i] | (hi[i] << 8);
+    // kebalikan prediksi 2D = jumlah kumulatif dua arah (mod 2^16)
+    for (var j = 1; j < ny; j++) { var b = j * nx, p = b - nx; for (var x = 0; x < nx; x++) a[b + x] = (a[b + x] + a[p + x]) & 0xFFFF; }
+    for (j = 0; j < ny; j++) { b = j * nx; for (x = 1; x < nx; x++) a[b + x] = (a[b + x] + a[b + x - 1]) & 0xFFFF; }
+    var z = new Float32Array(n), z0 = h.z0 || 0, sk = h.skala || 0.01;
+    for (i = 0; i < n; i++) z[i] = a[i] ? z0 + (a[i] - 1) * sk : NaN;
+    return { h: h, z: z, nx: nx, ny: ny, e0: h.e0, n0: h.n0, dx: h.dx };
+  }
+
+  /* Menulis grid (Float32Array, NaN = kosong) ke DTG1 terkompresi → Blob. */
+  async function tulisDTG(g, header) {
+    var nx = g.nx, ny = g.ny, n = nx * ny, z = g.z, zmin = Infinity;
+    for (var i = 0; i < n; i++) if (z[i] === z[i] && z[i] < zmin) zmin = z[i];
+    var z0 = isFinite(zmin) ? Math.floor(zmin) : 0;
+    var q = new Int32Array(n);
+    for (i = 0; i < n; i++) {
+      if (z[i] === z[i]) { var v = Math.round((z[i] - z0) * 100) + 1; q[i] = v > 65534 ? 65534 : v; } else q[i] = 0;
+    }
+    var res = new Uint8Array(2 * n);
+    for (var j = 0; j < ny; j++) for (var x = 0; x < nx; x++) {
+      var k = j * nx + x, pr;
+      if (j === 0) pr = x ? q[k - 1] : 0;
+      else if (x === 0) pr = q[k - nx];
+      else pr = q[k - 1] + q[k - nx] - q[k - nx - 1];
+      var r = (q[k] - pr) & 0xFFFF;
+      res[k] = r & 0xFF; res[n + k] = r >> 8;
+    }
+    var h = Object.assign({}, header || {}, { format: 'DTG1', e0: g.e0, n0: g.n0, dx: g.dx, nx: nx, ny: ny,
+      z0: z0, skala: 0.01, nodata: 0, prediksi: '2d', shuffle: true, crs: 'EPSG:32652' });
+    var hj = new TextEncoder().encode(JSON.stringify(h));
+    var kepala = new Uint8Array(8);
+    kepala.set([68, 84, 71, 49]);
+    new DataView(kepala.buffer).setUint32(4, hj.length, true);
+    var mentah = new Blob([kepala, hj, res]);
+    var cs = new CompressionStream('gzip');
+    var hasil = await new Response(mentah.stream().pipeThrough(cs)).blob();
+    return { blob: hasil, header: h };
+  }
+
+  // ------------------------------------------------------------------ proyeksi UTM 52N
+  var A_ = 6378137, F_ = 1 / 298.257223563, K0 = 0.9996, ZONA = 52;
+  var E2 = F_ * (2 - F_), EP2 = E2 / (1 - E2);
+  var LON0 = ((ZONA - 1) * 6 - 180 + 3) * Math.PI / 180;
+
+  function utmKeLL(E, N) {
+    var x = E - 500000, y = N;
+    var M = y / K0, mu = M / (A_ * (1 - E2 / 4 - 3 * E2 * E2 / 64 - 5 * E2 * E2 * E2 / 256));
+    var e1 = (1 - Math.sqrt(1 - E2)) / (1 + Math.sqrt(1 - E2));
+    var fp = mu + (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * Math.pow(e1, 4) / 32) * Math.sin(4 * mu)
+      + (151 * Math.pow(e1, 3) / 96) * Math.sin(6 * mu) + (1097 * Math.pow(e1, 4) / 512) * Math.sin(8 * mu);
+    var C1 = EP2 * Math.cos(fp) * Math.cos(fp), T1 = Math.tan(fp) * Math.tan(fp);
+    var N1 = A_ / Math.sqrt(1 - E2 * Math.sin(fp) * Math.sin(fp));
+    var R1 = A_ * (1 - E2) / Math.pow(1 - E2 * Math.sin(fp) * Math.sin(fp), 1.5);
+    var D = x / (N1 * K0);
+    var lat = fp - (N1 * Math.tan(fp) / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * EP2) * Math.pow(D, 4) / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * EP2 - 3 * C1 * C1) * Math.pow(D, 6) / 720);
+    var lon = LON0 + (D - (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * EP2 + 24 * T1 * T1) * Math.pow(D, 5) / 120) / Math.cos(fp);
+    return { lat: lat * 180 / Math.PI, lon: lon * 180 / Math.PI };
+  }
+
+  function llKeUTM(lat, lon) {
+    var phi = lat * Math.PI / 180, lam = lon * Math.PI / 180;
+    var N1 = A_ / Math.sqrt(1 - E2 * Math.sin(phi) * Math.sin(phi));
+    var T = Math.tan(phi) * Math.tan(phi), C = EP2 * Math.cos(phi) * Math.cos(phi), Aa = Math.cos(phi) * (lam - LON0);
+    var M = A_ * ((1 - E2 / 4 - 3 * E2 * E2 / 64 - 5 * Math.pow(E2, 3) / 256) * phi - (3 * E2 / 8 + 3 * E2 * E2 / 32 + 45 * Math.pow(E2, 3) / 1024) * Math.sin(2 * phi)
+      + (15 * E2 * E2 / 256 + 45 * Math.pow(E2, 3) / 1024) * Math.sin(4 * phi) - (35 * Math.pow(E2, 3) / 3072) * Math.sin(6 * phi));
+    var E = K0 * N1 * (Aa + (1 - T + C) * Math.pow(Aa, 3) / 6 + (5 - 18 * T + T * T + 72 * C - 58 * EP2) * Math.pow(Aa, 5) / 120) + 500000;
+    var N = K0 * (M + N1 * Math.tan(phi) * (Aa * Aa / 2 + (5 - T + 9 * C + 4 * C * C) * Math.pow(Aa, 4) / 24
+      + (61 - 58 * T + T * T + 600 * C - 330 * EP2) * Math.pow(Aa, 6) / 720));
+    return { E: E, N: N };
+  }
+
+  // ------------------------------------------------------------------ jalan → bentuk modul lain
+  /* Douglas–Peucker 2D. pts: [[x,y,…],…] */
+  function sederhanakan(pts, tol) {
+    if (pts.length < 3) return pts.slice();
+    var simpan = new Uint8Array(pts.length); simpan[0] = simpan[pts.length - 1] = 1;
+    var tumpuk = [[0, pts.length - 1]];
+    while (tumpuk.length) {
+      var ab = tumpuk.pop(), a = ab[0], b = ab[1];
+      if (b <= a + 1) continue;
+      var ax = pts[a][0], ay = pts[a][1], bx = pts[b][0], by = pts[b][1];
+      var dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), maks = -1, km = -1;
+      for (var k = a + 1; k < b; k++) {
+        var d = L < 1e-9 ? Math.hypot(pts[k][0] - ax, pts[k][1] - ay) : Math.abs(dx * (pts[k][1] - ay) - dy * (pts[k][0] - ax)) / L;
+        if (d > maks) { maks = d; km = k; }
+      }
+      if (maks > tol) { simpan[km] = 1; tumpuk.push([a, km], [km, b]); }
+    }
+    var out = [];
+    for (var i = 0; i < pts.length; i++) if (simpan[i]) out.push(pts[i]);
+    return out;
+  }
+
+  /* Jalan penuh (UTM) → bentuk ringkas yang dipakai Worker & Speed Watcher:
+     {batas_luar, toleransi_m, ruas:[{n, b, bb:[lonMin,latMin,lonMax,latMax], p:[[lon,lat],…]}]} */
+  function jalanKeWorker(jalan) {
+    var ruas = [];
+    (jalan.ruas || []).forEach(function (r) {
+      (r.bagian || []).forEach(function (bg) {
+        if (!bg || bg.length < 2) return;
+        var p = sederhanakan(bg, 0.5).map(function (t) {
+          var ll = utmKeLL(t[0], t[1]);
+          return [Math.round(ll.lon * 1e6) / 1e6, Math.round(ll.lat * 1e6) / 1e6];
+        });
+        if (p.length < 2) return;
+        var bb = [Infinity, Infinity, -Infinity, -Infinity];
+        p.forEach(function (q) { bb[0] = Math.min(bb[0], q[0]); bb[1] = Math.min(bb[1], q[1]); bb[2] = Math.max(bb[2], q[0]); bb[3] = Math.max(bb[3], q[1]); });
+        ruas.push({ n: r.nama, b: Number(r.batas), bb: bb, p: p });
+      });
+    });
+    return { batas_luar: Number(jalan.batas_luar) || 35, toleransi_m: Number(jalan.toleransi_m) || 20, ruas: ruas };
+  }
+
+  /* Jalan penuh → bentuk ROAD_DATA AMORA ({polylines:[{name, points:[[E,N,z]]}]}). */
+  function jalanKeAmora(jalan) {
+    var pl = [];
+    (jalan.ruas || []).forEach(function (r) {
+      (r.bagian || []).forEach(function (bg, i) {
+        if (bg && bg.length >= 2) pl.push({ name: i ? r.nama + '_part' + (i + 1) : r.nama, points: bg.map(function (t) { return [t[0], t[1], t[2] == null ? 0 : t[2]]; }) });
+      });
+    });
+    return { meta: { source: 'gudang data site', crs: 'EPSG:32652 (UTM Zone 52N, WGS84)', polyline_count: pl.length }, polylines: pl };
+  }
+
+  // ------------------------------------------------------------------ tulis (admin)
+  async function saya() { return await rpc('site_saya', {}); }
+
+  async function unggah(jalur, blob, tipe) {
+    var s = sesi();
+    if (!s) throw galat('Sesi login berakhir', 'sesi', 401);
+    var r = await fetch(KONFIG.supaUrl + '/storage/v1/object/' + KONFIG.bucket + '/' + jalur.split('/').map(encodeURIComponent).join('/'), {
+      method: 'POST',
+      headers: { 'apikey': KONFIG.supaKey, 'Authorization': 'Bearer ' + s.token, 'Content-Type': tipe || blob.type || 'application/octet-stream', 'x-upsert': 'false', 'cache-control': '31536000' },
+      body: blob
+    });
+    if (!r.ok) {
+      var t = await r.text(), m = t;
+      try { var j = JSON.parse(t); m = j.message || j.error || t; } catch (e) {}
+      if (r.status === 403 || /row-level security|unauthorized/i.test(m)) throw galat('Unggah ditolak: hanya admin yang boleh mengunggah', 'izin', r.status);
+      throw galat('Unggah gagal: ' + m, 'unggah', r.status);
+    }
+    await keCache('sb:' + jalur, blob, tipe || blob.type);
+    return 'sb:' + jalur;
+  }
+
+  async function hapusBerkas(jalurList) {
+    var s = sesi();
+    if (!s) throw galat('Sesi login berakhir', 'sesi', 401);
+    var r = await fetch(KONFIG.supaUrl + '/storage/v1/object/' + KONFIG.bucket, {
+      method: 'DELETE',
+      headers: { 'apikey': KONFIG.supaKey, 'Authorization': 'Bearer ' + s.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefixes: jalurList })
+    });
+    if (!r.ok) throw galat('Hapus berkas gagal (' + r.status + ')', 'hapus', r.status);
+    return true;
+  }
+
+  async function terbit(o) {
+    return await rpc('site_terbit', {
+      p_jenis: o.jenis, p_judul: o.judul || null, p_tanggal: o.tanggal || null,
+      p_meta: o.meta || {}, p_berkas: o.berkas || {}, p_data: o.data == null ? null : o.data,
+      p_data_worker: o.dataWorker == null ? null : o.dataWorker, p_catatan: o.catatan || null,
+      p_dasar: o.dasar || 0
+    });
+  }
+
+  global.GudangSite = {
+    konfig: KONFIG, JENIS: JENIS,
+    sesi: sesi, rpc: rpc, manifest: manifest, manifestAwal: manifestAwal, cap: cap,
+    ambilBerkas: ambilBerkas, ambilData: ambilData, bacaDTG: bacaDTG, tulisDTG: tulisDTG,
+    bacaCache: dariCache, simpanCache: keCache, rapikanCache: rapikanCache,
+    utmKeLL: utmKeLL, llKeUTM: llKeUTM, sederhanakan: sederhanakan,
+    jalanKeWorker: jalanKeWorker, jalanKeAmora: jalanKeAmora,
+    saya: saya, unggah: unggah, hapusBerkas: hapusBerkas, terbit: terbit,
+    pulihkan: function (jenis, versi, dasar) { return rpc('site_pulihkan', { p_jenis: jenis, p_versi: versi, p_dasar: dasar }); },
+    riwayat: function (jenis) { return rpc('site_riwayat', { p_jenis: jenis }); },
+    penyimpanan: function () { return rpc('site_penyimpanan', {}); },
+    tandaiHapus: function (jenis, versi) { return rpc('site_hapus_berkas', { p_jenis: jenis, p_versi: versi }); }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="amora-gudang">
+/* =============================================================================
+   AMORA · data site dari gudang bersama (23 September 2026)
+
+   Citra dan jalan yang diterbitkan admin di Digital Twin › Kelola data ikut
+   dipakai di sini. Tampilan peta tidak diubah; yang berganti hanya datanya.
+   - Citra aktif ditumpuk di atas citra tertanam. Bagian yang tidak tercakup
+     citra aktif (awan, di luar liputan) tetap memperlihatkan citra lama.
+   - Jalan versi 2 ke atas menggantikan ROAD_DATA tertanam, lalu graf rute
+     dibangun ulang. Versi 1 adalah ROAD_DATA ini sendiri.
+   - Titik muat dan buang yang sudah dipilih ditempelkan ulang ke jaringan
+     baru dan rutenya dihitung ulang, jadi pengguna tidak kehilangan isiannya.
+   Gudang tidak terbaca atau belum disemai → salinan tertanam tetap dipakai.
+   Diperiksa lagi tiap 10 menit selama halaman terlihat (site_cap, murah).
+   ============================================================================= */
+(function () {
+  'use strict';
+  if (typeof GudangSite === 'undefined' || typeof L === 'undefined' || typeof map === 'undefined') return;
+
+  var CITRA_TERTANAM = 'repo:data/site/citra-2026-05-amora.webp';
+  var JALAN_TERTANAM = ROAD_DATA.polylines;
+  var lapisCitra = null, citraKini = null, urlKini = null;
+  var jalanKini = 1, capKini = null, sibuk = false, atribusiKini = null;
+
+  function catat(m) { try { console.info('[AMORA · gudang] ' + m); } catch (e) {} }
+  function aman(t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  /* Sumber data ditulis kecil di pojok atribusi Leaflet, satu-satunya
+     tambahan yang terlihat: "Citra satelit 21 Agu 2026 · jalan v3". Atribusi
+     Leaflet berupa HTML, jadi judul dari admin di-escape dulu. */
+  function atribusi(teks) {
+    var a = map.attributionControl;
+    if (!a || teks === atribusiKini) return;
+    if (atribusiKini) a.removeAttribution(atribusiKini);
+    if (teks) a.addAttribution(teks);
+    atribusiKini = teks;
+  }
+
+  function lepasCitra() {
+    if (lapisCitra) { lapisCitra.remove(); lapisCitra = null; }
+    if (urlKini) { URL.revokeObjectURL(urlKini); urlKini = null; }
+    citraKini = null;
+  }
+
+  async function pasangCitra(c) {
+    if (!c || !c.berkas || !c.berkas.gambar) return;
+    if (c.berkas.gambar === CITRA_TERTANAM) { lepasCitra(); return; }
+    if (citraKini === c.berkas.gambar) return;
+    var me = c.meta || {};
+    if (!(me.e_max > me.e_min && me.n_max > me.n_min)) return;
+    var blob = await GudangSite.ambilBerkas(c.berkas.gambar);
+    var url = URL.createObjectURL(blob), lama = urlKini;
+    var batas = L.latLngBounds([[me.n_min, me.e_min], [me.n_max, me.e_max]]);
+    if (lapisCitra) { lapisCitra.setUrl(url); lapisCitra.setBounds(batas); }
+    else lapisCitra = L.imageOverlay(url, batas, { opacity: 1, interactive: false }).addTo(map);
+    // urutan di panel: citra tertanam paling bawah, citra aktif, lalu rute & penanda
+    lapisCitra.bringToBack();
+    if (typeof petaDasar !== 'undefined' && petaDasar) petaDasar.bringToBack();
+    if (lama) setTimeout(function () { URL.revokeObjectURL(lama); }, 5000);
+    urlKini = url; citraKini = c.berkas.gambar;
+    catat('citra ' + (c.judul || 'v' + c.versi));
+  }
+
+  function batasGeser() {
+    var rb = getRoadBounds(), M = 200;
+    map.setMaxBounds([[Math.min(IMG_BOUNDS.y_min, rb.ymn) - M, Math.min(IMG_BOUNDS.x_min, rb.xmn) - M],
+                      [Math.max(IMG_BOUNDS.y_max, rb.ymx) + M, Math.max(IMG_BOUNDS.x_max, rb.xmx) + M]]);
+  }
+
+  async function pasangJalan(j) {
+    var v = (j && j.versi) || 1;
+    if (v === jalanKini) return;
+    var pl;
+    if (v <= 1) pl = JALAN_TERTANAM;
+    else {
+      var data = await GudangSite.ambilData('jalan', j);
+      pl = GudangSite.jalanKeAmora(data).polylines;
+      if (!pl.length) throw new Error('jalan v' + v + ' kosong');
+    }
+    ROAD_DATA.polylines = pl;
+    graph = buildGraph(ROAD_DATA.polylines);
+    jalanKini = v;
+    batasGeser();
+    // titik yang sudah dipilih ditempel ulang ke jaringan baru
+    var ada = false;
+    ['ptA', 'ptB'].forEach(function (k) {
+      var p = state[k]; if (!p) return;
+      var s = snapToNearestSegment(graph, p.rawX, p.rawY); if (!s) return;
+      p.snap = s; p.snapX = s.x; p.snapY = s.y; p.offDist = Math.hypot(p.rawX - s.x, p.rawY - s.y);
+      ada = true;
+    });
+    if (state.ptA && state.ptB) computeRoute(); else if (ada) clearRoute();
+    try { updateUI(); } catch (e) {}
+    catat('jalan v' + v + ' · ' + pl.length + ' polyline');
+  }
+
+  async function periksa(paksa) {
+    if (sibuk) return;
+    sibuk = true;
+    try {
+      if (!paksa && capKini != null) {
+        var cap = await GudangSite.cap();
+        if (cap === capKini) return;
+      }
+      var m = await GudangSite.manifest();
+      var c = m.jenis && m.jenis.citra, j = m.jenis && m.jenis.jalan;
+      var h = await Promise.allSettled([pasangCitra(c), pasangJalan(j)]);
+      var gagal = h.filter(function (x) { return x.status === 'rejected'; });
+      gagal.forEach(function (x) { catat('tidak terpasang: ' + (x.reason && x.reason.message)); });
+      // tanda versi baru disimpan hanya bila semuanya terpasang; yang gagal dicoba lagi 10 menit kemudian
+      if (m.sumber === 'server' && !gagal.length) capKini = m.cap;
+      var bag = [];
+      if (citraKini && c) bag.push(c.judul || ('Citra v' + c.versi));
+      if (jalanKini > 1) bag.push('jalan v' + jalanKini);
+      atribusi(aman(bag.join(' · ')));
+    } catch (e) {
+      catat('gudang tidak terbaca: ' + (e && e.message ? e.message : e));
+    } finally {
+      sibuk = false;
+    }
+  }
+
+  periksa(true);
+  setInterval(function () { if (!document.hidden) periksa(false); }, 600000);
+  window.__AMORA_GUDANG = { periksa: periksa };
+})();
 </script>
 </body>
 </html>
