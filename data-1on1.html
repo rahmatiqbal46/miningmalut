@@ -234,14 +234,10 @@
           <div class="kecil" id="progresTxt"></div>
         </div>
         <div id="unduhHasil" style="margin-top:12px" hidden></div>
-        <details style="margin-top:12px">
-          <summary class="kecil" style="cursor:pointer;font-weight:590;color:var(--text-secondary)">Berkas tongkang manual (bila Minerva menolak)</summary>
-          <div class="kecil muted" style="margin:6px 0">Unduh dari Minerva › Barge Management (status FINISH, rentang bulan ini), lalu pilih berkasnya di sini. Hanya dipakai bila pengambilan otomatis gagal.</div>
-          <input type="file" id="fileBarge" accept=".xlsx">
-          <span class="kecil" id="bargeManualInfo"></span>
-        </details>
       </div>
     </div>
+    <div class="section-head"><h2>Arsip bulan</h2><span class="eyebrow">Yang disimpan hanya isian tiap bulan, bukan berkas Excel. Excel bulan lalu disusun ulang saat diunduh: isian bulan itu + data Minerva yang diambil lagi, sebulan penuh (1 s.d. akhir bulan), memakai template terbaru.</span></div>
+    <div class="card"><div class="table-wrap" style="border:0"><table id="tblArsip"><tbody><tr><td class="muted">Memuat daftar bulan…</td></tr></tbody></table></div></div>
     <div class="section-head"><h2>Catatan hasil unduhan terakhir</h2><span class="eyebrow">Loader terpilih, porsi EFO, dan hari tanpa data Minerva. Hanya tersimpan selama halaman terbuka.</span></div>
     <div class="card"><div class="log" id="logUnduh">Belum ada unduhan di sesi ini.</div></div>
   </section>
@@ -269,7 +265,7 @@
   <!-- =================================================================== QAQC -->
   <section class="view" id="v-qaqc">
     <div class="section-head"><h2>Produksi harian tervalidasi (QAQC)</h2>
-      <span class="eyebrow">Unggah "Laporan Harian Produksi UBPN Malut" (.xlsx). Dibaca dari sheet MINING ANTAM dan MINING KONTRAKTOR: ore = kolom Total Ore (wmt), waste = kolom Waste × densitas, barging BUMD = Rampstock-Jetty + ETO-Jetty + EFO-Jetty. Mengisi ACT baris 46–47, 120–121, 136.</span></div>
+      <span class="eyebrow">Unggah "Laporan Harian Produksi UBPN Malut" (.xlsx). Dibaca dari sheet MINING ANTAM dan MINING KONTRAKTOR: ore = kolom Total Ore (wmt), waste = kolom Waste × densitas, barging BUMD = Rampstock-Jetty + ETO-Jetty + EFO-Jetty (atau isian manual di bawah). Mengisi ACT baris 46–47, 120–121, 136.</span></div>
     <div class="card">
       <div class="baris-btn">
         <label class="btn" for="fileQaqc">Pilih berkas QAQC…</label>
@@ -277,6 +273,19 @@
         <label class="kecil"><input type="checkbox" id="cbLgo" checked style="min-height:0;vertical-align:-2px"> LGO Rampstock dihitung sebagai waste (supaya TMM = TMM QAQC)</label>
         <span class="kecil muted" id="qaqcInfo"></span>
       </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>Barging BUMD harian · isian manual</h3>
+      <div class="kecil muted" style="margin:4px 0 10px">Tempel angka barging (WMT) satu per hari, berurutan mulai tanggal yang dipilih. Pemisah boleh baris baru, spasi, atau tab (bisa langsung salin satu kolom dari Excel). <b>8,052</b> dan <b>8.052</b> sama-sama dibaca 8.052 WMT. Isian manual menggantikan angka barging dari berkas QAQC dan tidak hilang saat berkas QAQC diunggah ulang. Kolom Barging BUMD di tabel bawah juga bisa diubah per hari; kosongkan selnya untuk kembali ke angka berkas.</div>
+      <div class="baris-btn" style="align-items:flex-start">
+        <label class="kecil">Mulai tanggal<br><input type="date" id="inBargingMulai"></label>
+        <textarea id="inBargingTempel" rows="3" style="flex:1;min-width:240px;font:inherit;font-variant-numeric:tabular-nums" placeholder="8,052&#10;0&#10;0&#10;4,598&#10;…"></textarea>
+        <div class="baris-btn" style="flex-direction:column;align-items:stretch">
+          <button class="btn primary" id="btnBargingTerapkan">Terapkan</button>
+          <button class="btn" id="btnBargingHapus">Hapus isian manual</button>
+        </div>
+      </div>
+      <div class="kecil" id="bargingInfo" style="margin-top:8px"></div>
     </div>
     <div class="table-wrap" style="margin-top:14px;max-height:620px"><table id="tblQaqc"></table></div>
   </section>
@@ -295,8 +304,10 @@
     <div class="table-wrap"><table id="tblKurs"></table></div>
     <div class="section-head"><h2>Tarif &amp; nilai kontrak</h2><span class="eyebrow">Tabel biaya COST baris 174–216. Kosong = nilai bawaan template (dari cost_structure, mohon dicek).</span></div>
     <div class="card"><div class="form" id="formTarif"></div></div>
-    <div class="section-head"><h2>Kuantitas mingguan</h2><span class="eyebrow">Konsumsi BBM ANTAM, HM excavator sewa ANTAM dan BUMD.</span></div>
+    <div class="section-head"><h2>Kuantitas mingguan</h2><span class="eyebrow">Konsumsi BBM ANTAM dan HM excavator sewa BUMD. Sewa excavator ANTAM tidak dihitung lagi.</span></div>
     <div class="table-wrap"><table id="tblMingguan"></table></div>
+    <div class="section-head"><h2>Plan biaya MTD</h2><span class="eyebrow">Kolom Plan tabel Total Mining Operation Cost (MTD), COST!C145:C148. Kosong = nilai bawaan template. Total plan = Biaya Jasa Mining + Biaya Jasa Barging.</span></div>
+    <div class="card"><div class="form" id="formPlanBiaya"></div></div>
   </section>
 
   <!-- =================================================================== DRA & WM -->
@@ -749,7 +760,18 @@ const OE1 = (function () {
       return `<row r="${r}"${a2}>${cells.map(c => c.xml).join('')}</row>`;
     };
     const out = rows.map(x => (byRow.has(x.r) ? rowXml(x.r, x.attrs, x.inner) : x.xml)).join('');
-    return head + out + tail;
+    return fixDimension(head + out + tail);
+  }
+  // <dimension> harus mencakup semua sel. COST template v1-v4 menyatakan A1:J171 padahal tabel biaya sampai baris 216,
+  // dan hanya sheet itu yang "diperbaiki" Excel saat dibuka (Repaired Records: Cell information from sheet17.xml).
+  function fixDimension(xml) {
+    const i0 = xml.indexOf('<sheetData'), k0 = xml.indexOf('</sheetData>');
+    if (i0 < 0 || k0 < i0) return xml;
+    const body = xml.slice(i0, k0), re = /<c r="([A-Z]+)(\d+)"/g;
+    let c1 = Infinity, c2 = 0, r1 = Infinity, r2 = 0, m;
+    while ((m = re.exec(body))) { const c = col2n(m[1]), r = +m[2]; if (c < c1) c1 = c; if (c > c2) c2 = c; if (r < r1) r1 = r; if (r > r2) r2 = r; }
+    if (!c2) return xml;
+    return xml.replace(/<dimension ref="[^"]*"\/>/, `<dimension ref="${n2col(c1)}${r1}:${n2col(c2)}${r2}"/>`);
   }
 
   // ------------------------------------------------------------------ tabel data Minerva
@@ -841,7 +863,7 @@ const OE1 = (function () {
     return out;
   }
   const WM_JUMLAH_SUMP = 20;            // sheet WM template v2 = 20 sump modul Water & Road
-  const TEMPLATE_VERSI = 4;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
+  const TEMPLATE_VERSI = 5;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
   const TEMPLATE_VERSI_MIN = 2;         // di bawah ini tata letak sel isian berbeda: menyusun Excel ditolak
   const SHEETS = { PLAN: 'PLAN', ACT: 'ACT', COST: 'COST', PORT: 'PORT', DRA: 'DRA', WM: 'WM', WFW: 'WF WEEKLY',
     EXCA: 'Minerva Exca', TRUCK: 'Minerva Trucks', BARGE: 'Minerva Barges' };
@@ -860,7 +882,7 @@ const OE1 = (function () {
    *   plan:{ param:{jamShift..}, pa:0.88, libur:{ymd:1}, puasa:{ymd:jam}, target:{produksi,tmm,rasioA,rasioB,barging,porsiEto},
    *          faktor:{recovery,niDilusi}, cadangan:{ANTAM:{ymd:{wV..}}, BUMD:{...}}, jarak:{ANTAM:{ymd:{ore,wst}}, BUMD:{...}} },
    *   act:{ qaqc:{ymd:{antamOre,antamWaste,bumdOre,bumdWaste,barging}}, loader:{ymd:{antam,bumd,barging:[a,b]}} },
-   *   biaya:{ kurs:[5], bbm:[5], tarif:{B183..}, mingguan:{D184:..} }, port:{kapasitas}, wfMinggu:null|number,
+   *   biaya:{ kurs:[5], bbm:[5], tarif:{B183..}, mingguan:{'184':[5],'201':[5]}, plan:{C145..C148} }, port:{kapasitas}, wfMinggu:null|number,
    *   dra:{tanggal:[t1,t2], nilai:{row:[v1,v2]}}, wm:{sump:{id:{plan,aktual,rit:[5],ket}}},
    *   minerva:{ exca:{header,rows}, truck:{header,rows,downloadDate:[]}, barge:{header,rows} }
    * }
@@ -872,7 +894,7 @@ const OE1 = (function () {
     const versi = versiTemplate(await z.text('xl/workbook.xml'));
     if (versi < TEMPLATE_VERSI_MIN) throw new Error(`Template di penyimpanan masih versi ${versi || 1}, butuh versi ${TEMPLATE_VERSI} (sheet WM 20 sump Water & Road). ` +
       'Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.');
-    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} memperbaiki rumus unit PA,UA, pilihan minggu WF WEEKLY, dan ringkasan COST. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.`);
+    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.`);
     const path = n => { const s = sheets.find(x => x.name === n); if (!s) throw new Error('Sheet tidak ada di template: ' + n); return s.path; };
     const rels = async p => { const rp = p.replace(/worksheets\/(sheet\d+\.xml)$/, 'worksheets/_rels/$1.rels'); return (await z.text(rp)) || ''; };
     const tablePath = async p => { const r = await rels(p); const m = /Target="\.\.\/tables\/(table\d+\.xml)"/.exec(r); return m ? 'xl/tables/' + m[1] : null; };
@@ -953,9 +975,13 @@ const OE1 = (function () {
     (B.kurs || []).forEach((v, i) => { if (v != null && v !== '' && i < 5) CE.set(`${wk[i]}22`, { n: +v }); });
     (B.bbm || []).forEach((v, i) => { if (v != null && v !== '' && i < 5) CE.set(`${wk[i]}23`, { n: +v }); });
     for (const [ref, v] of Object.entries(B.tarif || {})) if (/^B\d+$/.test(ref) && v != null && v !== '') CE.set(ref, { n: +v });
-    for (const [row, arr] of Object.entries(B.mingguan || {})) (arr || []).forEach((v, i) => {
+    for (const [row, arr] of Object.entries(B.mingguan || {})) if (/^\d+$/.test(row)) (arr || []).forEach((v, i) => {
       if (i < 5) CE.set(`${wk2[i]}${row}`, v == null || v === '' ? { clear: true } : { n: +v });
     });
+    // plan MTD (template v5): C145 Mining Cost, C146 Barging Cost (USD/WMT), C147 Biaya Jasa Mining, C148 Biaya Jasa Barging (USD/WMT/KM)
+    if (versi >= 5) for (const [ref, v] of Object.entries(B.plan || {})) {
+      if (/^C14[5-8]$/.test(ref) && v != null && v !== '' && isFinite(+v)) CE.set(ref, { n: +v });
+    }
     if (CE.size) changed.set(path(SHEETS.COST), editSheetXml(await z.text(path(SHEETS.COST)), CE));
     // ---------------- PORT
     if (data.port && data.port.kapasitas) changed.set(path(SHEETS.PORT), editSheetXml(await z.text(path(SHEETS.PORT)), new Map([['D6', { n: +data.port.kapasitas }]])));
@@ -1128,7 +1154,7 @@ const OE1 = (function () {
   return {
     crc32, unzip, zip, inflate, deflate, readXlsx, readReport, parseQaqc, pilihLoader, porsiEfo, tanggalShift,
     editSheetXml, isiTemplate, ymd2serial, serial2ymd, addDays, daysInMonth, weeknum2, mingguLipat, n2col, col2n,
-    PARAM_CELLS, RES_ROWS, versiTemplate, TEMPLATE_VERSI, TEMPLATE_VERSI_MIN, WM_JUMLAH_SUMP, angkakanKolom, aktivitasTruck, idx,
+    PARAM_CELLS, RES_ROWS, versiTemplate, TEMPLATE_VERSI, TEMPLATE_VERSI_MIN, WM_JUMLAH_SUMP, angkakanKolom, aktivitasTruck, idx, fixDimension,
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = OE1;
@@ -2124,9 +2150,9 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
         target: { produksi: null, tmm: null, rasioA: 200, rasioB: 155, barging: null, porsiEto: 0.4 },
         faktor: { recovery: 0.93, niDilusi: -0.04 }, kapasitasTongkang: 10500 },
       ppt: { ANTAM: {}, BUMD: {} },
-      qaqc: { hari: {}, berkas: null, lgoKeWaste: true },
+      qaqc: { hari: {}, berkas: null, lgoKeWaste: true, bargingManual: {} },   // bargingManual: ymd -> WMT (menggantikan angka berkas)
       loader: {},
-      biaya: { kurs: [], bbm: [], tarif: {}, mingguan: {} },
+      biaya: { kurs: [], bbm: [], tarif: {}, mingguan: {}, plan: {} },
       dra: { tanggal: [], nilai: {} },
       wm: { sump: {} },          // id sump Water & Road -> {plan, aktual, rit:[5], ket}
       wf: { minggu: null } };
@@ -2139,7 +2165,7 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
   }
 
   var S = { bulan: null, cutoff: null, admin: false, data: dataKosong(), updatedAt: null, updatedBy: null,
-    kotor: false, timer: null, menyimpan: false, mv: new Map(), bargeManual: null, loaderAuto: null, tplAda: null, review: null, sibuk: false,
+    kotor: false, timer: null, menyimpan: false, mv: new Map(), loaderAuto: null, tplAda: null, review: null, sibuk: false,
     tetangga: {} };
 
   /* ---------- pil status ---------- */
@@ -2203,10 +2229,11 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
       var r = res && res[0];
       S.updatedAt = r ? r.updated_at : S.updatedAt; S.updatedBy = r ? r.updated_by : emailLogin();
       S.kotor = false; pil('Tersimpan · ' + jamWit(S.updatedAt), 'ok');
+      if (S.arsip && !S.arsip.some(function (x) { return x.bulan === S.bulan; })) muatArsip();   // bulan baru masuk daftar arsip
     } catch (e) { pil('Gagal simpan', 'err', pesan(e)); }
     finally { S.menyimpan = false; }
   }
-  function tampilBanner(id, html) { var b = el(id); b.innerHTML = html; b.hidden = false; }
+  function tampilBanner(id, html) { var b = el(id); b.innerHTML = '<div>' + html + '</div>'; b.hidden = false; }   // .banner = flex: isi dibungkus satu div
 
   /* ---------- navigasi tab ---------- */
   function pilihTab(v) {
@@ -2510,16 +2537,62 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
   }
   var KOL_QAQC = [['antamOre', 'ANTAM ore'], ['antamWaste', 'ANTAM waste'], ['antamLgoRs', 'ANTAM LGO rampstock'],
     ['bumdOre', 'BUMD ore'], ['bumdWaste', 'BUMD waste'], ['bumdLgoRs', 'BUMD LGO rampstock'], ['barging', 'Barging BUMD']];
+  // barging BUMD yang dipakai Excel: isian manual bila ada, selain itu angka berkas QAQC
+  function bargingManual() { var Q = S.data.qaqc; return Q.bargingManual || (Q.bargingManual = {}); }
+  function bargingHari(d) { var m = bargingManual()[d]; if (m != null) return m; var x = S.data.qaqc.hari[d]; return x && x.barging || 0; }
+  // angka tempelan: 8,052 / 8.052 / 11,000.5 / 11.000,5 / 4598,5 / 0 / - (strip = 0)
+  function angkaTempel(t) {
+    t = String(t).replace(/\s/g, '');
+    if (!t) return null;
+    if (/^[-–—]$/.test(t)) return 0;
+    if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) return +t.replace(/,/g, '');
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) return +t.replace(/\./g, '').replace(',', '.');
+    if (/^-?\d+,\d+$/.test(t)) return +t.replace(',', '.');
+    if (/^-?\d+(\.\d+)?$/.test(t)) return +t;
+    return NaN;
+  }
+  // pesan hasil tindakan terakhir (menggantikan ringkasan sampai ada perubahan lain)
+  function pesanBarging(html) { S.bargingPesan = html; el('bargingInfo').innerHTML = html; }
+  function terapkanBarging() {
+    var mulaiTgl = el('inBargingMulai').value || mulai();
+    var tok = el('inBargingTempel').value.split(/[\s;|]+/).filter(function (x) { return x.trim() !== ''; });
+    if (!tok.length) { pesanBarging('<span style="color:var(--bad)">Belum ada angka yang ditempel.</span>'); return; }
+    if (!dalamBulan(mulaiTgl)) { pesanBarging('<span style="color:var(--bad)">Tanggal mulai harus di bulan ' + esc(namaBulan(S.bulan)) + '.</span>'); return; }
+    var nilai = tok.map(angkaTempel), salah = [];
+    nilai.forEach(function (v, i) { if (v == null || isNaN(v) || v < 0) salah.push('"' + tok[i] + '"'); });
+    if (salah.length) { pesanBarging('<span style="color:var(--bad)">Tidak terbaca sebagai angka: ' + esc(salah.slice(0, 5).join(', ')) + '. Tidak ada yang disimpan.</span>'); return; }
+    var akhir = geser(mulaiTgl, nilai.length - 1);
+    if (!dalamBulan(akhir)) { pesanBarging('<span style="color:var(--bad)">' + nilai.length + ' angka mulai ' + esc(tglPendek(mulaiTgl)) + ' melewati akhir bulan (' + esc(tglPendek(akhirBulan(S.bulan))) + '). Tidak ada yang disimpan.</span>'); return; }
+    var M = bargingManual(), tot = 0;
+    nilai.forEach(function (v, i) { M[geser(mulaiTgl, i)] = v; tot += v; });
+    el('inBargingTempel').value = '';
+    pesanBarging('<span style="color:var(--good)">✓ ' + nilai.length + ' hari tersimpan (' + esc(tglPendek(mulaiTgl)) + '–' + esc(tglPendek(akhir)) + '), jumlah ' + angka(tot) + ' WMT.</span>');
+    ubah(); renderQaqc();
+  }
+  function hapusBarging() {
+    var n = Object.keys(bargingManual()).length; if (!n) return;
+    if (!confirm('Hapus ' + n + ' hari isian manual barging? Angka barging kembali mengikuti berkas QAQC.')) return;
+    S.data.qaqc.bargingManual = {}; pesanBarging('Isian manual dihapus; barging BUMD kembali mengikuti berkas QAQC.'); ubah(); renderQaqc();
+  }
   function renderQaqc() {
-    var Q = S.data.qaqc; el('cbLgo').checked = Q.lgoKeWaste !== false; el('cbLgo').disabled = !S.admin;
+    var Q = S.data.qaqc, BM = bargingManual(); el('cbLgo').checked = Q.lgoKeWaste !== false; el('cbLgo').disabled = !S.admin;
     if (Q.berkas && !el('qaqcInfo').textContent) el('qaqcInfo').textContent = 'Terakhir: ' + Q.berkas.nama + ' · ' + jamWit(Q.berkas.waktu);
+    ['inBargingMulai', 'inBargingTempel', 'btnBargingTerapkan', 'btnBargingHapus'].forEach(function (id) { el(id).disabled = !S.admin; });
+    if (!el('inBargingMulai').value || !dalamBulan(el('inBargingMulai').value)) el('inBargingMulai').value = mulai();
+    el('inBargingMulai').min = mulai(); el('inBargingMulai').max = akhirBulan(S.bulan);
+    var nBM = Object.keys(BM).filter(dalamBulan).length;
+    el('bargingInfo').innerHTML = S.bargingPesan ? S.bargingPesan : nBM ?
+      nBM + ' hari berisi isian manual (sel kuning di kolom Barging BUMD), jumlah ' + angka(Object.keys(BM).filter(dalamBulan).reduce(function (t, d) { return t + (BM[d] || 0); }, 0)) + ' WMT.' :
+      '<span class="muted">Belum ada isian manual; barging BUMD mengikuti berkas QAQC.</span>';
     var h = '<thead><tr><th>Tanggal</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + k[1] + ' (WMT)</th>'; }).join('') + '<th class="num">Waste ke ACT</th></tr></thead><tbody>';
     var sum = {};
     hariBulan(S.bulan).forEach(function (d) {
       var x = Q.hari[d] || {}; var lewat = d > S.cutoff;
       h += '<tr data-d="' + d + '"' + (lewat ? ' class="lewat"' : '') + '><td>' + HARI[hariKe(d)] + ' ' + tglPendek(d) + '</td>';
-      KOL_QAQC.forEach(function (k) { var v = x[k[0]]; if (!lewat && v) sum[k[0]] = (sum[k[0]] || 0) + v;
-        h += '<td class="num"><input class="num" data-k="' + k[0] + '" value="' + (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ',')) + '"' + (S.admin ? '' : ' disabled') + '></td>'; });
+      KOL_QAQC.forEach(function (k) {
+        var man = k[0] === 'barging' && BM[d] != null, v = man ? BM[d] : x[k[0]]; if (!lewat && v) sum[k[0]] = (sum[k[0]] || 0) + v;
+        h += '<td class="num"><input class="num" data-k="' + k[0] + '" value="' + (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ',')) + '"' +
+          (man ? ' style="background:#fff8d6" title="Isian manual"' : '') + (S.admin ? '' : ' disabled') + '></td>'; });
       var w = (x.antamWaste || 0) + (Q.lgoKeWaste !== false ? (x.antamLgoRs || 0) : 0);
       h += '<td class="num muted">' + (Q.hari[d] ? angka(w) : '—') + '</td></tr>';
     });
@@ -2527,7 +2600,12 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     el('tblQaqc').innerHTML = h;
     el('tblQaqc').querySelectorAll('tr[data-d] input').forEach(function (inp) {
       inp.onchange = function () {
-        var d = inp.closest('tr').dataset.d; var x = Q.hari[d] || (Q.hari[d] = {});
+        var d = inp.closest('tr').dataset.d;
+        if (inp.dataset.k === 'barging') {                       // kolom barging = isian manual; kosong = kembali ke angka berkas
+          var v = angkaTempel(inp.value); if (v == null || isNaN(v)) delete BM[d]; else BM[d] = v;
+          S.bargingPesan = ''; ubah(); renderQaqc(); return;
+        }
+        var x = Q.hari[d] || (Q.hari[d] = {});
         x[inp.dataset.k] = num(inp.value); ubah(); renderQaqc();
       };
     });
@@ -2566,13 +2644,17 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
 
   /* ================================================================ BIAYA */
   var TARIF = [
-    ['B183', 'BBM ANTAM', 'Juta Rp/liter'], ['B185', 'Gaji & lembur TAD (ANTAM)', 'Juta Rp/bulan'], ['B186', 'Sewa excavator ANTAM', 'Juta Rp/HM'],
+    ['B183', 'BBM ANTAM', 'Juta Rp/liter'], ['B185', 'Gaji & lembur TAD (ANTAM)', 'Juta Rp/bulan'],
     ['B188', 'Jasa HSA (HEM) ANTAM', 'Juta Rp/bulan'], ['B189', 'Bahan (HEM) ANTAM', 'Juta Rp/bulan'], ['B190', 'Depresiasi ANTAM', 'Juta Rp/bulan'],
     ['B195', 'Nilai kontrak OB removal BUMD', 'Juta Rp'], ['B196', 'Volume kontrak OB removal BUMD', 'BCM'],
     ['B199', 'Nilai kontrak sewa excavator BUMD', 'Juta Rp'], ['B200', 'Jam kontrak sewa excavator BUMD', 'jam'],
     ['B206', 'Nilai kontrak analisa sampel BUMD', 'Juta Rp'], ['B208', 'Nilai kontrak pengangkutan bijih BUMD', 'Juta Rp'], ['B209', 'Volume kontrak pengangkutan BUMD', 'WMT'],
-    ['B214', 'Tarif hauling ANTAM (ETO→EFO)', 'Juta Rp/WMT'], ['B215', 'Tarif barging ANTAM', 'Juta Rp/WMT'], ['B216', 'Tarif hauling BUMD (ETO→EFO)', 'Juta Rp/WMT']];
-  var MINGGUAN = [['184', 'Konsumsi BBM ANTAM', 'liter'], ['187', 'HM excavator sewa ANTAM', 'HM'], ['201', 'HM excavator sewa BUMD', 'jam']];
+    ['B214', 'Tarif hauling ANTAM (ETO→EFO)', 'Juta Rp/WMT'], ['B216', 'Tarif hauling BUMD (ETO→EFO)', 'Juta Rp/WMT']];
+  // sewa excavator ANTAM (COST baris 186-187) dihapus atas permintaan Iqbal: template v5 tidak menjumlahnya
+  var MINGGUAN = [['184', 'Konsumsi BBM ANTAM', 'liter'], ['201', 'HM excavator sewa BUMD', 'jam']];
+  // nilai bawaan plan ada di template (bucket privat), tidak ditulis di halaman karena repo publik
+  var PLAN_BIAYA = [['C145', 'Mining Cost', 'USD/WMT'], ['C146', 'Barging Cost', 'USD/WMT'],
+    ['C147', 'Biaya Jasa Mining', 'USD/WMT/KM'], ['C148', 'Biaya Jasa Barging', 'USD/WMT/KM']];
   function mingguLabel() {
     // minggu Prod AK5:AO5 = minggu hari ke-1 s.d. +4 (minggu ke-6 digabung ke kolom ke-5)
     var a = senin(mulai()), out = [];
@@ -2596,6 +2678,8 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     });
     el('tblMingguan').innerHTML = t + '</tbody>';
     el('tblMingguan').querySelectorAll('input').forEach(function (inp) { inp.onchange = function () { var a = B.mingguan[inp.dataset.r] || (B.mingguan[inp.dataset.r] = []); a[+inp.dataset.i] = num(inp.value); ubah(); }; });
+    var P = B.plan || (B.plan = {}), wp = el('formPlanBiaya'); wp.innerHTML = '';
+    PLAN_BIAYA.forEach(function (x) { field(wp, x[1], x[2] + ' · COST!' + x[0], inputAngka(P[x[0]], function (v) { if (v == null) delete P[x[0]]; else P[x[0]] = v; ubah(); }, { placeholder: 'bawaan template' })); });
   }
 
   /* ================================================================ DRA & WM */
@@ -2769,18 +2853,23 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
         if (pertama != null) hari.forEach(function (d) { if (!jar[k][d] || jar[k][d][f] == null) { jar[k][d] = jar[k][d] || {}; jar[k][d][f] = pertama; } });
       });
     });
-    var qa = {}, lgo = D.qaqc.lgoKeWaste !== false;
+    var qa = {}, lgo = D.qaqc.lgoKeWaste !== false, BM = D.qaqc.bargingManual || {};
     Object.keys(D.qaqc.hari || {}).forEach(function (d) {
       var x = D.qaqc.hari[d];
       qa[d] = { antamOre: x.antamOre || 0, antamWaste: (x.antamWaste || 0) + (lgo ? x.antamLgoRs || 0 : 0),
-        bumdOre: x.bumdOre || 0, bumdWaste: (x.bumdWaste || 0) + (lgo ? x.bumdLgoRs || 0 : 0), barging: x.barging || 0 };
+        bumdOre: x.bumdOre || 0, bumdWaste: (x.bumdWaste || 0) + (lgo ? x.bumdLgoRs || 0 : 0), barging: BM[d] != null ? BM[d] : x.barging || 0 };
     });
+    // hari yang hanya punya isian manual barging: sel ore/waste tetap kosong
+    Object.keys(BM).forEach(function (d) { if (!qa[d] && dalamBulan(d) && BM[d] != null) qa[d] = { barging: BM[d] }; });
+    var mingguan = {}; MINGGUAN.forEach(function (k) { if (D.biaya.mingguan[k[0]]) mingguan[k[0]] = D.biaya.mingguan[k[0]]; });
+    var tarif = {}; TARIF.forEach(function (k) { if (D.biaya.tarif[k[0]] != null) tarif[k[0]] = D.biaya.tarif[k[0]]; });
     var loader = {}; hari.forEach(function (d) { if (d <= S.cutoff) loader[d] = loaderFinal(d); });
     return {
       mulai: mulai(), cutoff: S.cutoff, penuh: !el('cbPotong').checked,
       plan: { param: P.param, pa: P.pa, libur: P.libur, puasa: P.puasa, target: P.target, faktor: P.faktor, cadangan: cad, jarak: jar },
       act: { qaqc: qa, loader: loader },
-      biaya: D.biaya, port: { kapasitas: P.kapasitasTongkang }, wfMinggu: D.wf && D.wf.minggu,
+      biaya: { kurs: D.biaya.kurs, bbm: D.biaya.bbm, tarif: tarif, mingguan: mingguan, plan: D.biaya.plan || {} },
+      port: { kapasitas: P.kapasitasTongkang }, wfMinggu: D.wf && D.wf.minggu,
       dra: (D.dra.tanggal || []).some(Boolean) || Object.keys(D.dra.nilai || {}).length ? D.dra : null,
       wm: Object.keys(D.wm.sump || {}).length ? { sump: D.wm.sump } : null,
     };
@@ -2815,7 +2904,6 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
         if (hb.kosong || !hb.rows.length) bgCatatan = 'Minerva tidak mengirim daftar tongkang' + (hb.pesan ? ' (' + hb.pesan.slice(0, 120) + ')' : '');
         else bg = hb;
       } catch (e) { if (e.jenis === 'sesi') throw e; bgCatatan = 'Daftar tongkang gagal diambil: ' + e.message; }
-      if (!bg.rows.length && S.bargeManual) { bg = S.bargeManual; bgCatatan += (bgCatatan ? ' · ' : '') + 'memakai berkas tongkang manual'; }
       S.loaderAuto = OE1.pilihLoader(ex, hari);
       var efo = OE1.porsiEfo(ex);
       var data = dataGenerator(); data.minerva = { exca: ex, truck: tr, barge: bg }; data.catatan = [];
@@ -2834,9 +2922,11 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
       log.push('Tongkang: ' + hitungTongkang(bg) + ' selesai ' + tglPendek(mulai()) + '–' + tglPendek(S.cutoff) + ' masuk Excel (dari ' + bg.rows.length + ' baris Minerva)' + (bgCatatan ? ' · ' + bgCatatan : ''));
       var kosongQ = hari.filter(function (d) { return !S.data.qaqc.hari[d]; });
       if (kosongQ.length) log.push('QAQC kosong: ' + kosongQ.map(tglPendek).join(', '));
+      var nMan = hari.filter(function (d) { return bargingManual()[d] != null; }).length;
+      if (nMan) log.push('Barging BUMD dari isian manual: ' + nMan + ' hari');
       var nTongkang = hitungTongkang(bg), bargingQ = hari.reduce(function (t, d) { var x = data.act.qaqc[d]; return t + (x && x.barging || 0); }, 0);
       var bargingNol = nTongkang > 0 && !bargingQ;
-      if (bargingNol) log.push('PERINGATAN: barging BUMD QAQC 0 WMT, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Barging aktual, PORT loading rate, dan biaya barging di Excel ikut 0.');
+      if (bargingNol) log.push('PERINGATAN: barging BUMD 0 WMT (berkas QAQC dan isian manual), padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Barging aktual, PORT loading rate, waterfall shipment, dan biaya barging di Excel ikut 0.');
       (data.catatan || []).forEach(function (t) { log.push(t); });
       log.push('');
       log.push('Tanggal     Loader ANTAM  Loader BUMD  Barging BUMD        Porsi EFO');
@@ -2845,10 +2935,10 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
           ((L.barging.join(', ') || '—') + '                    ').slice(0, 20) + (efo[d] != null ? angka(efo[d] * 100, 1) + '%' : '—') + o); });
       el('logUnduh').textContent = log.join('\n');
       el('unduhHasil').hidden = false;
-      el('unduhHasil').innerHTML = '<div class="banner ok">Excel terunduh. Buka di Excel 365: rumus dihitung saat berkas dibuka (bisa beberapa detik). Loader dan porsi EFO tercatat di bawah.</div>' +
+      el('unduhHasil').innerHTML = '<div class="banner ok"><div>Excel terunduh. Saat dibuka, Excel menampilkan pita kuning <b>Protected View</b> (berkas dari internet): angka baru muncul setelah <b>Enable Editing</b> diklik, karena semua rumus dihitung saat itu (beberapa detik). Setelah angka muncul, tekan <b>Ctrl+S</b> sekali supaya hasil hitungan ikut tersimpan di berkas sebelum dikirim. Loader dan porsi EFO tercatat di bawah.</div></div>' +
         (ex.gagal.length || tr.gagal.length ? '<div class="banner warn">Sebagian hari gagal diambil dari Minerva. Unduh ulang untuk mencoba lagi.</div>' : '') +
-        (bgCatatan && !bg.rows.length ? '<div class="banner warn">' + esc(bgCatatan) + '. Sheet Minerva Barges kosong; unggah berkas tongkang manual bila perlu.</div>' : '') +
-        (bargingNol ? '<div class="banner warn">Barging BUMD dari QAQC 0 WMT sebulan, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Periksa berkas QAQC (sheet MINING KONTRAKTOR, kolom Rampstock-Jetty / ETO-Jetty / EFO-Jetty).</div>' : '');
+        (bgCatatan && !bg.rows.length ? '<div class="banner warn">' + esc(bgCatatan) + '. Sheet Minerva Barges kosong; unduh ulang untuk mencoba lagi.</div>' : '') +
+        (bargingNol ? '<div class="banner warn">Barging BUMD 0 WMT sebulan, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Isi angka barging harian di tab QAQC harian (isian manual) lalu unduh ulang.</div>' : '');
       renderLoader();
     } catch (e) {
       progres(0, '');
@@ -2887,11 +2977,11 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     var jtw = jarakTakWajar();
     if (jtw.length) it.push(['err', 'Jarak angkut tidak wajar', jtw.slice(0, 6).join(' · ') + (jtw.length > 6 ? ' · +' + (jtw.length - 6) + ' lagi' : '') + '. Buka tab PPT mingguan, periksa baris Avg Hauling Distance di Mining Plan minggu itu.']);
     var hq = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; }), q = hq.filter(function (d) { return S.data.qaqc.hari[d]; }).length;
-    var bargingQ = hq.reduce(function (t, d) { var x = S.data.qaqc.hari[d]; return t + (x && x.barging || 0); }, 0);
-    it.push([q >= hq.length && (bargingQ > 0 || !q) ? 'ok' : q ? 'warn' : 'err', 'QAQC harian', q + '/' + hq.length + ' hari s.d. cut-off' + (q ? ' · barging BUMD ' + angka(bargingQ) + ' WMT' : '') +
-      (q && !bargingQ ? ' (0 sebulan: periksa kolom Rampstock-Jetty / ETO-Jetty / EFO-Jetty di sheet MINING KONTRAKTOR berkas QAQC)' : '') + (S.data.qaqc.berkas ? ' · ' + S.data.qaqc.berkas.nama : '')]);
+    var bargingQ = hq.reduce(function (t, d) { return t + bargingHari(d); }, 0), nMan = hq.filter(function (d) { return bargingManual()[d] != null; }).length;
+    it.push([q >= hq.length && (bargingQ > 0 || !q) ? 'ok' : q ? 'warn' : 'err', 'QAQC harian', q + '/' + hq.length + ' hari s.d. cut-off' + (q || nMan ? ' · barging BUMD ' + angka(bargingQ) + ' WMT' + (nMan ? ' (isian manual ' + nMan + ' hari)' : '') : '') +
+      (q && !bargingQ ? ' (0 sebulan: isi barging harian di tab QAQC harian, bagian isian manual)' : '') + (S.data.qaqc.berkas ? ' · ' + S.data.qaqc.berkas.nama : '')]);
     it.push(['ok', 'Data Minerva', 'Excavator, truck, dan tongkang diambil otomatis saat unduh (' + hq.length + ' hari).']);
-    var nb = Object.keys(S.data.biaya.tarif || {}).length + Object.keys(S.data.biaya.mingguan || {}).length;
+    var nb = Object.keys(S.data.biaya.tarif || {}).length + MINGGUAN.filter(function (k) { return (S.data.biaya.mingguan[k[0]] || []).some(function (v) { return v != null; }); }).length;
     it.push([nb ? 'ok' : 'warn', 'Biaya', nb ? 'Ada isian tarif/kuantitas.' : 'Kosong: tarif bawaan template dipakai, kuantitas mingguan kosong (biaya mining ANTAM = 0).']);
     var nDra = Object.keys(S.data.dra.nilai || {}).length, nWm = Object.keys(S.data.wm.sump || {}).filter(function (id) { return wmIsi(S.data.wm.sump[id]); }).length;
     it.push([nDra || nWm ? 'ok' : 'warn', 'DRA & WM', nDra || nWm ? 'DRA ' + nDra + '/' + JALAN.length + ' jalan · WM ' + nWm + '/' + SUMP.length + ' sump terisi.' : 'Kosong (opsional).']);
@@ -2899,7 +2989,43 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     el('unduhInfo').textContent = 'Data ' + tglPendek(mulai()) + ' s.d. ' + tglPendek(S.cutoff) + ' ' + S.bulan.slice(0, 4);
     el('btnUnduh').disabled = S.tplAda === false || S.sibuk;
   }
-  function renderSemua() { renderRingkas(); renderPlan(); renderPpt(); renderQaqc(); renderLoader(); renderBiaya(); renderDrawm(); badge(); }
+  function renderSemua() { renderRingkas(); renderPlan(); renderPpt(); renderQaqc(); renderLoader(); renderBiaya(); renderDrawm(); badge(); renderArsip(); }
+
+  /* ================================================================ ARSIP BULAN */
+  // yang tersimpan hanya isian (tabel oe_1on1); Excel bulan lalu disusun ulang saat diunduh
+  async function muatArsip() {
+    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by&order=bulan.desc', { method: 'GET' }) || []; }
+    catch (e) { S.arsip = null; S.arsipGalat = pesan(e); }
+    renderArsip();
+  }
+  function renderArsip() {
+    var t = el('tblArsip'); if (!t) return;
+    if (S.arsip === undefined) return;
+    if (S.arsip === null) { t.innerHTML = '<tbody><tr><td class="muted">Daftar bulan tidak bisa dimuat: ' + esc(S.arsipGalat || '') + '</td></tr></tbody>'; return; }
+    var ini = hariIniWit().slice(0, 7);
+    var rows = S.arsip.filter(function (r) { return r.bulan < ini; });
+    if (!rows.length) { t.innerHTML = '<tbody><tr><td class="muted">Belum ada bulan lalu yang tersimpan. Isian bulan ini otomatis masuk arsip saat bulan berganti.</td></tr></tbody>'; return; }
+    t.innerHTML = '<thead><tr><th>Bulan</th><th>Isian terakhir diubah</th><th></th></tr></thead><tbody>' + rows.map(function (r) {
+      var aktif = r.bulan === S.bulan;
+      return '<tr><td><b>' + esc(namaBulan(r.bulan)) + '</b>' + (aktif ? ' <span class="pil">sedang dibuka</span>' : '') + '</td><td class="kecil muted">' + esc(jamWit(r.updated_at)) + (r.updated_by ? ' · ' + esc(r.updated_by) : '') + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + (aktif ? '' : '<button class="btn kecil" data-buka="' + esc(r.bulan) + '">Buka isian</button> ') +
+        '<button class="btn kecil primary" data-unduh="' + esc(r.bulan) + '"' + (S.sibuk || S.tplAda === false ? ' disabled' : '') + '>Unduh Excel 1–' + jumlahHari(r.bulan) + ' ' + BLN[+r.bulan.slice(5) - 1] + '</button></td></tr>';
+    }).join('') + '</tbody>';
+    t.querySelectorAll('button[data-buka]').forEach(function (b) { b.onclick = function () { bukaBulan(b.dataset.buka); }; });
+    t.querySelectorAll('button[data-unduh]').forEach(function (b) { b.onclick = function () { unduhArsip(b.dataset.unduh); }; });
+  }
+  async function bukaBulan(ym, cutoff) {
+    if (S.kotor) await simpan();
+    setBulan(ym, cutoff); await muat(); muatArsip();
+  }
+  async function unduhArsip(ym) {
+    if (S.sibuk) return;
+    var akhir = akhirBulan(ym);
+    if (ym !== S.bulan || S.cutoff !== akhir) await bukaBulan(ym, akhir);
+    el('cbPotong').checked = true;
+    pilihTab('ringkas'); el('btnUnduh').scrollIntoView({ block: 'center' });
+    await unduh();
+  }
 
   /* ================================================================ AWAL */
   function setBulan(ym, cutoff) {
@@ -2909,7 +3035,7 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     S.cutoff = cutoff || def;
     el('inBulan').value = ym; el('inCutoff').value = S.cutoff;
     el('inCutoff').min = ym + '-01'; el('inCutoff').max = akhirBulan(ym) < hariIni ? akhirBulan(ym) : hariIni;
-    el('qaqcInfo').textContent = '';
+    el('qaqcInfo').textContent = ''; S.bargingPesan = ''; el('inBargingMulai').value = ym + '-01';
   }
   async function mulaiHalaman() {
     if (!token()) { el('bannerSesi').hidden = false; pil('Belum login', 'err'); }
@@ -2917,23 +3043,21 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     try { S.admin = !!(await rest('/rest/v1/rpc/op_is_admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })); } catch (e) { S.admin = false; }
     el('bannerBaca').hidden = S.admin; el('tabTemplate').hidden = !S.admin;
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.onclick = function () { pilihTab(b.dataset.v); }; });
-    el('inBulan').onchange = async function () { if (!el('inBulan').value) return; if (S.kotor) await simpan(); setBulan(el('inBulan').value); muat(); };
+    el('inBulan').onchange = async function () { if (!el('inBulan').value) return; bukaBulan(el('inBulan').value); };
     el('inCutoff').onchange = function () { var v = el('inCutoff').value; if (v && v.slice(0, 7) === S.bulan) { S.cutoff = v; S.loaderAuto = null; renderSemua(); } else el('inCutoff').value = S.cutoff; };
     el('btnUnduh').onclick = unduh;
     el('btnCekLoader').onclick = cekLoader;
     el('fileQaqc').onchange = function () { if (this.files[0]) prosesQaqc(this.files[0]); this.value = ''; };
     el('cbLgo').onchange = function () { S.data.qaqc.lgoKeWaste = this.checked; ubah(); renderQaqc(); };
     el('fileTpl').onchange = function () { if (this.files[0]) unggahTemplate(this.files[0]); this.value = ''; };
-    el('fileBarge').onchange = async function () {
-      var f = this.files[0]; if (!f) return;
-      try { S.bargeManual = await OE1.readReport(new Uint8Array(await f.arrayBuffer())); el('bargeManualInfo').textContent = f.name + ' · ' + S.bargeManual.rows.length + ' baris'; }
-      catch (e) { el('bargeManualInfo').textContent = 'Gagal: ' + pesan(e); }
-    };
+    el('btnBargingTerapkan').onclick = terapkanBarging;
+    el('btnBargingHapus').onclick = hapusBarging;
     el('dlgTutup').onclick = el('dlgBatal').onclick = function () { el('dlgBaca').close(); };
     el('dlgSimpan').onclick = simpanTinjau;
     window.addEventListener('beforeunload', function (e) { if (S.kotor) { simpan(); e.preventDefault(); e.returnValue = ''; } });
     await muat();
     infoTemplate();
+    muatArsip();
   }
   mulaiHalaman();
 })();
