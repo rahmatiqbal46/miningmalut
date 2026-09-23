@@ -38,8 +38,11 @@ export async function onRequest(context) {
   const KEY  = env.MINERVA_TOKEN;
   const wit  = new Date(Date.now() + 9 * 3600 * 1000);
   const date = wit.toISOString().slice(0, 10);
-  const hour = wit.getUTCHours();
-  const shift = env.MINERVA_SHIFT || (hour >= 7 && hour < 19 ? 'DS' : 'NS');
+  /* Shift berganti 06.30 dan 18.30 WIT (pergantian shift sebenarnya di site; sama
+     dengan label shift di Home, Digital Twin, dan Worker 9.1). 07.00/19.00 hanya
+     jadwal sinkronisasi Operator Performance, bukan batas shift (24 September 2026). */
+  const menit = wit.getUTCHours() * 60 + wit.getUTCMinutes();
+  const shift = env.MINERVA_SHIFT || (menit >= 390 && menit < 1110 ? 'DS' : 'NS');
   const url = BASE + (BASE.includes('?') ? '&' : '?') +
     'updated_at_gte=' + date + '&updated_at_lte=' + date + '&shift_type=' + shift;
 
