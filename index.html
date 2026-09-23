@@ -475,7 +475,7 @@ iframe.page.show{display:block}
   <nav class="nav" id="nav">
    <button class="item active" data-page="home"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Home</button>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg>Mine Production<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="rtup">Real Time Unit Position</button><button class="leaf" data-page="operator">Operator Performance</button></div></div>
+    <div class="sub"><button class="leaf" data-page="rtup">Real Time Unit Position</button><button class="leaf" data-page="operator">Operator Performance</button><button class="leaf" data-page="oe1on1">Data 1on1</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Mine Development<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="reklamasi">Capaian Reklamasi</button><button class="leaf" data-page="smr">Jam Kerja SMR</button><button class="leaf" data-page="water">Water &amp; Road</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Mine Plan<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -527,6 +527,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_asesmen" title="Asesmen Go/No-Go"></iframe>
    <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
    <iframe class="page" id="if_operator" title="Operator Performance"></iframe>
+   <iframe class="page" id="if_oe1on1" title="Data 1on1"></iframe>
    <!-- placeholders -->
    <div class="ph" id="ph"></div>
  </div></main>
@@ -578,7 +579,8 @@ const PAGES={
  jadwal:{iframe:'if_jadwal',url:'jadwal.html'},
  asesmen:{iframe:'if_asesmen',url:'asesmen.html'},
  dispatch:{iframe:'if_dispatch',url:'dispatch-monitoring.html'},
- operator:{iframe:'if_operator',url:'operator-performance.html'}
+ operator:{iframe:'if_operator',url:'operator-performance.html'},
+ oe1on1:{iframe:'if_oe1on1',url:'data-1on1.html'}
 };
 const PH={};
 const MINEDEV={reklamasi:'rekla',smr:'smr',water:'wr',input:'input'}; let minedevLoaded=false;
@@ -603,6 +605,7 @@ function showPage(key){
 const BENTO=[
  ['rtup','Real Time Unit Position','Mine Production','Peta live posisi excavator & dump truck, kecepatan, dan status GPS.',['Wialon','GPS live']],
  ['operator','Operator Performance','Mine Production','Ranking operator ANTAM dan PCM dari scorecard Minerva.',['Minerva','Ranking']],
+ ['oe1on1','Data 1on1','Mine Production','Isian rencana, PPT mingguan, dan QAQC harian, lalu unduh workbook 1-on-1 OE dengan rumus aktif.',['Excel','Minerva','PPT']],
  ['speed','Speed Watcher','ROC','Pemantauan kecepatan unit & pelanggaran, live dari Wialon.',['Wialon','Speed']],
  ['dispatch','Dispatch Monitoring','ROC','Deviasi ritase Minerva vs checker, kepatuhan operator, log isu & tindak lanjut.',['Deviasi','Kepatuhan','Log Isu']],
  ['reklamasi','Mine Development','Reklamasi · SMR · Water','Capaian reklamasi, jam kerja SMR, water & road.',['Capaian Reklamasi','Jam Kerja SMR','Water & Road']],
@@ -1192,7 +1195,8 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     evaluasi: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 12l2.5 2.5L16 9"/>',
     amora:    '<circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="17" r="2.2"/><path d="M8 8.5c3 1.5 3 5.5 8 7"/><path d="M6 9.2V15a2 2 0 0 0 2 2h3"/>',
     jadwal:   '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M8 14h3v3H8z"/>',
-    asesmen:  '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/>'
+    asesmen:  '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/>',
+    oe1on1:   '<path d="M13 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7"/><path d="M4 9h16M9.5 4v16"/><path d="M17.5 15.5v5M15.3 18.4l2.2 2.2 2.2-2.2"/>'
   };
 
   /* Pratinjau: bentuknya mengikuti data yang benar-benar ada di modul itu,
@@ -1252,7 +1256,18 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
         return '<rect x="14" y="' + (7 + r * 12) + '" width="' + [132,118,140,104][r] + '" height="7" rx="2.5" class="v0"/>' +
                (r === 2 ? '' : '<rect x="164" y="' + (6 + r * 12) + '" width="20" height="9" rx="2.5" class="v3"/>');
       }).join('') + '</g>' +
-      '<circle class="simpul buang" cx="174" cy="34.5" r="5"/>'
+      '<circle class="simpul buang" cx="174" cy="34.5" r="5"/>',
+    /* workbook harian: kolom tanggal 1 s.d. cut-off terisi, garis amber = cut-off,
+       kolom sesudahnya masih kosong */
+    oe1on1:
+      '<g class="sel">' +
+      [0,1,2,3,4,5,6,7,8,9].map(function (c) {
+        return [0,1,2].map(function (r) {
+          var v = c < 7 ? ['v1','v2','v3'][r] : 'v0';
+          return '<rect x="' + (13 + c * 17.6) + '" y="' + (11 + r * 13) + '" width="14" height="9" rx="2.5" class="' + v + '"/>';
+        }).join('');
+      }).join('') + '</g>' +
+      '<path class="cutoff" d="M134.4 7v45"/><circle class="tanda" cx="134.4" cy="6" r="3"/>'
   };
 
   var MOD = [
@@ -1260,6 +1275,8 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
      'Posisi excavator dan dump truck di peta site, disegarkan tiap 20 detik dari Wialon.'],
     ['operator', 'Operator Performance', 'Mine Production',
      'Nilai scorecard Minerva tiap operator ANTAM dan PCM: ranking, juara bulanan, dan yang perlu pendampingan.'],
+    ['oe1on1', 'Data 1on1', 'Mine Production',
+     'Isian rencana, slide PPT mingguan, dan QAQC harian, lalu unduh workbook 1-on-1 OE kantor pusat dari tanggal 1 sampai kemarin dengan rumus aktif.'],
     ['speed', 'Speed Watcher', 'ROC',
      'Pelanggaran kecepatan direkam di server 24 jam, dengan batas sendiri untuk tiap ruas jalan.'],
     ['dispatch', 'Dispatch Monitoring', 'ROC',
@@ -1335,6 +1352,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
       '.peek .sel rect.v1{fill:#bbd2d0}',
       '.peek .sel rect.v2{fill:#7cabaa}',
       '.peek .sel rect.v3{fill:var(--t700)}',
+      '.peek .cutoff{fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:3 3;stroke-linecap:round}',
 
       /* isi kartu */
       '.mod-body{display:flex;gap:13px;padding:15px 17px 17px}',
