@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 9 (23 September 2026)
+// Versi 9.1 (24 September 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -211,6 +211,14 @@
 //     Speed Watcher) dan /api/jejak?dari=&sampai= (maks. 3 jam sekali minta).
 //     /api/status dan /api/batas menyebut versi jalan yang dipakai.
 //  6. Penangan /api/isi-nama yang tertulis dua kali dirapikan menjadi satu.
+//
+// Versi 9.1 — BATAS SHIFT 06.30 DAN 18.30 WIT (24 September 2026).
+// Jendela "shift berjalan" di /api/ringkas (dan ?shift=DS/NS) kini mengikuti
+// pergantian shift sebenarnya di site: siang 06.30–18.30, malam 18.30–06.30,
+// sama dengan label shift di Home, Digital Twin, dan proxy /api/minerva.
+// Sebelumnya 07.00/19.00 — itu hanya jadwal sinkronisasi Operator Performance,
+// bukan batas shift. Deteksi, perekaman, jejak, dan /api/ringkas?dari=&sampai=
+// tidak berubah.
 //
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
@@ -1213,30 +1221,28 @@ function jendelaTanggal(dari, sampai) {
   };
 }
 
-/* Batas shift mengikuti aturan yang sama dengan proxy Minerva (§7):
-   siang 07:00–19:00 WIT, malam 19:00–07:00. Shift malam melewati tengah malam,
-   jadi jendelanya dihitung dari jam WIT berjalan, bukan dari tanggal kalender. */
+/* Batas shift 06.30 dan 18.30 WIT — pergantian shift sebenarnya di site, sama
+   dengan label shift di Home, Digital Twin, dan proxy Minerva (§7). 07.00/19.00
+   hanya jadwal sinkronisasi Operator Performance, bukan batas shift (versi 9.1).
+   Shift malam melewati tengah malam, jadi jendelanya dihitung dari jam WIT
+   berjalan, bukan dari tanggal kalender. */
+const MULAI_SIANG = 6.5 * 3600000;    // 06.30 WIT, dalam ms sejak tengah malam
+const MULAI_MALAM = 18.5 * 3600000;   // 18.30 WIT
 function jendelaShift(paksa) {
   const witMs = Date.now() + WIT;
   const wit = new Date(witMs);
-  const jam = wit.getUTCHours();
   const tengahMalam = Date.UTC(wit.getUTCFullYear(), wit.getUTCMonth(), wit.getUTCDate());
+  const dalamHari = witMs - tengahMalam;
 
-  let siang = jam >= 7 && jam < 19;
+  let siang = dalamHari >= MULAI_SIANG && dalamHari < MULAI_MALAM;
   if (paksa === "DS") siang = true;
   if (paksa === "NS") siang = false;
 
-  let mulaiWit, selesaiWit;
-  if (siang) {
-    mulaiWit = tengahMalam + 7 * 3600000;
-    selesaiWit = tengahMalam + 19 * 3600000;
-  } else if (jam >= 19) {
-    mulaiWit = tengahMalam + 19 * 3600000;
-    selesaiWit = tengahMalam + 31 * 3600000;      // 07:00 keesokan hari
-  } else {
-    mulaiWit = tengahMalam - 5 * 3600000;         // 19:00 kemarin
-    selesaiWit = tengahMalam + 7 * 3600000;
-  }
+  let mulaiWit;
+  if (siang) mulaiWit = tengahMalam + MULAI_SIANG;
+  else if (dalamHari >= MULAI_MALAM) mulaiWit = tengahMalam + MULAI_MALAM;
+  else mulaiWit = tengahMalam - 86400000 + MULAI_MALAM;      // 18.30 kemarin
+  const selesaiWit = mulaiWit + 12 * 3600000;
   return {
     nama: siang ? "Siang" : "Malam",
     tanggal: tanggalWIT(mulaiWit - WIT),
@@ -1313,7 +1319,7 @@ export default {
           if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
         }
         return json({
-          versi_worker: 9,
+          versi_worker: 9.1,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
