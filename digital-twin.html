@@ -92,11 +92,46 @@ label.isian{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:va
 /* ---------------- panel lapisan (kiri) ---------------- */
 #panelKiri{position:fixed;left:12px;top:76px;width:252px;max-height:calc(100% - 144px);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:12px;z-index:15}
 .blok-judul{font-size:12px;font-weight:600;color:var(--ink2)}
-.lapis{display:flex;align-items:center;gap:9px;min-height:28px;font-size:12.5px;cursor:pointer}
+.lapis{display:flex;align-items:center;gap:9px;min-height:26px;font-size:12.5px;cursor:pointer}
 .lapis input{width:15px;height:15px;margin:0;accent-color:#35A79A;cursor:pointer;flex-shrink:0}
 .lapis .sw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 .lapis .nm{flex-grow:1}
 .lapis .kt{font-size:10.5px;color:var(--ink2);text-align:right}
+/* baris anak (di bawah Unit): menjorok, redup bila induknya mati */
+.lapis.sub{padding-left:24px;min-height:24px;font-size:12px}
+.lapis.sub .nm{white-space:nowrap}
+.lapis.sub .sw{width:8px;height:8px;border-radius:2px}
+.lapis.sub.mati{opacity:.42;cursor:default}
+.lapis.sub.mati input{cursor:default}
+
+/* ---------------- kartu & panel ringkas (lipat) ----------------
+   Tampilan awal satu baris: judul + angka kunci. Rincian terbuka saat kursor
+   berhenti di atasnya, saat ditekan, atau saat disematkan lewat judulnya. */
+.lipat > .kepala{cursor:pointer;min-height:22px}
+.lipat > .kepala h2{white-space:nowrap}
+.nilai-ringkas{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-align:right}
+.nilai-ringkas.buruk{color:var(--bad)} .nilai-ringkas.waspada{color:var(--warn)} .nilai-ringkas.redup{color:var(--ink2);font-weight:500}
+.nilai-ringkas .lagi{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--isi2);color:var(--ink);font-size:11px;line-height:17px;font-weight:600}
+.lipat-tombol{width:22px;height:22px;border:0;border-radius:6px;background:transparent;color:var(--ink2);display:inline-flex;align-items:center;
+  justify-content:center;cursor:pointer;padding:0;flex-shrink:0;margin-right:-4px}
+.lipat-tombol:hover{background:var(--isi2);color:var(--ink)}
+.lipat-tombol svg{transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.lipat.buka .lipat-tombol svg{transform:rotate(180deg)}
+.lipat.sematan .lipat-tombol{background:var(--isi2);color:var(--accentInk)}
+.lipat:not(.buka) > .kepala .sumber,.lipat:not(.buka) > .kepala .btn{display:none}
+.lipat.buka > .kepala .nilai-ringkas{display:none}
+.lipat .rinci{display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;
+  transition:grid-template-rows .26s cubic-bezier(.2,.8,.2,1),opacity .14s ease,visibility 0s linear .26s}
+.lipat.buka .rinci{grid-template-rows:1fr;opacity:1;visibility:visible;
+  transition:grid-template-rows .26s cubic-bezier(.2,.8,.2,1),opacity .22s ease .05s,visibility 0s}
+/* padding 4 px + margin −4 px: ruang untuk garis fokus yang terpotong overflow */
+.lipat .rinci-isi{min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:0 4px 4px;margin:0 -4px -4px}
+.lipat .rinci-isi > :first-child{margin-top:10px}
+#panelKiri.lipat{gap:0;padding:10px 12px;transition:padding .26s cubic-bezier(.2,.8,.2,1)}
+#panelKiri.lipat.buka{padding:12px;z-index:19}
+#panelKiri .ikon-kepala{color:var(--ink2);flex-shrink:0}
+#panelKiri .rinci-isi{gap:12px}
+#panelKiri .rinci-isi > :first-child{margin-top:12px}
 .legenda{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px}
 .legenda div{display:flex;align-items:center;gap:7px;font-size:11.5px;min-width:0}
 .legenda .g{width:16px;height:5px;border-radius:3px;flex-shrink:0}
@@ -107,6 +142,16 @@ label.isian{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:va
 #kolomKanan{position:fixed;right:12px;top:76px;bottom:12px;width:328px;display:flex;flex-direction:column;gap:10px;padding-right:2px;z-index:15}
 #kolomKanan .tab-lembar{display:none}
 .kartu.info{padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+/* kartu ringkas lebih sempit, rata kanan; melebar ke kiri saat terbuka */
+.kartu.info.lipat{gap:0;width:300px;align-self:flex-end;padding:10px 12px;
+  transition:width .26s cubic-bezier(.2,.8,.2,1),padding .26s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease}
+.kartu.info.lipat.buka{width:100%;padding:12px 14px}
+.kartu.info.lipat.sorot:not(.sematan){box-shadow:var(--shNaik)}
+@media (min-width:761px){
+  /* ruang kosong kolom (di kiri dan di bawah kartu) tetap bisa dipakai menggeser peta */
+  #kolomKanan{pointer-events:none}
+  #kolomKanan > *{pointer-events:auto}
+}
 .kepala{display:flex;align-items:center;gap:8px}
 .kepala h2{font-size:13px;font-weight:600;margin:0;flex-grow:1}
 .kepala .sumber{font-size:10.5px;color:var(--ink2);white-space:nowrap}
@@ -149,7 +194,7 @@ label.isian{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:va
 .catatan-kaki{font-size:10.5px;line-height:14px;color:var(--ink2);padding:0 4px 6px;flex-shrink:0}
 
 /* ---------------- detail terpilih ---------------- */
-#detail{position:fixed;left:276px;bottom:64px;width:372px;max-height:calc(100% - 150px);padding:12px 14px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shNaik);z-index:16}
+#detail{position:fixed;left:12px;bottom:64px;width:372px;max-height:calc(100% - 150px);padding:12px 14px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shNaik);z-index:16}
 #detail .kep{display:flex;align-items:center;gap:10px}
 #detail .tanda{width:12px;height:12px;border-radius:50%;flex-shrink:0}
 #detail .jd{font-size:15px;font-weight:600;line-height:19px}
@@ -162,17 +207,23 @@ label.isian{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:va
 #detail .tabel .v{font-size:12px;font-weight:500;overflow-wrap:anywhere}
 #detail .aksi{display:flex;gap:6px;flex-wrap:wrap}
 #detail svg.profil{display:block;width:100%;height:64px}
-#petunjuk{position:fixed;left:276px;bottom:64px;height:32px;border-radius:999px;padding:0 14px;display:flex;align-items:center;font-size:12px;color:var(--ink2);z-index:14}
+#petunjuk{position:fixed;left:12px;bottom:64px;height:32px;border-radius:999px;padding:0 14px;display:flex;align-items:center;font-size:12px;color:var(--ink2);z-index:14}
 
 /* ---------------- bilah bawah ---------------- */
-#bilahBawah{position:fixed;left:276px;right:352px;bottom:12px;height:44px;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;z-index:15}
+#bilahBawah{position:fixed;left:12px;right:352px;bottom:12px;height:44px;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;z-index:15}
 #bilahBawah .jam{font-size:12.5px;font-weight:600;white-space:nowrap}
 #bilahBawah .shift{font-size:12px;color:var(--ink2);white-space:nowrap}
 .sekat{width:1px;height:22px;background:var(--line);flex-shrink:0}
 .isi{flex-grow:1}
 
 /* ---------------- putar ulang ---------------- */
-#putarBar{position:fixed;left:276px;right:352px;bottom:12px;border-radius:14px;display:flex;flex-direction:column;gap:6px;padding:8px 12px 10px;z-index:17}
+#putarBar{position:fixed;left:12px;right:352px;bottom:12px;border-radius:14px;display:flex;flex-direction:column;gap:6px;padding:8px 12px 10px;z-index:17}
+/* panel lapisan yang ringkas tidak menutupi tepi kiri bawah; bila disematkan
+   terbuka, detail dan bilah bawah bergeser ke kanannya */
+#detail,#petunjuk,#bilahBawah,#putarBar{transition:left .26s cubic-bezier(.2,.8,.2,1)}
+@media (min-width:1021px){
+  body.kiri-semat #detail,body.kiri-semat #petunjuk,body.kiri-semat #bilahBawah,body.kiri-semat #putarBar{left:276px}
+}
 #putarBar .atas{display:flex;align-items:center;gap:8px}
 #putarBar input[type=range]{width:100%;accent-color:#35A79A;margin:0}
 #putarBar .waktu{font-size:13px;font-weight:600;min-width:120px}
@@ -221,17 +272,25 @@ button.kl-baris:hover{background:var(--isi)}
 /* ---------------- tablet ---------------- */
 @media (max-width:1180px){
   #kolomKanan{width:300px}
+  .kartu.info.lipat{width:100%}
   #bilahBawah,#putarBar{right:324px}
   #popData{right:324px}
   .peran{display:none}
-  /* Di dalam shell (lebar bingkai ±1.100 px) bilah bawah hanya ±500 px:
-     shift sudah tampil di kartu TMM, Tampilan awal cukup ikonnya. */
-  #bilahBawah .shift,#btnAwal .teks{display:none}
+  /* Di dalam shell (lebar bingkai ±1.100 px) bilah bawah menyempit bila panel
+     lapisan disematkan terbuka: shift sudah tampil di kartu TMM, Tampilan awal
+     cukup ikonnya. */
+  body.kiri-semat #bilahBawah .shift,body.kiri-semat #btnAwal .teks{display:none}
 }
+@media (max-width:1100px){#btnAwal .teks{display:none}}
 @media (max-width:1020px){
   #btnLapisan{display:inline-flex}
   #panelKiri{display:none}
   body.lapisan-buka #panelKiri{display:flex}
+  /* di sini panel lapisan dibuka lewat tombol Lapisan dan selalu utuh */
+  #panelKiri.lipat{padding:12px}
+  #panelKiri.lipat .rinci{grid-template-rows:1fr;opacity:1;visibility:visible}
+  #panelKiri.lipat > .kepala{cursor:default}
+  #panelKiri.lipat > .kepala .nilai-ringkas,#panelKiri .lipat-tombol{display:none}
   #detail,#petunjuk,#bilahBawah,#putarBar{left:12px}
   #spanduk{width:min(560px,calc(100% - 360px))}
   .merek .sub{display:none}
@@ -250,12 +309,14 @@ button.kl-baris:hover{background:var(--isi)}
   #spanduk{top:62px;width:calc(100% - 16px)}
   #popData{left:8px;right:8px;top:62px;width:auto}
   /* kolom kartu menjadi lembar bawah dengan tiga tab */
-  #kolomKanan{left:0;right:0;bottom:0;top:auto;width:auto;height:44vh;padding:0 10px 10px;gap:8px;border-radius:16px 16px 0 0;
-    background:var(--bg);box-shadow:0 -10px 30px rgba(0,0,0,.4);transition:height .25s ease}
-  #kolomKanan.ciut{height:112px}
+  /* tinggi mengikuti isi: kartu ringkas pendek, jadi lembar tidak menutupi separuh peta */
+  #kolomKanan{left:0;right:0;bottom:0;top:auto;width:auto;height:auto;max-height:44vh;padding:0 10px 10px;gap:8px;border-radius:16px 16px 0 0;
+    background:var(--bg);box-shadow:0 -10px 30px rgba(0,0,0,.4);transition:max-height .25s ease}
+  #kolomKanan.ciut{max-height:112px}
   #kolomKanan .tab-lembar{display:flex;position:sticky;top:0;z-index:2;background:var(--bg);padding:8px 0 6px;gap:8px;align-items:center;flex-direction:column}
   #kolomKanan .pegangan{width:40px;height:4px;border-radius:2px;background:var(--isi2);border:0;padding:0;cursor:pointer}
   #kolomKanan .seg{width:100%}
+  .kartu.info.lipat{width:auto;align-self:stretch}
   #kolomKanan[data-tab] .kartu.info,#kolomKanan[data-tab] .catatan-kaki{display:none}
   #kolomKanan[data-tab="ringkas"] .kartu.info[data-tab-kartu~="ringkas"],
   #kolomKanan[data-tab="armada"] .kartu.info[data-tab-kartu~="armada"],
@@ -271,7 +332,8 @@ button.kl-baris:hover{background:var(--isi)}
 }
 
 @media (prefers-reduced-transparency: reduce){.kaca{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}}
-@media (prefers-reduced-motion: reduce){.denyut,.pemutar{animation:none!important} #kolomKanan{transition:none}}
+@media (prefers-reduced-motion: reduce){.denyut,.pemutar{animation:none!important} #kolomKanan{transition:none}
+  .lipat,.lipat *,#detail,#petunjuk,#bilahBawah,#putarBar{transition:none!important}}
 @media (prefers-contrast: more){:root{--ink2:#cfe0dd;--line:#3c7a71;--kaca:rgba(8,26,24,.94)}}
 
 /* =============================================================================
@@ -420,7 +482,14 @@ button.kl-baris:hover{background:var(--isi)}
   <div class="mini redup" id="ketSumberData">Semua modul membaca versi yang sama: Digital Twin, Water &amp; Road, AMORA, dan Speed Watcher.</div>
 </section>
 
-<aside id="panelKiri" class="kaca gulir" aria-label="Lapisan peta">
+<aside id="panelKiri" class="kaca gulir lipat" data-lipat="lapisan" aria-label="Lapisan peta">
+  <div class="kepala">
+    <svg class="ikon-kepala" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+    <h2>Lapisan</h2>
+    <span class="nilai-ringkas" id="ringkasLapis">—</span>
+    <button type="button" class="lipat-tombol" aria-expanded="false" aria-pressed="false" aria-controls="rinciLapis" aria-label="Lapisan peta: tetap buka" title="Tetap buka"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  </div>
+  <div class="rinci" id="rinciLapis"><div class="rinci-isi">
   <div style="display:flex;flex-direction:column;gap:7px">
     <div class="blok-judul">Latar peta</div>
     <div class="seg" id="segLatar" role="group" aria-label="Latar peta">
@@ -429,7 +498,7 @@ button.kl-baris:hover{background:var(--isi)}
     <div class="mini redup" id="ketLatar">—</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:1px" id="daftarLapis">
-    <div class="blok-judul" style="margin-bottom:3px">Lapisan</div>
+    <div class="blok-judul" style="margin-bottom:3px">Tampilkan di peta</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:7px">
     <div class="blok-judul">Warna jalan</div>
@@ -443,6 +512,7 @@ button.kl-baris:hover{background:var(--isi)}
     <div class="blok-judul">Unit</div>
     <div class="legenda" id="legendaUnit"></div>
   </div>
+  </div></div>
 </aside>
 
 <div id="kolomKanan" class="gulir" aria-label="Kartu informasi" data-tab="ringkas">
@@ -453,8 +523,9 @@ button.kl-baris:hover{background:var(--isi)}
     </div>
   </div>
 
-  <section class="kartu info" id="kartuTMM" data-tab-kartu="ringkas">
-    <div class="kepala"><h2>TMM · Tonase</h2><span class="sumber" id="tmmSumber">Minerva · tiap 5 menit</span></div>
+  <section class="kartu info lipat" id="kartuTMM" data-tab-kartu="ringkas" data-lipat="tmm">
+    <div class="kepala"><h2>TMM · Tonase</h2><span class="sumber" id="tmmSumber">Minerva · tiap 5 menit</span><span class="nilai-ringkas" id="tmmRingkas">—</span><button type="button" class="lipat-tombol" aria-expanded="false" aria-pressed="false" aria-controls="rinciTMM" aria-label="TMM · Tonase: tetap buka" title="Tetap buka"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="rinci" id="rinciTMM"><div class="rinci-isi">
     <div class="angka-besar"><b id="tmmTon">—</b><span>t ore</span></div>
     <div class="grid3 garis-atas">
       <div class="nilai"><div class="k">Ore Production</div><div class="v"><span id="tmmOre">—</span> <small>t</small></div></div>
@@ -470,10 +541,12 @@ button.kl-baris:hover{background:var(--isi)}
       <div class="nilai"><div class="k">Distance</div><div class="v"><span id="bgDist">—</span> <small>km</small></div></div>
     </div>
     <div class="status-kartu" id="tmmStatus">Memuat</div>
+    </div></div>
   </section>
 
-  <section class="kartu info" id="kartuArmada" data-tab-kartu="ringkas armada">
-    <div class="kepala"><h2>Armada</h2><span class="sumber">GPS · tiap 10 detik</span></div>
+  <section class="kartu info lipat" id="kartuArmada" data-tab-kartu="ringkas armada" data-lipat="armada">
+    <div class="kepala"><h2>Armada</h2><span class="sumber">GPS · tiap 10 detik</span><span class="nilai-ringkas" id="armRingkas">—</span><button type="button" class="lipat-tombol" aria-expanded="false" aria-pressed="false" aria-controls="rinciArmada" aria-label="Armada: tetap buka" title="Tetap buka"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="rinci" id="rinciArmada"><div class="rinci-isi">
     <div class="angka-besar"><b id="armOnline">—</b><span id="armTotal">/ — unit online</span></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap" id="armTipe"></div>
     <div class="batang" id="armBatang"></div>
@@ -484,18 +557,22 @@ button.kl-baris:hover{background:var(--isi)}
       <span class="mini redup">Muat dan antre: perkiraan dari jarak truk ke excavator.</span>
     </div>
     <div class="status-kartu" id="armStatusKartu">Memuat</div>
+    </div></div>
   </section>
 
-  <section class="kartu info" id="kartuKecepatan" data-tab-kartu="ringkas">
-    <div class="kepala"><h2>Kecepatan</h2><span class="sumber">Worker Speed Watcher</span></div>
+  <section class="kartu info lipat" id="kartuKecepatan" data-tab-kartu="ringkas" data-lipat="kecepatan">
+    <div class="kepala"><h2>Kecepatan</h2><span class="sumber">Worker Speed Watcher</span><span class="nilai-ringkas" id="kecRingkasNilai">—</span><button type="button" class="lipat-tombol" aria-expanded="false" aria-pressed="false" aria-controls="rinciKecepatan" aria-label="Kecepatan: tetap buka" title="Tetap buka"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="rinci" id="rinciKecepatan"><div class="rinci-isi">
     <div class="angka-besar"><b id="kecN">—</b><span>unit melampaui batas saat ini</span></div>
     <div class="daftar-langgar" id="kecDaftar"></div>
     <div class="kecil redup garis-atas" id="kecRingkas">—</div>
     <div class="status-kartu" id="kecStatus"></div>
+    </div></div>
   </section>
 
-  <section class="kartu info" id="kartuJalan" data-tab-kartu="jalan">
-    <div class="kepala"><h2>Jalan &amp; air</h2><span class="sumber">Water &amp; Road · topo aktif</span></div>
+  <section class="kartu info lipat" id="kartuJalan" data-tab-kartu="jalan" data-lipat="jalan">
+    <div class="kepala"><h2>Jalan &amp; air</h2><span class="sumber">Water &amp; Road · topo aktif</span><span class="nilai-ringkas" id="jlnRingkas">—</span><button type="button" class="lipat-tombol" aria-expanded="false" aria-pressed="false" aria-controls="rinciJalan" aria-label="Jalan &amp; air: tetap buka" title="Tetap buka"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="rinci" id="rinciJalan"><div class="rinci-isi">
     <div class="kotak3">
       <div><b id="jlnPerbaikan">—</b><span>ruas perlu perbaikan</span></div>
       <div><b id="jlnCuram" style="color:var(--warn)">—</b><span>ruas curam</span></div>
@@ -504,12 +581,15 @@ button.kl-baris:hover{background:var(--isi)}
     <div class="daftar-curam" id="jlnDaftar"></div>
     <div class="mini redup">Ruas curam: ≥ 10 % panjangnya berkelandaian di atas 12 %, dihitung dari topo aktif (jendela ±15 m). Kondisi ruas dan SF sump dari Input Data Water &amp; Road.</div>
     <div class="status-kartu" id="jlnStatus">Memuat</div>
+    </div></div>
   </section>
 
-  <section class="kartu info" id="kartuData" data-tab-kartu="ringkas jalan">
-    <div class="kepala"><h2>Data site</h2><button type="button" class="btn btn-kecil" id="btnKelola2" hidden>Kelola</button></div>
+  <section class="kartu info lipat" id="kartuData" data-tab-kartu="ringkas jalan" data-lipat="data">
+    <div class="kepala"><h2>Data site</h2><button type="button" class="btn btn-kecil" id="btnKelola2" hidden>Kelola</button><span class="nilai-ringkas" id="dataRingkas">—</span><button type="button" class="lipat-tombol" aria-expanded="false" aria-pressed="false" aria-controls="rinciData" aria-label="Data site: tetap buka" title="Tetap buka"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="rinci" id="rinciData"><div class="rinci-isi">
     <div id="dataBaris"></div>
     <div class="status-kartu" id="dataStatus"></div>
+    </div></div>
   </section>
 </div>
 
@@ -2377,6 +2457,16 @@ button.kl-baris:hover{background:var(--isi)}
     tGeo.setIndex(new THREE.BufferAttribute(idx, 1));
     tGeo.computeVertexNormals();
 
+    /* Tinggi permukaan yang benar-benar digambar (segitiga mesh, sudah × exag).
+       Dipakai benda yang menempel di tanah (alur air, panah arah) supaya tidak
+       tenggelam di lereng: hAt membaca grid penuh, mesh hanya tiap ST sel. */
+    var SEL_MESH = ST * DX;
+    function hPermukaan(x, y) {
+      var fx = clamp(x / SEL_MESH, 0, MX - 1.0001), fy = clamp(y / SEL_MESH, 0, MY - 1.0001), ii = fx | 0, jj = fy | 0, tx = fx - ii, ty = fy - jj;
+      var a = jj * MX + ii, za = pos[3 * a + 1], zb = pos[3 * a + 4], zc = pos[3 * (a + MX) + 1], zd = pos[3 * (a + MX) + 4];
+      return tx + ty <= 1 ? za + (zb - za) * tx + (zc - za) * ty : zd + (zc - zd) * (1 - tx) + (zb - zd) * (1 - ty);
+    }
+
     // relief: hipsometri + bayangan bukit, satu piksel per sel grid
     var reliefCanvas = document.createElement('canvas'); reliefCanvas.width = NX; reliefCanvas.height = NY;
     (function () {
@@ -2720,13 +2810,160 @@ button.kl-baris:hover{background:var(--isi)}
       });
     }
 
+    /* ---------------- arah aliran air ----------------
+       Partikel kecil berjalan menyusuri alur ke hilir dengan ekor memudar di
+       belakangnya, jadi arah aliran terbaca juga pada gambar diam. Satu sistem
+       untuk dua sumber: alur Water & Road (lapisan Air & sump) dan alur hasil
+       hitung catchment topo aktif (lapisan Catchment dihitung). Tiap garis
+       berurutan hulu → hilir, dalam meter lokal [x,y,x,y,…]. */
+    var gerakHalus = !o.kurangiGerak;
+    var AIR_VS = [
+      'attribute float alfa;', 'attribute float besar;', 'uniform float ukuran;', 'varying float vA;',
+      'void main() {',
+      '  vA = alfa;',
+      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      '  gl_PointSize = ukuran * besar;',
+      '}'
+    ].join('\n');
+    var AIR_FS = [
+      'uniform vec3 warna;', 'varying float vA;',
+      'void main() {',
+      '  float r = length(gl_PointCoord - 0.5);',
+      '  float a = smoothstep(0.5, 0.22, r) * vA;',
+      '  if (a < 0.02) discard;',
+      '  gl_FragColor = vec4(mix(warna, vec3(1.0), smoothstep(0.3, 0.0, r) * 0.45), a);',
+      '}'
+    ].join('\n');
+    // tiap partikel = kepala + empat titik ekor yang makin kecil dan pudar (bentuk komet)
+    var EKOR = 5, EKOR_ALFA = [1, 0.7, 0.48, 0.3, 0.16], EKOR_BESAR = [1, 0.86, 0.72, 0.58, 0.46];
+    function buatAliran(daftar, opsi) {
+      var grup = new THREE.Group(); grup.visible = false; scene.add(grup);
+      var garis = [], seg = [];
+      (daftar || []).forEach(function (g) {
+        if (!g || g.length < 4) return;
+        // dirapatkan tiap ±4 m supaya menempel di permukaan
+        var d = [];
+        for (var k = 0; k + 3 < g.length; k += 2) {
+          var x1 = g[k], y1 = g[k + 1], x2 = g[k + 2], y2 = g[k + 3], n = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 4));
+          for (var t = 0; t < n; t++) d.push(x1 + (x2 - x1) * t / n, y1 + (y2 - y1) * t / n);
+        }
+        d.push(g[g.length - 2], g[g.length - 1]);
+        var m = d.length / 2, P = new Float32Array(m * 3), cum = new Float32Array(m), L = 0;
+        for (var q = 0; q < m; q++) {
+          var x = d[2 * q], y = d[2 * q + 1];
+          P[3 * q] = wx(x); P[3 * q + 1] = hPermukaan(x, y) + opsi.angkat; P[3 * q + 2] = wz(y);
+          if (q) {
+            L += Math.hypot(x - d[2 * q - 2], y - d[2 * q - 1]);
+            seg.push(P[3 * q - 3], P[3 * q - 2], P[3 * q - 1], P[3 * q], P[3 * q + 1], P[3 * q + 2]);
+          }
+          cum[q] = L;
+        }
+        if (L >= 6) garis.push({ P: P, cum: cum, L: L });
+      });
+      if (seg.length) {
+        var gL = new THREE.BufferGeometry(); gL.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+        var lin = new THREE.LineSegments(gL, new THREE.LineBasicMaterial({ color: opsi.warnaGaris, transparent: true, opacity: opsi.opasitasGaris, depthWrite: false }));
+        lin.renderOrder = 7; grup.add(lin);
+      }
+      // partikel: satu tiap ±opsi.antar meter, paling sedikit satu per alur
+      var pl = [], off = [], urut = [];
+      garis.forEach(function (gr, gi) {
+        var n = Math.max(1, Math.round(gr.L / opsi.antar));
+        for (var k = 0; k < n; k++) { pl.push(gi); off.push((k + Math.random() * 0.4) / n * gr.L); urut.push(Math.random()); }
+      });
+      var N = pl.length, posP = new Float32Array(N * EKOR * 3), alfa = new Float32Array(N * EKOR), besar = new Float32Array(N * EKOR);
+      for (var b2 = 0; b2 < N * EKOR; b2++) besar[b2] = EKOR_BESAR[b2 % EKOR];
+      var gP = new THREE.BufferGeometry(), aPos = new THREE.BufferAttribute(posP, 3), aAlfa = new THREE.BufferAttribute(alfa, 1);
+      aPos.setUsage(THREE.DynamicDrawUsage); aAlfa.setUsage(THREE.DynamicDrawUsage);
+      gP.setAttribute('position', aPos); gP.setAttribute('alfa', aAlfa); gP.setAttribute('besar', new THREE.BufferAttribute(besar, 1));
+      var titik = new THREE.Points(gP, new THREE.ShaderMaterial({
+        uniforms: { ukuran: { value: 7 * renderer.getPixelRatio() }, warna: { value: new THREE.Color(opsi.warna) } },
+        vertexShader: AIR_VS, fragmentShader: AIR_FS, transparent: true, depthWrite: false }));
+      titik.frustumCulled = false; titik.renderOrder = 9;
+      if (N) grup.add(titik); else { gP.dispose(); titik.material.dispose(); }
+      var jalan = 0, sudahDiam = false;
+      function taruh(gr, dd, o3) {
+        var P = gr.P, cum = gr.cum, n = cum.length;
+        if (dd <= 0) { posP[o3] = P[0]; posP[o3 + 1] = P[1]; posP[o3 + 2] = P[2]; return; }
+        if (dd >= gr.L) { var e = (n - 1) * 3; posP[o3] = P[e]; posP[o3 + 1] = P[e + 1]; posP[o3 + 2] = P[e + 2]; return; }
+        var lo = 0, hi = n - 1;
+        while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (cum[mid] <= dd) lo = mid; else hi = mid; }
+        var t = (dd - cum[lo]) / ((cum[hi] - cum[lo]) || 1), a = lo * 3, b = hi * 3;
+        posP[o3] = P[a] + (P[b] - P[a]) * t; posP[o3 + 1] = P[a + 1] + (P[b + 1] - P[a + 1]) * t; posP[o3 + 2] = P[a + 2] + (P[b + 2] - P[a + 2]) * t;
+      }
+      function perbarui(dt, jarak) {
+        if (!grup.visible || !N) return;
+        if (!gerakHalus) { if (sudahDiam) return; sudahDiam = true; }   // gerak dikurangi: partikel diam di tempat
+        // laju di layar kira-kira tetap: cepat saat kamera jauh, pelan saat dekat.
+        // Dari jauh partikel dijarangkan supaya peta tidak ramai; ekor ±4 px antar titik.
+        jalan += dt * clamp(jarak / 30, 8, 70);
+        var ekor = clamp(jarak / 330, 0.8, 14), rapat = clamp(900 / jarak, 0.2, 1);
+        for (var p = 0; p < N; p++) {
+          if (urut[p] > rapat) { for (var e0 = 0; e0 < EKOR; e0++) alfa[p * EKOR + e0] = 0; continue; }
+          var gr = garis[pl[p]], dd = (off[p] + jalan) % gr.L, pudar = clamp(dd / 10, 0, 1) * clamp((gr.L - dd) / 10, 0, 1);
+          for (var e2 = 0; e2 < EKOR; e2++) {
+            var v = p * EKOR + e2, de = dd - e2 * ekor;
+            taruh(gr, de, v * 3);
+            alfa[v] = de < 0 ? 0 : EKOR_ALFA[e2] * pudar;
+          }
+        }
+        aPos.needsUpdate = true; aAlfa.needsUpdate = true;
+      }
+      function buang() { scene.remove(grup); grup.children.forEach(function (c) { c.geometry.dispose(); c.material.dispose(); }); }
+      return { grup: grup, perbarui: perbarui, buang: buang, jumlah: N, alur: garis.length };
+    }
+    // alur Water & Road: selisih meter dari sudut W&R → meter lokal twin
+    function aliranLokal(a) {
+      if (!a || !a.garis || !a.dasar) return [];
+      var ox = a.dasar[0] - E0, oy = a.dasar[1] - N0;
+      return a.garis.map(function (g) { var h2 = new Array(g.length); for (var k = 0; k < g.length; k += 2) { h2[k] = g[k] + ox; h2[k + 1] = g[k + 1] + oy; } return h2; });
+    }
+    /* Segmen hitung catchment (sel → sel penerima, 3 m) dirangkai menjadi alur:
+       mulai dari sel hulu yang tidak menerima alur lain, berhenti di pertemuan
+       dengan alur yang sudah dirangkai. Tangga 8 arah dihaluskan sedikit. */
+    function rantaiAlur(g) {
+      var n = g.length >> 2, ke = new Map(), hulu = new Set();
+      for (var s = 0; s < n; s++) {
+        var a = Math.round(g[4 * s] / DX) + Math.round(g[4 * s + 1] / DX) * NX, b = Math.round(g[4 * s + 2] / DX) + Math.round(g[4 * s + 3] / DX) * NX;
+        ke.set(a, b); hulu.add(b);
+      }
+      var sudah = new Set(), hasil = [];
+      ke.forEach(function (b, a) {
+        if (hulu.has(a)) return;
+        var c = a, xy = [];
+        for (;;) {
+          xy.push((c % NX) * DX, Math.floor(c / NX) * DX);
+          if (sudah.has(c)) break;
+          sudah.add(c);
+          var lanjut = ke.get(c); if (lanjut == null) break;
+          c = lanjut;
+        }
+        if (xy.length >= 4) hasil.push(haluskan(xy));
+      });
+      return hasil;
+    }
+    function haluskan(xy) {
+      for (var ulang = 0; ulang < 2; ulang++) {
+        var b = xy.slice();
+        for (var k = 2; k + 2 < xy.length; k += 2) { b[k] = (xy[k - 2] + xy[k] + xy[k + 2]) / 3; b[k + 1] = (xy[k - 1] + xy[k + 1] + xy[k + 3]) / 3; }
+        xy = b;
+      }
+      return xy;
+    }
+    var aliranWR = null, aliranHitung = null;
+    function gantiAliranWR(a) {
+      if (aliranWR) { aliranWR.buang(); aliranWR = null; }
+      var d = aliranLokal(a);
+      if (d.length) aliranWR = buatAliran(d, { angkat: 1.8, warna: '#7fd4ff', warnaGaris: 0x5fb8ff, opasitasGaris: 0.3, antar: 45 });
+    }
+
     /* ---------------- catchment dihitung ulang dari topo aktif (fase 4) ----------------
        d.label: satu nilai per sel grid (0 = tidak mengalir ke sump mana pun, k = sump ke-k),
        d.warna: warna tiap sump (urutan k), d.garis: [x1,y1,x2,y2,…] alur air dalam meter lokal. */
-    var airMesh = null, airGaris = null;
+    var airMesh = null;
     function setAirHitung(d) {
       if (airMesh) { scene.remove(airMesh); airMesh.material.map.dispose(); airMesh.material.dispose(); airMesh = null; }
-      if (airGaris) { scene.remove(airGaris); airGaris.geometry.dispose(); airGaris.material.dispose(); airGaris = null; }
+      if (aliranHitung) { aliranHitung.buang(); aliranHitung = null; }
       if (!d) return;
       var cv = document.createElement('canvas'); cv.width = NX; cv.height = NY;
       var g = cv.getContext('2d'), img = g.createImageData(NX, NY), dd = img.data;
@@ -2742,16 +2979,8 @@ button.kl-baris:hover{background:var(--isi)}
       var tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
       airMesh = new THREE.Mesh(tGeo, new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
       airMesh.renderOrder = 2; scene.add(airMesh);
-      if (d.garis && d.garis.length >= 4) {
-        var v = new Float32Array(d.garis.length / 2 * 3);
-        for (var q2 = 0, w2 = 0; q2 < d.garis.length; q2 += 2) {
-          var x = d.garis[q2], y = d.garis[q2 + 1];
-          v[w2++] = wx(x); v[w2++] = hAt(x, y) * exag + 1.6; v[w2++] = wz(y);
-        }
-        var g7 = new THREE.BufferGeometry(); g7.setAttribute('position', new THREE.BufferAttribute(v, 3));
-        airGaris = new THREE.LineSegments(g7, new THREE.LineBasicMaterial({ color: 0x5fb8ff, transparent: true, opacity: 0.85, depthWrite: false }));
-        airGaris.renderOrder = 7; scene.add(airGaris);
-      }
+      // alur hasil hitung: garis biru seperti sebelumnya, kini dengan partikel arah aliran
+      if (d.garis && d.garis.length >= 4) aliranHitung = buatAliran(rantaiAlur(d.garis), { angkat: 1.6, warna: '#a8e4ff', warnaGaris: 0x5fb8ff, opasitasGaris: 0.8, antar: 55 });
     }
 
     /* ---------------- unit ---------------- */
@@ -2812,6 +3041,45 @@ button.kl-baris:hover{background:var(--isi)}
       exca.forEach(function (e) { if (e.status === 'diam' && e.dekatTruk > 0) e.status = 'muat'; });
     }
 
+    /* ---------------- panah arah gerak ----------------
+       Tiga chevron di tanah tepat di depan unit yang sedang bergerak. Chevron
+       menyala bergiliran ke arah gerak; makin cepat unitnya, makin cepat
+       nyalanya. Merah bertepi putih bila unit melaju di atas batas. Digambar shader tanpa
+       tekstur, jadi tetap tajam di semua jarak kamera. Geometri menghadap −Z
+       (utara saat arah 0), mulai PANAH_A meter di depan titik tengah unit. */
+    var PANAH_A = 6.2, PANAH_L = 12.6;
+    var geoPanah = new THREE.BufferGeometry();
+    geoPanah.setAttribute('position', new THREE.Float32BufferAttribute([
+      -3.8, 0, -PANAH_A + 0.6, 3.8, 0, -PANAH_A + 0.6, -3.8, 0, -(PANAH_A + PANAH_L) - 0.6, 3.8, 0, -(PANAH_A + PANAH_L) - 0.6], 3));
+    geoPanah.setIndex([0, 2, 1, 1, 2, 3]);
+    geoPanah.computeBoundingSphere();
+    var PANAH_VS = 'varying vec2 vP;\nvoid main() {\n  vP = position.xz;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}';
+    var PANAH_FS = [
+      'uniform vec3 warna;', 'uniform vec3 garisTepi;', 'uniform float fase;', 'varying vec2 vP;',
+      'float ruas(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h); }',
+      'void main() {',
+      '  vec2 q = vec2(abs(vP.x), -vP.y - ' + PANAH_A.toFixed(2) + ');',
+      '  float d = 1e3, terang = 0.0;',
+      '  for (int k = 0; k < 3; k++) {',
+      '    float pusat = (float(k) + 0.5) * ' + (PANAH_L / 3).toFixed(3) + ';',
+      '    float dk = ruas(q, vec2(0.0, pusat + 1.3), vec2(2.55, pusat - 1.3));',
+      '    if (dk < d) { d = dk; terang = pow(1.0 - fract(fase - float(k) / 3.0), 1.7); }',
+      '  }',
+      '  float aa = max(fwidth(d), 0.03);',
+      '  float isi = 1.0 - smoothstep(0.6 - aa, 0.6 + aa, d);',
+      '  float tepi = 1.0 - smoothstep(1.0 - aa, 1.0 + aa, d);',
+      '  if (tepi < 0.01) discard;',
+      '  vec3 rgb = mix(garisTepi, warna * (0.62 + 0.38 * terang), isi);',
+      '  gl_FragColor = vec4(rgb, tepi * mix(0.82, 1.0, isi));',
+      '}'
+    ].join('\n');
+    function bahanPanah() {
+      return new THREE.ShaderMaterial({
+        uniforms: { warna: { value: new THREE.Color(0xffffff) }, garisTepi: { value: new THREE.Color(0x06211d) }, fase: { value: 0 } },
+        vertexShader: PANAH_VS, fragmentShader: PANAH_FS, transparent: true, depthTest: false, depthWrite: false,
+        side: THREE.DoubleSide, extensions: { derivatives: true } });
+    }
+
     function unitBaru(s) {
       var model = modelUntuk(s.nama);
       var mesh = new THREE.Mesh(geoUntuk(model), matUnit);
@@ -2820,8 +3088,9 @@ button.kl-baris:hover{background:var(--isi)}
       var lt = labelTex(THREE, s.nama, { size: 19, bold: true });
       var lb = spr(lt, 17, { order: 23, center: [0.5, -0.9] }); lb.userData.labelTex = lt; lb.userData.milikSendiri = true;
       lb.userData.kind = 'unit'; lb.userData.id = s.id; lb.visible = false;
-      unitGroup.add(mesh, cin, lb);
-      return { id: s.id, nama: s.nama, model: model, jenis: jenisModel(model), mesh: mesh, cincin: cin, label: lb,
+      var pn = new THREE.Mesh(geoPanah, bahanPanah()); pn.rotation.order = 'YXZ'; pn.renderOrder = 12; pn.visible = false; pn.frustumCulled = false;
+      unitGroup.add(mesh, cin, lb, pn);
+      return { id: s.id, nama: s.nama, model: model, jenis: jenisModel(model), mesh: mesh, cincin: cin, label: lb, panah: pn, fase: Math.random(),
                x: 0, y: 0, dari: null, ke: null, t0: 0, dur: 0, arah: s.arah || 0, arahTampil: s.arah || 0 };
     }
 
@@ -2854,7 +3123,7 @@ button.kl-baris:hover{background:var(--isi)}
       if (!opsi.tambahSaja) {
         unit.forEach(function (u, id) {
           if (ada2.has(id)) return;
-          unitGroup.remove(u.mesh, u.cincin, u.label); lepasSprite(u.cincin); lepasSprite(u.label);
+          unitGroup.remove(u.mesh, u.cincin, u.label, u.panah); lepasSprite(u.cincin); lepasSprite(u.label); u.panah.material.dispose();
           unit.delete(id);
         });
       }
@@ -2937,7 +3206,8 @@ button.kl-baris:hover{background:var(--isi)}
       ray.setFromCamera(ndc, camera);
       // unit lebih dulu: jarak layar ke titik unit, karena modelnya kecil dari jauh
       var terbaik = null, bd = 22, tmp = new THREE.Vector3();
-      if (unitGroup.visible) unit.forEach(function (u) {
+      if (lapis.unit) unit.forEach(function (u) {
+        if (!u.mesh.visible) return;                 // unit tidak aktif yang disembunyikan tidak bisa diklik
         tmp.set(wx(u.x), hAt(u.x, u.y) * exag + 3, wz(u.y)).project(camera);
         if (tmp.z > 1) return;
         var px = (tmp.x + 1) / 2 * rect.width, py = (1 - tmp.y) / 2 * rect.height;
@@ -2980,19 +3250,27 @@ button.kl-baris:hover{background:var(--isi)}
     }
 
     /* ---------------- ukuran ---------------- */
-    var sisip = o.inset || null;
+    /* Sisip = ruang yang tertutup panel di tiap tepi; pusat peta digeser ke ruang
+       yang terbuka. Saat panel disematkan atau dilepas, geserannya dianimasikan. */
+    var sisip = o.inset || null, sisipAnim = null, lebarVP = 800;
+    function aturGeser() {
+      var s = sisip, w = lebarVP, h = vpH;
+      if (s) camera.setViewOffset(w, h, -((s.l || 0) - (s.r || 0)) / 2, -((s.t || 0) - (s.b || 0)) / 2, w, h); else camera.clearViewOffset();
+      camera.updateProjectionMatrix();
+    }
     function ubahUkuran() {
       var w = canvas.clientWidth || 800, h = canvas.clientHeight || 600;
-      renderer.setSize(w, h, false); camera.aspect = w / h;
-      if (sisip) camera.setViewOffset(w, h, -((sisip.l || 0) - (sisip.r || 0)) / 2, -((sisip.t || 0) - (sisip.b || 0)) / 2, w, h); else camera.clearViewOffset();
-      camera.updateProjectionMatrix(); vpH = h;
+      renderer.setSize(w, h, false); camera.aspect = w / h; lebarVP = w; vpH = h;
+      aturGeser();
     }
     ubahUkuran();
     var ro = null;
     if (global.ResizeObserver) { ro = new global.ResizeObserver(ubahUkuran); ro.observe(canvas); }
 
     /* ---------------- lapisan & gambar ---------------- */
-    var lapis = { jalan: true, labelJalan: false, area: true, unit: true, pelanggaran: true, air: false, airHitung: false, kontur: false, perubahan: false };
+    /* unitNonaktif: tampilkan unit yang GPS-nya hilang (> 10 menit), pudar.
+       panah: chevron arah gerak di depan unit yang bergerak. */
+    var lapis = { jalan: true, labelJalan: false, area: true, unit: true, unitNonaktif: false, panah: true, pelanggaran: true, air: false, airHitung: false, kontur: false, perubahan: false };
     var tmpV = new THREE.Vector3();
     function rapikanLabel() {
       var W2 = vpH * camera.aspect, taruh = [], cand = [];
@@ -3014,7 +3292,15 @@ button.kl-baris:hover{background:var(--isi)}
       });
     }
     function sudutBeda(a2, b2) { return ((b2 - a2 + 540) % 360) - 180; }
+    var tampilT = 0;
     function tampilan(now) {
+      var dtDetik = tampilT ? clamp((now - tampilT) / 1000, 0, 0.1) : 0; tampilT = now;
+      if (sisipAnim) {
+        var fs = clamp((now - sisipAnim.t0) / sisipAnim.ms, 0, 1), es = 1 - Math.pow(1 - fs, 3), A = sisipAnim.dari, B = sisipAnim.ke;
+        sisip = { l: A.l + (B.l - A.l) * es, r: A.r + (B.r - A.r) * es, t: A.t + (B.t - A.t) * es, b: A.b + (B.b - A.b) * es };
+        if (fs >= 1) { sisip = B; sisipAnim = null; }
+        aturGeser();
+      }
       if (terbang) {
         var k2 = clamp((now - terbang.t0) / terbang.ms, 0, 1), e = k2 < 0.5 ? 4 * k2 * k2 * k2 : 1 - Math.pow(-2 * k2 + 2, 3) / 2;
         controls.target.lerpVectors(terbang.dariT, terbang.keT, e); camera.position.lerpVectors(terbang.dariP, terbang.keP, e);
@@ -3037,19 +3323,35 @@ button.kl-baris:hover{background:var(--isi)}
         u.mesh.position.set(wx(u.x), y + 0.2, wz(u.y));
         u.mesh.rotation.y = -u.arahTampil * Math.PI / 180 + Math.PI;
         u.mesh.scale.setScalar(skala);
-        u.mesh.visible = lapis.unit;
         var puncak = y + 5.5 * skala;
         var st = u.status;
+        var dipilih = pilihan && pilihan.kind === 'unit' && pilihan.id === u.id;
+        // unit tidak aktif (GPS hilang) hanya tampil bila diminta, atau bila sedang dipilih
+        var tampak = lapis.unit && (lapis.unitNonaktif || st !== 'hilang' || dipilih);
+        u.mesh.visible = tampak;
         // cincin hanya untuk yang perlu dilihat: melaju (merah berdenyut) dan GPS lemah (kuning)
-        u.cincin.visible = lapis.unit && (st === 'melaju' || (u.gps === 'lemah' && st !== 'hilang'));
+        u.cincin.visible = tampak && (st === 'melaju' || (u.gps === 'lemah' && st !== 'hilang'));
         if (u.cincin.visible) {
           u.cincin.material.map = st === 'melaju' ? texCincin.merah : texCincin.kuning;
           u.cincin.material.opacity = st === 'melaju' ? 1 : 0.55;
           u.cincin.position.set(wx(u.x), y + 2 * skala, wz(u.y));
           u.cincin.userData.px = st === 'melaju' ? 32 + 8 * (0.5 + 0.5 * Math.sin(tdet * 7)) : 22;
         }
-        var dipilih = pilihan && pilihan.kind === 'unit' && pilihan.id === u.id;
-        var tampilLabel = lapis.unit && (dipilih || st === 'melaju' || (jarak < 1500 && (st !== 'hilang' || jarak < 600)));
+        // panah arah gerak, miring mengikuti lereng di depan unit
+        u.panah.visible = tampak && lapis.panah && (st === 'bergerak' || st === 'melaju');
+        if (u.panah.visible) {
+          var th = u.arahTampil * Math.PI / 180, dm = (PANAH_A + PANAH_L * 0.5) * skala;
+          var y0 = hPermukaan(u.x, u.y), y1 = hPermukaan(u.x + Math.sin(th) * dm, u.y + Math.cos(th) * dm);
+          u.panah.position.set(wx(u.x), y0 + 0.6, wz(u.y));
+          u.panah.rotation.set(Math.atan2(y1 - y0, dm), -th, 0);
+          u.panah.scale.setScalar(skala);
+          if (gerakHalus) u.fase += dtDetik * (0.55 + (u.kec || 0) / 45);
+          var up = u.panah.material.uniforms;
+          up.fase.value = gerakHalus ? u.fase : 0.667;       // gerak dikurangi: chevron depan paling terang, diam
+          // melaju: isi merah bertepi putih, supaya tetap terbaca di atas ruas yang juga merah
+          up.warna.value.setHex(st === 'melaju' ? 0xff6e57 : 0xffffff); up.garisTepi.value.setHex(st === 'melaju' ? 0xffffff : 0x06211d);
+        }
+        var tampilLabel = tampak && (dipilih || st === 'melaju' || (jarak < 1500 && (st !== 'hilang' || jarak < 600)));
         u.label.visible = tampilLabel; u.label.position.set(wx(u.x), puncak, wz(u.y));
         if (tampilLabel) {
           var txt = u.nama + ((st === 'melaju' || dipilih || (u.kec >= 3 && jarak < 700)) && st !== 'hilang' && u.kec != null ? ' · ' + u.kec + ' km/j' : '');
@@ -3060,7 +3362,9 @@ button.kl-baris:hover{background:var(--isi)}
       if (!(pilihan && pilihan.kind === 'unit')) selRing.visible = false;
       roadGroup.visible = lapis.jalan; roadLabelGroup.visible = lapis.jalan && lapis.labelJalan && jarak < 4500;
       areaGroup.visible = lapis.area; evGroup.visible = lapis.pelanggaran; sumpGroup.visible = lapis.air;
-      if (airMesh) airMesh.visible = lapis.airHitung; if (airGaris) airGaris.visible = lapis.airHitung;
+      if (airMesh) airMesh.visible = lapis.airHitung;
+      if (aliranWR) { aliranWR.grup.visible = lapis.air; aliranWR.perbarui(dtDetik, jarak); }
+      if (aliranHitung) { aliranHitung.grup.visible = lapis.airHitung; aliranHitung.perbarui(dtDetik, jarak); }
       if (diffMesh) diffMesh.visible = lapis.perubahan;
       if (konturObj) konturObj.visible = lapis.kontur;
       sprites.forEach(skalaSprite);
@@ -3082,6 +3386,7 @@ button.kl-baris:hover{background:var(--isi)}
     bangunArea(site.area);
     bangunSump(site.sump);
     bangunCatchmentWR(site.catchment);
+    gantiAliranWR(site.aliran);
     if (site.topoLama) hitungPerubahan(site.topoLama);
     rafId = global.requestAnimationFrame(bingkai);
 
@@ -3104,7 +3409,10 @@ button.kl-baris:hover{background:var(--isi)}
       gantiJalan: function (data) { jalanData = data; bangunJalan(); },
       gantiArea: bangunArea,
       gantiArmada: gantiArmada,
-      gantiSump: function (d, c) { bangunSump(d); bangunCatchmentWR(c); setSF(sfSump); },
+      gantiSump: function (d, c, a) { bangunSump(d); bangunCatchmentWR(c); setSF(sfSump); if (a !== undefined) gantiAliranWR(a); },
+      infoAliran: function () {
+        return { wr: aliranWR ? { alur: aliranWR.alur, partikel: aliranWR.jumlah } : null, hitung: aliranHitung ? { alur: aliranHitung.alur, partikel: aliranHitung.jumlah } : null };
+      },
       setTopoLama: function (t) { hitungPerubahan(t); },
       setAirHitung: setAirHitung,
       gantiCitra: function (c) { lukisCitra(c); },
@@ -3149,7 +3457,10 @@ button.kl-baris:hover{background:var(--isi)}
       jeda: function (p) { jeda = !!p; },
       renderSekarang: function () { tampilan(performance.now()); renderer.render(scene, camera); },
       ubahUkuran: ubahUkuran,
-      setSisip: function (s) { sisip = s; ubahUkuran(); },
+      setSisip: function (s, halus) {
+        if (halus && sisip && s && gerakHalus) sisipAnim = { dari: Object.assign({ l: 0, r: 0, t: 0, b: 0 }, sisip), ke: Object.assign({ l: 0, r: 0, t: 0, b: 0 }, s), t0: performance.now(), ms: 380 };
+        else { sisipAnim = null; sisip = s; ubahUkuran(); }
+      },
       gambar: function () { return renderer.domElement.toDataURL('image/png'); },
       buang: function () {
         jalanLoop = false; global.cancelAnimationFrame(rafId); if (ro) ro.disconnect();
@@ -3173,7 +3484,7 @@ button.kl-baris:hover{background:var(--isi)}
 </script>
 <script>/* ===== Sump & catchment Water & Road ===== */
 /* Sump & catchment dari Water & Road (koordinat UTM 52N). Dibangkitkan prep/air.py */
-window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 topo lama","sump":[{"id":1,"nama":"Onat","cincin":[[[426229.4,86900.4],[426233.2,86889.5],[426236.1,86884.2],[426241.5,86873.0],[426242.7,86868.3],[426245.6,86862.8],[426246.7,86855.4],[426247.6,86851.8],[426247.5,86841.1],[426246.2,86833.5],[426240.9,86825.5],[426227.7,86812.8],[426223.8,86810.2],[426218.8,86808.2],[426214.0,86805.8],[426209.3,86804.3],[426198.8,86802.7],[426196.1,86801.5],[426187.8,86802.9],[426183.4,86804.5],[426183.3,86812.0],[426182.3,86820.5],[426183.2,86827.5],[426186.6,86834.0],[426199.4,86854.0],[426199.3,86857.2],[426198.4,86860.8],[426196.5,86860.3],[426194.8,86864.1],[426192.4,86866.1],[426193.0,86875.1],[426194.1,86882.4],[426197.5,86894.4],[426204.7,86896.3],[426206.7,86898.5],[426229.4,86900.4]]],"luasHa":0.454,"catchHa":38.068,"E":426211.4,"N":86848.5},{"id":2,"nama":"Atom","cincin":[[[426662.7,87650.1],[426669.1,87644.3],[426671.7,87640.8],[426673.5,87637.7],[426675.1,87633.2],[426675.5,87631.1],[426679.5,87624.8],[426681.2,87623.3],[426684.2,87617.9],[426686.8,87615.8],[426693.3,87609.1],[426701.3,87604.5],[426704.2,87601.8],[426706.4,87599.1],[426711.8,87594.5],[426714.9,87590.3],[426716.6,87586.9],[426716.3,87580.3],[426715.8,87578.1],[426714.3,87573.7],[426713.0,87571.1],[426711.5,87571.1],[426709.0,87572.7]]],"luasHa":0.057,"catchHa":0.0,"E":426692.7,"N":87610.4},{"id":3,"nama":"Workshop","cincin":[[[425614.9,87237.9],[425623.0,87243.5],[425628.7,87243.1],[425634.7,87242.2],[425645.4,87243.3],[425647.4,87248.6],[425647.3,87254.2],[425645.9,87258.1],[425643.7,87260.0],[425638.2,87259.8],[425630.1,87261.1],[425624.9,87263.4],[425619.7,87266.4],[425611.4,87267.9],[425608.3,87266.3],[425601.9,87256.6],[425599.5,87251.3],[425595.9,87245.1],[425589.8,87237.6],[425588.3,87232.9],[425590.4,87229.4],[425593.5,87229.3],[425614.9,87237.9]]],"luasHa":0.12,"catchHa":0.0,"E":425620.4,"N":87249.1},{"id":4,"nama":"Subaim","cincin":[[[425669.5,86926.0],[425671.8,86924.1],[425676.1,86918.0],[425673.6,86907.2],[425673.9,86906.4],[425670.9,86895.9],[425674.6,86893.9],[425676.5,86895.6],[425682.4,86906.5],[425684.2,86910.7],[425685.7,86919.3],[425685.4,86923.6],[425692.7,86938.2],[425693.6,86941.5],[425690.2,86944.6],[425690.5,86947.5],[425690.2,86953.0],[425690.7,86957.2]]],"luasHa":0.062,"catchHa":31.211,"E":425682.5,"N":86923.8},{"id":5,"nama":"AT01, AT02","cincin":[[[425020.6,87674.6],[425023.7,87665.6],[425024.2,87663.2],[425014.0,87659.1],[425004.6,87656.4],[425002.7,87656.2],[425001.4,87656.5],[425000.1,87658.1],[424999.8,87659.9],[425000.3,87662.1],[425001.7,87664.3],[425004.0,87666.2],[425012.1,87672.0],[425017.6,87675.1],[425019.7,87675.3],[425020.6,87674.6],[425027.0,87656.9],[425029.7,87652.1],[425030.4,87650.2],[425030.2,87648.2],[425029.7,87646.4],[425028.3,87643.7],[425025.4,87641.5],[425020.3,87639.7],[425018.0,87639.2],[425012.9,87639.3],[425009.5,87640.7],[425007.8,87642.6],[425006.5,87644.9],[425005.5,87647.9],[425006.0,87648.5],[425005.7,87650.0],[425006.9,87651.9],[425017.8,87655.8],[425024.0,87657.5]],[[424930.2,86895.9],[424935.8,86910.1],[424942.3,86921.2],[424943.0,86925.9],[424946.8,86932.7],[424946.4,86935.6],[424958.4,86928.4],[424963.4,86926.5],[424984.9,86946.2],[424985.6,86947.4],[424993.5,86948.5],[424998.4,86945.8],[425000.6,86948.5],[424993.9,86951.1],[424984.2,86952.4],[424979.5,86954.1],[424971.8,86958.9],[424970.7,86967.4],[424969.2,86983.9],[424970.3,87001.7],[424966.9,87002.0],[424963.6,87011.2],[424962.1,87013.5],[424961.1,87016.6],[424960.5,87020.4],[424957.9,87028.3],[424958.0,87030.5],[424959.2,87034.3],[424966.8,87034.6],[424970.3,87033.4],[424970.9,87040.4],[424969.5,87041.2],[424969.1,87044.6],[424970.0,87048.5],[424963.6,87048.6],[424963.0,87049.6],[424959.7,87049.1],[424958.9,87051.5],[424959.2,87059.8],[424958.8,87069.1],[424958.0,87073.1],[424959.1,87075.2],[424963.1,87076.5],[424963.2,87077.0],[424968.8,87080.9],[424970.0,87082.1],[424976.7,87084.0],[424973.8,87091.9],[424976.0,87090.1],[424979.5,87088.4],[424985.3,87086.4],[424987.3,87086.4],[424999.1,87082.4],[425009.3,87080.7],[425043.4,87054.4],[425039.7,87044.4],[425038.4,87038.7],[425036.2,87031.2],[425024.9,87023.6],[425023.1,87014.0],[425017.2,86990.7],[425012.6,86978.6],[425016.1,86971.7],[425015.8,86966.8],[425014.4,86964.6],[425006.5,86948.2],[425004.7,86942.6],[425002.8,86939.7],[424997.8,86934.2],[424993.7,86927.3],[424992.1,86922.9],[424987.8,86915.8],[424983.7,86911.4],[424978.9,86908.1],[424977.7,86904.9],[424974.7,86901.4],[424970.3,86899.7],[424966.5,86899.5],[424964.2,86901.2],[424963.3,86900.1],[424957.8,86896.2],[424956.3,86895.9],[424954.5,86893.2],[424953.9,86888.3],[424951.6,86884.6],[424947.2,86882.0],[424945.7,86879.8],[424930.2,86895.9]]],"luasHa":1.05,"catchHa":54.823,"E":424977.3,"N":86988.2},{"id":6,"nama":"Dermaga","cincin":[[[424826.1,87326.6],[424815.6,87327.1],[424805.0,87325.4],[424798.2,87323.2],[424795.5,87322.9],[424797.2,87317.1],[424797.8,87313.3],[424800.6,87304.0],[424803.5,87297.3],[424803.8,87292.4],[424805.3,87287.1],[424806.6,87286.8],[424809.4,87287.2],[424809.1,87296.0],[424809.8,87296.6],[424809.3,87298.9],[424818.5,87300.5],[424824.0,87302.6],[424829.9,87303.1],[424830.8,87303.8],[424834.6,87305.0],[424838.1,87304.2],[424839.6,87304.6],[424839.9,87307.6],[424832.7,87308.7],[424829.5,87309.9],[424822.2,87310.1],[424818.7,87309.4],[424812.6,87309.4],[424811.3,87316.8],[424820.5,87319.6],[424823.0,87319.7],[424828.7,87322.6],[424826.9,87326.6],[424826.1,87326.6]]],"luasHa":0.072,"catchHa":0.0,"E":424817.2,"N":87308.9},{"id":7,"nama":"Mafhia","cincin":[[[425814.0,86225.4],[425823.8,86229.6],[425839.6,86234.4],[425845.2,86240.9],[425847.5,86245.7],[425846.6,86247.4],[425841.3,86248.1],[425831.2,86246.9],[425824.3,86245.1],[425821.2,86242.3],[425817.1,86235.6],[425813.7,86228.2],[425813.0,86225.3],[425814.0,86225.4],[425788.1,86197.7],[425790.9,86197.6],[425796.8,86200.1],[425798.6,86206.2],[425797.4,86209.0],[425794.5,86209.3],[425790.9,86207.6],[425787.3,86204.4],[425785.2,86197.4],[425785.4,86196.4],[425788.1,86197.7]],[[425889.4,86377.8],[425883.3,86380.3],[425880.8,86384.9],[425871.8,86392.3],[425864.6,86395.1],[425857.5,86394.3],[425855.4,86395.7],[425854.3,86397.8],[425849.9,86402.0],[425848.7,86403.9],[425847.1,86409.1],[425843.1,86412.2],[425839.4,86412.8],[425827.2,86425.9],[425820.9,86430.2],[425819.8,86433.6],[425823.0,86439.5],[425831.8,86447.2],[425839.4,86455.2],[425842.4,86446.6],[425848.3,86433.3],[425854.7,86428.0],[425860.2,86420.2],[425867.0,86415.0],[425872.0,86409.8],[425879.1,86403.8],[425884.2,86394.6],[425888.3,86389.3],[425891.7,86382.3],[425892.4,86379.1],[425890.5,86377.6],[425889.4,86377.8],[425966.5,86318.2],[425962.7,86315.3],[425958.5,86314.0],[425950.8,86320.7],[425945.8,86327.4],[425941.9,86331.7],[425933.7,86337.0],[425929.6,86341.8],[425926.6,86348.2],[425922.8,86354.7],[425919.2,86357.6],[425917.7,86360.8],[425914.4,86364.9],[425902.8,86371.4],[425902.0,86373.7],[425903.0,86376.4],[425904.4,86378.0],[425907.0,86378.3],[425910.1,86375.8],[425914.4,86374.7],[425919.6,86371.4],[425922.7,86370.6],[425926.0,86369.0],[425930.5,86365.7],[425934.8,86361.4],[425942.7,86355.6],[425946.7,86347.8],[425952.0,86347.4],[425958.6,86348.7],[425967.8,86340.6],[425992.2,86339.9],[426009.9,86336.7],[426018.2,86341.5],[426026.6,86345.7],[426027.2,86352.8],[426029.9,86358.0],[426037.6,86362.6],[426045.1,86361.7],[426050.6,86357.5],[426052.6,86349.0],[426051.2,86341.8],[426047.7,86336.1],[426046.8,86329.8],[426044.1,86323.9],[426036.5,86321.8],[426028.7,86324.3],[426023.8,86327.4],[426019.0,86326.1],[426006.8,86324.7],[426000.2,86326.0],[425993.2,86328.2],[425987.6,86328.6],[425982.3,86328.0],[425979.3,86322.2],[425978.0,86317.4],[425975.9,86316.1],[425967.2,86319.3],[425966.5,86318.2]],[[425992.8,86200.5],[425990.5,86197.3],[425989.2,86194.0],[425990.0,86191.7],[425993.7,86191.2],[425999.7,86187.4],[426003.7,86189.1],[426007.5,86192.7],[426009.7,86196.6],[426014.7,86202.6],[426016.2,86206.7],[426018.9,86216.0],[426019.5,86220.7],[426018.8,86223.3],[426016.4,86223.9],[426011.2,86224.5],[426009.0,86223.2],[426005.8,86219.6],[426004.0,86211.5],[426002.6,86208.9],[425998.5,86204.4],[425992.8,86200.5]]],"luasHa":0.577,"catchHa":23.08,"E":425932.9,"N":86365.3},{"id":8,"nama":"Pos 2","cincin":[[[426108.2,86243.5],[426115.8,86236.9],[426125.1,86236.1],[426134.0,86237.5],[426136.7,86242.0],[426136.6,86247.5],[426133.3,86249.9],[426124.4,86250.2],[426115.9,86251.3],[426111.8,86249.8],[426108.7,86247.7],[426108.2,86243.5]],[[426222.7,86304.4],[426220.6,86308.3],[426219.7,86312.2],[426219.9,86317.4],[426218.0,86321.5],[426214.0,86325.5],[426209.5,86322.8],[426206.0,86316.8],[426209.6,86307.6],[426210.1,86305.3],[426212.9,86303.7],[426215.8,86300.7],[426220.7,86298.7],[426222.7,86304.4]],[[426382.5,86479.1],[426379.0,86473.4],[426377.0,86465.6],[426378.5,86461.9],[426388.8,86463.9],[426397.4,86467.4],[426400.2,86472.5],[426397.8,86481.6],[426399.9,86486.2],[426402.8,86494.0],[426404.2,86500.5],[426403.8,86502.3],[426402.3,86504.4],[426398.5,86504.9],[426393.1,86504.8],[426389.8,86508.2],[426385.4,86510.7],[426381.9,86510.3],[426378.3,86506.5],[426377.4,86503.8],[426377.3,86499.6],[426379.6,86488.8],[426383.3,86480.2],[426382.5,86479.1],[426411.5,86513.9],[426410.0,86518.2],[426407.0,86521.3],[426402.9,86523.5],[426399.0,86524.2],[426396.3,86519.3],[426395.9,86516.9],[426396.9,86514.9],[426401.1,86511.8],[426407.2,86511.6],[426411.5,86513.0],[426411.5,86513.9],[426375.5,86530.0],[426380.2,86526.0],[426384.6,86525.2],[426389.9,86528.0],[426389.6,86533.4],[426388.8,86534.9],[426380.1,86533.6],[426376.1,86531.1],[426375.5,86530.0]]],"luasHa":0.262,"catchHa":10.948,"E":426390.6,"N":86504.1},{"id":9,"nama":"J. Para","cincin":[[[426197.5,87675.4],[426201.3,87677.5],[426223.7,87677.6],[426227.5,87676.6],[426229.4,87671.7],[426224.7,87662.9],[426206.9,87662.0],[426199.2,87662.8],[426192.2,87669.7],[426197.5,87675.4]]],"luasHa":0.048,"catchHa":0.0,"E":426212.0,"N":87670.1},{"id":10,"nama":"Nursery","cincin":[[[425468.6,87400.4],[425466.2,87390.1],[425456.3,87391.1],[425453.4,87392.1],[425455.3,87402.0],[425468.6,87400.4]],[[425622.2,87356.6],[425616.6,87355.5],[425615.3,87350.8],[425615.1,87343.4],[425617.7,87338.7],[425621.0,87337.9],[425623.0,87338.8],[425625.5,87351.9],[425622.2,87356.6]]],"luasHa":0.029,"catchHa":17.97,"E":425620.1,"N":87348.7},{"id":11,"nama":"Buli","cincin":[[[425331.7,86738.1],[425342.4,86745.8],[425353.3,86749.4],[425352.7,86753.8],[425344.3,86768.5],[425337.2,86764.0],[425340.2,86756.7],[425324.7,86749.4],[425331.7,86738.1]],[[425150.4,86645.2],[425151.5,86637.6],[425155.7,86627.6],[425163.4,86619.3],[425164.8,86619.8],[425173.0,86630.1],[425174.8,86638.0],[425173.5,86644.9],[425169.3,86655.7],[425171.3,86666.3],[425167.4,86675.0],[425166.0,86679.4],[425157.3,86680.4],[425159.2,86670.5],[425164.2,86665.7],[425163.5,86659.9],[425156.4,86656.3],[425151.4,86650.9],[425150.4,86645.2]],[[425134.4,86772.0],[425138.1,86773.2],[425144.2,86774.3],[425147.5,86767.8],[425146.5,86763.2],[425146.6,86745.8],[425149.6,86738.5],[425150.9,86731.0],[425151.4,86723.2],[425153.9,86711.9],[425149.2,86703.6],[425141.0,86701.2],[425136.8,86699.6],[425131.8,86696.1],[425130.1,86693.7],[425129.5,86691.9],[425130.2,86689.1],[425129.7,86688.6],[425125.7,86686.0],[425115.0,86681.9],[425111.8,86681.8],[425105.2,86680.9],[425101.9,86683.9],[425099.1,86685.6],[425096.4,86686.4],[425089.9,86685.6],[425087.7,86684.8],[425086.5,86683.4],[425084.4,86679.9],[425080.5,86677.5],[425075.5,86675.2],[425072.1,86675.4],[425065.2,86677.8],[425063.9,86679.4],[425062.7,86681.9],[425061.7,86685.9],[425061.7,86688.2],[425065.2,86688.7],[425068.0,86688.1],[425069.5,86687.1],[425069.7,86686.6],[425076.4,86687.0],[425078.9,86687.9],[425089.1,86693.1],[425092.7,86695.6],[425097.5,86696.3],[425100.7,86695.5],[425101.8,86694.6],[425108.7,86691.6],[425111.6,86691.4],[425114.5,86692.2],[425115.0,86692.8],[425120.0,86695.7],[425131.4,86710.6],[425132.8,86714.8],[425134.8,86726.4],[425135.7,86740.6],[425135.3,86744.0],[425136.3,86754.6],[425136.5,86764.9],[425134.4,86772.0]]],"luasHa":0.308,"catchHa":9.931,"E":425110.8,"N":86704.4},{"id":12,"nama":"Bicoli","cincin":[[[424947.8,86551.8],[424950.8,86549.4],[424959.7,86552.1],[424963.3,86557.6],[424961.7,86566.5],[424958.3,86569.4],[424950.0,86568.7],[424946.0,86566.6],[424943.7,86564.1],[424943.8,86560.6],[424947.8,86551.8],[424938.9,86500.9],[424946.2,86494.2],[424949.9,86490.0],[424948.1,86484.7],[424945.5,86479.1],[424933.3,86455.7],[424926.9,86446.2],[424921.2,86444.5],[424917.0,86446.0],[424913.8,86446.6],[424908.6,86438.7],[424908.9,86437.5],[424912.4,86434.4],[424911.2,86432.0],[424904.1,86423.0],[424906.7,86418.7],[424907.0,86415.7],[424906.3,86410.9],[424897.5,86402.2],[424894.1,86401.9],[424890.2,86404.5],[424888.9,86406.6],[424887.9,86412.7],[424888.1,86419.2],[424891.4,86426.5],[424900.6,86437.9],[424909.2,86451.1],[424917.4,86466.3],[424936.8,86497.7],[424937.4,86500.3],[424938.7,86501.5],[424938.9,86500.9]]],"luasHa":0.132,"catchHa":4.055,"E":424925.5,"N":86474.6},{"id":13,"nama":"Wato-wato","cincin":[[[426187.1,87547.3],[426195.5,87537.2],[426211.1,87525.3],[426215.1,87531.5],[426211.8,87536.7],[426208.1,87541.3],[426204.0,87545.0],[426199.9,87552.6],[426200.2,87557.4],[426200.0,87561.5],[426200.5,87566.7],[426199.5,87569.8],[426202.2,87575.6],[426206.3,87582.2],[426200.9,87586.3],[426192.3,87575.0],[426190.2,87571.8],[426186.7,87563.1],[426184.6,87555.1],[426184.7,87551.2],[426187.1,87547.3]],[[426279.4,87384.9],[426275.9,87397.9],[426276.5,87404.5],[426276.3,87411.9],[426274.6,87422.9],[426275.8,87435.8],[426270.0,87436.5],[426266.2,87427.4],[426255.6,87408.5],[426269.5,87389.3],[426274.7,87379.0],[426280.5,87380.8],[426279.4,87384.9]]],"luasHa":0.141,"catchHa":1.714,"E":426198.2,"N":87556.6},{"id":14,"nama":"Seg14","cincin":[[[426562.7,87787.9],[426565.9,87784.0],[426572.9,87768.6],[426569.2,87765.1],[426562.1,87762.8],[426561.2,87763.1],[426560.3,87764.0],[426559.3,87765.9],[426554.9,87783.6],[426559.3,87786.5],[426562.7,87787.9],[426581.2,87752.1],[426582.7,87747.7],[426585.5,87744.1],[426587.1,87741.4],[426588.6,87737.1],[426590.7,87732.6],[426592.0,87730.8],[426595.1,87724.9],[426598.2,87720.2],[426603.1,87713.9],[426604.3,87711.1],[426605.8,87705.9],[426602.6,87702.3],[426597.4,87699.1],[426591.5,87693.0],[426588.8,87695.5],[426587.9,87695.5],[426585.5,87698.5],[426580.1,87703.8],[426571.6,87716.5],[426568.5,87723.4],[426563.2,87732.5],[426562.6,87735.9],[426562.6,87739.6],[426563.8,87743.3],[426565.2,87745.1],[426566.4,87747.6],[426568.7,87749.4],[426570.6,87752.1],[426573.0,87753.1],[426575.3,87754.9]],[[426662.7,87650.1],[426669.1,87644.3],[426671.7,87640.8],[426673.5,87637.7],[426675.1,87633.2],[426675.5,87631.1],[426679.5,87624.8],[426681.2,87623.3],[426684.2,87617.9],[426686.8,87615.8],[426693.3,87609.1],[426701.3,87604.5],[426704.2,87601.8],[426706.4,87599.1],[426711.8,87594.5],[426714.9,87590.3],[426716.6,87586.9],[426716.3,87580.3],[426715.8,87578.1],[426714.3,87573.7],[426713.0,87571.1],[426711.5,87571.1],[426709.0,87572.7]]],"luasHa":0.229,"catchHa":6.313,"E":426581.0,"N":87733.6},{"id":15,"nama":"Seg15","cincin":[[[426462.5,87502.7],[426457.2,87508.4],[426450.8,87519.0],[426445.2,87527.3],[426449.1,87530.2],[426450.0,87531.5],[426452.0,87532.1],[426455.3,87530.0],[426459.1,87526.6],[426464.7,87520.4],[426466.6,87517.4],[426467.8,87513.4],[426467.9,87510.1],[426466.4,87507.5],[426462.5,87502.7],[426431.4,87438.9],[426427.9,87438.2],[426425.0,87438.2],[426414.3,87440.4],[426409.3,87442.3],[426406.9,87445.6],[426406.5,87447.0],[426407.0,87449.1],[426409.7,87456.3],[426412.7,87462.3],[426416.2,87467.2],[426418.8,87470.1],[426420.8,87473.7],[426421.6,87474.5],[426424.6,87475.9],[426427.3,87476.9],[426431.6,87477.7],[426437.0,87477.5],[426441.0,87476.1],[426447.5,87472.3],[426447.2,87470.6],[426453.2,87465.8],[426456.7,87461.9],[426464.5,87452.8],[426465.0,87450.6],[426463.6,87447.9],[426462.1,87446.2],[426460.0,87445.4],[426454.4,87446.5],[426444.1,87449.7],[426441.1,87452.0],[426436.5,87447.9],[426431.4,87438.9]]],"luasHa":0.174,"catchHa":8.229,"E":426443.9,"N":87477.8},{"id":16,"nama":"Jara-jara","cincin":[[[426742.6,87554.1],[426742.9,87562.4],[426740.6,87574.7],[426741.2,87592.5],[426742.3,87602.0],[426743.7,87604.2],[426750.9,87612.0],[426754.1,87613.4],[426757.0,87613.9],[426759.8,87613.6],[426760.7,87611.2],[426761.5,87610.1],[426763.3,87609.7],[426765.9,87611.3],[426767.0,87613.4],[426769.0,87614.7],[426772.0,87615.5],[426779.8,87616.4],[426782.6,87611.2],[426790.0,87601.4],[426791.1,87598.4],[426792.1,87596.8],[426797.3,87592.4],[426797.4,87591.0],[426801.8,87587.8],[426805.5,87583.9],[426806.9,87583.4],[426813.0,87574.6],[426813.8,87572.8],[426817.9,87566.7],[426821.9,87555.1],[426823.5,87551.4],[426825.9,87547.8],[426827.0,87542.0],[426827.7,87535.4],[426828.7,87519.4],[426829.8,87515.9],[426833.8,87507.8],[426834.1,87505.4],[426842.5,87486.2],[426846.9,87480.9],[426851.0,87474.2],[426852.1,87473.4],[426852.4,87472.2],[426855.7,87466.2],[426872.3,87466.1],[426876.3,87461.9],[426881.8,87457.7],[426884.7,87454.1],[426889.9,87451.7],[426896.7,87454.3],[426905.5,87445.6],[426901.3,87440.7],[426899.7,87430.9],[426899.7,87423.5],[426902.2,87418.2],[426897.8,87412.1],[426887.1,87404.9],[426874.4,87410.0],[426848.5,87438.3],[426849.9,87444.3],[426842.6,87449.5],[426837.9,87453.8],[426829.0,87466.5],[426824.8,87474.9],[426823.7,87478.4],[426824.0,87479.1],[426811.2,87483.3],[426800.5,87483.4],[426798.1,87484.6],[426792.0,87488.5],[426783.1,87497.3],[426776.1,87506.2],[426773.3,87507.9],[426770.3,87508.9],[426751.0,87547.4],[426743.8,87550.0],[426744.9,87552.1],[426742.6,87554.1],[426774.3,87480.9],[426779.3,87476.5],[426786.8,87466.9],[426786.7,87462.7],[426784.9,87460.5],[426783.4,87459.5],[426781.1,87459.7],[426775.9,87462.6],[426774.0,87464.9],[426767.2,87469.7],[426759.3,87477.4],[426751.6,87481.3],[426748.5,87482.0],[426747.9,87489.1]],[[426805.5,87220.5],[426817.0,87210.7],[426824.6,87202.9],[426829.3,87193.2],[426831.7,87184.6],[426830.8,87175.9],[426826.1,87164.7],[426823.2,87159.7],[426819.4,87157.0],[426816.9,87159.3],[426816.2,87158.6],[426813.7,87173.3],[426813.0,87180.9],[426811.5,87185.5],[426809.6,87195.1],[426803.2,87218.1],[426805.5,87220.5]]],"luasHa":1.334,"catchHa":0.0,"E":426806.0,"N":87517.6},{"id":17,"nama":"Triwan","cincin":[[[426675.1,87507.3],[426681.9,87505.3],[426688.6,87497.2],[426692.5,87490.4],[426695.6,87477.9],[426693.1,87477.7],[426686.1,87479.9],[426679.1,87479.9],[426670.4,87485.5],[426661.4,87501.2],[426660.9,87507.1],[426667.9,87508.4],[426671.2,87508.6],[426675.1,87507.3]]],"luasHa":0.064,"catchHa":17.519,"E":426677.9,"N":87496.1},{"id":18,"nama":"Tajmahal","cincin":[[[425012.5,86221.1],[425005.9,86203.8],[425002.8,86198.6],[424999.5,86194.9],[424996.4,86193.2],[424993.9,86193.0],[424985.3,86191.2],[424980.5,86192.9],[424962.3,86195.6],[424957.9,86197.9],[424952.4,86205.6],[424950.6,86206.2],[424948.2,86209.8],[424947.3,86213.7],[424946.7,86221.1],[424948.0,86225.8],[424948.8,86229.8],[424949.0,86232.6],[425012.5,86221.1]]],"luasHa":0.189,"catchHa":10.406,"E":424974.1,"N":86207.6},{"id":19,"nama":"AT03","cincin":[[[424960.2,86162.1],[424976.2,86155.1],[424965.8,86144.2],[424959.0,86138.4],[424952.8,86134.0],[424950.5,86130.6],[424944.8,86127.3],[424938.7,86122.8],[424933.9,86119.0],[424927.4,86112.6],[424925.1,86109.3],[424924.3,86103.4],[424924.2,86096.3],[424923.2,86091.7],[424916.6,86089.2],[424912.9,86090.5],[424912.4,86093.3],[424913.0,86097.5],[424915.6,86106.0],[424923.6,86123.6],[424929.2,86132.6],[424939.2,86136.2],[424936.2,86139.7],[424934.5,86142.5],[424935.7,86149.9],[424939.0,86158.8],[424942.5,86161.3],[424947.8,86162.4],[424960.2,86162.1],[424922.2,86082.1],[424925.3,86080.5],[424928.7,86074.9],[424931.4,86068.8],[424933.5,86060.6],[424936.9,86052.0],[424939.1,86044.2],[424943.4,86037.6],[424946.2,86029.9],[424947.7,86024.5],[424949.0,86017.9],[424949.1,86010.5],[424952.3,86003.8],[424953.8,85996.3],[424956.5,85979.0],[424955.5,85969.9],[424956.4,85959.9],[424956.0,85952.1],[424954.2,85942.9],[424952.3,85938.0],[424950.0,85937.1],[424947.8,85935.0],[424938.0,85932.6],[424933.5,85932.8],[424930.9,85934.1],[424929.4,85937.7],[424924.7,85954.5],[424923.8,85958.9],[424925.6,85966.5],[424928.1,85973.6],[424928.2,85988.2],[424930.0,85990.1],[424929.6,85993.4],[424929.7,86003.8],[424928.9,86006.2],[424926.1,86012.0],[424925.6,86014.1],[424924.3,86017.3],[424924.3,86019.8],[424923.8,86023.5],[424920.8,86032.3],[424918.9,86036.0],[424918.0,86038.9],[424918.9,86040.5],[424917.8,86043.9],[424913.7,86048.8],[424912.3,86052.0],[424909.7,86060.9],[424908.5,86066.2],[424909.6,86075.2],[424913.1,86079.6],[424917.5,86082.1],[424922.2,86082.1]],[[425048.7,85922.4],[425048.7,85917.9],[425047.8,85914.0],[425046.0,85909.3],[425011.8,85916.0],[425007.4,85915.0],[425002.2,85914.9],[424992.2,85915.6],[424992.0,85918.6],[424993.0,85922.1],[424997.7,85922.7],[425006.7,85923.0],[425007.7,85925.3],[425011.9,85925.7],[425012.4,85928.7],[425041.2,85924.0],[425048.7,85922.4],[424953.5,85928.8],[424960.5,85929.8],[424965.0,85928.8],[424965.2,85926.1],[424966.6,85919.1],[424965.5,85915.0],[424962.5,85915.4],[424951.5,85915.5],[424943.2,85914.5],[424936.4,85913.3],[424930.5,85913.1],[424922.4,85911.7],[424922.9,85920.1],[424924.7,85923.2],[424928.3,85924.9],[424932.0,85924.9],[424938.3,85926.2],[424942.0,85926.1],[424943.1,85925.6],[424949.7,85927.9],[424952.6,85929.3],[424953.5,85928.8]]],"luasHa":0.624,"catchHa":0.428,"E":424933.2,"N":86041.8},{"id":20,"nama":"Janti","cincin":[[[425207.7,86415.0],[425204.4,86412.6],[425191.7,86398.9],[425182.8,86391.4],[425178.5,86389.8],[425174.1,86388.8],[425171.2,86388.6],[425166.9,86389.2],[425151.2,86397.8],[425134.1,86407.6],[425130.2,86410.5],[425127.2,86413.1],[425124.8,86415.7],[425124.1,86419.5],[425124.2,86420.7],[425126.1,86423.3],[425128.4,86425.3],[425131.5,86429.1],[425131.9,86432.6],[425137.6,86440.0],[425144.1,86446.0],[425145.6,86449.5]]],"luasHa":0.279,"catchHa":31.668,"E":425157.0,"N":86410.2}],"catchment":[{"sump":11,"cincin":[[425352.6,86951.1],[425354.3,86968.7],[425339.8,86979.5],[425328.9,86980.2],[425293.4,86985.8],[425280.6,86989.2],[425268.4,86990.4],[425246.0,86971.6],[425222.1,86902.4],[425213.2,86856.6],[425181.1,86796.7],[425151.3,86781.2],[425134.1,86754.9],[425132.2,86745.6],[425132.5,86713.3],[425118.0,86699.9],[425104.2,86693.5],[425093.5,86694.7],[425076.9,86687.9],[425059.1,86688.4],[425051.5,86685.7],[425040.9,86678.1],[425015.1,86665.9],[425008.2,86665.8],[425000.3,86669.0],[424988.1,86668.6],[424970.8,86652.6],[424967.0,86645.2],[424976.3,86635.7],[425018.1,86604.9],[425034.5,86586.8],[425054.2,86544.1],[425066.9,86484.3],[425071.7,86467.3],[425075.8,86463.2],[425092.9,86459.9],[425120.4,86467.8],[425127.1,86471.1],[425135.6,86478.2],[425155.4,86499.3],[425183.0,86540.8],[425272.1,86586.0],[425296.3,86596.5],[425315.8,86602.7],[425333.9,86610.9],[425350.0,86630.0],[425354.3,86656.5],[425355.2,86690.4],[425358.1,86707.2],[425370.7,86736.5],[425371.5,86746.1],[425349.2,86857.8],[425346.1,86878.2],[425351.6,86931.6]]},{"sump":4,"cincin":[[426101.7,87054.7],[426081.6,87042.9],[426072.3,87034.6],[426018.3,86980.3],[425983.2,86941.6],[425953.7,86916.2],[425924.6,86895.7],[425874.9,86873.7],[425854.3,86829.9],[425821.8,86728.0],[425785.1,86723.2],[425780.3,86939.9],[425771.9,87104.2],[425777.0,87112.1],[425826.0,87148.4],[425918.2,87234.8],[425968.4,87276.5],[425987.5,87290.8],[426075.3,87346.2],[426100.2,87347.0],[426173.5,87303.7],[426264.5,87253.0],[426282.1,87241.5],[426283.9,87239.1],[426266.8,87219.1],[426266.7,87209.5],[426271.1,87193.1],[426271.5,87187.5],[426266.0,87164.0],[426258.7,87158.5],[426248.0,87156.4],[426224.8,87157.2],[426216.7,87155.2],[426187.2,87136.5],[426181.1,87132.3],[426160.2,87112.6],[426153.6,87105.2],[426137.6,87081.1],[426114.4,87060.0]]},{"sump":12,"cincin":[[424899.0,86323.9],[424892.7,86346.1],[424894.3,86378.8],[424892.2,86404.4],[424888.0,86415.8],[424889.3,86421.9],[424893.8,86431.2],[424910.1,86454.9],[424920.7,86474.9],[424938.0,86502.3],[424938.5,86504.1],[424931.2,86511.4],[424924.3,86521.2],[424920.0,86531.4],[424920.3,86551.9],[424923.4,86563.1],[424926.5,86568.1],[424939.0,86577.0],[424948.9,86574.8],[424955.9,86579.2],[424958.0,86595.1],[424958.2,86619.1],[424962.4,86639.5],[424968.6,86639.0],[425017.7,86601.5],[425034.5,86584.9],[425051.9,86544.8],[425052.2,86536.9],[425068.3,86463.7],[425075.3,86460.2],[425091.4,86456.1],[425128.2,86465.1],[425135.2,86459.6],[425124.0,86441.8],[425119.5,86437.4],[425100.8,86424.1],[425067.3,86395.0],[425041.6,86381.3],[424973.6,86338.0],[424934.6,86308.1],[424927.8,86308.8],[424900.6,86318.2],[424899.0,86323.9]]},{"sump":10,"cincin":[[426027.9,87537.2],[426005.6,87530.3],[425974.6,87524.8],[425947.6,87509.5],[425942.9,87503.5],[425932.7,87494.6],[425900.6,87480.9],[425884.3,87475.6],[425863.9,87461.7],[425852.3,87460.0],[425835.4,87474.7],[425830.3,87491.2],[425819.3,87512.3],[425791.7,87533.4],[425771.4,87532.8],[425753.2,87527.5],[425645.6,87473.2],[425614.9,87444.7],[425614.4,87436.1],[425647.2,87362.0],[425648.2,87338.2],[425645.9,87321.6],[425619.1,87280.9],[425555.6,87203.8],[425566.1,87166.1],[425575.1,87154.8],[425601.4,87142.0],[425622.0,87139.9],[425697.8,87166.1],[425774.8,87126.8],[425790.0,87126.2],[425880.0,87205.0],[425968.0,87284.4],[426050.3,87341.5],[426086.2,87369.0],[426052.9,87413.7],[426040.1,87506.1],[426034.8,87531.6],[426030.7,87539.2]]},{"sump":14,"cincin":[[426578.2,87517.2],[426568.1,87527.6],[426565.7,87547.9],[426525.2,87647.8],[426516.3,87656.8],[426504.7,87656.9],[426501.7,87653.0],[426493.7,87648.8],[426491.0,87646.5],[426484.7,87630.3],[426463.7,87620.4],[426462.7,87616.3],[426374.6,87647.6],[426313.6,87678.1],[426308.1,87697.4],[426309.0,87704.1],[426317.3,87710.0],[426323.6,87725.0],[426336.4,87743.8],[426350.3,87748.3],[426369.6,87750.6],[426390.3,87746.9],[426402.9,87747.7],[426417.3,87760.1],[426425.1,87800.7],[426447.5,87815.7],[426485.6,87829.7],[426501.5,87831.6],[426534.4,87816.3],[426551.1,87816.8],[426573.3,87792.0],[426600.6,87774.3],[426605.5,87761.1],[426603.5,87748.4],[426603.1,87730.3],[426613.4,87717.3],[426617.7,87700.8],[426628.4,87678.4],[426639.9,87662.6],[426668.9,87648.9],[426686.3,87619.5],[426707.3,87602.8],[426718.3,87590.2],[426719.4,87585.3],[426729.7,87573.1],[426733.5,87570.9],[426727.0,87527.8],[426720.1,87515.0],[426708.2,87498.1],[426704.0,87500.1],[426695.9,87513.1],[426687.9,87520.9],[426676.7,87531.6],[426667.0,87538.1],[426652.6,87539.7],[426634.6,87535.8],[426605.6,87527.8],[426593.2,87521.1],[426581.2,87516.8],[426578.3,87517.0]]},{"sump":15,"cincin":[[426519.0,87559.6],[426511.9,87563.4],[426490.4,87594.6],[426465.5,87612.6],[426465.0,87615.8],[426486.7,87629.3],[426499.8,87635.8],[426502.5,87654.1],[426516.1,87654.2],[426519.4,87651.2],[426539.1,87608.6],[426563.1,87549.7],[426568.1,87525.1],[426575.2,87517.9],[426579.1,87515.4],[426597.3,87521.5],[426611.2,87528.8],[426645.9,87537.1],[426653.9,87538.3],[426665.6,87536.7],[426682.5,87525.0],[426690.0,87516.1],[426699.3,87503.1],[426703.3,87489.5],[426669.1,87456.1],[426630.3,87442.9],[426599.7,87426.1],[426592.8,87435.2],[426576.6,87449.2],[426546.6,87452.1],[426501.5,87448.5],[426489.7,87452.9],[426461.9,87486.4],[426464.8,87499.4],[426478.3,87519.1],[426488.5,87525.6],[426503.6,87527.5],[426508.4,87540.5],[426509.8,87548.5],[426513.0,87552.5]]},{"sump":17,"cincin":[[426958.5,87262.0],[426977.1,87168.8],[426983.4,87125.9],[426972.0,87046.3],[426933.7,87024.0],[426921.2,87019.2],[426880.0,87006.1],[426856.7,87000.1],[426843.1,87003.8],[426830.7,87002.8],[426785.9,86985.6],[426778.8,87010.4],[426766.7,87034.4],[426754.2,87055.6],[426745.0,87062.1],[426659.8,87113.6],[426619.5,87133.4],[426556.2,87152.4],[426489.7,87176.6],[426475.7,87182.3],[426416.5,87211.2],[426418.0,87228.7],[426482.2,87274.9],[426497.3,87282.3],[426637.6,87320.7],[426645.8,87324.6],[426656.0,87336.1],[426624.0,87437.9],[426630.8,87441.9],[426665.3,87452.5],[426675.4,87458.8],[426707.0,87491.0],[426722.1,87514.7],[426728.5,87529.0],[426739.1,87594.9],[426746.6,87616.7],[426754.0,87622.9],[426765.8,87625.8],[426777.3,87620.8],[426805.4,87583.9],[426813.0,87571.7],[426820.8,87551.3],[426828.1,87518.0],[426850.6,87475.4],[426897.3,87457.2],[426914.8,87427.0],[426916.1,87407.1],[426913.3,87386.7],[426921.7,87353.1],[426962.6,87325.5],[426973.0,87274.9]]},{"sump":13,"cincin":[[425976.3,87622.3],[426029.1,87635.8],[426071.7,87644.4],[426196.3,87665.8],[426210.7,87664.7],[426224.5,87661.6],[426230.4,87658.6],[426227.5,87643.8],[426226.1,87642.9],[426210.0,87639.5],[426203.1,87644.9],[426196.4,87645.5],[426157.5,87638.1],[426153.0,87633.5],[426148.3,87615.6],[426141.5,87598.2],[426144.8,87550.4],[426119.3,87542.2],[426107.9,87541.1],[426100.2,87542.3],[426091.3,87547.8],[426087.8,87548.6],[426045.4,87548.8],[426026.5,87539.2],[426007.7,87534.1],[425977.2,87619.5]]},{"sump":5,"cincin":[[424930.0,86934.0],[424961.8,86931.0],[424967.7,86961.4],[424962.1,87008.0],[424955.9,87037.8],[424955.1,87072.1],[424941.1,87108.8],[424922.7,87115.4],[424923.0,87144.2],[424919.8,87196.8],[424891.9,87238.7],[424883.2,87269.6],[424845.2,87350.9],[424829.1,87389.9],[424814.9,87403.8],[424859.1,87492.0],[424886.4,87543.1],[424915.6,87592.5],[424931.6,87643.1],[424939.3,87698.8],[424941.7,87733.8],[424939.6,87780.0],[424926.9,87824.2],[425093.9,87828.4],[425155.9,87799.2],[425239.9,87756.6],[425300.7,87652.5],[425343.2,87550.2],[425367.2,87470.4],[425361.4,87394.1],[425395.5,87318.0],[425441.0,87312.9],[425473.3,87365.3],[425507.5,87399.1],[425532.5,87400.1],[425558.8,87397.0],[425588.5,87375.5],[425612.0,87329.3],[425569.7,87258.0],[425526.4,87221.4],[425468.6,87178.0],[425341.1,86996.3],[425298.0,86987.8],[425274.3,86993.8],[425249.7,86977.7],[425230.0,86932.8],[425221.1,86906.8],[425211.0,86860.3],[425175.1,86796.0],[425130.7,86744.7],[425101.2,86697.4],[425075.7,86693.4],[425027.9,86675.7],[424999.4,86671.9],[424971.2,86658.6],[424956.2,86599.9],[424932.7,86575.2],[424917.2,86533.6],[424926.8,86489.4],[424888.2,86428.5],[424892.2,86335.7],[424886.2,86312.4],[424866.4,86300.8],[424830.6,86258.5],[424816.9,86218.3],[424813.3,86200.6],[424804.1,86195.3],[424794.8,86244.9],[424801.9,86286.8],[424820.9,86353.0],[424829.5,86402.7],[424817.0,86435.3],[424836.5,86480.9],[424833.9,86541.9],[424825.2,86588.6],[424826.5,86617.0],[424850.8,86635.9],[424871.6,86683.0],[424891.4,86698.5],[424911.8,86731.2],[424908.5,86831.5],[424926.0,86941.9],[424926.0,86991.8],[424916.0,87038.8],[424889.2,87132.2],[424843.5,87226.1],[424782.3,87209.3],[424756.6,87244.5],[424752.5,87287.1],[424758.6,87300.7],[424787.4,87350.6],[424809.6,87393.6],[424832.1,87378.5],[424853.3,87328.4],[424872.9,87290.2],[424885.1,87254.1],[424924.6,87157.7],[424919.5,87116.2],[424952.4,87089.2],[424954.3,87049.1],[424965.2,86968.6],[424963.0,86934.1],[424928.1,86939.0]]},{"sump":20,"cincin":[[425171.3,86376.5],[425193.7,86396.3],[425230.9,86425.7],[425270.8,86430.4],[425276.7,86432.1],[425318.6,86449.6],[425352.8,86468.1],[425385.0,86461.7],[425396.0,86453.3],[425416.2,86430.4],[425437.2,86403.3],[425464.5,86378.5],[425531.0,86344.0],[425579.6,86330.9],[425588.2,86326.8],[425614.8,86301.0],[425653.8,86253.4],[425689.2,86198.6],[425696.8,86179.8],[425714.7,86120.7],[425725.5,86095.4],[425727.8,86084.1],[425728.5,86074.1],[425725.5,86065.8],[425720.1,86056.2],[425685.7,86018.2],[425675.1,85998.4],[425672.2,85981.7],[425667.9,85933.7],[425665.4,85927.9],[425648.5,85923.3],[425589.0,85924.5],[425563.4,85927.8],[425539.8,85952.5],[425528.9,85984.8],[425517.5,86000.8],[425501.7,86019.5],[425489.6,86037.2],[425447.3,86033.0],[425426.1,86034.8],[425397.6,86034.7],[425365.0,86039.9],[425355.0,86059.5],[425353.1,86069.9],[425350.5,86110.6],[425314.9,86099.0],[425276.9,86095.8],[425255.2,86100.1],[425194.5,86117.8],[425185.2,86123.5],[425169.2,86153.1],[425153.4,86170.3],[425104.4,86187.4],[425091.2,86200.1],[425047.1,86226.0],[425028.3,86231.8],[424992.6,86197.0],[424979.4,86190.1],[424953.4,86199.5],[424955.1,86300.8],[424958.0,86315.4],[424992.7,86342.0],[425033.0,86367.3],[425063.3,86383.8],[425090.6,86403.5],[425109.0,86410.8],[425162.4,86381.1]]},{"sump":1,"cincin":[[426226.7,86500.1],[426225.3,86529.1],[426217.3,86556.7],[426210.3,86573.1],[426198.0,86593.3],[426187.3,86607.0],[426180.9,86628.1],[426144.5,86649.8],[426166.5,86664.3],[426177.5,86677.0],[426196.7,86691.4],[426210.7,86709.4],[426231.6,86742.6],[426249.5,86744.9],[426275.3,86724.9],[426321.1,86712.8],[426375.4,86725.1],[426402.0,86736.7],[426421.5,86761.6],[426450.1,86791.6],[426472.2,86794.4],[426547.0,86784.8],[426597.2,86790.2],[426653.5,86816.2],[426678.1,86842.0],[426706.8,86865.6],[426729.6,86878.2],[426753.9,86904.2],[426767.9,86922.4],[426774.3,86938.6],[426780.6,86961.9],[426776.2,87002.1],[426765.3,87032.9],[426749.1,87057.8],[426653.9,87113.9],[426620.7,87129.4],[426600.4,87133.9],[426557.3,87146.4],[426490.5,87169.8],[426474.5,87176.6],[426379.2,87227.2],[426333.2,87240.7],[426318.5,87247.0],[426301.4,87245.1],[426286.8,87239.0],[426273.1,87224.4],[426268.9,87207.0],[426272.4,87194.1],[426271.3,87176.4],[426263.7,87158.2],[426248.5,87152.8],[426227.0,87153.7],[426212.8,87149.0],[426191.5,87135.1],[426158.7,87107.4],[426140.8,87080.3],[426122.9,87062.2],[426095.4,87045.6],[426065.4,87022.2],[425980.0,86933.8],[425952.9,86910.1],[425879.8,86866.5],[425866.9,86842.1],[425848.6,86779.2],[425834.5,86750.6],[425823.6,86725.2],[425816.6,86704.9],[425813.5,86676.8],[425818.4,86641.9],[425838.5,86615.6],[425859.3,86600.9],[425958.5,86523.9],[425983.9,86513.9],[426024.7,86500.1],[426048.2,86494.2],[426146.4,86500.2],[426164.2,86500.4],[426227.1,86497.3]]},{"sump":8,"cincin":[[426424.0,86522.1],[426500.8,86602.7],[426507.4,86637.1],[426488.3,86711.5],[426460.9,86771.6],[426450.8,86780.5],[426436.1,86783.8],[426414.8,86740.8],[426400.1,86730.3],[426353.4,86713.4],[426338.0,86711.2],[426312.5,86709.9],[426280.8,86714.2],[426272.4,86724.6],[426257.0,86736.0],[426240.7,86743.3],[426224.2,86727.1],[426205.4,86698.1],[426196.4,86688.4],[426188.3,86682.6],[426165.0,86658.9],[426150.3,86650.2],[426152.8,86637.5],[426171.1,86639.4],[426180.7,86633.7],[426183.2,86626.9],[426184.6,86613.8],[426209.5,86582.6],[426223.2,86550.1],[426226.7,86537.6],[426229.0,86494.2],[426231.6,86480.6],[426231.3,86476.2],[426225.7,86458.7],[426224.3,86450.2],[426221.3,86447.1],[426216.8,86443.9],[426188.6,86432.0],[426178.6,86417.8],[426165.1,86412.8],[426143.7,86385.4],[426104.8,86348.2],[426059.5,86321.0],[426045.8,86315.6],[426071.5,86289.5],[426085.4,86270.8],[426092.3,86250.2],[426100.9,86230.2],[426111.0,86223.2],[426124.3,86222.7],[426138.9,86227.0],[426151.3,86236.0],[426174.8,86244.3],[426192.7,86245.3],[426206.3,86242.9],[426244.2,86254.6],[426252.3,86258.6],[426256.2,86265.9],[426252.3,86282.8],[426241.0,86296.7],[426235.0,86309.4],[426235.2,86318.3],[426244.7,86330.7],[426259.6,86345.6],[426275.6,86350.6],[426289.7,86350.1],[426304.2,86352.5],[426317.8,86365.6],[426327.5,86376.7],[426333.5,86386.7],[426342.0,86412.8],[426369.5,86456.7],[426374.7,86460.7],[426393.9,86465.4],[426398.8,86468.1],[426401.0,86473.0],[426399.6,86477.9],[426400.9,86487.7],[426403.5,86495.0],[426407.3,86501.1],[426415.1,86506.1],[426421.3,86518.5]]},{"sump":7,"cincin":[[426017.9,86203.0],[426021.8,86219.8],[426017.3,86229.1],[425992.2,86243.7],[425989.0,86254.0],[425988.2,86292.6],[425980.7,86312.3],[426036.3,86319.8],[426047.6,86319.3],[426059.3,86323.8],[426101.8,86348.8],[426142.9,86386.5],[426168.1,86419.2],[426201.5,86441.2],[426215.8,86445.1],[426223.2,86451.9],[426229.4,86474.0],[426228.2,86485.5],[426214.0,86488.4],[426150.0,86492.6],[426048.4,86482.3],[426032.7,86485.3],[425973.1,86508.1],[425858.8,86596.2],[425827.0,86619.2],[425814.8,86640.6],[425810.1,86677.0],[425797.3,86694.5],[425790.1,86701.0],[425772.7,86705.8],[425749.6,86702.8],[425718.5,86685.5],[425688.3,86662.7],[425658.9,86650.2],[425631.0,86644.1],[425609.9,86631.5],[425584.2,86604.5],[425573.1,86576.0],[425572.4,86529.1],[425547.3,86496.3],[425523.9,86477.7],[425520.4,86414.8],[425504.1,86392.5],[425490.9,86382.6],[425492.0,86372.1],[425499.8,86362.8],[425533.9,86344.9],[425545.4,86340.8],[425592.8,86328.2],[425615.3,86312.1],[425665.0,86249.9],[425697.6,86197.9],[425709.4,86160.9],[425716.9,86130.9],[425733.3,86083.5],[425731.2,86067.3],[425720.2,86047.7],[425715.7,86029.6],[425713.6,86014.9],[425715.8,85983.1],[425725.6,85965.0],[425735.8,85959.0],[425768.5,85944.0],[425792.3,85946.3],[425807.3,85988.4],[425801.6,86013.8],[425791.7,86048.1],[425828.7,86120.4],[425828.2,86133.9],[425809.4,86159.8],[425827.2,86173.5],[425845.9,86193.6],[425864.0,86202.2],[425900.5,86195.6],[425932.5,86173.1],[425974.6,86173.4],[426004.7,86180.0]]},{"sump":10,"cincin":[[425590.1,87389.1],[425618.5,87332.9],[425582.3,87269.4],[425566.8,87248.5],[425538.0,87226.2],[425527.6,87212.4],[425538.6,87194.3],[425552.3,87204.6],[425590.4,87251.2],[425628.7,87306.0],[425645.3,87342.4],[425644.8,87363.0],[425611.5,87435.1],[425616.7,87449.3],[425626.5,87460.0],[425656.3,87483.4],[425701.8,87503.7],[425743.7,87525.3],[425763.9,87534.2],[425790.6,87535.5],[425812.8,87522.8],[425836.0,87500.0],[425842.2,87479.9],[425856.0,87462.9],[425870.7,87469.6],[425884.5,87478.2],[425936.0,87498.7],[425943.4,87507.9],[425953.7,87515.9],[425979.8,87529.3],[426005.0,87532.8],[426001.1,87547.1],[425976.5,87615.3],[425960.6,87618.9],[425934.6,87611.2],[425906.2,87599.8],[425895.5,87592.0],[425854.1,87569.7],[425823.0,87558.0],[425816.8,87556.3],[425777.3,87554.1],[425743.8,87548.1],[425684.8,87511.8],[425637.7,87493.7],[425626.9,87487.9],[425590.7,87441.2],[425581.7,87426.0],[425571.2,87415.9],[425554.4,87414.2],[425476.8,87418.1],[425473.5,87430.5],[425461.3,87456.0],[425448.6,87472.8],[425430.9,87483.4],[425408.0,87489.5],[425387.0,87487.7],[425372.8,87482.0],[425364.1,87435.3],[425363.1,87408.7],[425366.2,87383.5],[425371.4,87374.3],[425393.8,87324.1],[425403.0,87316.1],[425430.7,87315.6],[425450.8,87324.1],[425465.3,87354.6],[425480.0,87400.3],[425504.6,87400.2],[425519.0,87402.2],[425586.0,87394.4]]},{"sump":4,"cincin":[[425593.3,87124.4],[425638.8,87143.0],[425700.1,87158.0],[425756.2,87128.8],[425764.4,87123.1],[425777.3,86889.7],[425771.9,86726.2],[425698.8,86790.9],[425693.7,86793.4],[425625.8,86764.8],[425598.2,86726.4],[425534.8,86670.8],[425506.4,86641.9],[425489.9,86635.8],[425467.6,86636.1],[425448.9,86645.1],[425415.1,86690.9],[425401.9,86741.0],[425398.6,86749.2],[425372.2,86760.1],[425352.1,86859.8],[425352.2,86888.2],[425355.9,86917.0],[425358.1,86983.9],[425360.1,86997.2],[425368.3,87014.4],[425424.3,87097.4],[425448.0,87128.5],[425494.1,87182.2],[425509.8,87193.8],[425528.5,87200.6],[425543.2,87170.7],[425553.9,87157.8],[425583.2,87131.9]]},{"sump":15,"cincin":[[426302.3,87250.3],[426278.8,87387.3],[426275.9,87442.8],[426268.3,87463.1],[426259.3,87478.4],[426238.3,87500.2],[426223.8,87525.9],[426203.6,87549.5],[426201.8,87571.3],[426216.1,87608.2],[426216.4,87625.4],[426209.0,87634.9],[426200.9,87642.9],[426170.2,87638.2],[426150.0,87608.0],[426148.2,87575.9],[426148.8,87546.4],[426112.5,87534.7],[426075.4,87545.8],[426047.6,87544.9],[426047.8,87514.9],[426057.9,87415.7],[426076.0,87392.0],[426125.3,87333.6],[426295.7,87248.4],[426317.1,87257.5],[426287.5,87372.4],[426280.7,87411.1],[426280.9,87440.4],[426272.9,87461.5],[426247.9,87501.9],[426235.0,87520.3],[426207.2,87549.5],[426204.3,87566.0],[426213.9,87587.0],[426227.6,87625.2],[426233.5,87659.4],[426225.8,87668.8],[426251.9,87707.6],[426263.6,87718.3],[426274.7,87716.1],[426289.8,87708.3],[426311.1,87681.3],[426326.8,87669.1],[426373.5,87645.6],[426390.3,87634.6],[426402.7,87629.4],[426451.4,87617.2],[426475.3,87604.7],[426491.6,87589.4],[426507.0,87568.7],[426511.9,87553.3],[426502.7,87528.8],[426486.3,87526.9],[426472.8,87513.5],[426462.6,87493.1],[426464.4,87479.8],[426475.0,87465.8],[426489.5,87450.1],[426501.1,87446.1],[426548.8,87450.3],[426574.0,87447.6],[426581.3,87443.1],[426601.3,87424.6],[426624.4,87412.9],[426647.2,87334.4],[426634.8,87323.5],[426494.2,87285.1],[426466.8,87268.0],[426403.5,87222.6],[426377.2,87232.3],[426342.8,87242.1],[426322.1,87249.5]]},{"sump":20,"cincin":[[425695.5,86784.4],[425768.2,86719.4],[425767.2,86716.3],[425755.7,86709.0],[425732.4,86699.9],[425709.7,86688.2],[425690.4,86674.9],[425682.7,86664.8],[425656.8,86655.4],[425627.0,86648.3],[425608.9,86636.9],[425595.0,86624.7],[425581.9,86609.6],[425576.1,86598.5],[425570.0,86582.6],[425568.2,86528.3],[425559.9,86513.4],[425544.8,86500.1],[425522.1,86484.2],[425515.0,86469.4],[425514.6,86415.9],[425501.4,86398.2],[425484.4,86397.9],[425477.1,86388.9],[425462.7,86392.8],[425452.7,86400.2],[425398.3,86464.9],[425369.3,86472.7],[425350.3,86474.4],[425297.3,86448.9],[425223.2,86424.2],[425176.0,86388.4],[425171.2,86386.4],[425152.0,86394.6],[425122.4,86416.7],[425175.8,86504.2],[425186.1,86528.3],[425193.0,86536.2],[425214.4,86553.7],[425309.0,86598.3],[425327.8,86602.1],[425334.0,86605.2],[425352.8,86622.9],[425359.5,86656.5],[425360.3,86667.9],[425358.2,86686.7],[425363.8,86708.6],[425372.4,86725.8],[425387.5,86744.7],[425396.5,86746.3],[425408.9,86690.0],[425454.3,86630.0],[425496.7,86629.8],[425509.3,86637.2],[425533.2,86661.0],[425601.9,86723.5],[425609.2,86732.9],[425620.5,86753.7],[425629.5,86762.8],[425685.0,86785.2],[425692.5,86785.5]]},{"sump":19,"cincin":[[424914.2,85918.3],[424916.7,85909.8],[424920.3,85908.8],[424933.0,85911.1],[424966.8,85913.1],[425048.4,85895.3],[425052.8,85895.3],[425059.7,85902.9],[425070.6,85944.8],[425078.2,85952.5]]},{"sump":18,"cincin":[[425114.1,85987.8],[425144.9,85994.3],[425166.6,86014.7],[425180.8,86047.5],[425251.7,86056.1],[425271.0,86043.3],[425281.3,86029.3],[425299.2,86020.9],[425308.4,86022.2],[425316.4,86027.6],[425343.3,86060.1],[425349.9,86071.1],[425349.4,86093.1],[425344.5,86101.5],[425314.9,86095.8],[425271.5,86090.8],[425191.4,86114.0],[425183.1,86118.6],[425176.2,86127.8],[425163.0,86155.9],[425155.3,86167.6],[425102.0,86185.7],[425035.8,86226.4],[425028.3,86224.1],[425000.3,86193.9],[424993.0,86180.6],[424943.7,86194.1],[424941.6,86203.7],[424944.5,86218.9],[424946.9,86290.8],[424945.3,86293.4],[424880.9,86308.0],[424858.5,86291.7],[424850.9,86283.7],[424832.1,86258.1],[424821.9,86228.6],[424812.8,86183.7],[424811.8,86149.9],[424809.3,86120.5],[424807.6,86104.3],[424804.4,86097.7],[424797.2,86094.7],[424784.4,86091.9],[424775.0,86086.1],[424762.2,86070.9],[424749.0,86064.4],[424745.1,86053.6],[424748.5,86023.6],[424752.7,86004.2],[424767.1,85999.0],[424786.6,86015.0],[424822.5,86016.4],[424863.4,86022.2],[424900.0,86021.4],[424915.2,86006.6],[424916.0,85976.9],[424914.5,85941.2]]}]};
+window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 topo lama","sump":[{"id":1,"nama":"Onat","cincin":[[[426229.4,86900.4],[426233.2,86889.5],[426236.1,86884.2],[426241.5,86873.0],[426242.7,86868.3],[426245.6,86862.8],[426246.7,86855.4],[426247.6,86851.8],[426247.5,86841.1],[426246.2,86833.5],[426240.9,86825.5],[426227.7,86812.8],[426223.8,86810.2],[426218.8,86808.2],[426214.0,86805.8],[426209.3,86804.3],[426198.8,86802.7],[426196.1,86801.5],[426187.8,86802.9],[426183.4,86804.5],[426183.3,86812.0],[426182.3,86820.5],[426183.2,86827.5],[426186.6,86834.0],[426199.4,86854.0],[426199.3,86857.2],[426198.4,86860.8],[426196.5,86860.3],[426194.8,86864.1],[426192.4,86866.1],[426193.0,86875.1],[426194.1,86882.4],[426197.5,86894.4],[426204.7,86896.3],[426206.7,86898.5],[426229.4,86900.4]]],"luasHa":0.454,"catchHa":38.068,"E":426211.4,"N":86848.5},{"id":2,"nama":"Atom","cincin":[[[426662.7,87650.1],[426669.1,87644.3],[426671.7,87640.8],[426673.5,87637.7],[426675.1,87633.2],[426675.5,87631.1],[426679.5,87624.8],[426681.2,87623.3],[426684.2,87617.9],[426686.8,87615.8],[426693.3,87609.1],[426701.3,87604.5],[426704.2,87601.8],[426706.4,87599.1],[426711.8,87594.5],[426714.9,87590.3],[426716.6,87586.9],[426716.3,87580.3],[426715.8,87578.1],[426714.3,87573.7],[426713.0,87571.1],[426711.5,87571.1],[426709.0,87572.7]]],"luasHa":0.057,"catchHa":0.0,"E":426692.7,"N":87610.4},{"id":3,"nama":"Workshop","cincin":[[[425614.9,87237.9],[425623.0,87243.5],[425628.7,87243.1],[425634.7,87242.2],[425645.4,87243.3],[425647.4,87248.6],[425647.3,87254.2],[425645.9,87258.1],[425643.7,87260.0],[425638.2,87259.8],[425630.1,87261.1],[425624.9,87263.4],[425619.7,87266.4],[425611.4,87267.9],[425608.3,87266.3],[425601.9,87256.6],[425599.5,87251.3],[425595.9,87245.1],[425589.8,87237.6],[425588.3,87232.9],[425590.4,87229.4],[425593.5,87229.3],[425614.9,87237.9]]],"luasHa":0.12,"catchHa":0.0,"E":425620.4,"N":87249.1},{"id":4,"nama":"Subaim","cincin":[[[425669.5,86926.0],[425671.8,86924.1],[425676.1,86918.0],[425673.6,86907.2],[425673.9,86906.4],[425670.9,86895.9],[425674.6,86893.9],[425676.5,86895.6],[425682.4,86906.5],[425684.2,86910.7],[425685.7,86919.3],[425685.4,86923.6],[425692.7,86938.2],[425693.6,86941.5],[425690.2,86944.6],[425690.5,86947.5],[425690.2,86953.0],[425690.7,86957.2]]],"luasHa":0.062,"catchHa":31.211,"E":425682.5,"N":86923.8},{"id":5,"nama":"AT01, AT02","cincin":[[[425020.6,87674.6],[425023.7,87665.6],[425024.2,87663.2],[425014.0,87659.1],[425004.6,87656.4],[425002.7,87656.2],[425001.4,87656.5],[425000.1,87658.1],[424999.8,87659.9],[425000.3,87662.1],[425001.7,87664.3],[425004.0,87666.2],[425012.1,87672.0],[425017.6,87675.1],[425019.7,87675.3],[425020.6,87674.6],[425027.0,87656.9],[425029.7,87652.1],[425030.4,87650.2],[425030.2,87648.2],[425029.7,87646.4],[425028.3,87643.7],[425025.4,87641.5],[425020.3,87639.7],[425018.0,87639.2],[425012.9,87639.3],[425009.5,87640.7],[425007.8,87642.6],[425006.5,87644.9],[425005.5,87647.9],[425006.0,87648.5],[425005.7,87650.0],[425006.9,87651.9],[425017.8,87655.8],[425024.0,87657.5]],[[424930.2,86895.9],[424935.8,86910.1],[424942.3,86921.2],[424943.0,86925.9],[424946.8,86932.7],[424946.4,86935.6],[424958.4,86928.4],[424963.4,86926.5],[424984.9,86946.2],[424985.6,86947.4],[424993.5,86948.5],[424998.4,86945.8],[425000.6,86948.5],[424993.9,86951.1],[424984.2,86952.4],[424979.5,86954.1],[424971.8,86958.9],[424970.7,86967.4],[424969.2,86983.9],[424970.3,87001.7],[424966.9,87002.0],[424963.6,87011.2],[424962.1,87013.5],[424961.1,87016.6],[424960.5,87020.4],[424957.9,87028.3],[424958.0,87030.5],[424959.2,87034.3],[424966.8,87034.6],[424970.3,87033.4],[424970.9,87040.4],[424969.5,87041.2],[424969.1,87044.6],[424970.0,87048.5],[424963.6,87048.6],[424963.0,87049.6],[424959.7,87049.1],[424958.9,87051.5],[424959.2,87059.8],[424958.8,87069.1],[424958.0,87073.1],[424959.1,87075.2],[424963.1,87076.5],[424963.2,87077.0],[424968.8,87080.9],[424970.0,87082.1],[424976.7,87084.0],[424973.8,87091.9],[424976.0,87090.1],[424979.5,87088.4],[424985.3,87086.4],[424987.3,87086.4],[424999.1,87082.4],[425009.3,87080.7],[425043.4,87054.4],[425039.7,87044.4],[425038.4,87038.7],[425036.2,87031.2],[425024.9,87023.6],[425023.1,87014.0],[425017.2,86990.7],[425012.6,86978.6],[425016.1,86971.7],[425015.8,86966.8],[425014.4,86964.6],[425006.5,86948.2],[425004.7,86942.6],[425002.8,86939.7],[424997.8,86934.2],[424993.7,86927.3],[424992.1,86922.9],[424987.8,86915.8],[424983.7,86911.4],[424978.9,86908.1],[424977.7,86904.9],[424974.7,86901.4],[424970.3,86899.7],[424966.5,86899.5],[424964.2,86901.2],[424963.3,86900.1],[424957.8,86896.2],[424956.3,86895.9],[424954.5,86893.2],[424953.9,86888.3],[424951.6,86884.6],[424947.2,86882.0],[424945.7,86879.8],[424930.2,86895.9]]],"luasHa":1.05,"catchHa":54.823,"E":424977.3,"N":86988.2},{"id":6,"nama":"Dermaga","cincin":[[[424826.1,87326.6],[424815.6,87327.1],[424805.0,87325.4],[424798.2,87323.2],[424795.5,87322.9],[424797.2,87317.1],[424797.8,87313.3],[424800.6,87304.0],[424803.5,87297.3],[424803.8,87292.4],[424805.3,87287.1],[424806.6,87286.8],[424809.4,87287.2],[424809.1,87296.0],[424809.8,87296.6],[424809.3,87298.9],[424818.5,87300.5],[424824.0,87302.6],[424829.9,87303.1],[424830.8,87303.8],[424834.6,87305.0],[424838.1,87304.2],[424839.6,87304.6],[424839.9,87307.6],[424832.7,87308.7],[424829.5,87309.9],[424822.2,87310.1],[424818.7,87309.4],[424812.6,87309.4],[424811.3,87316.8],[424820.5,87319.6],[424823.0,87319.7],[424828.7,87322.6],[424826.9,87326.6],[424826.1,87326.6]]],"luasHa":0.072,"catchHa":0.0,"E":424817.2,"N":87308.9},{"id":7,"nama":"Mafhia","cincin":[[[425814.0,86225.4],[425823.8,86229.6],[425839.6,86234.4],[425845.2,86240.9],[425847.5,86245.7],[425846.6,86247.4],[425841.3,86248.1],[425831.2,86246.9],[425824.3,86245.1],[425821.2,86242.3],[425817.1,86235.6],[425813.7,86228.2],[425813.0,86225.3],[425814.0,86225.4],[425788.1,86197.7],[425790.9,86197.6],[425796.8,86200.1],[425798.6,86206.2],[425797.4,86209.0],[425794.5,86209.3],[425790.9,86207.6],[425787.3,86204.4],[425785.2,86197.4],[425785.4,86196.4],[425788.1,86197.7]],[[425889.4,86377.8],[425883.3,86380.3],[425880.8,86384.9],[425871.8,86392.3],[425864.6,86395.1],[425857.5,86394.3],[425855.4,86395.7],[425854.3,86397.8],[425849.9,86402.0],[425848.7,86403.9],[425847.1,86409.1],[425843.1,86412.2],[425839.4,86412.8],[425827.2,86425.9],[425820.9,86430.2],[425819.8,86433.6],[425823.0,86439.5],[425831.8,86447.2],[425839.4,86455.2],[425842.4,86446.6],[425848.3,86433.3],[425854.7,86428.0],[425860.2,86420.2],[425867.0,86415.0],[425872.0,86409.8],[425879.1,86403.8],[425884.2,86394.6],[425888.3,86389.3],[425891.7,86382.3],[425892.4,86379.1],[425890.5,86377.6],[425889.4,86377.8],[425966.5,86318.2],[425962.7,86315.3],[425958.5,86314.0],[425950.8,86320.7],[425945.8,86327.4],[425941.9,86331.7],[425933.7,86337.0],[425929.6,86341.8],[425926.6,86348.2],[425922.8,86354.7],[425919.2,86357.6],[425917.7,86360.8],[425914.4,86364.9],[425902.8,86371.4],[425902.0,86373.7],[425903.0,86376.4],[425904.4,86378.0],[425907.0,86378.3],[425910.1,86375.8],[425914.4,86374.7],[425919.6,86371.4],[425922.7,86370.6],[425926.0,86369.0],[425930.5,86365.7],[425934.8,86361.4],[425942.7,86355.6],[425946.7,86347.8],[425952.0,86347.4],[425958.6,86348.7],[425967.8,86340.6],[425992.2,86339.9],[426009.9,86336.7],[426018.2,86341.5],[426026.6,86345.7],[426027.2,86352.8],[426029.9,86358.0],[426037.6,86362.6],[426045.1,86361.7],[426050.6,86357.5],[426052.6,86349.0],[426051.2,86341.8],[426047.7,86336.1],[426046.8,86329.8],[426044.1,86323.9],[426036.5,86321.8],[426028.7,86324.3],[426023.8,86327.4],[426019.0,86326.1],[426006.8,86324.7],[426000.2,86326.0],[425993.2,86328.2],[425987.6,86328.6],[425982.3,86328.0],[425979.3,86322.2],[425978.0,86317.4],[425975.9,86316.1],[425967.2,86319.3],[425966.5,86318.2]],[[425992.8,86200.5],[425990.5,86197.3],[425989.2,86194.0],[425990.0,86191.7],[425993.7,86191.2],[425999.7,86187.4],[426003.7,86189.1],[426007.5,86192.7],[426009.7,86196.6],[426014.7,86202.6],[426016.2,86206.7],[426018.9,86216.0],[426019.5,86220.7],[426018.8,86223.3],[426016.4,86223.9],[426011.2,86224.5],[426009.0,86223.2],[426005.8,86219.6],[426004.0,86211.5],[426002.6,86208.9],[425998.5,86204.4],[425992.8,86200.5]]],"luasHa":0.577,"catchHa":23.08,"E":425932.9,"N":86365.3},{"id":8,"nama":"Pos 2","cincin":[[[426108.2,86243.5],[426115.8,86236.9],[426125.1,86236.1],[426134.0,86237.5],[426136.7,86242.0],[426136.6,86247.5],[426133.3,86249.9],[426124.4,86250.2],[426115.9,86251.3],[426111.8,86249.8],[426108.7,86247.7],[426108.2,86243.5]],[[426222.7,86304.4],[426220.6,86308.3],[426219.7,86312.2],[426219.9,86317.4],[426218.0,86321.5],[426214.0,86325.5],[426209.5,86322.8],[426206.0,86316.8],[426209.6,86307.6],[426210.1,86305.3],[426212.9,86303.7],[426215.8,86300.7],[426220.7,86298.7],[426222.7,86304.4]],[[426382.5,86479.1],[426379.0,86473.4],[426377.0,86465.6],[426378.5,86461.9],[426388.8,86463.9],[426397.4,86467.4],[426400.2,86472.5],[426397.8,86481.6],[426399.9,86486.2],[426402.8,86494.0],[426404.2,86500.5],[426403.8,86502.3],[426402.3,86504.4],[426398.5,86504.9],[426393.1,86504.8],[426389.8,86508.2],[426385.4,86510.7],[426381.9,86510.3],[426378.3,86506.5],[426377.4,86503.8],[426377.3,86499.6],[426379.6,86488.8],[426383.3,86480.2],[426382.5,86479.1],[426411.5,86513.9],[426410.0,86518.2],[426407.0,86521.3],[426402.9,86523.5],[426399.0,86524.2],[426396.3,86519.3],[426395.9,86516.9],[426396.9,86514.9],[426401.1,86511.8],[426407.2,86511.6],[426411.5,86513.0],[426411.5,86513.9],[426375.5,86530.0],[426380.2,86526.0],[426384.6,86525.2],[426389.9,86528.0],[426389.6,86533.4],[426388.8,86534.9],[426380.1,86533.6],[426376.1,86531.1],[426375.5,86530.0]]],"luasHa":0.262,"catchHa":10.948,"E":426390.6,"N":86504.1},{"id":9,"nama":"J. Para","cincin":[[[426197.5,87675.4],[426201.3,87677.5],[426223.7,87677.6],[426227.5,87676.6],[426229.4,87671.7],[426224.7,87662.9],[426206.9,87662.0],[426199.2,87662.8],[426192.2,87669.7],[426197.5,87675.4]]],"luasHa":0.048,"catchHa":0.0,"E":426212.0,"N":87670.1},{"id":10,"nama":"Nursery","cincin":[[[425468.6,87400.4],[425466.2,87390.1],[425456.3,87391.1],[425453.4,87392.1],[425455.3,87402.0],[425468.6,87400.4]],[[425622.2,87356.6],[425616.6,87355.5],[425615.3,87350.8],[425615.1,87343.4],[425617.7,87338.7],[425621.0,87337.9],[425623.0,87338.8],[425625.5,87351.9],[425622.2,87356.6]]],"luasHa":0.029,"catchHa":17.97,"E":425620.1,"N":87348.7},{"id":11,"nama":"Buli","cincin":[[[425331.7,86738.1],[425342.4,86745.8],[425353.3,86749.4],[425352.7,86753.8],[425344.3,86768.5],[425337.2,86764.0],[425340.2,86756.7],[425324.7,86749.4],[425331.7,86738.1]],[[425150.4,86645.2],[425151.5,86637.6],[425155.7,86627.6],[425163.4,86619.3],[425164.8,86619.8],[425173.0,86630.1],[425174.8,86638.0],[425173.5,86644.9],[425169.3,86655.7],[425171.3,86666.3],[425167.4,86675.0],[425166.0,86679.4],[425157.3,86680.4],[425159.2,86670.5],[425164.2,86665.7],[425163.5,86659.9],[425156.4,86656.3],[425151.4,86650.9],[425150.4,86645.2]],[[425134.4,86772.0],[425138.1,86773.2],[425144.2,86774.3],[425147.5,86767.8],[425146.5,86763.2],[425146.6,86745.8],[425149.6,86738.5],[425150.9,86731.0],[425151.4,86723.2],[425153.9,86711.9],[425149.2,86703.6],[425141.0,86701.2],[425136.8,86699.6],[425131.8,86696.1],[425130.1,86693.7],[425129.5,86691.9],[425130.2,86689.1],[425129.7,86688.6],[425125.7,86686.0],[425115.0,86681.9],[425111.8,86681.8],[425105.2,86680.9],[425101.9,86683.9],[425099.1,86685.6],[425096.4,86686.4],[425089.9,86685.6],[425087.7,86684.8],[425086.5,86683.4],[425084.4,86679.9],[425080.5,86677.5],[425075.5,86675.2],[425072.1,86675.4],[425065.2,86677.8],[425063.9,86679.4],[425062.7,86681.9],[425061.7,86685.9],[425061.7,86688.2],[425065.2,86688.7],[425068.0,86688.1],[425069.5,86687.1],[425069.7,86686.6],[425076.4,86687.0],[425078.9,86687.9],[425089.1,86693.1],[425092.7,86695.6],[425097.5,86696.3],[425100.7,86695.5],[425101.8,86694.6],[425108.7,86691.6],[425111.6,86691.4],[425114.5,86692.2],[425115.0,86692.8],[425120.0,86695.7],[425131.4,86710.6],[425132.8,86714.8],[425134.8,86726.4],[425135.7,86740.6],[425135.3,86744.0],[425136.3,86754.6],[425136.5,86764.9],[425134.4,86772.0]]],"luasHa":0.308,"catchHa":9.931,"E":425110.8,"N":86704.4},{"id":12,"nama":"Bicoli","cincin":[[[424947.8,86551.8],[424950.8,86549.4],[424959.7,86552.1],[424963.3,86557.6],[424961.7,86566.5],[424958.3,86569.4],[424950.0,86568.7],[424946.0,86566.6],[424943.7,86564.1],[424943.8,86560.6],[424947.8,86551.8],[424938.9,86500.9],[424946.2,86494.2],[424949.9,86490.0],[424948.1,86484.7],[424945.5,86479.1],[424933.3,86455.7],[424926.9,86446.2],[424921.2,86444.5],[424917.0,86446.0],[424913.8,86446.6],[424908.6,86438.7],[424908.9,86437.5],[424912.4,86434.4],[424911.2,86432.0],[424904.1,86423.0],[424906.7,86418.7],[424907.0,86415.7],[424906.3,86410.9],[424897.5,86402.2],[424894.1,86401.9],[424890.2,86404.5],[424888.9,86406.6],[424887.9,86412.7],[424888.1,86419.2],[424891.4,86426.5],[424900.6,86437.9],[424909.2,86451.1],[424917.4,86466.3],[424936.8,86497.7],[424937.4,86500.3],[424938.7,86501.5],[424938.9,86500.9]]],"luasHa":0.132,"catchHa":4.055,"E":424925.5,"N":86474.6},{"id":13,"nama":"Wato-wato","cincin":[[[426187.1,87547.3],[426195.5,87537.2],[426211.1,87525.3],[426215.1,87531.5],[426211.8,87536.7],[426208.1,87541.3],[426204.0,87545.0],[426199.9,87552.6],[426200.2,87557.4],[426200.0,87561.5],[426200.5,87566.7],[426199.5,87569.8],[426202.2,87575.6],[426206.3,87582.2],[426200.9,87586.3],[426192.3,87575.0],[426190.2,87571.8],[426186.7,87563.1],[426184.6,87555.1],[426184.7,87551.2],[426187.1,87547.3]],[[426279.4,87384.9],[426275.9,87397.9],[426276.5,87404.5],[426276.3,87411.9],[426274.6,87422.9],[426275.8,87435.8],[426270.0,87436.5],[426266.2,87427.4],[426255.6,87408.5],[426269.5,87389.3],[426274.7,87379.0],[426280.5,87380.8],[426279.4,87384.9]]],"luasHa":0.141,"catchHa":1.714,"E":426198.2,"N":87556.6},{"id":14,"nama":"Seg14","cincin":[[[426562.7,87787.9],[426565.9,87784.0],[426572.9,87768.6],[426569.2,87765.1],[426562.1,87762.8],[426561.2,87763.1],[426560.3,87764.0],[426559.3,87765.9],[426554.9,87783.6],[426559.3,87786.5],[426562.7,87787.9],[426581.2,87752.1],[426582.7,87747.7],[426585.5,87744.1],[426587.1,87741.4],[426588.6,87737.1],[426590.7,87732.6],[426592.0,87730.8],[426595.1,87724.9],[426598.2,87720.2],[426603.1,87713.9],[426604.3,87711.1],[426605.8,87705.9],[426602.6,87702.3],[426597.4,87699.1],[426591.5,87693.0],[426588.8,87695.5],[426587.9,87695.5],[426585.5,87698.5],[426580.1,87703.8],[426571.6,87716.5],[426568.5,87723.4],[426563.2,87732.5],[426562.6,87735.9],[426562.6,87739.6],[426563.8,87743.3],[426565.2,87745.1],[426566.4,87747.6],[426568.7,87749.4],[426570.6,87752.1],[426573.0,87753.1],[426575.3,87754.9]],[[426662.7,87650.1],[426669.1,87644.3],[426671.7,87640.8],[426673.5,87637.7],[426675.1,87633.2],[426675.5,87631.1],[426679.5,87624.8],[426681.2,87623.3],[426684.2,87617.9],[426686.8,87615.8],[426693.3,87609.1],[426701.3,87604.5],[426704.2,87601.8],[426706.4,87599.1],[426711.8,87594.5],[426714.9,87590.3],[426716.6,87586.9],[426716.3,87580.3],[426715.8,87578.1],[426714.3,87573.7],[426713.0,87571.1],[426711.5,87571.1],[426709.0,87572.7]]],"luasHa":0.229,"catchHa":6.313,"E":426581.0,"N":87733.6},{"id":15,"nama":"Seg15","cincin":[[[426462.5,87502.7],[426457.2,87508.4],[426450.8,87519.0],[426445.2,87527.3],[426449.1,87530.2],[426450.0,87531.5],[426452.0,87532.1],[426455.3,87530.0],[426459.1,87526.6],[426464.7,87520.4],[426466.6,87517.4],[426467.8,87513.4],[426467.9,87510.1],[426466.4,87507.5],[426462.5,87502.7],[426431.4,87438.9],[426427.9,87438.2],[426425.0,87438.2],[426414.3,87440.4],[426409.3,87442.3],[426406.9,87445.6],[426406.5,87447.0],[426407.0,87449.1],[426409.7,87456.3],[426412.7,87462.3],[426416.2,87467.2],[426418.8,87470.1],[426420.8,87473.7],[426421.6,87474.5],[426424.6,87475.9],[426427.3,87476.9],[426431.6,87477.7],[426437.0,87477.5],[426441.0,87476.1],[426447.5,87472.3],[426447.2,87470.6],[426453.2,87465.8],[426456.7,87461.9],[426464.5,87452.8],[426465.0,87450.6],[426463.6,87447.9],[426462.1,87446.2],[426460.0,87445.4],[426454.4,87446.5],[426444.1,87449.7],[426441.1,87452.0],[426436.5,87447.9],[426431.4,87438.9]]],"luasHa":0.174,"catchHa":8.229,"E":426443.9,"N":87477.8},{"id":16,"nama":"Jara-jara","cincin":[[[426742.6,87554.1],[426742.9,87562.4],[426740.6,87574.7],[426741.2,87592.5],[426742.3,87602.0],[426743.7,87604.2],[426750.9,87612.0],[426754.1,87613.4],[426757.0,87613.9],[426759.8,87613.6],[426760.7,87611.2],[426761.5,87610.1],[426763.3,87609.7],[426765.9,87611.3],[426767.0,87613.4],[426769.0,87614.7],[426772.0,87615.5],[426779.8,87616.4],[426782.6,87611.2],[426790.0,87601.4],[426791.1,87598.4],[426792.1,87596.8],[426797.3,87592.4],[426797.4,87591.0],[426801.8,87587.8],[426805.5,87583.9],[426806.9,87583.4],[426813.0,87574.6],[426813.8,87572.8],[426817.9,87566.7],[426821.9,87555.1],[426823.5,87551.4],[426825.9,87547.8],[426827.0,87542.0],[426827.7,87535.4],[426828.7,87519.4],[426829.8,87515.9],[426833.8,87507.8],[426834.1,87505.4],[426842.5,87486.2],[426846.9,87480.9],[426851.0,87474.2],[426852.1,87473.4],[426852.4,87472.2],[426855.7,87466.2],[426872.3,87466.1],[426876.3,87461.9],[426881.8,87457.7],[426884.7,87454.1],[426889.9,87451.7],[426896.7,87454.3],[426905.5,87445.6],[426901.3,87440.7],[426899.7,87430.9],[426899.7,87423.5],[426902.2,87418.2],[426897.8,87412.1],[426887.1,87404.9],[426874.4,87410.0],[426848.5,87438.3],[426849.9,87444.3],[426842.6,87449.5],[426837.9,87453.8],[426829.0,87466.5],[426824.8,87474.9],[426823.7,87478.4],[426824.0,87479.1],[426811.2,87483.3],[426800.5,87483.4],[426798.1,87484.6],[426792.0,87488.5],[426783.1,87497.3],[426776.1,87506.2],[426773.3,87507.9],[426770.3,87508.9],[426751.0,87547.4],[426743.8,87550.0],[426744.9,87552.1],[426742.6,87554.1],[426774.3,87480.9],[426779.3,87476.5],[426786.8,87466.9],[426786.7,87462.7],[426784.9,87460.5],[426783.4,87459.5],[426781.1,87459.7],[426775.9,87462.6],[426774.0,87464.9],[426767.2,87469.7],[426759.3,87477.4],[426751.6,87481.3],[426748.5,87482.0],[426747.9,87489.1]],[[426805.5,87220.5],[426817.0,87210.7],[426824.6,87202.9],[426829.3,87193.2],[426831.7,87184.6],[426830.8,87175.9],[426826.1,87164.7],[426823.2,87159.7],[426819.4,87157.0],[426816.9,87159.3],[426816.2,87158.6],[426813.7,87173.3],[426813.0,87180.9],[426811.5,87185.5],[426809.6,87195.1],[426803.2,87218.1],[426805.5,87220.5]]],"luasHa":1.334,"catchHa":0.0,"E":426806.0,"N":87517.6},{"id":17,"nama":"Triwan","cincin":[[[426675.1,87507.3],[426681.9,87505.3],[426688.6,87497.2],[426692.5,87490.4],[426695.6,87477.9],[426693.1,87477.7],[426686.1,87479.9],[426679.1,87479.9],[426670.4,87485.5],[426661.4,87501.2],[426660.9,87507.1],[426667.9,87508.4],[426671.2,87508.6],[426675.1,87507.3]]],"luasHa":0.064,"catchHa":17.519,"E":426677.9,"N":87496.1},{"id":18,"nama":"Tajmahal","cincin":[[[425012.5,86221.1],[425005.9,86203.8],[425002.8,86198.6],[424999.5,86194.9],[424996.4,86193.2],[424993.9,86193.0],[424985.3,86191.2],[424980.5,86192.9],[424962.3,86195.6],[424957.9,86197.9],[424952.4,86205.6],[424950.6,86206.2],[424948.2,86209.8],[424947.3,86213.7],[424946.7,86221.1],[424948.0,86225.8],[424948.8,86229.8],[424949.0,86232.6],[425012.5,86221.1]]],"luasHa":0.189,"catchHa":10.406,"E":424974.1,"N":86207.6},{"id":19,"nama":"AT03","cincin":[[[424960.2,86162.1],[424976.2,86155.1],[424965.8,86144.2],[424959.0,86138.4],[424952.8,86134.0],[424950.5,86130.6],[424944.8,86127.3],[424938.7,86122.8],[424933.9,86119.0],[424927.4,86112.6],[424925.1,86109.3],[424924.3,86103.4],[424924.2,86096.3],[424923.2,86091.7],[424916.6,86089.2],[424912.9,86090.5],[424912.4,86093.3],[424913.0,86097.5],[424915.6,86106.0],[424923.6,86123.6],[424929.2,86132.6],[424939.2,86136.2],[424936.2,86139.7],[424934.5,86142.5],[424935.7,86149.9],[424939.0,86158.8],[424942.5,86161.3],[424947.8,86162.4],[424960.2,86162.1],[424922.2,86082.1],[424925.3,86080.5],[424928.7,86074.9],[424931.4,86068.8],[424933.5,86060.6],[424936.9,86052.0],[424939.1,86044.2],[424943.4,86037.6],[424946.2,86029.9],[424947.7,86024.5],[424949.0,86017.9],[424949.1,86010.5],[424952.3,86003.8],[424953.8,85996.3],[424956.5,85979.0],[424955.5,85969.9],[424956.4,85959.9],[424956.0,85952.1],[424954.2,85942.9],[424952.3,85938.0],[424950.0,85937.1],[424947.8,85935.0],[424938.0,85932.6],[424933.5,85932.8],[424930.9,85934.1],[424929.4,85937.7],[424924.7,85954.5],[424923.8,85958.9],[424925.6,85966.5],[424928.1,85973.6],[424928.2,85988.2],[424930.0,85990.1],[424929.6,85993.4],[424929.7,86003.8],[424928.9,86006.2],[424926.1,86012.0],[424925.6,86014.1],[424924.3,86017.3],[424924.3,86019.8],[424923.8,86023.5],[424920.8,86032.3],[424918.9,86036.0],[424918.0,86038.9],[424918.9,86040.5],[424917.8,86043.9],[424913.7,86048.8],[424912.3,86052.0],[424909.7,86060.9],[424908.5,86066.2],[424909.6,86075.2],[424913.1,86079.6],[424917.5,86082.1],[424922.2,86082.1]],[[425048.7,85922.4],[425048.7,85917.9],[425047.8,85914.0],[425046.0,85909.3],[425011.8,85916.0],[425007.4,85915.0],[425002.2,85914.9],[424992.2,85915.6],[424992.0,85918.6],[424993.0,85922.1],[424997.7,85922.7],[425006.7,85923.0],[425007.7,85925.3],[425011.9,85925.7],[425012.4,85928.7],[425041.2,85924.0],[425048.7,85922.4],[424953.5,85928.8],[424960.5,85929.8],[424965.0,85928.8],[424965.2,85926.1],[424966.6,85919.1],[424965.5,85915.0],[424962.5,85915.4],[424951.5,85915.5],[424943.2,85914.5],[424936.4,85913.3],[424930.5,85913.1],[424922.4,85911.7],[424922.9,85920.1],[424924.7,85923.2],[424928.3,85924.9],[424932.0,85924.9],[424938.3,85926.2],[424942.0,85926.1],[424943.1,85925.6],[424949.7,85927.9],[424952.6,85929.3],[424953.5,85928.8]]],"luasHa":0.624,"catchHa":0.428,"E":424933.2,"N":86041.8},{"id":20,"nama":"Janti","cincin":[[[425207.7,86415.0],[425204.4,86412.6],[425191.7,86398.9],[425182.8,86391.4],[425178.5,86389.8],[425174.1,86388.8],[425171.2,86388.6],[425166.9,86389.2],[425151.2,86397.8],[425134.1,86407.6],[425130.2,86410.5],[425127.2,86413.1],[425124.8,86415.7],[425124.1,86419.5],[425124.2,86420.7],[425126.1,86423.3],[425128.4,86425.3],[425131.5,86429.1],[425131.9,86432.6],[425137.6,86440.0],[425144.1,86446.0],[425145.6,86449.5]]],"luasHa":0.279,"catchHa":31.668,"E":425157.0,"N":86410.2}],"catchment":[{"sump":11,"cincin":[[425352.6,86951.1],[425354.3,86968.7],[425339.8,86979.5],[425328.9,86980.2],[425293.4,86985.8],[425280.6,86989.2],[425268.4,86990.4],[425246.0,86971.6],[425222.1,86902.4],[425213.2,86856.6],[425181.1,86796.7],[425151.3,86781.2],[425134.1,86754.9],[425132.2,86745.6],[425132.5,86713.3],[425118.0,86699.9],[425104.2,86693.5],[425093.5,86694.7],[425076.9,86687.9],[425059.1,86688.4],[425051.5,86685.7],[425040.9,86678.1],[425015.1,86665.9],[425008.2,86665.8],[425000.3,86669.0],[424988.1,86668.6],[424970.8,86652.6],[424967.0,86645.2],[424976.3,86635.7],[425018.1,86604.9],[425034.5,86586.8],[425054.2,86544.1],[425066.9,86484.3],[425071.7,86467.3],[425075.8,86463.2],[425092.9,86459.9],[425120.4,86467.8],[425127.1,86471.1],[425135.6,86478.2],[425155.4,86499.3],[425183.0,86540.8],[425272.1,86586.0],[425296.3,86596.5],[425315.8,86602.7],[425333.9,86610.9],[425350.0,86630.0],[425354.3,86656.5],[425355.2,86690.4],[425358.1,86707.2],[425370.7,86736.5],[425371.5,86746.1],[425349.2,86857.8],[425346.1,86878.2],[425351.6,86931.6]]},{"sump":4,"cincin":[[426101.7,87054.7],[426081.6,87042.9],[426072.3,87034.6],[426018.3,86980.3],[425983.2,86941.6],[425953.7,86916.2],[425924.6,86895.7],[425874.9,86873.7],[425854.3,86829.9],[425821.8,86728.0],[425785.1,86723.2],[425780.3,86939.9],[425771.9,87104.2],[425777.0,87112.1],[425826.0,87148.4],[425918.2,87234.8],[425968.4,87276.5],[425987.5,87290.8],[426075.3,87346.2],[426100.2,87347.0],[426173.5,87303.7],[426264.5,87253.0],[426282.1,87241.5],[426283.9,87239.1],[426266.8,87219.1],[426266.7,87209.5],[426271.1,87193.1],[426271.5,87187.5],[426266.0,87164.0],[426258.7,87158.5],[426248.0,87156.4],[426224.8,87157.2],[426216.7,87155.2],[426187.2,87136.5],[426181.1,87132.3],[426160.2,87112.6],[426153.6,87105.2],[426137.6,87081.1],[426114.4,87060.0]]},{"sump":12,"cincin":[[424899.0,86323.9],[424892.7,86346.1],[424894.3,86378.8],[424892.2,86404.4],[424888.0,86415.8],[424889.3,86421.9],[424893.8,86431.2],[424910.1,86454.9],[424920.7,86474.9],[424938.0,86502.3],[424938.5,86504.1],[424931.2,86511.4],[424924.3,86521.2],[424920.0,86531.4],[424920.3,86551.9],[424923.4,86563.1],[424926.5,86568.1],[424939.0,86577.0],[424948.9,86574.8],[424955.9,86579.2],[424958.0,86595.1],[424958.2,86619.1],[424962.4,86639.5],[424968.6,86639.0],[425017.7,86601.5],[425034.5,86584.9],[425051.9,86544.8],[425052.2,86536.9],[425068.3,86463.7],[425075.3,86460.2],[425091.4,86456.1],[425128.2,86465.1],[425135.2,86459.6],[425124.0,86441.8],[425119.5,86437.4],[425100.8,86424.1],[425067.3,86395.0],[425041.6,86381.3],[424973.6,86338.0],[424934.6,86308.1],[424927.8,86308.8],[424900.6,86318.2],[424899.0,86323.9]]},{"sump":10,"cincin":[[426027.9,87537.2],[426005.6,87530.3],[425974.6,87524.8],[425947.6,87509.5],[425942.9,87503.5],[425932.7,87494.6],[425900.6,87480.9],[425884.3,87475.6],[425863.9,87461.7],[425852.3,87460.0],[425835.4,87474.7],[425830.3,87491.2],[425819.3,87512.3],[425791.7,87533.4],[425771.4,87532.8],[425753.2,87527.5],[425645.6,87473.2],[425614.9,87444.7],[425614.4,87436.1],[425647.2,87362.0],[425648.2,87338.2],[425645.9,87321.6],[425619.1,87280.9],[425555.6,87203.8],[425566.1,87166.1],[425575.1,87154.8],[425601.4,87142.0],[425622.0,87139.9],[425697.8,87166.1],[425774.8,87126.8],[425790.0,87126.2],[425880.0,87205.0],[425968.0,87284.4],[426050.3,87341.5],[426086.2,87369.0],[426052.9,87413.7],[426040.1,87506.1],[426034.8,87531.6],[426030.7,87539.2]]},{"sump":14,"cincin":[[426578.2,87517.2],[426568.1,87527.6],[426565.7,87547.9],[426525.2,87647.8],[426516.3,87656.8],[426504.7,87656.9],[426501.7,87653.0],[426493.7,87648.8],[426491.0,87646.5],[426484.7,87630.3],[426463.7,87620.4],[426462.7,87616.3],[426374.6,87647.6],[426313.6,87678.1],[426308.1,87697.4],[426309.0,87704.1],[426317.3,87710.0],[426323.6,87725.0],[426336.4,87743.8],[426350.3,87748.3],[426369.6,87750.6],[426390.3,87746.9],[426402.9,87747.7],[426417.3,87760.1],[426425.1,87800.7],[426447.5,87815.7],[426485.6,87829.7],[426501.5,87831.6],[426534.4,87816.3],[426551.1,87816.8],[426573.3,87792.0],[426600.6,87774.3],[426605.5,87761.1],[426603.5,87748.4],[426603.1,87730.3],[426613.4,87717.3],[426617.7,87700.8],[426628.4,87678.4],[426639.9,87662.6],[426668.9,87648.9],[426686.3,87619.5],[426707.3,87602.8],[426718.3,87590.2],[426719.4,87585.3],[426729.7,87573.1],[426733.5,87570.9],[426727.0,87527.8],[426720.1,87515.0],[426708.2,87498.1],[426704.0,87500.1],[426695.9,87513.1],[426687.9,87520.9],[426676.7,87531.6],[426667.0,87538.1],[426652.6,87539.7],[426634.6,87535.8],[426605.6,87527.8],[426593.2,87521.1],[426581.2,87516.8],[426578.3,87517.0]]},{"sump":15,"cincin":[[426519.0,87559.6],[426511.9,87563.4],[426490.4,87594.6],[426465.5,87612.6],[426465.0,87615.8],[426486.7,87629.3],[426499.8,87635.8],[426502.5,87654.1],[426516.1,87654.2],[426519.4,87651.2],[426539.1,87608.6],[426563.1,87549.7],[426568.1,87525.1],[426575.2,87517.9],[426579.1,87515.4],[426597.3,87521.5],[426611.2,87528.8],[426645.9,87537.1],[426653.9,87538.3],[426665.6,87536.7],[426682.5,87525.0],[426690.0,87516.1],[426699.3,87503.1],[426703.3,87489.5],[426669.1,87456.1],[426630.3,87442.9],[426599.7,87426.1],[426592.8,87435.2],[426576.6,87449.2],[426546.6,87452.1],[426501.5,87448.5],[426489.7,87452.9],[426461.9,87486.4],[426464.8,87499.4],[426478.3,87519.1],[426488.5,87525.6],[426503.6,87527.5],[426508.4,87540.5],[426509.8,87548.5],[426513.0,87552.5]]},{"sump":17,"cincin":[[426958.5,87262.0],[426977.1,87168.8],[426983.4,87125.9],[426972.0,87046.3],[426933.7,87024.0],[426921.2,87019.2],[426880.0,87006.1],[426856.7,87000.1],[426843.1,87003.8],[426830.7,87002.8],[426785.9,86985.6],[426778.8,87010.4],[426766.7,87034.4],[426754.2,87055.6],[426745.0,87062.1],[426659.8,87113.6],[426619.5,87133.4],[426556.2,87152.4],[426489.7,87176.6],[426475.7,87182.3],[426416.5,87211.2],[426418.0,87228.7],[426482.2,87274.9],[426497.3,87282.3],[426637.6,87320.7],[426645.8,87324.6],[426656.0,87336.1],[426624.0,87437.9],[426630.8,87441.9],[426665.3,87452.5],[426675.4,87458.8],[426707.0,87491.0],[426722.1,87514.7],[426728.5,87529.0],[426739.1,87594.9],[426746.6,87616.7],[426754.0,87622.9],[426765.8,87625.8],[426777.3,87620.8],[426805.4,87583.9],[426813.0,87571.7],[426820.8,87551.3],[426828.1,87518.0],[426850.6,87475.4],[426897.3,87457.2],[426914.8,87427.0],[426916.1,87407.1],[426913.3,87386.7],[426921.7,87353.1],[426962.6,87325.5],[426973.0,87274.9]]},{"sump":13,"cincin":[[425976.3,87622.3],[426029.1,87635.8],[426071.7,87644.4],[426196.3,87665.8],[426210.7,87664.7],[426224.5,87661.6],[426230.4,87658.6],[426227.5,87643.8],[426226.1,87642.9],[426210.0,87639.5],[426203.1,87644.9],[426196.4,87645.5],[426157.5,87638.1],[426153.0,87633.5],[426148.3,87615.6],[426141.5,87598.2],[426144.8,87550.4],[426119.3,87542.2],[426107.9,87541.1],[426100.2,87542.3],[426091.3,87547.8],[426087.8,87548.6],[426045.4,87548.8],[426026.5,87539.2],[426007.7,87534.1],[425977.2,87619.5]]},{"sump":5,"cincin":[[424930.0,86934.0],[424961.8,86931.0],[424967.7,86961.4],[424962.1,87008.0],[424955.9,87037.8],[424955.1,87072.1],[424941.1,87108.8],[424922.7,87115.4],[424923.0,87144.2],[424919.8,87196.8],[424891.9,87238.7],[424883.2,87269.6],[424845.2,87350.9],[424829.1,87389.9],[424814.9,87403.8],[424859.1,87492.0],[424886.4,87543.1],[424915.6,87592.5],[424931.6,87643.1],[424939.3,87698.8],[424941.7,87733.8],[424939.6,87780.0],[424926.9,87824.2],[425093.9,87828.4],[425155.9,87799.2],[425239.9,87756.6],[425300.7,87652.5],[425343.2,87550.2],[425367.2,87470.4],[425361.4,87394.1],[425395.5,87318.0],[425441.0,87312.9],[425473.3,87365.3],[425507.5,87399.1],[425532.5,87400.1],[425558.8,87397.0],[425588.5,87375.5],[425612.0,87329.3],[425569.7,87258.0],[425526.4,87221.4],[425468.6,87178.0],[425341.1,86996.3],[425298.0,86987.8],[425274.3,86993.8],[425249.7,86977.7],[425230.0,86932.8],[425221.1,86906.8],[425211.0,86860.3],[425175.1,86796.0],[425130.7,86744.7],[425101.2,86697.4],[425075.7,86693.4],[425027.9,86675.7],[424999.4,86671.9],[424971.2,86658.6],[424956.2,86599.9],[424932.7,86575.2],[424917.2,86533.6],[424926.8,86489.4],[424888.2,86428.5],[424892.2,86335.7],[424886.2,86312.4],[424866.4,86300.8],[424830.6,86258.5],[424816.9,86218.3],[424813.3,86200.6],[424804.1,86195.3],[424794.8,86244.9],[424801.9,86286.8],[424820.9,86353.0],[424829.5,86402.7],[424817.0,86435.3],[424836.5,86480.9],[424833.9,86541.9],[424825.2,86588.6],[424826.5,86617.0],[424850.8,86635.9],[424871.6,86683.0],[424891.4,86698.5],[424911.8,86731.2],[424908.5,86831.5],[424926.0,86941.9],[424926.0,86991.8],[424916.0,87038.8],[424889.2,87132.2],[424843.5,87226.1],[424782.3,87209.3],[424756.6,87244.5],[424752.5,87287.1],[424758.6,87300.7],[424787.4,87350.6],[424809.6,87393.6],[424832.1,87378.5],[424853.3,87328.4],[424872.9,87290.2],[424885.1,87254.1],[424924.6,87157.7],[424919.5,87116.2],[424952.4,87089.2],[424954.3,87049.1],[424965.2,86968.6],[424963.0,86934.1],[424928.1,86939.0]]},{"sump":20,"cincin":[[425171.3,86376.5],[425193.7,86396.3],[425230.9,86425.7],[425270.8,86430.4],[425276.7,86432.1],[425318.6,86449.6],[425352.8,86468.1],[425385.0,86461.7],[425396.0,86453.3],[425416.2,86430.4],[425437.2,86403.3],[425464.5,86378.5],[425531.0,86344.0],[425579.6,86330.9],[425588.2,86326.8],[425614.8,86301.0],[425653.8,86253.4],[425689.2,86198.6],[425696.8,86179.8],[425714.7,86120.7],[425725.5,86095.4],[425727.8,86084.1],[425728.5,86074.1],[425725.5,86065.8],[425720.1,86056.2],[425685.7,86018.2],[425675.1,85998.4],[425672.2,85981.7],[425667.9,85933.7],[425665.4,85927.9],[425648.5,85923.3],[425589.0,85924.5],[425563.4,85927.8],[425539.8,85952.5],[425528.9,85984.8],[425517.5,86000.8],[425501.7,86019.5],[425489.6,86037.2],[425447.3,86033.0],[425426.1,86034.8],[425397.6,86034.7],[425365.0,86039.9],[425355.0,86059.5],[425353.1,86069.9],[425350.5,86110.6],[425314.9,86099.0],[425276.9,86095.8],[425255.2,86100.1],[425194.5,86117.8],[425185.2,86123.5],[425169.2,86153.1],[425153.4,86170.3],[425104.4,86187.4],[425091.2,86200.1],[425047.1,86226.0],[425028.3,86231.8],[424992.6,86197.0],[424979.4,86190.1],[424953.4,86199.5],[424955.1,86300.8],[424958.0,86315.4],[424992.7,86342.0],[425033.0,86367.3],[425063.3,86383.8],[425090.6,86403.5],[425109.0,86410.8],[425162.4,86381.1]]},{"sump":1,"cincin":[[426226.7,86500.1],[426225.3,86529.1],[426217.3,86556.7],[426210.3,86573.1],[426198.0,86593.3],[426187.3,86607.0],[426180.9,86628.1],[426144.5,86649.8],[426166.5,86664.3],[426177.5,86677.0],[426196.7,86691.4],[426210.7,86709.4],[426231.6,86742.6],[426249.5,86744.9],[426275.3,86724.9],[426321.1,86712.8],[426375.4,86725.1],[426402.0,86736.7],[426421.5,86761.6],[426450.1,86791.6],[426472.2,86794.4],[426547.0,86784.8],[426597.2,86790.2],[426653.5,86816.2],[426678.1,86842.0],[426706.8,86865.6],[426729.6,86878.2],[426753.9,86904.2],[426767.9,86922.4],[426774.3,86938.6],[426780.6,86961.9],[426776.2,87002.1],[426765.3,87032.9],[426749.1,87057.8],[426653.9,87113.9],[426620.7,87129.4],[426600.4,87133.9],[426557.3,87146.4],[426490.5,87169.8],[426474.5,87176.6],[426379.2,87227.2],[426333.2,87240.7],[426318.5,87247.0],[426301.4,87245.1],[426286.8,87239.0],[426273.1,87224.4],[426268.9,87207.0],[426272.4,87194.1],[426271.3,87176.4],[426263.7,87158.2],[426248.5,87152.8],[426227.0,87153.7],[426212.8,87149.0],[426191.5,87135.1],[426158.7,87107.4],[426140.8,87080.3],[426122.9,87062.2],[426095.4,87045.6],[426065.4,87022.2],[425980.0,86933.8],[425952.9,86910.1],[425879.8,86866.5],[425866.9,86842.1],[425848.6,86779.2],[425834.5,86750.6],[425823.6,86725.2],[425816.6,86704.9],[425813.5,86676.8],[425818.4,86641.9],[425838.5,86615.6],[425859.3,86600.9],[425958.5,86523.9],[425983.9,86513.9],[426024.7,86500.1],[426048.2,86494.2],[426146.4,86500.2],[426164.2,86500.4],[426227.1,86497.3]]},{"sump":8,"cincin":[[426424.0,86522.1],[426500.8,86602.7],[426507.4,86637.1],[426488.3,86711.5],[426460.9,86771.6],[426450.8,86780.5],[426436.1,86783.8],[426414.8,86740.8],[426400.1,86730.3],[426353.4,86713.4],[426338.0,86711.2],[426312.5,86709.9],[426280.8,86714.2],[426272.4,86724.6],[426257.0,86736.0],[426240.7,86743.3],[426224.2,86727.1],[426205.4,86698.1],[426196.4,86688.4],[426188.3,86682.6],[426165.0,86658.9],[426150.3,86650.2],[426152.8,86637.5],[426171.1,86639.4],[426180.7,86633.7],[426183.2,86626.9],[426184.6,86613.8],[426209.5,86582.6],[426223.2,86550.1],[426226.7,86537.6],[426229.0,86494.2],[426231.6,86480.6],[426231.3,86476.2],[426225.7,86458.7],[426224.3,86450.2],[426221.3,86447.1],[426216.8,86443.9],[426188.6,86432.0],[426178.6,86417.8],[426165.1,86412.8],[426143.7,86385.4],[426104.8,86348.2],[426059.5,86321.0],[426045.8,86315.6],[426071.5,86289.5],[426085.4,86270.8],[426092.3,86250.2],[426100.9,86230.2],[426111.0,86223.2],[426124.3,86222.7],[426138.9,86227.0],[426151.3,86236.0],[426174.8,86244.3],[426192.7,86245.3],[426206.3,86242.9],[426244.2,86254.6],[426252.3,86258.6],[426256.2,86265.9],[426252.3,86282.8],[426241.0,86296.7],[426235.0,86309.4],[426235.2,86318.3],[426244.7,86330.7],[426259.6,86345.6],[426275.6,86350.6],[426289.7,86350.1],[426304.2,86352.5],[426317.8,86365.6],[426327.5,86376.7],[426333.5,86386.7],[426342.0,86412.8],[426369.5,86456.7],[426374.7,86460.7],[426393.9,86465.4],[426398.8,86468.1],[426401.0,86473.0],[426399.6,86477.9],[426400.9,86487.7],[426403.5,86495.0],[426407.3,86501.1],[426415.1,86506.1],[426421.3,86518.5]]},{"sump":7,"cincin":[[426017.9,86203.0],[426021.8,86219.8],[426017.3,86229.1],[425992.2,86243.7],[425989.0,86254.0],[425988.2,86292.6],[425980.7,86312.3],[426036.3,86319.8],[426047.6,86319.3],[426059.3,86323.8],[426101.8,86348.8],[426142.9,86386.5],[426168.1,86419.2],[426201.5,86441.2],[426215.8,86445.1],[426223.2,86451.9],[426229.4,86474.0],[426228.2,86485.5],[426214.0,86488.4],[426150.0,86492.6],[426048.4,86482.3],[426032.7,86485.3],[425973.1,86508.1],[425858.8,86596.2],[425827.0,86619.2],[425814.8,86640.6],[425810.1,86677.0],[425797.3,86694.5],[425790.1,86701.0],[425772.7,86705.8],[425749.6,86702.8],[425718.5,86685.5],[425688.3,86662.7],[425658.9,86650.2],[425631.0,86644.1],[425609.9,86631.5],[425584.2,86604.5],[425573.1,86576.0],[425572.4,86529.1],[425547.3,86496.3],[425523.9,86477.7],[425520.4,86414.8],[425504.1,86392.5],[425490.9,86382.6],[425492.0,86372.1],[425499.8,86362.8],[425533.9,86344.9],[425545.4,86340.8],[425592.8,86328.2],[425615.3,86312.1],[425665.0,86249.9],[425697.6,86197.9],[425709.4,86160.9],[425716.9,86130.9],[425733.3,86083.5],[425731.2,86067.3],[425720.2,86047.7],[425715.7,86029.6],[425713.6,86014.9],[425715.8,85983.1],[425725.6,85965.0],[425735.8,85959.0],[425768.5,85944.0],[425792.3,85946.3],[425807.3,85988.4],[425801.6,86013.8],[425791.7,86048.1],[425828.7,86120.4],[425828.2,86133.9],[425809.4,86159.8],[425827.2,86173.5],[425845.9,86193.6],[425864.0,86202.2],[425900.5,86195.6],[425932.5,86173.1],[425974.6,86173.4],[426004.7,86180.0]]},{"sump":10,"cincin":[[425590.1,87389.1],[425618.5,87332.9],[425582.3,87269.4],[425566.8,87248.5],[425538.0,87226.2],[425527.6,87212.4],[425538.6,87194.3],[425552.3,87204.6],[425590.4,87251.2],[425628.7,87306.0],[425645.3,87342.4],[425644.8,87363.0],[425611.5,87435.1],[425616.7,87449.3],[425626.5,87460.0],[425656.3,87483.4],[425701.8,87503.7],[425743.7,87525.3],[425763.9,87534.2],[425790.6,87535.5],[425812.8,87522.8],[425836.0,87500.0],[425842.2,87479.9],[425856.0,87462.9],[425870.7,87469.6],[425884.5,87478.2],[425936.0,87498.7],[425943.4,87507.9],[425953.7,87515.9],[425979.8,87529.3],[426005.0,87532.8],[426001.1,87547.1],[425976.5,87615.3],[425960.6,87618.9],[425934.6,87611.2],[425906.2,87599.8],[425895.5,87592.0],[425854.1,87569.7],[425823.0,87558.0],[425816.8,87556.3],[425777.3,87554.1],[425743.8,87548.1],[425684.8,87511.8],[425637.7,87493.7],[425626.9,87487.9],[425590.7,87441.2],[425581.7,87426.0],[425571.2,87415.9],[425554.4,87414.2],[425476.8,87418.1],[425473.5,87430.5],[425461.3,87456.0],[425448.6,87472.8],[425430.9,87483.4],[425408.0,87489.5],[425387.0,87487.7],[425372.8,87482.0],[425364.1,87435.3],[425363.1,87408.7],[425366.2,87383.5],[425371.4,87374.3],[425393.8,87324.1],[425403.0,87316.1],[425430.7,87315.6],[425450.8,87324.1],[425465.3,87354.6],[425480.0,87400.3],[425504.6,87400.2],[425519.0,87402.2],[425586.0,87394.4]]},{"sump":4,"cincin":[[425593.3,87124.4],[425638.8,87143.0],[425700.1,87158.0],[425756.2,87128.8],[425764.4,87123.1],[425777.3,86889.7],[425771.9,86726.2],[425698.8,86790.9],[425693.7,86793.4],[425625.8,86764.8],[425598.2,86726.4],[425534.8,86670.8],[425506.4,86641.9],[425489.9,86635.8],[425467.6,86636.1],[425448.9,86645.1],[425415.1,86690.9],[425401.9,86741.0],[425398.6,86749.2],[425372.2,86760.1],[425352.1,86859.8],[425352.2,86888.2],[425355.9,86917.0],[425358.1,86983.9],[425360.1,86997.2],[425368.3,87014.4],[425424.3,87097.4],[425448.0,87128.5],[425494.1,87182.2],[425509.8,87193.8],[425528.5,87200.6],[425543.2,87170.7],[425553.9,87157.8],[425583.2,87131.9]]},{"sump":15,"cincin":[[426302.3,87250.3],[426278.8,87387.3],[426275.9,87442.8],[426268.3,87463.1],[426259.3,87478.4],[426238.3,87500.2],[426223.8,87525.9],[426203.6,87549.5],[426201.8,87571.3],[426216.1,87608.2],[426216.4,87625.4],[426209.0,87634.9],[426200.9,87642.9],[426170.2,87638.2],[426150.0,87608.0],[426148.2,87575.9],[426148.8,87546.4],[426112.5,87534.7],[426075.4,87545.8],[426047.6,87544.9],[426047.8,87514.9],[426057.9,87415.7],[426076.0,87392.0],[426125.3,87333.6],[426295.7,87248.4],[426317.1,87257.5],[426287.5,87372.4],[426280.7,87411.1],[426280.9,87440.4],[426272.9,87461.5],[426247.9,87501.9],[426235.0,87520.3],[426207.2,87549.5],[426204.3,87566.0],[426213.9,87587.0],[426227.6,87625.2],[426233.5,87659.4],[426225.8,87668.8],[426251.9,87707.6],[426263.6,87718.3],[426274.7,87716.1],[426289.8,87708.3],[426311.1,87681.3],[426326.8,87669.1],[426373.5,87645.6],[426390.3,87634.6],[426402.7,87629.4],[426451.4,87617.2],[426475.3,87604.7],[426491.6,87589.4],[426507.0,87568.7],[426511.9,87553.3],[426502.7,87528.8],[426486.3,87526.9],[426472.8,87513.5],[426462.6,87493.1],[426464.4,87479.8],[426475.0,87465.8],[426489.5,87450.1],[426501.1,87446.1],[426548.8,87450.3],[426574.0,87447.6],[426581.3,87443.1],[426601.3,87424.6],[426624.4,87412.9],[426647.2,87334.4],[426634.8,87323.5],[426494.2,87285.1],[426466.8,87268.0],[426403.5,87222.6],[426377.2,87232.3],[426342.8,87242.1],[426322.1,87249.5]]},{"sump":20,"cincin":[[425695.5,86784.4],[425768.2,86719.4],[425767.2,86716.3],[425755.7,86709.0],[425732.4,86699.9],[425709.7,86688.2],[425690.4,86674.9],[425682.7,86664.8],[425656.8,86655.4],[425627.0,86648.3],[425608.9,86636.9],[425595.0,86624.7],[425581.9,86609.6],[425576.1,86598.5],[425570.0,86582.6],[425568.2,86528.3],[425559.9,86513.4],[425544.8,86500.1],[425522.1,86484.2],[425515.0,86469.4],[425514.6,86415.9],[425501.4,86398.2],[425484.4,86397.9],[425477.1,86388.9],[425462.7,86392.8],[425452.7,86400.2],[425398.3,86464.9],[425369.3,86472.7],[425350.3,86474.4],[425297.3,86448.9],[425223.2,86424.2],[425176.0,86388.4],[425171.2,86386.4],[425152.0,86394.6],[425122.4,86416.7],[425175.8,86504.2],[425186.1,86528.3],[425193.0,86536.2],[425214.4,86553.7],[425309.0,86598.3],[425327.8,86602.1],[425334.0,86605.2],[425352.8,86622.9],[425359.5,86656.5],[425360.3,86667.9],[425358.2,86686.7],[425363.8,86708.6],[425372.4,86725.8],[425387.5,86744.7],[425396.5,86746.3],[425408.9,86690.0],[425454.3,86630.0],[425496.7,86629.8],[425509.3,86637.2],[425533.2,86661.0],[425601.9,86723.5],[425609.2,86732.9],[425620.5,86753.7],[425629.5,86762.8],[425685.0,86785.2],[425692.5,86785.5]]},{"sump":19,"cincin":[[424914.2,85918.3],[424916.7,85909.8],[424920.3,85908.8],[424933.0,85911.1],[424966.8,85913.1],[425048.4,85895.3],[425052.8,85895.3],[425059.7,85902.9],[425070.6,85944.8],[425078.2,85952.5]]},{"sump":18,"cincin":[[425114.1,85987.8],[425144.9,85994.3],[425166.6,86014.7],[425180.8,86047.5],[425251.7,86056.1],[425271.0,86043.3],[425281.3,86029.3],[425299.2,86020.9],[425308.4,86022.2],[425316.4,86027.6],[425343.3,86060.1],[425349.9,86071.1],[425349.4,86093.1],[425344.5,86101.5],[425314.9,86095.8],[425271.5,86090.8],[425191.4,86114.0],[425183.1,86118.6],[425176.2,86127.8],[425163.0,86155.9],[425155.3,86167.6],[425102.0,86185.7],[425035.8,86226.4],[425028.3,86224.1],[425000.3,86193.9],[424993.0,86180.6],[424943.7,86194.1],[424941.6,86203.7],[424944.5,86218.9],[424946.9,86290.8],[424945.3,86293.4],[424880.9,86308.0],[424858.5,86291.7],[424850.9,86283.7],[424832.1,86258.1],[424821.9,86228.6],[424812.8,86183.7],[424811.8,86149.9],[424809.3,86120.5],[424807.6,86104.3],[424804.4,86097.7],[424797.2,86094.7],[424784.4,86091.9],[424775.0,86086.1],[424762.2,86070.9],[424749.0,86064.4],[424745.1,86053.6],[424748.5,86023.6],[424752.7,86004.2],[424767.1,85999.0],[424786.6,86015.0],[424822.5,86016.4],[424863.4,86022.2],[424900.0,86021.4],[424915.2,86006.6],[424916.0,85976.9],[424914.5,85941.2]]}],"aliran":{"dasar":[424485.0,85663.0],"garis":[[480,-164,465,-187],[527,-200,533,-200,536,-199,526,-192,524,-200],[626,-164,644,-200,647,-200],[773,-200,776,-200,779,-194,767,-194,770,-200,772,-200],[846,-164,836,-196],[920,-164,921,-183],[993,-164,995,-176],[1286,-164,1276,-180],[1360,-164,1361,-200,1365,-200,1367,-196,1355,-196,1357,-200],[1433,-164,1474,-175,1464,-166,1460,-178,1465,-177],[1506,-164,1516,-168,1526,-167],[40,-90,3,-102,3,-108],[113,-90,129,-136],[186,-90,220,-126],[260,-90,254,-122],[333,-90,340,-94],[406,-90,386,-97],[480,-90,433,-114],[553,-90,522,-132],[626,-90,650,-133],[700,-90,726,-133],[773,-90,756,-140],[846,-90,847,-142],[920,-90,930,-140],[993,-90,995,-100],[1066,-90,1086,-133],[1140,-90,1157,-131],[1213,-90,1205,-129],[1286,-90,1254,-123],[1360,-90,1390,-116],[1433,-90,1470,-118],[1506,-90,1490,-137,1500,-128,1496,-126],[1580,-90,1569,-143],[1653,-90,1657,-141],[1726,-90,1742,-102],[40,-17,31,-14],[113,-17,66,-16],[186,-17,217,-60],[260,-17,281,-65,281,-58],[333,-17,367,-33],[406,-17,363,-39,368,-39],[480,-17,425,-31],[553,-17,508,-36],[626,-17,654,-52],[700,-17,710,-62],[773,-17,764,-67],[846,-17,837,-64],[920,-17,936,-66],[993,-17,1010,-62],[1066,-17,1088,-61],[1140,-17,1160,-61],[1213,-17,1218,-64],[1286,-17,1262,-53],[1360,-17,1387,-46],[1433,-17,1436,-64],[1506,-17,1494,-67],[1580,-17,1558,-60],[1653,-17,1693,-32],[1726,-17,1779,-29,1768,-20,1766,-32,1779,-29,1800,-17,1802,-19],[113,56,61,53],[186,56,195,14],[260,56,302,33],[333,56,356,17,355,30,345,24,354,18],[406,56,364,24],[480,56,430,27],[553,56,514,35],[626,56,639,24],[700,56,702,14],[773,56,761,18],[846,56,840,18],[920,56,926,14],[993,56,1012,13],[1066,56,1085,11],[1140,56,1154,7],[1213,56,1221,5],[1286,56,1283,6],[1360,56,1372,10],[1433,56,1421,9],[1506,56,1502,10],[1580,56,1599,26],[1653,56,1700,58,1687,63,1688,51,1700,58,1726,56,1772,57,1759,63,1760,50,1772,57,1800,56,1841,50],[113,129,69,158],[186,129,145,160],[260,129,292,92],[333,129,353,93,353,107,342,101,352,95],[406,129,363,95],[480,129,443,108],[553,129,524,151],[626,129,625,169],[700,129,665,135,675,127,678,139,666,136],[773,129,745,108],[846,129,830,97],[920,129,910,93],[993,129,1004,88],[1066,129,1079,85],[1140,129,1148,82],[1213,129,1216,79],[1286,129,1285,79],[1360,129,1375,81],[1433,129,1435,82],[1506,129,1548,129],[1580,129,1616,155],[1653,129,1692,154],[1726,129,1770,151,1757,151,1762,140,1763,141],[1800,129,1792,88,1800,99],[1873,129,1872,78],[1946,129,1953,99],[113,202,72,220],[186,202,133,201],[260,202,292,193],[333,202,340,193],[406,202,387,220],[480,202,461,245],[553,202,552,249],[626,202,617,243,615,237],[700,202,661,224],[773,202,766,244],[846,202,824,239],[920,202,891,227],[993,202,972,174],[1066,202,1074,165],[1140,202,1146,162],[1213,202,1235,173],[1286,202,1272,170],[1360,202,1376,166],[1433,202,1476,189],[1506,202,1553,216],[1580,202,1628,209,1615,213,1617,201,1628,209,1653,202,1694,201,1682,208,1681,195,1685,197],[1726,202,1716,158,1724,168],[1800,202,1782,158],[1873,202,1866,160],[1946,202,1998,214],[113,275,72,267],[186,275,134,278],[260,275,241,245],[333,275,361,243],[406,275,407,236],[480,275,448,286,450,284],[553,275,541,254],[626,275,606,246,617,252,608,259],[700,275,694,287],[773,275,762,272],[846,275,812,262],[920,275,879,295],[993,275,962,300],[1066,275,1042,295],[1213,275,1250,270,1239,278,1237,266,1244,268],[1286,275,1254,279,1265,272],[1360,275,1381,302],[1433,275,1478,278,1466,283,1466,271,1478,278,1506,275,1548,253],[1580,275,1616,249],[1653,275,1664,233,1665,235],[1726,275,1724,232],[1800,275,1781,235],[1873,275,1915,289],[1946,275,1973,285],[113,348,66,333,66,331],[186,348,138,331],[260,348,221,334],[333,348,353,314],[406,348,448,345,444,348],[480,348,440,334,454,332],[553,348,522,330],[626,348,618,314,620,316],[700,348,681,312],[773,348,739,321],[846,348,841,310],[920,348,910,310,918,320,907,323,909,312],[993,348,955,349,958,347],[1066,348,1035,360],[1140,348,1152,360],[1213,348,1245,359],[1286,348,1314,368],[1360,348,1383,377],[1433,348,1466,361],[1506,348,1541,321],[1580,348,1604,307,1603,321,1593,315,1602,308],[1653,348,1670,309],[1726,348,1725,311],[1800,348,1828,382],[1873,348,1923,371],[113,421,64,411],[186,421,143,437],[260,421,226,449],[333,421,358,424],[406,421,433,399,428,412,420,402,430,400],[480,421,438,411],[553,421,520,422,524,420],[626,421,600,439,606,427,613,437],[700,421,660,432,670,423,673,435,661,432],[773,421,737,432],[846,421,813,425],[920,421,904,393,915,401,904,407],[1066,421,1037,432],[1140,421,1164,443],[1213,421,1246,431,1232,433],[1286,421,1319,436],[1360,421,1386,450],[1433,421,1443,460,1434,449,1446,446],[1506,421,1512,467],[1580,421,1611,439],[1653,421,1698,445],[1726,421,1753,469],[1800,421,1828,468],[1873,421,1906,462,1893,456,1903,449,1905,461],[40,494,15,485],[113,494,73,504],[186,494,152,521],[260,494,224,517],[333,494,346,525,336,516,347,511,347,517],[406,494,429,467,427,476],[480,494,471,495],[553,494,526,518],[626,494,623,529],[700,494,672,520,677,507],[773,494,761,532],[846,494,810,520,816,508],[920,494,907,530],[993,494,978,528,978,519],[1066,494,1056,528],[1140,494,1124,521,1125,516],[1213,494,1241,474,1234,486],[1286,494,1324,485,1314,494],[1360,494,1399,505],[1433,494,1470,507],[1506,494,1525,524,1514,517,1524,511,1524,512],[1580,494,1603,541,1592,532,1603,527,1603,535],[1653,494,1686,531,1673,526,1682,518,1684,527],[1726,494,1770,512,1756,513,1761,502,1769,511],[1800,494,1837,513,1823,513,1829,502,1836,512],[1873,494,1897,513,1892,512],[113,567,80,597],[186,567,146,583],[260,567,224,593],[333,567,296,577],[406,567,415,535],[480,567,490,568],[553,567,528,599],[626,567,615,567],[700,567,696,553],[773,567,735,560,748,556,745,568],[846,567,828,597,829,584,839,590,833,594],[920,567,908,603,906,591],[993,567,955,574,966,566,968,578,955,574],[1066,567,1032,571,1043,564],[1140,567,1109,556],[1213,567,1218,534],[1286,567,1317,542],[1360,567,1388,534],[1433,567,1469,546],[1506,567,1552,564,1540,571,1539,559,1552,564,1583,567],[1653,567,1680,534],[1726,567,1748,528],[1800,567,1833,530],[1946,567,1977,565,1965,572,1965,560],[113,640,99,662],[186,640,154,677],[260,640,218,670],[333,640,294,660],[406,640,381,665],[480,640,501,608],[553,640,568,605,569,618,557,614],[626,640,586,659,594,649],[700,640,662,631,676,628,673,640,663,632],[773,640,800,621],[846,640,830,614,838,619],[920,640,887,626],[993,640,956,652],[1066,640,1040,663],[1140,640,1112,663,1116,656],[1213,640,1202,675],[1286,640,1315,664],[1360,640,1400,660],[1433,640,1473,666],[1506,640,1548,637,1536,644,1535,632,1540,633],[1580,640,1564,598],[1653,640,1694,619,1686,630],[1726,640,1768,645],[1800,640,1843,656],[1873,640,1889,641],[2020,640,2033,668,2023,660],[2313,640,2305,629],[2387,640,2426,639],[2460,640,2463,605],[2680,640,2663,614],[2753,640,2762,614],[113,714,115,727],[186,714,143,701,156,698,153,710],[260,714,221,692],[333,714,291,726],[406,714,368,731],[480,714,449,701,456,700],[553,714,567,682],[626,714,620,675,628,686,616,688,620,676],[700,714,678,749,679,736,689,742],[773,714,764,746],[846,714,812,707],[920,714,889,700],[993,714,982,746],[1066,714,1030,719],[1140,714,1158,744],[1213,714,1216,754,1209,743,1221,742,1221,743],[1286,714,1302,755],[1360,714,1395,744,1382,741,1390,732,1392,735],[1433,714,1431,704],[1506,714,1514,667],[1580,714,1560,676],[1653,714,1691,678],[1726,714,1768,681,1766,683],[1800,714,1838,684],[1873,714,1882,711],[1946,714,1977,711],[2020,714,2010,684,2013,687],[2093,714,2096,681],[2167,714,2148,680],[2240,714,2213,678],[2313,714,2304,674],[2387,714,2430,715,2418,721,2419,709,2430,715,2460,714,2426,697,2440,697],[2533,714,2571,694],[2607,714,2617,707],[2680,714,2659,682,2671,689,2661,696,2661,695],[2753,714,2764,676,2765,681],[2827,714,2857,702],[2900,714,2904,706],[186,787,154,796],[260,787,229,817],[333,787,296,801],[406,787,376,809],[480,787,448,811],[553,787,525,768],[626,787,654,763],[700,787,708,779],[773,787,759,809],[846,787,814,811],[920,787,939,821],[993,787,952,787,965,781,965,793,959,790],[1066,787,1036,808],[1140,787,1172,794],[1213,787,1244,767],[1286,787,1324,786],[1360,787,1349,768],[1433,787,1410,748,1419,753],[1506,787,1524,750],[1580,787,1583,748],[1653,787,1689,767],[1726,787,1762,751],[1800,787,1852,770,1842,780,1838,768,1852,770,1873,787,1920,771,1911,781,1907,769],[2020,787,1993,750],[2093,787,2081,742],[2167,787,2166,742],[2240,787,2201,770],[2313,787,2347,804],[2387,787,2399,788],[2460,787,2434,752],[2533,787,2562,756],[2607,787,2615,753],[2680,787,2646,759],[2753,787,2768,747],[2827,787,2851,747,2850,761,2840,754],[2900,787,2928,766],[2973,787,2944,766],[3047,787,3030,746],[3120,787,3139,773],[260,860,218,882,224,875],[333,860,285,864],[406,860,368,852,381,848,378,860,376,858],[480,860,444,849],[553,860,516,858],[626,860,626,828,630,835],[700,860,720,825],[773,860,779,817,784,830,772,828,777,820],[920,860,899,892,900,881],[1066,860,1039,888],[1140,860,1106,863],[1213,860,1240,839],[1286,860,1305,827],[1360,860,1337,827],[1433,860,1404,838],[1506,860,1542,860],[1580,860,1615,873],[1653,860,1680,883],[1726,860,1774,870,1761,873,1764,862,1774,870,1800,860,1854,869,1841,873,1843,861,1854,869,1873,860,1889,864],[1946,860,1921,822,1930,827],[2020,860,1987,818],[2093,860,2092,816,2098,828,2086,829,2087,828],[2167,860,2194,829],[2240,860,2215,829],[2313,860,2353,848],[2387,860,2381,853],[2460,860,2430,824],[2533,860,2575,841],[2607,860,2619,849],[2680,860,2636,861],[2753,860,2744,824],[2827,860,2854,824],[2900,860,2929,823,2926,836,2923,834],[2973,860,2939,861,2950,855],[3047,860,3053,892],[260,933,213,922],[333,933,294,945],[406,933,372,951,380,940,385,951,376,951],[480,933,436,933],[553,933,521,920],[626,933,613,960],[700,933,693,925],[773,933,768,901,776,912,764,914,765,909],[846,933,866,900],[920,933,947,910,942,922,934,913,938,912],[993,933,959,939,970,931],[1066,933,1026,944],[1140,933,1114,959],[1213,933,1210,967],[1286,933,1268,906,1271,908],[1360,933,1349,904],[1433,933,1431,967],[1506,933,1535,954],[1580,933,1613,956],[1653,933,1679,967,1668,962],[1726,933,1771,961],[1800,933,1851,951,1837,953,1841,942,1851,951,1873,933,1861,890,1870,900],[1946,933,1915,890],[2020,933,1990,891],[2093,933,2109,890],[2167,933,2199,909,2193,921,2186,911,2198,909],[2240,933,2219,899],[2313,933,2354,911],[2387,933,2353,910,2367,912],[2460,933,2434,903],[2533,933,2580,932,2568,938,2568,926,2580,932,2607,933,2641,917,2632,928,2627,917,2637,917],[2680,933,2637,924],[2753,933,2716,928],[2827,933,2862,946],[2900,933,2940,952,2938,955],[260,1006,254,1012],[333,1006,295,1041],[406,1006,374,1033],[480,1006,443,1035],[553,1006,532,1045],[626,1006,622,1045],[700,1006,665,1004,677,999],[773,1006,748,987,761,990],[846,1006,879,998],[920,1006,941,977,939,991,929,984],[993,1006,1006,1006],[1066,1006,1035,1026,1036,1024],[1140,1006,1122,1042],[1213,1006,1187,1034],[1286,1006,1289,1042],[1360,1006,1359,1042,1355,1034],[1433,1006,1435,1042],[1506,1006,1520,1037,1510,1029,1521,1024,1521,1025],[1580,1006,1623,1000],[1653,1006,1684,977,1681,984],[1726,1006,1775,1001,1764,1008,1762,996,1775,1001,1800,1006,1807,970,1811,983],[1873,1006,1857,955],[1946,1006,1907,968],[2020,1006,2014,962],[2093,1006,2126,980],[2167,1006,2200,979,2194,991,2186,982,2197,980],[2240,1006,2212,975],[2313,1006,2353,980],[2387,1006,2357,977,2370,982],[2460,1006,2459,973],[2533,1006,2578,1003,2567,1010,2566,997,2578,1003,2607,1006,2618,969],[2680,1006,2647,980,2656,982],[2753,1006,2780,1033],[2827,1006,2858,1044],[2900,1006,2907,1011],[333,1079,326,1085],[406,1079,380,1124],[480,1079,465,1124],[553,1079,536,1126],[626,1079,580,1094],[700,1079,661,1081],[773,1079,784,1098],[920,1079,940,1052],[993,1079,1008,1046,1008,1055],[1066,1079,1048,1046,1059,1053,1048,1059],[1140,1079,1145,1071],[1213,1079,1182,1095,1188,1086],[1286,1079,1269,1108,1270,1097],[1360,1079,1346,1109,1346,1095,1357,1100,1346,1108],[1433,1079,1446,1111],[1506,1079,1504,1114,1503,1111],[1580,1079,1582,1111],[1653,1079,1692,1075],[1726,1079,1770,1058],[1800,1079,1808,1039,1811,1052,1799,1050],[1873,1079,1826,1075],[1946,1079,1913,1050],[2020,1079,2050,1060],[2093,1079,2121,1050],[2167,1079,2188,1040],[2240,1079,2223,1041],[2313,1079,2361,1077,2349,1083,2348,1071,2361,1077,2387,1079,2359,1044,2366,1048],[2460,1079,2479,1049],[2533,1079,2558,1038],[2607,1079,2607,1038],[2680,1079,2668,1047],[2753,1079,2798,1074,2787,1081,2786,1069,2798,1074,2827,1079,2872,1078],[480,1152,448,1185],[553,1152,507,1154,519,1147,519,1159,510,1155],[626,1152,580,1157],[700,1152,664,1173],[846,1152,820,1135,834,1136,832,1139],[920,1152,913,1119],[1066,1152,1039,1133,1053,1135,1046,1145,1041,1136],[1140,1152,1152,1122,1153,1135,1142,1131,1152,1122],[1213,1152,1216,1117],[1286,1152,1273,1122],[1433,1152,1466,1154,1464,1155],[1506,1152,1534,1168],[1653,1152,1686,1171],[1726,1152,1763,1166],[1800,1152,1809,1113],[1873,1152,1856,1152],[1946,1152,1918,1184],[2020,1152,2015,1193],[2093,1152,2062,1156,2073,1148,2074,1160,2069,1158],[2167,1152,2176,1116],[2240,1152,2267,1125],[2313,1152,2342,1117],[2387,1152,2369,1113],[2460,1152,2479,1180],[2533,1152,2571,1174],[2607,1152,2643,1177],[2680,1152,2698,1192,2687,1183,2698,1179,2698,1188],[2753,1152,2748,1196],[2827,1152,2867,1168],[480,1225,441,1247],[553,1225,517,1256],[626,1225,584,1250],[700,1225,654,1233],[846,1225,818,1207],[920,1225,899,1196],[993,1225,1015,1195,1013,1209,1004,1201],[1066,1225,1040,1209],[1140,1225,1118,1201,1124,1203],[1213,1225,1208,1193,1216,1204,1204,1206,1207,1195],[1286,1225,1295,1195],[1360,1225,1392,1234],[1433,1225,1451,1252],[1506,1225,1538,1236],[1653,1225,1688,1234],[1726,1225,1742,1230],[1800,1225,1773,1199],[1873,1225,1894,1193,1893,1206,1882,1200,1894,1193],[1946,1225,1930,1196,1941,1203,1930,1210,1930,1206],[2020,1225,1985,1233,1993,1226],[2093,1225,2063,1248],[2167,1225,2136,1240],[2240,1225,2255,1193],[2313,1225,2332,1190],[2387,1225,2427,1225],[2460,1225,2500,1234],[2533,1225,2570,1236,2556,1238,2560,1226],[2607,1225,2610,1208],[2680,1225,2701,1187,2701,1192],[2753,1225,2797,1210,2795,1213],[480,1298,471,1302],[553,1298,510,1313,514,1309],[626,1298,580,1321,588,1310,594,1321,588,1321],[700,1298,650,1315],[773,1298,748,1324],[846,1298,810,1291],[920,1298,898,1273],[993,1298,1004,1265,1004,1268],[1066,1298,1069,1260,1071,1266],[1140,1298,1141,1265,1144,1269],[1286,1298,1301,1268,1301,1282,1290,1277,1295,1273],[1360,1298,1382,1272],[1433,1298,1461,1277,1455,1289],[1506,1298,1539,1296],[1580,1298,1597,1297],[1653,1298,1691,1303,1678,1308,1680,1296,1688,1301],[1726,1298,1735,1260,1736,1265],[1800,1298,1765,1310],[1873,1298,1856,1267,1859,1268],[1946,1298,1937,1261],[2020,1298,2023,1260],[2093,1298,2077,1266],[2167,1298,2136,1281],[2240,1298,2208,1288],[2313,1298,2347,1280],[2387,1298,2415,1269],[2460,1298,2489,1262],[2533,1298,2542,1255],[2607,1298,2648,1304],[2680,1298,2708,1331],[2753,1298,2792,1324],[480,1371,469,1370],[553,1371,520,1388],[626,1371,579,1379],[700,1371,654,1387],[773,1371,726,1373,730,1371],[846,1371,808,1371],[920,1371,887,1384],[993,1371,980,1341],[1066,1371,1065,1337],[1140,1371,1161,1344],[1213,1371,1213,1337],[1286,1371,1292,1337,1296,1350,1287,1348],[1360,1371,1373,1342],[1433,1371,1457,1341],[1506,1371,1522,1337],[1580,1371,1588,1334],[1653,1371,1657,1329,1658,1332],[1726,1371,1761,1353],[1800,1371,1787,1336,1797,1346,1785,1350,1786,1348],[1873,1371,1837,1358],[1946,1371,1929,1338],[2020,1371,2026,1334],[2093,1371,2083,1332],[2167,1371,2161,1334],[2240,1371,2217,1345],[2313,1371,2329,1339,2329,1350],[2460,1371,2477,1331],[2533,1371,2580,1354],[2607,1371,2639,1338],[2680,1371,2720,1350],[2753,1371,2794,1354,2790,1359],[406,1444,398,1439],[480,1444,469,1442],[553,1444,532,1411],[626,1444,577,1433,590,1430,588,1441,584,1439],[700,1444,650,1442],[773,1444,731,1454],[846,1444,842,1412],[920,1444,883,1453],[993,1444,963,1462,970,1451],[1140,1444,1164,1424,1159,1436,1151,1427,1164,1424],[1213,1444,1202,1413,1206,1416],[1286,1444,1279,1410,1285,1417],[1360,1444,1368,1407],[1433,1444,1445,1408,1447,1422,1436,1418,1442,1412],[1506,1444,1509,1404],[1580,1444,1578,1401],[1653,1444,1687,1417],[1726,1444,1729,1403,1731,1407],[1800,1444,1813,1406],[1873,1444,1851,1408],[1946,1444,1920,1416],[2020,1444,2016,1409],[2093,1444,2090,1410],[2167,1444,2183,1414,2182,1428,2172,1422,2175,1420],[2313,1444,2331,1477],[2387,1444,2399,1475,2389,1466,2400,1462,2399,1475],[2460,1444,2429,1440,2436,1437],[2533,1444,2570,1413],[2607,1444,2658,1447,2645,1453,2646,1441,2658,1447,2724,1439,2713,1446,2711,1434,2724,1439,2753,1444,2773,1407],[2827,1444,2855,1413],[406,1517,374,1510],[480,1517,466,1510],[553,1517,519,1482],[626,1517,605,1480],[700,1517,654,1507],[773,1517,738,1496],[846,1517,806,1518],[993,1517,974,1545],[1066,1517,1049,1546],[1140,1517,1114,1537,1120,1525,1127,1535,1119,1536],[1213,1517,1180,1513],[1286,1517,1256,1500,1270,1500,1263,1511,1257,1501],[1360,1517,1367,1484,1368,1486],[1433,1517,1452,1486],[1506,1517,1483,1488],[1580,1517,1586,1473],[1653,1517,1677,1481],[1726,1517,1722,1470],[1800,1517,1817,1480],[1873,1517,1860,1480],[1946,1517,1943,1481,1950,1493,1938,1494,1940,1490],[2020,1517,2023,1482,2024,1486],[2093,1517,2123,1506,2118,1512],[2167,1517,2177,1520],[2240,1517,2270,1537,2257,1536,2264,1526,2268,1533],[2313,1517,2336,1546,2324,1540,2333,1532,2335,1540],[2387,1517,2380,1553,2379,1549],[2460,1517,2425,1536,2433,1525,2439,1536,2432,1536],[2533,1517,2574,1546],[2607,1517,2654,1527,2641,1530,2643,1518,2654,1527,2680,1517,2715,1521],[2753,1517,2797,1528],[2827,1517,2841,1527],[406,1590,370,1586,374,1585],[480,1590,452,1556,453,1557],[553,1590,501,1600],[626,1590,595,1568],[700,1590,666,1565],[773,1590,733,1588],[846,1590,814,1577],[920,1590,925,1558],[993,1590,1022,1577,1014,1588,1011,1581],[1066,1590,1034,1602],[1140,1590,1119,1615],[1213,1590,1180,1604,1181,1602],[1286,1590,1251,1587],[1360,1590,1331,1576,1344,1576,1339,1587,1336,1583],[1433,1590,1431,1555,1438,1566,1426,1567,1427,1564],[1506,1590,1481,1554],[1580,1590,1569,1550],[1653,1590,1671,1547],[1726,1590,1756,1562],[1800,1590,1816,1554],[1873,1590,1871,1558,1872,1560],[1946,1590,1917,1598],[2020,1590,2052,1604,2038,1605,2043,1594],[2093,1590,2124,1614],[2167,1590,2185,1624,2183,1622],[2240,1590,2268,1614,2259,1612],[2313,1590,2342,1616],[2387,1590,2379,1628],[2460,1590,2464,1627,2457,1616],[2533,1590,2580,1625],[2607,1590,2639,1632],[2680,1590,2687,1643],[2753,1590,2770,1622],[406,1664,366,1636,380,1638,373,1648,369,1640],[480,1664,443,1639],[553,1664,539,1626,549,1635,538,1639,539,1626],[626,1664,585,1669,588,1667],[700,1664,657,1661],[773,1664,734,1654],[846,1664,809,1660],[920,1664,907,1633],[993,1664,1020,1643],[1140,1664,1110,1656,1123,1653,1120,1664,1117,1662],[1213,1664,1177,1662],[1286,1664,1251,1668],[1360,1664,1326,1658],[1433,1664,1402,1643],[1506,1664,1473,1638,1475,1638],[1580,1664,1568,1631],[1653,1664,1688,1650],[1726,1664,1766,1664],[1800,1664,1837,1673],[1873,1664,1885,1698],[1946,1664,1964,1698],[2020,1664,2038,1700],[2093,1664,2112,1682],[2167,1664,2183,1698],[2240,1664,2259,1699],[2313,1664,2343,1691],[2387,1664,2388,1701,2382,1689,2394,1688,2391,1693],[2460,1664,2485,1706],[2533,1664,2573,1701],[2607,1664,2633,1691],[333,1737,324,1740],[406,1737,357,1733],[480,1737,445,1722],[553,1737,516,1734],[626,1737,598,1712],[700,1737,658,1728],[773,1737,732,1730],[846,1737,810,1729],[920,1737,912,1742],[993,1737,1022,1723,1014,1733,1009,1722,1017,1723],[1066,1737,1039,1752,1047,1740,1053,1751,1047,1751],[1140,1737,1120,1714,1130,1718],[1213,1737,1202,1733],[1286,1737,1252,1724],[1360,1737,1347,1730],[1433,1737,1400,1719],[1506,1737,1470,1736,1482,1730,1482,1742,1480,1741],[1580,1737,1578,1771],[1653,1737,1690,1752],[1726,1737,1768,1750],[1800,1737,1835,1754],[1873,1737,1903,1759],[1946,1737,1959,1775,1955,1770],[2020,1737,2036,1769],[2093,1737,2117,1762,2104,1757,2113,1749,2115,1754],[2167,1737,2202,1754],[2240,1737,2259,1771],[2313,1737,2332,1772],[2387,1737,2410,1768,2398,1762,2405,1757],[2460,1737,2493,1774],[2533,1737,2564,1756],[406,1810,373,1832,370,1827],[480,1810,452,1844,453,1838],[553,1810,528,1843],[626,1810,598,1845],[700,1810,667,1840],[773,1810,734,1824],[846,1810,810,1819],[920,1810,912,1842],[993,1810,1014,1841],[1066,1810,1059,1846],[1140,1810,1107,1823],[1213,1810,1179,1797],[1286,1810,1252,1801],[1360,1810,1326,1821,1336,1811,1339,1822],[1433,1810,1403,1829,1410,1818],[1506,1810,1485,1839,1486,1833],[1580,1810,1588,1845],[1653,1810,1685,1835],[1726,1810,1765,1824],[1800,1810,1837,1823],[1873,1810,1911,1827],[1946,1810,1961,1840,1960,1839],[2020,1810,2029,1843],[2093,1810,2114,1842,2103,1836,2113,1829,2114,1837],[2167,1810,2204,1824],[2240,1810,2269,1834,2256,1831,2264,1822,2267,1829],[2313,1810,2334,1820],[2387,1810,2420,1836],[2460,1810,2504,1832],[406,1883,396,1888],[480,1883,473,1894],[553,1883,549,1932,544,1920,556,1920,552,1928],[626,1883,582,1908],[700,1883,665,1914],[773,1883,732,1911],[846,1883,815,1905],[920,1883,935,1922],[993,1883,1010,1924],[1066,1883,1060,1927],[1140,1883,1108,1914],[1213,1883,1176,1905],[1286,1883,1272,1915],[1360,1883,1341,1914],[1433,1883,1412,1914,1413,1908],[1506,1883,1496,1919],[1580,1883,1588,1921],[1653,1883,1680,1912,1668,1907,1676,1899],[1726,1883,1761,1901],[1800,1883,1839,1890],[1873,1883,1911,1878,1899,1885,1898,1873,1907,1876],[2020,1883,2047,1860,2042,1872,2034,1863],[2093,1883,2127,1876,2124,1878],[2167,1883,2205,1886],[2313,1883,2340,1907],[2460,1883,2503,1887],[480,1956,448,1954,460,1949,460,1961],[553,1956,531,1983],[626,1956,594,1973],[700,1956,653,1959],[773,1956,724,1959],[846,1956,841,1989],[920,1956,948,1991],[993,1956,1011,1998],[1066,1956,1054,1998],[1140,1956,1109,1994],[1213,1956,1180,1991],[1286,1956,1262,1989],[1360,1956,1339,1987],[1433,1956,1422,1991],[1506,1956,1500,1994],[1580,1956,1585,1979],[1653,1956,1673,1989,1661,1981,1672,1975,1672,1982],[1800,1956,1834,1960,1822,1965,1823,1953],[1873,1956,1890,1924],[1946,1956,1974,1935,1968,1947,1961,1937,1974,1935],[2020,1956,2055,1966,2042,1968,2045,1957,2051,1962],[2093,1956,2129,1964],[2167,1956,2205,1978],[2313,1956,2352,1982],[2387,1956,2411,1996],[2460,1956,2489,1993],[480,2029,448,2031],[626,2029,577,2015],[700,2029,652,2019],[773,2029,747,2000],[846,2029,831,2061,831,2047],[920,2029,967,2045],[993,2029,1007,2071],[1066,2029,1053,2068],[1140,2029,1105,2058],[1213,2029,1178,2061],[1286,2029,1257,2064,1260,2051,1269,2059,1266,2060],[1360,2029,1338,2063],[1433,2029,1430,2068],[1506,2029,1507,2069],[1580,2029,1585,2069],[1653,2029,1658,2066],[1726,2029,1743,2060],[1800,2029,1820,2057],[1873,2029,1883,2066],[1946,2029,1976,2053],[2020,2029,2053,2042,2039,2043,2044,2032,2045,2033],[2093,2029,2134,2046],[2167,2029,2207,2056],[2240,2029,2262,2068],[2313,2029,2344,2067],[2387,2029,2399,2040],[480,2102,450,2081],[553,2102,509,2079],[626,2102,598,2061],[700,2102,660,2082,664,2082],[773,2102,750,2129],[846,2102,861,2148],[920,2102,962,2130],[993,2102,1023,2132,1010,2128],[1066,2102,1048,2141],[1140,2102,1110,2136],[1213,2102,1186,2142],[1286,2102,1256,2136],[1360,2102,1344,2149],[1433,2102,1426,2146],[1506,2102,1504,2145],[1580,2102,1573,2140],[1653,2102,1641,2135],[1726,2102,1733,2135,1725,2124,1737,2122],[1800,2102,1830,2123,1816,2121,1823,2111,1824,2112],[1873,2102,1890,2117],[1946,2102,1954,2145],[2020,2102,2032,2140],[2093,2102,2136,2125],[2167,2102,2208,2126],[2240,2102,2273,2130],[2313,2102,2343,2129],[480,2175,446,2200,452,2188,459,2198,450,2199],[553,2175,527,2217],[626,2175,618,2226],[700,2175,660,2210],[773,2175,795,2205],[846,2175,881,2210],[920,2175,938,2222],[993,2175,1024,2209],[1066,2175,1045,2212],[1140,2175,1117,2214],[1213,2175,1181,2210],[1286,2175,1271,2224],[1360,2175,1350,2226],[1433,2175,1416,2222],[1506,2175,1495,2218],[1580,2175,1556,2210],[1653,2175,1622,2196],[1726,2175,1729,2206],[1800,2175,1835,2180],[1873,2175,1911,2172],[1946,2175,1966,2162],[2020,2175,2052,2195,2038,2194,2045,2183,2047,2187],[2093,2175,2138,2186],[2167,2175,2210,2184],[2240,2175,2276,2191],[2313,2175,2344,2188,2331,2189,2336,2178,2344,2188],[2607,2175,2594,2161],[2680,2175,2667,2131],[626,2248,606,2268],[700,2248,656,2278],[773,2248,742,2274],[846,2248,896,2236,885,2245,882,2233,896,2236,920,2248,964,2247,952,2253,952,2241,964,2247,993,2248,1005,2281],[1066,2248,1040,2273],[1140,2248,1120,2283],[1213,2248,1199,2292,1197,2279,1208,2283,1204,2287],[1286,2248,1294,2302],[1360,2248,1335,2296],[1433,2248,1390,2272,1396,2263],[1506,2248,1493,2289],[1580,2248,1545,2271],[1653,2248,1615,2264],[1726,2248,1724,2282],[1800,2248,1828,2270],[1873,2248,1908,2257],[1946,2248,1983,2245],[2020,2248,2029,2213],[2093,2248,2140,2230],[2167,2248,2210,2231],[2240,2248,2268,2215],[2313,2248,2317,2205],[2387,2248,2389,2226],[2460,2248,2461,2226],[2533,2248,2525,2223],[2607,2248,2570,2216],[2680,2248,2665,2206],[2753,2248,2763,2234],[2827,2248,2828,2207],[2900,2248,2897,2202],[2973,2248,3009,2235],[700,2321,649,2324],[773,2321,741,2346],[846,2321,892,2328,879,2332,880,2321,892,2328,920,2321,966,2331,953,2334,955,2322,966,2331,993,2321,1025,2324],[1066,2321,1046,2345],[1140,2321,1116,2346,1120,2333,1129,2341,1119,2344],[1213,2321,1227,2342],[1286,2321,1282,2342],[1360,2321,1323,2347],[1433,2321,1409,2368],[1506,2321,1474,2351,1479,2338,1487,2347,1476,2350],[1580,2321,1536,2336],[1653,2321,1619,2346],[1726,2321,1720,2359],[1800,2321,1819,2352],[1873,2321,1896,2348],[1946,2321,1980,2320,1968,2327,1968,2315,1975,2318],[2020,2321,2005,2290],[2093,2321,2137,2308],[2167,2321,2202,2291],[2240,2321,2247,2274],[2313,2321,2328,2274],[2387,2321,2397,2277],[2460,2321,2445,2276,2455,2286,2443,2290,2444,2287],[2533,2321,2524,2273],[2607,2321,2579,2286],[2680,2321,2712,2305],[2753,2321,2724,2296,2730,2297],[2827,2321,2826,2274],[2900,2321,2931,2293],[2973,2321,3018,2306],[3047,2321,3063,2295,3061,2292],[700,2394,687,2405],[773,2394,744,2439],[846,2394,882,2398],[920,2394,970,2386,958,2394,957,2382,993,2394,1026,2392],[1066,2394,1074,2400],[1433,2394,1427,2400],[1506,2394,1469,2425,1468,2424],[1580,2394,1546,2426],[1653,2394,1628,2432],[1726,2394,1716,2436],[1800,2394,1805,2434],[1873,2394,1872,2432],[1946,2394,1932,2426],[2020,2394,2042,2419,2029,2414,2038,2406],[2093,2394,2114,2362],[2167,2394,2187,2357],[2313,2394,2322,2354],[2387,2394,2396,2350],[2460,2394,2445,2351],[2533,2394,2546,2358],[2607,2394,2595,2359],[2680,2394,2681,2358],[2753,2394,2749,2355],[2827,2394,2805,2369],[2900,2394,2941,2378],[2973,2394,3002,2357,3000,2371,2990,2363,2995,2361],[3047,2394,3077,2369],[3120,2394,3158,2381,3148,2391,3144,2379],[846,2467,810,2500],[920,2467,964,2447],[993,2467,1030,2454],[1580,2467,1539,2498],[1653,2467,1640,2510],[1726,2467,1705,2508],[1800,2467,1794,2508],[1873,2467,1863,2506],[1946,2467,1921,2493],[2020,2467,1993,2490],[2093,2467,2111,2496],[2167,2467,2203,2478],[2240,2467,2256,2440,2255,2453,2244,2447,2255,2440],[2313,2467,2282,2476],[2387,2467,2377,2436],[2460,2467,2467,2434],[2533,2467,2566,2464,2554,2471,2553,2459,2565,2464],[2607,2467,2591,2438],[2680,2467,2695,2439],[2753,2467,2775,2492],[2827,2467,2836,2500],[2900,2467,2917,2498],[2973,2467,3013,2471],[3047,2467,3089,2462],[3120,2467,3161,2458,3150,2467,3148,2455],[3193,2467,3225,2467],[846,2540,826,2568,827,2572,829,2574,828,2574],[920,2540,922,2576],[1580,2540,1567,2553],[1653,2540,1636,2582],[1726,2540,1712,2582],[1800,2540,1785,2580],[1873,2540,1855,2580],[1946,2540,1909,2558],[2020,2540,2006,2575],[2093,2540,2114,2572],[2167,2540,2195,2560],[2240,2540,2241,2574,2235,2562,2246,2562],[2313,2540,2313,2576],[2387,2540,2370,2571],[2460,2540,2482,2569],[2533,2540,2550,2576],[2607,2540,2586,2575],[2680,2540,2696,2576],[2753,2540,2766,2579],[2827,2540,2824,2579],[2900,2540,2929,2570],[2973,2540,2995,2582],[3047,2540,3080,2575],[3193,2540,3179,2514],[3267,2540,3280,2513],[3335,2539,3324,2535],[1726,2614,1718,2659],[1800,2614,1796,2662],[1873,2614,1828,2621],[1946,2614,1907,2626],[2020,2614,2036,2654],[2093,2614,2060,2635],[2167,2614,2200,2610],[2240,2614,2275,2612],[2313,2614,2328,2646,2317,2637,2328,2632,2328,2639],[2387,2614,2370,2648],[2460,2614,2490,2632],[2533,2614,2565,2634],[2607,2614,2601,2654],[2680,2614,2691,2652],[2753,2614,2768,2654],[2827,2614,2807,2648],[2900,2614,2937,2622],[2973,2614,3015,2613,3014,2614],[3047,2614,3080,2631],[3120,2614,3100,2590],[3193,2614,3205,2585,3206,2599,3195,2594,3203,2587],[3267,2614,3296,2622,3282,2624,3286,2613,3293,2620],[3340,2614,3362,2593],[1800,2687,1761,2700],[1873,2687,1824,2695],[1946,2687,1937,2721],[2020,2687,2041,2730],[2093,2687,2054,2722],[2167,2687,2164,2722],[2240,2687,2274,2682],[2313,2687,2347,2672],[2387,2687,2384,2726,2378,2714,2390,2715],[2460,2687,2440,2720],[2533,2687,2573,2684],[2607,2687,2644,2681,2636,2687],[2680,2687,2688,2725,2680,2715,2692,2712,2691,2714],[2753,2687,2771,2722,2761,2714,2771,2709,2771,2713],[2827,2687,2803,2726],[2900,2687,2897,2728],[2973,2687,3010,2672],[3047,2687,3087,2680],[3120,2687,3141,2687],[3193,2687,3197,2676],[3267,2687,3296,2679,3290,2684],[3340,2687,3319,2664,3332,2669,3323,2677],[3413,2687,3383,2680,3396,2677],[1873,2760,1829,2782],[1946,2760,1968,2798],[2020,2760,2040,2787],[2093,2760,2060,2803],[2167,2760,2149,2812],[2240,2760,2218,2798],[2313,2760,2343,2783],[2387,2760,2429,2765,2416,2770],[2460,2760,2438,2799],[2533,2760,2532,2805],[2607,2760,2637,2774],[2680,2760,2709,2736],[2753,2760,2772,2725],[2827,2760,2862,2744,2854,2755],[2900,2760,2871,2797],[2973,2760,2990,2794],[3047,2760,3083,2774,3075,2775],[3120,2760,3150,2766,3143,2768],[3193,2760,3184,2789],[3267,2760,3280,2732,3280,2746,3269,2740],[3413,2760,3404,2754],[3487,2760,3452,2741],[3560,2760,3596,2748,3586,2757,3582,2746,3585,2746],[1946,2833,1958,2873],[2020,2833,2054,2830],[2093,2833,2090,2867],[2167,2833,2141,2871],[2240,2833,2204,2872],[2313,2833,2314,2868],[2387,2833,2427,2827],[2460,2833,2496,2840],[2533,2833,2514,2870,2514,2856,2524,2861],[2607,2833,2592,2876],[2680,2833,2668,2865],[2753,2833,2787,2834],[2827,2833,2869,2851,2865,2852],[2900,2833,2870,2844,2879,2834,2883,2846],[2973,2833,2979,2872],[3047,2833,3067,2857,3058,2854],[3120,2833,3107,2860,3106,2847,3117,2852],[3193,2833,3190,2862],[3267,2833,3257,2861,3256,2860],[3340,2833,3310,2842,3320,2833,3324,2844],[3413,2833,3384,2854],[3487,2833,3457,2858],[3560,2833,3592,2851],[2240,2906,2210,2930,2208,2928,2210,2922,2218,2932,2213,2933],[2313,2906,2275,2930],[2387,2906,2415,2888],[2460,2906,2488,2875],[2533,2906,2574,2886,2565,2897],[2607,2906,2600,2943,2596,2930],[2680,2906,2641,2927],[2753,2906,2789,2924],[2827,2906,2859,2923,2848,2923],[2900,2906,2890,2896],[2973,2906,2956,2931,2958,2918,2968,2924,2965,2926],[3047,2906,3067,2929],[3120,2906,3138,2919,3132,2920],[3340,2906,3370,2904,3359,2911,3358,2899],[3413,2906,3405,2908],[3487,2906,3473,2940,3472,2927,3483,2931],[3560,2906,3562,2924],[2313,2979,2276,2992,2274,2986],[2387,2979,2379,3012],[2460,2979,2471,3012],[2533,2979,2580,2974,2569,2982,2568,2970,2580,2974,2607,2979,2640,2979],[2680,2979,2662,3015,2662,3001,2673,3007,2665,3012],[2753,2979,2765,3010,2760,3012,2758,3010,2769,3006,2769,3009],[2827,2979,2814,2996,2810,2997],[3413,2979,3429,2952],[2313,3052,2302,3060],[2387,3052,2385,3093],[2460,3052,2479,3094],[2533,3052,2545,3078],[2361,3125,2410,3125]],"sump":[19,19,19,19,19,0,0,0,0,0,0,19,19,19,19,19,19,19,19,19,19,19,19,0,0,0,0,0,0,0,0,0,0,0,0,19,19,19,19,19,19,19,19,19,19,19,19,19,0,0,0,0,0,0,0,0,0,0,0,19,19,19,19,19,19,19,19,19,19,19,19,19,0,0,0,0,7,7,7,7,0,19,19,19,19,19,19,19,19,19,19,19,19,19,19,7,7,7,7,7,7,7,7,7,7,0,0,19,19,19,19,19,19,19,19,19,19,19,19,19,7,7,7,7,7,7,7,7,7,7,8,8,19,19,19,19,19,18,19,19,19,19,19,19,19,7,7,7,7,7,7,7,7,7,8,8,19,19,19,19,18,18,18,19,19,19,19,19,20,20,20,7,7,7,7,7,7,7,7,8,8,19,19,19,18,18,18,18,18,18,18,18,20,20,20,20,7,7,7,7,7,7,7,8,8,19,19,19,19,18,18,18,18,20,20,20,20,20,20,20,20,7,7,7,7,7,7,7,8,8,8,18,18,18,18,18,20,20,20,20,20,20,20,20,20,20,7,7,7,7,7,7,7,8,8,12,12,12,12,5,20,20,20,20,20,20,20,20,20,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,0,0,12,12,12,12,5,12,20,20,20,20,20,20,20,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,12,12,12,5,12,12,20,20,20,20,20,20,20,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,12,12,5,12,12,11,20,20,20,20,7,7,7,7,7,1,1,1,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,12,12,5,5,12,11,11,20,20,20,20,20,4,7,7,7,1,1,1,1,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,12,12,12,5,5,5,11,11,20,20,4,4,20,20,7,1,1,1,1,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,5,5,5,5,5,11,11,4,4,4,20,20,4,4,1,1,1,1,8,8,1,8,8,8,8,8,8,8,8,0,0,0,5,5,5,5,11,4,4,4,4,4,1,1,1,1,1,1,1,1,1,8,8,8,8,8,0,0,0,0,0,5,5,5,5,11,4,4,4,4,4,4,4,4,1,1,1,1,1,1,1,1,1,8,8,16,16,16,0,0,0,5,5,5,5,5,11,4,4,4,4,4,4,4,1,1,1,1,1,1,1,1,1,1,1,17,16,16,16,16,16,0,5,5,5,5,5,5,5,4,4,4,4,4,4,4,4,1,1,1,1,1,1,1,1,1,1,17,16,16,16,16,16,5,5,5,5,5,5,5,5,4,4,4,4,4,4,4,4,1,1,1,1,1,1,1,1,17,17,17,16,16,16,6,5,5,5,5,5,5,5,10,10,10,10,4,4,4,4,4,1,1,1,1,1,17,17,17,17,17,17,16,16,16,16,5,5,5,5,5,5,5,5,5,5,10,10,10,10,4,4,4,4,4,1,1,15,17,17,17,17,17,17,17,16,16,16,16,5,5,5,5,5,5,5,5,5,5,10,10,10,10,10,4,15,15,15,15,15,15,15,17,17,17,17,16,16,16,6,5,5,5,5,5,5,5,10,5,10,10,10,10,10,10,10,15,15,15,15,15,15,15,15,17,17,17,17,16,16,6,5,5,5,5,5,5,10,10,10,10,10,10,10,10,10,15,15,15,15,15,15,15,15,15,17,17,16,16,6,5,5,5,5,5,5,10,10,10,10,10,10,10,10,10,13,15,15,15,15,15,14,14,16,16,5,5,5,5,5,10,10,10,10,10,10,10,10,9,9,13,13,15,15,15,14,14,2,16,16,16,6,5,5,5,10,10,10,10,10,10,10,9,9,9,9,9,9,9,14,14,14,14,2,2,2,16,6,5,5,5,10,10,10,10,10,10,10,10,9,9,9,9,9,9,9,9,14,14,14,14,14,2,6,6,6,6,10,10,10,10,10,10,10,9,9,9,9,9,9,9,9,14,14,14,14,14,14,14,16,16,6,0,0,10,10,10,9,9,9,9,9,9,9,9,9,14,14,14,14,14,14,14,14,2,2,16,16,16,16,16,0,0,0,10,10,10,9,9,9,9,9,9,9,9,9,14,14,14,14,14,14,14,14,14,2,2,16,16,16,0,0,0,0,0,0,0,0,9,9,9,9,9,9,14,14,14,14,14,14,14,14,2,2,16,16,0,0,0,0,0,0,0,0,9,9,9,9,14,14,14,14,14,14,14,14,14,14,14,2,0,0,0,0,0,0,0,0,0,9,9,9,9,14,14,14,14,14,14,14,14,14,14,0,0,0,0,0,0,0,0,0,0,9,9,14,14,14,14,14,14,14,14,14,0,0,0,0,0,0,0,0,0,0,0,0,9,14,14,14,14,14,14,14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}};
 
 </script>
 <script>/* ===== HitungTwin ===== */
@@ -3880,11 +4191,96 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
   }
 
   function layarKecil() { return window.innerWidth <= 760; }
+  /* Ruang yang tertutup panel. Panel lapisan yang ringkas hanya satu baris di
+     pojok kiri atas, jadi baru dihitung bila disematkan terbuka. Kolom kanan
+     selebar kartu ringkas, atau selebar kartu terbuka bila ada yang disematkan. */
   function hitungSisip() {
     var w = window.innerWidth;
     if (w <= 760) { var k = $('kolomKanan'); return { t: 56, b: k ? k.getBoundingClientRect().height : 0, l: 0, r: 0 }; }
-    var kiri = w > 1020 ? 264 : 0, kanan = w > 1180 ? 340 : 312;
+    var kiri = w > 1020 && document.body.classList.contains('kiri-semat') ? 264 : 0;
+    var lebar = !!document.querySelector('#kolomKanan .lipat.sematan');
+    var kanan = w > 1180 ? (lebar ? 340 : 324) : 312;
     return { t: 64, b: 56, l: kiri, r: kanan };
+  }
+
+  /* ------------------------------------------------------------------ kartu ringkas (lipat)
+     Tampilan awal: tiap kartu dan panel lapisan hanya satu baris (judul + angka
+     kunci). Terbuka saat kursor berhenti di atasnya, atau saat ditekan di layar
+     sentuh. Menekan judul menyematkannya supaya tetap terbuka; pilihan ini
+     disimpan per peramban (twin_kartu_semat). Selama kursor masih di kolom yang
+     sama, kartu di atas kursor tidak ditutup, jadi isi di bawah kursor tidak
+     bergeser; semuanya menutup setengah detik setelah kursor pergi. */
+  var KUNCI_SEMAT = 'twin_kartu_semat';
+  var semat = (function () { try { var a = JSON.parse(localStorage.getItem(KUNCI_SEMAT) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } })();
+  var bisaHover = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+  function simpanSemat() { try { localStorage.setItem(KUNCI_SEMAT, JSON.stringify(semat)); } catch (e) {} }
+  // panel lapisan di layar ≤ 1020 px dibuka lewat tombol Lapisan dan selalu utuh
+  function lipatAktif(el) { return !(el.id === 'panelKiri' && window.innerWidth <= 1020); }
+  function tampilLipat(el) {
+    var s = el.classList.contains('sematan'), buka = s || el.classList.contains('sorot');
+    el.classList.toggle('buka', buka);
+    var b = el.querySelector('.lipat-tombol'); if (!b) return;
+    var nama = (b.getAttribute('aria-label') || '').split(':')[0];
+    b.setAttribute('aria-expanded', String(buka)); b.setAttribute('aria-pressed', String(s));
+    b.title = s ? 'Ciutkan' : 'Tetap buka'; b.setAttribute('aria-label', nama + ': ' + (s ? 'ciutkan' : 'tetap buka'));
+  }
+  function pasangLipat(kelompok, ubah) {
+    var niatT = 0, tutupT = 0;
+    function tutupSemua() { kelompok.forEach(function (c) { c.classList.remove('sorot'); tampilLipat(c); }); }
+    kelompok.forEach(function (el, i) {
+      el.classList.toggle('sematan', semat.indexOf(el.dataset.lipat) >= 0);
+      tampilLipat(el);
+      if (bisaHover) {
+        el.addEventListener('pointerenter', function (e) {
+          if (e.pointerType !== 'mouse' || !lipatAktif(el)) return;
+          clearTimeout(tutupT); clearTimeout(niatT);
+          if (e.buttons) return;                       // sedang menyeret peta: jangan membuka kartu yang dilewati
+          if (el.dataset.tahan) return;                // baru saja diciutkan dengan tombol
+          niatT = setTimeout(function () {
+            el.classList.add('sorot');
+            // kartu di bawah kursor boleh menutup: isi di bawah kursor tidak bergeser
+            kelompok.forEach(function (c, k) { if (k > i) c.classList.remove('sorot'); tampilLipat(c); });
+          }, 140);
+        });
+        el.addEventListener('pointerleave', function (e) {
+          if (e.pointerType !== 'mouse') return;
+          clearTimeout(niatT); delete el.dataset.tahan;
+          clearTimeout(tutupT); tutupT = setTimeout(tutupSemua, 450);
+        });
+      }
+      var kepala = el.querySelector('.kepala');
+      kepala.addEventListener('click', function (e) {
+        if (!lipatAktif(el)) return;
+        var t = e.target.closest('button,a,input,select,label');
+        if (t && !t.classList.contains('lipat-tombol')) return;        // tombol lain di kepala (Kelola)
+        var jadi = !el.classList.contains('sematan'), k = semat.indexOf(el.dataset.lipat);
+        el.classList.toggle('sematan', jadi);
+        if (jadi) el.classList.add('sorot'); else { el.classList.remove('sorot'); if (bisaHover) el.dataset.tahan = '1'; }
+        if (jadi && k < 0) semat.push(el.dataset.lipat);
+        if (!jadi && k >= 0) semat.splice(k, 1);
+        simpanSemat(); tampilLipat(el);
+        if (ubah) ubah(el);
+      });
+      // layar sentuh: menekan bagian mana pun dari kartu yang ringkas membukanya
+      el.addEventListener('click', function (e) {
+        if (bisaHover || !lipatAktif(el) || el.classList.contains('buka') || e.target.closest('.kepala')) return;
+        if (e.target.closest('button,a,input,select,label')) return;
+        kepala.click();
+      });
+    });
+  }
+  function aturKiriSemat() {
+    document.body.classList.toggle('kiri-semat', $('panelKiri').classList.contains('sematan'));
+  }
+  function pasangSemuaLipat() {
+    pasangLipat([$('panelKiri')], function () { aturKiriSemat(); if (S.eng) S.eng.setSisip(hitungSisip(), true); });
+    pasangLipat(Array.prototype.slice.call(document.querySelectorAll('#kolomKanan .kartu.lipat')), function () {
+      if (!S.eng) return;
+      S.eng.setSisip(hitungSisip(), true);
+      // ponsel: tinggi lembar berubah setelah kartu selesai membuka
+      if (layarKecil()) setTimeout(function () { S.eng.setSisip(hitungSisip(), true); }, 320);
+    });
+    aturKiriSemat();
   }
 
   function buatMesin(kamera) {
@@ -3896,19 +4292,22 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
       site: {
         topo: S.site.topo, topoLama: S.site.topoLama, citra: S.site.citra, jalan: S.site.jalan,
         area: S.site.area, armada: S.site.armada,
-        sump: (window.AIR_PAKAL && AIR_PAKAL.sump) || [], catchment: (window.AIR_PAKAL && AIR_PAKAL.catchment) || []
+        sump: (window.AIR_PAKAL && AIR_PAKAL.sump) || [], catchment: (window.AIR_PAKAL && AIR_PAKAL.catchment) || [],
+        aliran: (window.AIR_PAKAL && AIR_PAKAL.aliran) || null
       },
       step: kecil ? 3 : 2,
       pixelRatio: Math.min(window.devicePixelRatio || 1, kecil ? 1.5 : 2),
       inset: hitungSisip(),
+      kurangiGerak: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
       onSelect: tampilDetail
     });
     window.TwinApp.eng = S.eng;
     if (kamera) S.eng.setKamera(kamera);
-    // pulihkan pilihan tampilan
+    // pulihkan pilihan tampilan (pertama kali: bawaan mesin + pilihan unit yang tersimpan)
     S.eng.setLatar(S.site.citra ? S.latar : (S.latar === 'citra' ? 'relief' : S.latar));
     S.eng.setModeJalan(S.modeJalan);
-    Object.keys(S.lapis || {}).forEach(function (k) { S.eng.setLapis(k, S.lapis[k]); });
+    var awal = S.lapis || Object.assign(S.eng.lapis(), bacaPrefLapis());
+    Object.keys(awal).forEach(function (k) { S.eng.setLapis(k, awal[k]); });
     S.lapis = S.eng.lapis();
     if (S.wr) terapkanWR();
     if (S.airHitung) S.eng.setAirHitung(S.airHitung.tampil);
@@ -3917,38 +4316,72 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
   }
 
   /* ------------------------------------------------------------------ panel lapisan */
+  /* induk: baris anak yang ikut mati bila induknya dimatikan. Pilihan dua
+     baris anak Unit disimpan per peramban (twin_lapis_unit). */
   var LAPIS = [
     { k: 'jalan', nm: 'Jalan', sw: '#7fd1c7' },
     { k: 'labelJalan', nm: 'Nama jalan', sw: '#e9f2f0' },
     { k: 'area', nm: 'Area kerja', sw: '#ea9000' },
     { k: 'unit', nm: 'Unit', sw: '#f2b705' },
+    { k: 'unitNonaktif', nm: 'Unit tidak aktif', sw: '#4b6763', induk: 'unit', ket: 'Unit yang GPS-nya hilang lebih dari 10 menit. Dimatikan: unit itu disembunyikan dari peta (tetap terhitung di kartu Armada).' },
+    { k: 'panah', nm: 'Panah arah gerak', sw: '#ffffff', induk: 'unit', ket: 'Chevron di depan unit yang sedang bergerak, menunjukkan arahnya. Merah bila melaju di atas batas.' },
     { k: 'pelanggaran', nm: 'Pelanggaran hari ini', sw: '#ff6e57' },
     { k: 'air', nm: 'Air & sump (W&R)', sw: '#2f86ff' },
     { k: 'airHitung', nm: 'Catchment dihitung', sw: '#5fb8ff' },
     { k: 'kontur', nm: 'Kontur 10 m', sw: '#9fb3b0' },
     { k: 'perubahan', nm: 'Perubahan topo', sw: 'linear-gradient(90deg,#ff5440 50%,#40a4ff 50%)' }
   ];
+  var KUNCI_LAPIS = 'twin_lapis_unit';
+  function bacaPrefLapis() {
+    try {
+      var p = JSON.parse(localStorage.getItem(KUNCI_LAPIS) || '{}'), o = {};
+      ['unitNonaktif', 'panah'].forEach(function (k) { if (typeof p[k] === 'boolean') o[k] = p[k]; });
+      return o;
+    } catch (e) { return {}; }
+  }
+  function simpanPrefLapis() {
+    try { localStorage.setItem(KUNCI_LAPIS, JSON.stringify({ unitNonaktif: !!S.lapis.unitNonaktif, panah: !!S.lapis.panah })); } catch (e) {}
+  }
   function bangunPanelLapis() {
     var w = $('daftarLapis');
     LAPIS.forEach(function (L) {
       var inp = h('input', { type: 'checkbox', 'data-k': L.k });
       inp.checked = !!(S.lapis && S.lapis[L.k]);
       inp.addEventListener('change', function () { ubahLapis(L.k, inp.checked, inp); });
-      w.appendChild(h('label', { class: 'lapis' }, inp, h('span', { class: 'sw', style: 'background:' + L.sw }), h('span', { class: 'nm', text: L.nm }), h('span', { class: 'kt', id: 'ketLapis_' + L.k })));
+      w.appendChild(h('label', { class: 'lapis' + (L.induk ? ' sub' : ''), 'data-induk': L.induk || null, title: L.ket || null },
+        inp, h('span', { class: 'sw', style: 'background:' + L.sw }), h('span', { class: 'nm', text: L.nm }), h('span', { class: 'kt', id: 'ketLapis_' + L.k })));
     });
     perbaruiKetLapis();
   }
   function perbaruiKetLapis() {
     function set(k, t) { var e = $('ketLapis_' + k); if (e) e.textContent = t || ''; }
-    var st = S.eng ? S.eng.statJalan() : [];
+    var st = S.eng ? S.eng.statJalan() : [], du = S.eng ? S.eng.daftarUnit() : [];
     set('jalan', st.length ? st.length + ' ruas' : '');
     set('area', S.site.area && S.site.area.area ? String(S.site.area.area.length) : '');
     set('unit', S.unit.length ? String(S.unit.length) : '');
+    var nonaktif = du.filter(function (u) { return u.status === 'hilang'; }).length;
+    var gerak = du.filter(function (u) { return u.status === 'bergerak' || u.status === 'melaju'; }).length;
+    set('unitNonaktif', du.length ? String(nonaktif) : '');
+    set('panah', du.length ? String(gerak) : '');
     set('pelanggaran', S.pel.length ? String(S.pel.length) : '');
     set('air', (window.AIR_PAKAL && AIR_PAKAL.sump.length ? AIR_PAKAL.sump.length + ' sump' : ''));
     set('airHitung', S.airHitung ? 'topo aktif' : (S.airSedang ? 'menghitung…' : 'belum'));
     set('perubahan', S.site.topoLama ? tglPendek(S.site.topoLama.tanggal).replace(/ \d{4}$/, '') + ' → ' + tglPendek(S.site.topo.tanggal).replace(/ \d{4}$/, '') : (S.topoLamaSedang ? 'memuat…' : ''));
     document.querySelectorAll('#daftarLapis input').forEach(function (i) { i.checked = !!(S.lapis && S.lapis[i.dataset.k]); });
+    // baris anak ikut redup bila induknya mati
+    document.querySelectorAll('#daftarLapis .lapis.sub').forEach(function (b) {
+      var mati = !(S.lapis && S.lapis[b.dataset.induk]);
+      b.classList.toggle('mati', mati); b.querySelector('input').disabled = mati;
+    });
+    ringkasLapis();
+  }
+  var NAMA_LATAR = { citra: 'Citra', relief: 'Relief', polos: 'Polos' };
+  function ringkasLapis() {
+    var e = $('ringkasLapis'); if (!e) return;
+    var n = LAPIS.filter(function (L) { return !L.induk && S.lapis && S.lapis[L.k]; }).length;
+    var latar = S.latar === 'citra' && !S.site.citra ? 'relief' : S.latar;
+    e.textContent = (NAMA_LATAR[latar] || latar) + ' · ' + n + ' aktif';
+    e.title = 'Latar ' + (NAMA_LATAR[latar] || latar).toLowerCase() + ', ' + n + ' lapisan menyala, warna jalan menurut ' + ({ batas: 'batas kecepatan', kondisi: 'kondisi', kelandaian: 'kelandaian' }[S.modeJalan] || S.modeJalan);
   }
   async function ubahLapis(k, on, inp) {
     if (k === 'perubahan' && on && !S.site.topoLama) {
@@ -3961,6 +4394,7 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
       return;
     }
     S.eng.setLapis(k, on); S.lapis = S.eng.lapis();
+    if (k === 'unitNonaktif' || k === 'panah') simpanPrefLapis();
     perbaruiKetLapis();
   }
   async function muatTopoLama() {
@@ -4050,6 +4484,9 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
     });
     $('ringkasData').textContent = ringkas.join(' · ') || 'Data site';
     $('titikData').style.background = terburuk === 'buruk' ? 'var(--bad)' : terburuk === 'warn' ? 'var(--warn)' : 'var(--good)';
+    var rd = $('dataRingkas');
+    rd.textContent = ringkas.join(' · ') || '—';
+    rd.classList.toggle('buruk', terburuk === 'buruk'); rd.classList.toggle('waspada', terburuk === 'warn');
     var st = $('dataStatus'), ket = $('ketSumberData');
     if (S.manifest && S.manifest.sumber !== 'server') {
       var al = S.manifest.alasan;
@@ -4127,6 +4564,9 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
       if (tot && hit[s.k]) bt.appendChild(h('span', { title: s.l + ' ' + hit[s.k], style: 'width:' + (hit[s.k] / tot * 100) + '%;background:' + s.w }));
       gs.appendChild(h('div', { class: 'baris-status' }, h('span', { class: 'b', style: 'background:' + s.w }), h('span', { class: 'l', text: s.l }), h('span', { class: 'n', text: S.unitWaktu ? String(hit[s.k]) : '—' })));
     });
+    var rg = $('armRingkas');
+    rg.textContent = S.unitWaktu ? on.length + '/' + tot + ' online' : (S.unitGagal ? 'terputus' : '—');
+    rg.classList.toggle('buruk', !!S.unitGagal && !S.unitWaktu);
     var st = $('armStatusKartu'); kosongkan(st); st.classList.toggle('galat', !!S.unitGagal);
     if (S.unitGagal) {
       st.appendChild(h('span', { text: 'Worker tidak terjangkau' + (S.unitWaktu ? ' · angka terakhir ' + jamWIT(S.unitWaktu) + ' WIT' : '') }));
@@ -4173,6 +4613,10 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
     var daftar = S.eng ? S.eng.daftarUnit() : [];
     var laju = daftar.filter(function (u) { return u.status === 'melaju'; }).sort(function (a, b) { return (b.kecepatan - b.batas) - (a.kecepatan - a.batas); });
     var n = $('kecN'); n.textContent = S.unitWaktu ? laju.length : '—'; n.style.color = laju.length ? 'var(--bad)' : '';
+    var rk = $('kecRingkasNilai');
+    rk.textContent = S.unitWaktu ? laju.length + ' di atas batas' : '—';
+    rk.title = laju.length ? laju.map(function (u) { return u.nama + ' ' + u.kecepatan + '/' + u.batas; }).join(' · ') : '';
+    rk.classList.toggle('buruk', laju.length > 0); rk.classList.toggle('redup', !!S.unitWaktu && !laju.length);
     var w = kosongkan($('kecDaftar'));
     laju.slice(0, 5).forEach(function (u) {
       w.appendChild(h('button', { type: 'button', onclick: function () { S.eng.fokus({ kind: 'unit', id: u.id }); } },
@@ -4217,6 +4661,9 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
     set('tmmTon', t && t.ore); set('tmmOre', t && t.ore); set('tmmWaste', t && t.waste);
     set('tmmSR', t && t.sr, 2); set('tmmMF', t && t.mf, 2); set('tmmProd', t && t.productivity); set('tmmDist', t && t.distance, 1);
     set('bgTon', b && b.transhipment); set('bgProd', b && b.productivity); set('bgDist', b && b.distance, 1);
+    var rt = $('tmmRingkas');
+    rt.textContent = t && t.ore != null ? angka(t.ore) + ' t ore' : (S.minervaGagal ? 'tidak terjangkau' : '—');
+    rt.classList.toggle('buruk', !!S.minervaGagal && !t);
     var st = kosongkan($('tmmStatus')); st.classList.toggle('galat', !!S.minervaGagal);
     if (S.minervaGagal) {
       st.appendChild(h('span', { text: 'Minerva tidak terjangkau' + (S.minervaWaktu ? ' · angka ' + jamWIT(S.minervaWaktu) + ' WIT' : '') }));
@@ -4254,6 +4701,17 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
     var curam = st.filter(function (r) { return r.lebih12 >= 10; }).sort(function (a, b) { return b.lebih12 - a.lebih12; });
     var risiko = 0; Object.keys(sf).forEach(function (k) { var v = sf[k]; if (v !== '' && v != null && Number(v) < 1.25) risiko++; });
     $('jlnPerbaikan').textContent = S.wr ? perbaikan : '—'; $('jlnPerbaikan').style.color = perbaikan ? 'var(--bad)' : '';
+    // ringkas: catatan yang paling mendesak saja, sisanya dihitung (+N) dan ada di rincian
+    var bag = [];
+    if (S.wr && perbaikan) bag.push(perbaikan + ' perlu perbaikan');
+    if (S.wr && risiko) bag.push(risiko + ' sump berisiko');
+    if (st.length && curam.length) bag.push(curam.length + ' ruas curam');
+    var rj = kosongkan($('jlnRingkas'));
+    rj.appendChild(document.createTextNode(bag.length ? bag[0] : (S.wr && st.length ? 'tidak ada catatan' : (S.wrGagal ? 'W&R tidak terbaca' : '—'))));
+    if (bag.length > 1) rj.appendChild(h('span', { class: 'lagi', text: '+' + (bag.length - 1) }));
+    rj.title = bag.join(' · ');
+    rj.classList.toggle('buruk', !!(S.wr && perbaikan)); rj.classList.toggle('waspada', !(S.wr && perbaikan) && bag.length > 0);
+    rj.classList.toggle('redup', !bag.length);
     $('jlnCuram').textContent = st.length ? curam.length : '—';
     $('jlnSump').textContent = S.wr ? risiko : '—';
     var w = kosongkan($('jlnDaftar'));
@@ -4549,7 +5007,7 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
     $('putarBar').hidden = true; $('bilahBawah').hidden = false;
     S.eng.perbaruiUnit(S.unit, { durasi: 0, waktu: S.waktuServer || Date.now() });
     S.eng.setPelanggaran(S.pel);
-    setLive(); detakJam(); renderArmada(); renderKecepatan();
+    setLive(); detakJam(); renderArmada(); renderKecepatan(); perbaruiKetLapis();
   }
   function ikonPutar() {
     var b = $('putarMain'), main = S.putar && S.putar.main;
@@ -4664,7 +5122,7 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
       $('putarWaktu').textContent = namaHari(P.t) + ' · ' + jamWIT(P.t, true) + ' WIT';
       if (!$('putarGeser').matches(':active')) $('putarGeser').value = String(Math.round((P.t - P.dari) / (P.sampai - P.dari) * 1000));
       S.eng.setPelanggaran(P.kejadian.filter(function (p) { return p.mulai <= P.t; }));
-      detakJam(); renderArmada(); renderKecepatan();
+      detakJam(); renderArmada(); renderKecepatan(); perbaruiKetLapis();
     }
     putarRaf = requestAnimationFrame(langkahPutar);
   }
@@ -4706,12 +5164,12 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
   /* ------------------------------------------------------------------ pasang kendali */
   function pasangKendali() {
     segmen('segPandang', '3d', function (v) { S.eng.setPandang(v); });
-    segmen('segLatar', S.latar, function (v) { S.latar = v; if (v === 'citra' && !S.site.citra) toast('Citra belum ada; memakai relief.'); S.eng.setLatar(v === 'citra' && !S.site.citra ? 'relief' : v); setKetLatar(); });
+    segmen('segLatar', S.latar, function (v) { S.latar = v; if (v === 'citra' && !S.site.citra) toast('Citra belum ada; memakai relief.'); S.eng.setLatar(v === 'citra' && !S.site.citra ? 'relief' : v); setKetLatar(); ringkasLapis(); });
     segmen('segJalan', S.modeJalan, function (v) {
-      S.modeJalan = v; S.eng.setModeJalan(v); legendaJalan();
+      S.modeJalan = v; S.eng.setModeJalan(v); legendaJalan(); ringkasLapis();
       if (v === 'kondisi' && !S.wr) toast(S.wrGagal ? 'Kondisi jalan tidak terbaca dari Water & Road.' : 'Memuat kondisi jalan dari Water & Road…');
     });
-    segmen('segLembar', 'ringkas', function (v) { $('kolomKanan').dataset.tab = v; $('kolomKanan').classList.remove('ciut'); $('kolomKanan').scrollTop = 0; });
+    segmen('segLembar', 'ringkas', function (v) { $('kolomKanan').dataset.tab = v; $('kolomKanan').classList.remove('ciut'); $('kolomKanan').scrollTop = 0; setTimeout(function () { S.eng.setSisip(hitungSisip(), true); }, 60); });
     segmen('segKecepatanPutar', '60', function (v) { if (S.putar) S.putar.laju = Number(v); });
     $('peganganLembar').onclick = function () { $('kolomKanan').classList.toggle('ciut'); setTimeout(function () { S.eng.setSisip(hitungSisip()); }, 280); };
     $('btnPerbesar').onclick = function () { S.eng.zoom(0.7); };
@@ -4741,6 +5199,7 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
   /* ------------------------------------------------------------------ mulai */
   async function mulai() {
     if (!window.THREE || !window.MesinTwin) { muatGagal('Pustaka 3D tidak termuat', 'Berkas halaman mungkin terpotong saat diunggah. Unggah ulang digital-twin.html.', true); return; }
+    pasangSemuaLipat();              // sebelum mesin dibuat: sisip kamera bergantung pada kartu yang disematkan
     S.sesi = G.sesi();
     try { await muatSite(); }
     catch (e) { muatGagal('Data site tidak bisa dimuat', e.message + '. Periksa koneksi, lalu coba lagi.', true); return; }
