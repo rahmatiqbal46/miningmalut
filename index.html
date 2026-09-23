@@ -125,7 +125,8 @@ body{
 .leaf{
   display:flex;gap:9px;align-items:center;width:100%;border:0;background:transparent;
   text-align:left;color:#cfe2e1;font:inherit;font-size:var(--f-body);font-weight:450;
-  height:30px;padding:0 9px 0 30px;border-radius:8px;cursor:pointer;position:relative;
+  min-height:30px;padding:5px 9px 5px 30px;line-height:1.25;text-wrap:balance;
+  border-radius:8px;cursor:pointer;position:relative;
   transition:background .14s,color .14s;
 }
 .item:hover,.leaf:hover,.ghead:hover{background:#ffffff0d;color:#eaf5f4}
@@ -475,7 +476,7 @@ iframe.page.show{display:block}
   <nav class="nav" id="nav">
    <button class="item active" data-page="home"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Home</button>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg>Mine Production<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="rtup">Real Time Unit Position</button><button class="leaf" data-page="operator">Operator Performance</button><button class="leaf" data-page="oe1on1">Data 1on1</button></div></div>
+    <div class="sub"><button class="leaf" data-page="rtup">Mining Malut Digital Twin</button><button class="leaf" data-page="operator">Operator Performance</button><button class="leaf" data-page="oe1on1">Data 1on1</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Mine Development<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="reklamasi">Capaian Reklamasi</button><button class="leaf" data-page="smr">Jam Kerja SMR</button><button class="leaf" data-page="water">Water &amp; Road</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Mine Plan<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -518,7 +519,7 @@ iframe.page.show{display:block}
      </div>
    </div>
    <!-- iframe pages -->
-   <iframe class="page" id="if_rtup" title="Real Time Unit Position"></iframe>
+   <iframe class="page" id="if_rtup" title="Mining Malut Digital Twin"></iframe>
    <iframe class="page" id="if_speed" title="Speed Watcher"></iframe>
    <iframe class="page" id="if_minedev" title="Mine Development"></iframe>
    <iframe class="page" id="if_evaluasi" title="Spatial Compliance"></iframe>
@@ -572,7 +573,7 @@ async function doLogin(em,pw){
 function fullName(){const e=email();if(!e)return'Pengguna';const lp=e.split('@')[0];return lp.split(/[._\-]+/).filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
 // pages
 const PAGES={
- rtup:{iframe:'if_rtup',url:'real_time_unit_position.html'},
+ rtup:{iframe:'if_rtup',url:'digital-twin.html'},
  speed:{iframe:'if_speed',url:'speed-watcher.html'},
  evaluasi:{iframe:'if_evaluasi',url:'evaluasi.html'},
  amora:{iframe:'if_amora',url:'amora.html'},
@@ -603,7 +604,7 @@ function showPage(key){
 }
 // bento
 const BENTO=[
- ['rtup','Real Time Unit Position','Mine Production','Peta live posisi excavator & dump truck, kecepatan, dan status GPS.',['Wialon','GPS live']],
+ ['rtup','Mining Malut Digital Twin','Mine Production','Peta 3D Pulau Pakal dari topo & citra terbaru, unit live, jalan, dan batas kecepatan.',['3D','GPS live','Topo & citra']],
  ['operator','Operator Performance','Mine Production','Ranking operator ANTAM dan PCM dari scorecard Minerva.',['Minerva','Ranking']],
  ['oe1on1','Data 1on1','Mine Production','Isian rencana, PPT mingguan, dan QAQC harian, lalu unduh workbook 1-on-1 OE dengan rumus aktif.',['Excel','Minerva','PPT']],
  ['speed','Speed Watcher','ROC','Pemantauan kecepatan unit & pelanggaran, live dari Wialon.',['Wialon','Speed']],
@@ -1174,7 +1175,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
    Direktori modul di halaman Home.
 
    Tiap modul punya pratinjau kecil yang menggambarkan isinya: jalur hauling
-   dengan unit berjalan untuk RTUP, jarum kecepatan untuk Speed Watcher, batang
+   dengan unit berjalan untuk Digital Twin, jarum kecepatan untuk Speed Watcher, batang
    deviasi ritase untuk Dispatch, dan seterusnya. Pratinjau bergerak saat kartu
    disentuh kursor atau mendapat fokus keyboard, dan diam total bila pengguna
    meminta gerak dikurangi.
@@ -1271,8 +1272,8 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
   };
 
   var MOD = [
-    ['rtup', 'Real Time Unit Position', 'Mine Production',
-     'Posisi excavator dan dump truck di peta site, disegarkan tiap 20 detik dari Wialon.'],
+    ['rtup', 'Mining Malut Digital Twin', 'Mine Production',
+     'Peta 3D Pulau Pakal dari topo dan citra terbaru: unit live, jalan dan batas kecepatan, air dan sump, serta putar ulang shift.'],
     ['operator', 'Operator Performance', 'Mine Production',
      'Nilai scorecard Minerva tiap operator ANTAM dan PCM: ranking, juara bulanan, dan yang perlu pendampingan.'],
     ['oe1on1', 'Data 1on1', 'Mine Production',
@@ -1313,7 +1314,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
       '.mod:focus-visible{outline:2px solid var(--t700);outline-offset:2px}',
       '.mod:active{transform:translateY(0)}',
       /* Tujuh kartu seukuran adalah kisi yang membosankan dan tidak menyatakan
-         apa pun. RTUP dibuat sepanjang dua kolom dengan pratinjau di samping:
+         apa pun. Digital Twin dibuat sepanjang dua kolom dengan pratinjau di samping:
          ia modul yang paling sering dibuka, dan tata letaknya mengatakan itu. */
       '@media(min-width:960px){.mods{grid-template-columns:repeat(3,1fr)}',
         '.mod.utama{grid-column:span 2;display:grid;grid-template-columns:1fr 1.05fr}',
