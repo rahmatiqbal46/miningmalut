@@ -4104,13 +4104,17 @@ window.AIR_PAKAL={"sumber":"Water & Road (minedev.html, window.PAKAL) \u00b7 top
     return m;
   }
   function kosongkan(e) { while (e.firstChild) e.removeChild(e.firstChild); return e; }
+  /* Shift berganti 06.30 dan 18.30 WIT — pergantian shift sebenarnya di site, sama
+     dengan label shift di Home. 07.00/19.00 hanya jadwal sinkronisasi Operator
+     Performance, bukan batas shift. Shift malam melewati tengah malam. */
+  var MULAI_SIANG = 6.5 * 3600000, MULAI_MALAM = 18.5 * 3600000;
   function jendelaShift(ms) {
-    var w = new Date(ms + WIT), jam = w.getUTCHours(), tm = Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate());
-    var siang = jam >= 7 && jam < 19, a, b;
-    if (siang) { a = tm + 7 * 3600000; b = tm + 19 * 3600000; }
-    else if (jam >= 19) { a = tm + 19 * 3600000; b = tm + 31 * 3600000; }
-    else { a = tm - 5 * 3600000; b = tm + 7 * 3600000; }
-    return { nama: siang ? 'Siang' : 'Malam', mulai: a - WIT, selesai: b - WIT, tanggal: tanggalWIT(a - WIT) };
+    var w = new Date(ms + WIT), tm = Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate()), dlm = ms + WIT - tm;
+    var siang = dlm >= MULAI_SIANG && dlm < MULAI_MALAM, a;
+    if (siang) a = tm + MULAI_SIANG;
+    else if (dlm >= MULAI_MALAM) a = tm + MULAI_MALAM;
+    else a = tm - 86400000 + MULAI_MALAM;                 // 18.30 kemarin
+    return { nama: siang ? 'Siang' : 'Malam', mulai: a - WIT, selesai: a + 12 * 3600000 - WIT, tanggal: tanggalWIT(a - WIT) };
   }
   function namaHari(ms) { var d = new Date(ms + WIT); return HARI[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + BULAN[d.getUTCMonth()]; }
 
