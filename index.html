@@ -606,7 +606,7 @@ function showPage(key){
 const BENTO=[
  ['rtup','Mining Malut Digital Twin','Mine Production','Peta 3D Pulau Pakal dari topo & citra terbaru, unit live, jalan, dan batas kecepatan.',['3D','GPS live','Topo & citra']],
  ['operator','Operator Performance','Mine Production','Ranking operator ANTAM dan PCM dari scorecard Minerva.',['Minerva','Ranking']],
- ['oe1on1','Dashboard Produksi','Mine Production','Capaian MTD dan YTD, sisa target dan kuota, waterfall, Pareto delay, dan OPEX jam kritis; isian dan unduhan Excel 1on1.',['MTD · YTD','OPEX','Excel 1on1']],
+ ['oe1on1','Dashboard Produksi','Mine Production','Capaian MTD dan YTD, sisa target dan kuota, waterfall, Pareto controllable delay, dan Operational Excellence; tab Data untuk isian dan unduhan Excel 1on1.',['MTD · YTD','Operational Excellence','Excel 1on1']],
  ['speed','Speed Watcher','ROC','Pemantauan kecepatan unit & pelanggaran, live dari Wialon.',['Wialon','Speed']],
  ['dispatch','Dispatch Monitoring','ROC','Deviasi ritase Minerva vs checker, kepatuhan operator, log isu & tindak lanjut.',['Deviasi','Kepatuhan','Log Isu']],
  ['reklamasi','Mine Development','Reklamasi · SMR · Water','Capaian reklamasi, jam kerja SMR, water & road.',['Capaian Reklamasi','Jam Kerja SMR','Water & Road']],
@@ -1278,7 +1278,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     ['operator', 'Operator Performance', 'Mine Production',
      'Nilai scorecard Minerva tiap operator ANTAM dan PCM: ranking, juara bulanan, dan yang perlu pendampingan.'],
     ['oe1on1', 'Dashboard Produksi', 'Mine Production',
-     'Capaian produksi bulan dan tahun berjalan, sisa target dan kuota, penyebab selisih, dan OPEX jam kritis dari QC dan Minerva. Isian 1on1 dan unduhan Excel ada di tab berikutnya.'],
+     'Capaian produksi MTD dan YTD, sisa target dan kuota, penyebab selisih, dan Operational Excellence dari QC dan Minerva. Isian dan unduhan Excel 1on1 ada di tab Data.'],
     ['speed', 'Speed Watcher', 'ROC',
      'Pelanggaran kecepatan direkam di server 24 jam, dengan batas sendiri untuk tiap ruas jalan.'],
     ['dispatch', 'Dispatch Monitoring', 'ROC',

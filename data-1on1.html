@@ -142,7 +142,7 @@
   .log{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;color:var(--text-secondary);max-height:260px;overflow:auto;background:var(--surface-2);
     border-radius:var(--r-inner);padding:8px 10px;white-space:pre}
 
-  /* minggu PPT */
+  /* Kertas Kerja Mingguan (per minggu) */
   .minggu{display:grid;grid-template-columns:170px 1fr 1fr;gap:10px;align-items:stretch;padding:12px 0;border-top:1px solid var(--border-soft)}
   .minggu:first-of-type{border-top:0}
   .minggu .tgl b{display:block;font-size:var(--f-t3);font-weight:640} .minggu .tgl small{color:var(--text-muted)}
@@ -178,10 +178,10 @@
   .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
   .ringkas-baca{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
   @media(max-width:560px){main{padding:14px 12px 60px}.topbar-inner{padding:8px 12px}}
-  /* sedang menyusun Excel / ringkasan bulan lain: isian dikunci supaya tidak berubah di tengah proses.
+  /* sedang menyusun Excel / ringkasan bulan lain: isian tab Data dikunci supaya tidak berubah di tengah proses.
      Saat dashboard dihitung, bulan & tanggal data dikunci (body.d-hitung) dan isian dashboard diredupkan (.d-sibuk). */
-  body.sibuk main .view:not(#v-ringkas):not(#v-dasbor), body.sibuk .kendali, body.sibuk nav.tabs, body.sibuk #tblArsip, body.sibuk .cek-list,
-  body.d-hitung .kendali, .d-sibuk .d-isian, .d-sibuk .d-ingat{pointer-events:none;opacity:.55}
+  body.sibuk #v-data .kunci-sibuk, body.sibuk .kendali, body.sibuk nav.tabs, body.sibuk #tblArsip, body.sibuk .cek-list, body.sibuk .adv-nav, body.sibuk #bannerKonflik,
+  body.d-hitung .kendali, .d-sibuk .d-pagi, .d-sibuk .d-ingat{pointer-events:none;opacity:.55}
 
   /* ================= View Excel (penampil workbook) ================= */
   body.xv-terbuka{overflow:hidden}
@@ -252,7 +252,8 @@
   .d-isian-info.ok{color:var(--good)} .d-isian-info.err{color:var(--bad)}
   .d-ingat{background:var(--warn-soft);box-shadow:inset 0 0 0 1px rgba(138,86,0,.25);border-radius:var(--r-panel);padding:18px 20px;margin-bottom:14px}
   .d-ingat h3{margin:0;font-size:var(--f-t2);line-height:var(--lh-t2);font-weight:700;color:#5c3900;letter-spacing:-.01em}
-  .d-ingat .d-kk-sub{color:#6b4600;font-size:var(--f-callout);line-height:1.5;margin:4px 0 12px;max-width:90ch}
+  .d-ingat .d-kk-sub{color:#6b4600;font-size:var(--f-callout);line-height:1.5;margin:4px 0 0;max-width:90ch}
+  .d-ingat .d-isian-baris{margin-top:12px}
   .d-ingat .field label{color:#6b4600}
   .d-ingat input{background:#fff}
   .d-ewh{background:#fff;border-radius:var(--r-inner);padding:8px 12px;min-width:210px}
@@ -310,6 +311,7 @@
   .d-leg i.garis{width:16px;height:0;border-top:2.5px solid;border-radius:0}
   .d-leg i.putus{width:16px;height:0;border-top:2px dashed;border-radius:0}
   .d-leg i.titik{width:9px;height:9px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--text-secondary)}
+  .d-leg i.titik-garis{width:16px;height:0;border-top:2.5px dotted;border-radius:0}
   .d-panel-j{font-size:var(--f-callout);font-weight:620;color:var(--text-secondary);margin:2px 0 2px}
   .d-dua{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
   @media(max-width:980px){.d-dua{grid-template-columns:1fr}}
@@ -334,6 +336,16 @@
   .d-tbl tr.utama td{font-weight:640;color:var(--text)}
   .d-tbl tr.sub td{color:var(--text-secondary);font-size:var(--f-sub);padding-top:4px;padding-bottom:4px}
   .d-tbl tr.pisah td{border-top:2px solid var(--border)}
+  .d-sisa2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  @media(max-width:760px){.d-sisa2{grid-template-columns:1fr}}
+  .d-sisa{background:var(--surface-2);border-radius:var(--r-inner);padding:12px 14px;min-width:0}
+  .d-sisa-j{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--f-callout);font-weight:640;color:var(--text-secondary)}
+  .d-sisa-v{font-size:26px;line-height:32px;font-weight:720;letter-spacing:-.02em;margin:4px 0 2px;white-space:nowrap}
+  .d-sisa-v small{font-size:var(--f-callout);font-weight:560;color:var(--text-muted);margin-left:6px;letter-spacing:0}
+  .d-sisa .d-bar{margin:6px 0 10px;background:#dfe8e7}
+  .d-sisa-g{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr) minmax(0,max-content) minmax(0,1fr);gap:3px 12px;font-size:var(--f-callout);line-height:1.45}
+  .d-sisa-g span{color:var(--text-muted)} .d-sisa-g b{font-weight:640;white-space:nowrap}
+  @media(max-width:420px){.d-sisa-g{grid-template-columns:minmax(0,max-content) minmax(0,1fr)}}
   .d-tbl-sisa td:first-child{min-width:170px}
   @media(max-width:760px){
     .d-tbl-lekat td:first-child,.d-tbl-lekat th:first-child{position:sticky;left:0;background:var(--surface);z-index:1;box-shadow:1px 0 0 var(--border-soft)}
@@ -349,6 +361,16 @@
   .d-rinci summary{cursor:pointer;font-size:var(--f-callout);font-weight:620;color:var(--accent);width:max-content}
   .d-rinci[open] summary{margin-bottom:6px}
 
+  .d-front td{padding:5px 8px}
+  .d-front td:first-child{color:var(--text-secondary)}
+  .d-front td b{font-weight:680}
+  .d-front td small{font-size:var(--f-sub);color:var(--text-muted);margin-left:4px}
+  .d-front tbody.pisah tr:first-child td{border-top:1px solid var(--border)}
+  .d-front tr[data-tt]:hover td{background:var(--surface-2)}
+  .d-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
+  .d-grid3>.d-kartu{margin-bottom:0}
+  .d-opx-angka{display:grid;gap:0;margin:2px 0 2px}
+  .d-opx-acuan{font-size:var(--f-sub);color:var(--text-muted);margin:0 0 6px}
   .d-met4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   @media(max-width:1180px) and (min-width:981px){.d-met4{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:600px){.d-met4{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -394,7 +416,63 @@
   /* layar penuh untuk rapat pagi */
   #v-dasbor:fullscreen{overflow:auto;background:var(--bg);padding:20px 28px 40px}
   #v-dasbor:-webkit-full-screen{overflow:auto;background:var(--bg);padding:20px 28px 40px}
-  @media print{header.topbar,.d-atas-k,.d-isian,.d-ingat,.d-proses{display:none!important}.d-kartu,.d-kpi{break-inside:avoid}}
+  @media print{header.topbar,.d-atas-k,.d-isian,.d-ingat,.d-pagi,.d-proses{display:none!important}.d-kartu,.d-kpi{break-inside:avoid}}
+
+  /* ================= Tab Data: langkah berurutan + checklist (§27.13) ================= */
+  .data-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+  .data-utama{min-width:0;display:grid;gap:12px}
+  .data-samping{position:sticky;top:70px;min-width:0}
+  @media(max-width:980px){.data-grid{grid-template-columns:1fr}.data-samping{order:-1;position:static}}
+  .lk{background:var(--surface);border-radius:var(--r-panel);box-shadow:var(--shadow);padding:14px 16px;min-width:0;scroll-margin-top:70px}
+  .lk-kepala{display:flex;align-items:center;gap:6px 10px;margin-bottom:12px;flex-wrap:wrap}
+  .lk-kepala h3{margin:0;font-size:var(--f-t3);line-height:var(--lh-t3);font-weight:650;letter-spacing:-.01em;flex:1 1 150px;min-width:0}
+  .lk-no{flex:0 0 24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:var(--f-callout);font-weight:700;color:#fff;background:var(--text-muted)}
+  .lk.ok .lk-no{background:var(--good)} .lk.belum .lk-no{background:var(--accent)}
+  .lk-kepala h3 .unit{font-weight:560;letter-spacing:0}
+  .lk-st{flex-shrink:0}
+  .lk-opsi{display:flex;align-items:center;gap:7px;margin:0 0 10px;color:var(--text-secondary)}
+  .lk-tabel td.perlu input{box-shadow:inset 0 0 0 1.5px var(--amber);background:#fff8ea}
+  input.salah,.lk-tabel td input.salah{box-shadow:inset 0 0 0 1.5px var(--bad);background:var(--bad-soft)}
+  .lk-rinci{margin-top:10px}
+  .lk-rinci summary{cursor:pointer;font-size:var(--f-callout);font-weight:620;color:var(--accent);width:max-content}
+  .lk-rinci[open] summary{margin-bottom:8px}
+  .lk-tabel{box-shadow:inset 0 0 0 1px var(--border-soft)}
+  .lk-tabel td input{min-width:90px}
+  .adv{margin-top:4px}
+  .adv-tombol{appearance:none;border:0;background:none;cursor:pointer;font-family:var(--font);font-size:var(--f-body);font-weight:650;color:var(--text-secondary);display:inline-flex;align-items:center;gap:9px;padding:8px 2px}
+  .adv-tombol::before{content:'';width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s var(--ease)}
+  .adv-tombol[aria-expanded="true"]::before{transform:rotate(45deg)}
+  .adv-tombol:hover{color:var(--text)}
+  .adv-tombol .n,.adv-nav .n{display:inline-block;min-width:16px;height:16px;line-height:16px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:var(--f-foot);font-weight:640;margin-left:5px;padding:0 4px;text-align:center}
+  .adv-nav{flex-wrap:wrap;margin:4px 0 2px}
+  .adv-nav button{height:26px}
+  .adv-p{margin-top:6px}
+  .adv-p > .section-head:first-child{margin-top:12px}
+  .cek-kartu h3{margin:0 0 10px}
+  button.cek{width:100%;text-align:left;border:0;cursor:pointer;font-family:var(--font);color:inherit;font-size:var(--f-body)}
+  button.cek:hover{box-shadow:inset 0 0 0 1px var(--border)}
+  .cek-catatan{display:grid;gap:6px;margin-top:10px}
+  .cek-catatan:empty{display:none}
+  .cek-catatan div{font-size:var(--f-sub);line-height:1.45;padding:7px 10px;border-radius:var(--r-kecil);background:var(--warn-soft);color:var(--warn)}
+  .cek-catatan div.err{background:var(--bad-soft);color:var(--bad)}
+  .cek-aksi{margin-top:12px}
+  .cek-aksi .btn{flex:1}
+  .cek-kartu #unduhInfo{margin-top:8px}
+  .cek-kartu #unduhHasil{margin-top:10px}
+  .cek-kartu #unduhHasil .banner{margin-bottom:8px}
+
+  /* ================= Ore QC harian ringkas (dashboard, admin) ================= */
+  .d-pagi{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;background:var(--surface);border-radius:var(--r-panel);box-shadow:var(--shadow);padding:8px 12px;margin-bottom:12px;font-size:var(--f-callout)}
+  .d-pagi-j{font-weight:650;color:var(--text)}
+  .d-pagi label{display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary);font-weight:560;font-size:var(--f-callout)}
+  .d-pagi input{width:112px;min-height:26px;padding:3px 8px}
+  .d-pagi input[type=date]{width:148px}
+  .d-pagi .btn{height:26px;padding:0 10px}
+  .d-pagi-info{color:var(--text-muted);font-size:var(--f-sub)}
+  .d-pagi-info.ok{color:var(--good)} .d-pagi-info.err{color:var(--bad)}
+  .d-pagi .d-chips{margin:0;align-items:center}
+  .d-pagi.ringkas{padding:6px 12px}
+  button.d-chip.on{box-shadow:inset 0 0 0 1.5px currentColor}
 </style>
 </head>
 <body>
@@ -402,14 +480,7 @@
   <div class="topbar-inner">
     <nav class="tabs" id="tabs" aria-label="Bagian Dashboard Produksi">
       <button class="tab-btn active" data-v="dasbor">Dashboard</button>
-      <button class="tab-btn" data-v="ringkas">Excel 1on1</button>
-      <button class="tab-btn" data-v="plan">Rencana</button>
-      <button class="tab-btn" data-v="ppt">PPT mingguan<span class="n" id="nPpt" hidden></span></button>
-      <button class="tab-btn" data-v="qaqc">QAQC harian<span class="n" id="nQaqc" hidden></span></button>
-      <button class="tab-btn" data-v="loader">Loader</button>
-      <button class="tab-btn" data-v="biaya">Biaya</button>
-      <button class="tab-btn" data-v="drawm">DRA &amp; WM</button>
-      <button class="tab-btn" data-v="template" id="tabTemplate" hidden>Template</button>
+      <button class="tab-btn" data-v="data">Data<span class="n" id="nData" hidden></span></button>
     </nav>
     <div class="kendali">
       <label for="inBulan">Bulan</label>
@@ -423,7 +494,7 @@
 
 <main>
   <div id="bannerSesi" class="banner err" hidden>Sesi login berakhir. Keluar lalu masuk lagi dari MiningMalut, lalu buka halaman ini kembali.</div>
-  <div id="bannerBaca" class="banner info" hidden>Isian hanya bisa diubah admin. Dashboard tetap bisa dilihat dan Excel tetap bisa diunduh.</div>
+  <div id="bannerBaca" class="banner info" hidden>Isian hanya bisa diubah admin.</div>
   <div id="bannerKonflik" class="banner warn" hidden></div>
 
   <!-- =================================================================== DASHBOARD (§27) -->
@@ -435,7 +506,7 @@
       </div>
       <div class="d-atas-k">
         <div class="d-seg" role="group" aria-label="Lompat ke bagian">
-          <button type="button" data-lompat="d-mtd">MTD</button><button type="button" data-lompat="d-ytd">YTD</button><button type="button" data-lompat="d-opex">OPEX</button>
+          <button type="button" data-lompat="d-mtd">MTD</button><button type="button" data-lompat="d-ytd">YTD</button><button type="button" data-lompat="d-opex" title="Operational Excellence">OE</button>
         </div>
         <button class="btn" type="button" id="btnDHitung">Hitung ulang</button>
         <button class="btn" type="button" id="btnDLayar">Layar penuh</button>
@@ -448,129 +519,163 @@
     <div id="dIsi"><div class="d-kartu"><div class="d-kosong">Memuat dashboard…</div></div></div>
   </section>
 
-  <!-- =================================================================== EXCEL 1ON1 -->
-  <section class="view" id="v-ringkas">
-    <div class="section-head">
-      <h2 id="judulRingkas">Excel 1on1</h2>
-      <span class="eyebrow">Workbook "1 on 1 Nikel OE" kantor pusat, terisi dari tanggal 1 sampai tanggal cut-off, dengan rumus aktif. Data Minerva diambil saat tombol unduh ditekan.</span>
-    </div>
-    <div class="grid-2">
-      <div class="card">
-        <h3>Kesiapan isian</h3>
-        <div class="cek-list" id="cekList"></div>
-      </div>
-      <div class="card">
-        <h3>Unduh Excel</h3>
-        <div class="field" style="margin-bottom:10px">
-          <label><input type="checkbox" id="cbPotong" checked style="min-height:0;vertical-align:-2px"> Rencana MTD &amp; mingguan dihitung sampai tanggal cut-off</label>
-          <span class="kecil muted">Bila tidak dicentang, sel cut-off di PLAN dikosongkan dan rencana dihitung sebulan penuh. Data aktual tetap sampai tanggal cut-off.</span>
-        </div>
-        <div class="baris-btn">
-          <button class="btn primary besar" id="btnUnduh">Unduh Excel</button>
-          <button class="btn besar" id="btnLihat" title="Susun workbook lalu tampilkan di halaman ini: cek angka cepat, pilih & salin baris/kolom">Lihat Excel</button>
-          <span class="kecil muted" id="unduhInfo"></span>
-        </div>
-        <div id="unduhProses" hidden>
-          <div class="progres"><i id="progresBar"></i></div>
-          <div class="kecil" id="progresTxt"></div>
-        </div>
-        <div id="unduhHasil" style="margin-top:12px" hidden></div>
+  <!-- =================================================================== DATA: isian Excel 1on1 (§27.13) -->
+  <section class="view" id="v-data">
+    <div class="d-atas">
+      <div>
+        <h1 id="judulData">Data</h1>
+        <div class="d-atas-s" id="dataSub"></div>
       </div>
     </div>
-    <div class="section-head"><h2>Arsip bulan</h2><span class="eyebrow">Yang disimpan hanya isian tiap bulan, bukan berkas Excel. Excel bulan lalu disusun ulang saat diunduh: isian bulan itu + data Minerva yang diambil lagi, sebulan penuh (1 s.d. akhir bulan), memakai template terbaru. Kolom YTD: ringkasan bulan itu (EWH, tonase, penjualan, jam barging) untuk sheet WF YTD bulan-bulan berikutnya; dihitung otomatis saat unduh bila belum ada atau isiannya berubah.</span></div>
-    <div class="card"><div class="table-wrap" style="border:0"><table id="tblArsip"><tbody><tr><td class="muted">Memuat daftar bulan…</td></tr></tbody></table></div></div>
-    <div class="section-head"><h2>Catatan hasil unduhan terakhir</h2><span class="eyebrow">Loader terpilih, porsi EFO, dan hari tanpa data Minerva. Hanya tersimpan selama halaman terbuka.</span></div>
-    <div class="card"><div class="log" id="logUnduh">Belum ada unduhan di sesi ini.</div></div>
-  </section>
+    <div class="data-grid">
+      <div class="data-utama">
+        <section class="lk kunci-sibuk" id="lkRencana" aria-labelledby="lkRencanaJ">
+          <div class="lk-kepala"><span class="lk-no">1</span><h3 id="lkRencanaJ">Rencana bulanan</h3><span class="lk-st" id="stRencana"></span></div>
+          <div class="form" id="formTargetUtama"></div>
+        </section>
 
-  <!-- =================================================================== RENCANA -->
-  <section class="view" id="v-plan">
-    <div class="section-head"><h2>Target bulanan</h2><span class="eyebrow">Target produksi dan TMM tidak dibagi ANTAM/BUMD; pembaginya rasio produktivitas alat. Mengisi PLAN!E105, E106, C108:D108, E259, E262.</span></div>
-    <div class="card"><div class="form" id="formTarget"></div></div>
-    <div class="section-head"><h2>Faktor tambang (asumsi PPT)</h2><span class="eyebrow">Recovery dipakai untuk LGO, LGSO, MGSO, HGSO; sisanya menjadi waste. Ni dilution absolut untuk semua jenis ore. PLAN!E78:E79.</span></div>
-    <div class="card"><div class="form" id="formFaktor"></div></div>
-    <div class="section-head"><h2>Parameter jam kerja</h2><span class="eyebrow">PLAN!D10:D36. Nilai bawaan dari berkas Agustus 2026.</span></div>
-    <div class="card"><div class="form" id="formParam"></div></div>
-    <div class="section-head"><h2>Hari libur &amp; puasa</h2><span class="eyebrow">Centang hanya bila operasi berhenti: jam kerja rencana hari itu jadi 0 dan target bulan dibagi ke hari lain (PLAN baris 6). File HO Agustus 2026 tidak mencentang 17 Agustus. Jam puasa mengurangi jam terjadwal (baris 7).</span></div>
-    <div class="table-wrap" style="max-height:520px"><table id="tblKalender"></table></div>
-    <div class="section-head"><h2>Setelan Dashboard Produksi</h2><span class="eyebrow">Berlaku untuk semua bulan, tidak per bulan. Kuota dipakai kartu Sisa kuota di bagian YTD. Acuan OPEX (ton per hari, jumlah DS + NS) dipakai kartu dan grafik OPEX; kosong = nilai bawaan dari Excel OPEX lama.</span></div>
-    <div class="card"><div class="form" id="formDasbor"></div><div class="kecil muted" id="infoDasborSet" style="margin-top:10px"></div></div>
-  </section>
+        <section class="lk kunci-sibuk" id="lkQaqc" aria-labelledby="lkQaqcJ">
+          <div class="lk-kepala"><span class="lk-no">2</span><h3 id="lkQaqcJ">QAQC harian</h3><span class="lk-st" id="stQaqc"></span></div>
+          <div class="baris-btn">
+            <label class="btn primary" for="fileQaqc">Pilih berkas QAQC…</label>
+            <input type="file" id="fileQaqc" accept=".xlsx" hidden>
+            <span class="kecil muted" id="qaqcInfo"></span>
+          </div>
+          <details class="lk-rinci" id="rinciQaqc"><summary>Tabel QAQC harian</summary>
+            <label class="kecil lk-opsi"><input type="checkbox" id="cbLgo" checked> LGO Rampstock dihitung sebagai waste (TMM = TMM QAQC)</label>
+            <div class="table-wrap" style="max-height:560px"><table id="tblQaqc"></table></div></details>
+        </section>
 
-  <!-- =================================================================== PPT -->
-  <section class="view" id="v-ppt">
-    <div class="section-head"><h2>Rencana mingguan dari slide PPT</h2>
-      <span class="eyebrow">Unggah gambar tabel <b>Total Reserves</b> dan <b>Mining Plan</b> tiap minggu untuk ANTAM dan BUMD (front PCM). Angka dibaca otomatis di peramban, dicek silang (jumlah, total, densitas, Ni/Fe), lalu kamu periksa sebelum disimpan. Gambar tidak disimpan.</span></div>
-    <div class="banner info" id="pptInfo">Hari 1–7 di slide = Senin–Minggu minggu itu. Minggu yang melintasi pergantian bulan cukup diisi sekali: angkanya dipakai kedua bulan, masing-masing hanya untuk tanggal miliknya.</div>
-    <div class="card" id="daftarMinggu"></div>
-  </section>
+        <section class="lk kunci-sibuk" id="lkLoader" aria-labelledby="lkLoaderJ">
+          <div class="lk-kepala"><span class="lk-no">3</span><h3 id="lkLoaderJ">Pilihan loader</h3><span class="lk-st" id="stLoader"></span></div>
+          <div class="baris-btn">
+            <button class="btn" id="btnCekLoader" type="button">Ambil pilihan otomatis dari Minerva</button>
+            <button class="btn primary" id="btnLoaderDicek" type="button" hidden>Tandai sudah dicek</button>
+            <span class="kecil muted" id="loaderInfo"></span>
+          </div>
+          <details class="lk-rinci" id="rinciLoader"><summary>Tabel loader harian</summary><div class="table-wrap" style="max-height:560px"><table id="tblLoader"></table></div></details>
+        </section>
 
-  <!-- =================================================================== QAQC -->
-  <section class="view" id="v-qaqc">
-    <div class="section-head"><h2>Produksi harian tervalidasi (QAQC)</h2>
-      <span class="eyebrow">Unggah "Laporan Harian Produksi UBPN Malut" (.xlsx). Dibaca dari sheet MINING ANTAM dan MINING KONTRAKTOR: ore = kolom Total Ore (wmt), waste = kolom Waste × densitas, barging BUMD = Rampstock-Jetty + ETO-Jetty + EFO-Jetty (atau isian manual di bawah). Mengisi ACT baris 46–47, 120–121, 136. Hari yang belum ada di berkas memakai ore isian pagi dari tab Dashboard (waste tetap menunggu berkas).</span></div>
-    <div class="card">
-      <div class="baris-btn">
-        <label class="btn" for="fileQaqc">Pilih berkas QAQC…</label>
-        <input type="file" id="fileQaqc" accept=".xlsx" hidden>
-        <label class="kecil"><input type="checkbox" id="cbLgo" checked style="min-height:0;vertical-align:-2px"> LGO Rampstock dihitung sebagai waste (supaya TMM = TMM QAQC)</label>
-        <span class="kecil muted" id="qaqcInfo"></span>
-      </div>
-    </div>
-    <div class="card" style="margin-top:14px">
-      <h3>Barging BUMD harian · isian manual</h3>
-      <div class="kecil muted" style="margin:4px 0 10px">Tempel angka barging (WMT) satu per hari, berurutan mulai tanggal yang dipilih. Pemisah boleh baris baru, spasi, atau tab (bisa langsung salin satu kolom dari Excel). <b>8,052</b> dan <b>8.052</b> sama-sama dibaca 8.052 WMT. Isian manual menggantikan angka barging dari berkas QAQC dan tidak hilang saat berkas QAQC diunggah ulang. Kolom Barging BUMD di tabel bawah juga bisa diubah per hari; kosongkan selnya untuk kembali ke angka berkas.</div>
-      <div class="baris-btn" style="align-items:flex-start">
-        <label class="kecil">Mulai tanggal<br><input type="date" id="inBargingMulai"></label>
-        <textarea id="inBargingTempel" rows="3" style="flex:1;min-width:240px;font:inherit;font-variant-numeric:tabular-nums" placeholder="8,052&#10;0&#10;0&#10;4,598&#10;…"></textarea>
-        <div class="baris-btn" style="flex-direction:column;align-items:stretch">
-          <button class="btn primary" id="btnBargingTerapkan">Terapkan</button>
-          <button class="btn" id="btnBargingHapus">Hapus isian manual</button>
+        <section class="lk kunci-sibuk" id="lkBbm" aria-labelledby="lkBbmJ">
+          <div class="lk-kepala"><span class="lk-no">4</span><h3 id="lkBbmJ">Konsumsi BBM ANTAM <span class="unit">· liter per minggu</span></h3><span class="lk-st" id="stBbm"></span></div>
+          <div class="table-wrap lk-tabel"><table id="tblBbm"></table></div>
+        </section>
+
+        <section class="lk kunci-sibuk" id="lkHm" aria-labelledby="lkHmJ">
+          <div class="lk-kepala"><span class="lk-no">5</span><h3 id="lkHmJ">HM excavator sewa BUMD <span class="unit">· jam per minggu</span></h3><span class="lk-st" id="stHm"></span></div>
+          <div class="table-wrap lk-tabel"><table id="tblHm"></table></div>
+        </section>
+
+        <div class="adv">
+          <button type="button" class="adv-tombol" id="btnAdv" aria-expanded="false" aria-controls="advIsi">Advanced Data<span class="n" id="nAdv" hidden></span></button>
+          <div id="advIsi" hidden>
+            <div class="d-seg adv-nav" id="advNav" role="group" aria-label="Bagian Advanced Data">
+              <button type="button" data-adv="rencana" class="on" aria-pressed="true">Rencana lanjutan</button>
+              <button type="button" data-adv="kkm" aria-pressed="false">Kertas Kerja Mingguan<span class="n" id="nKkm" hidden></span></button>
+              <button type="button" data-adv="barging" aria-pressed="false">Barging BUMD</button>
+              <button type="button" data-adv="biaya" aria-pressed="false">Biaya</button>
+              <button type="button" data-adv="drawm" aria-pressed="false">DRA &amp; WM</button>
+              <button type="button" data-adv="dasbor" aria-pressed="false">Setelan dashboard</button>
+              <button type="button" data-adv="arsip" aria-pressed="false">Arsip bulan</button>
+              <button type="button" data-adv="template" aria-pressed="false" id="advTemplate" hidden>Template</button>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-rencana">
+              <div class="section-head"><h2>Target lanjutan</h2><span class="eyebrow">Pembagi target ANTAM/BUMD = rasio produktivitas alat. PLAN!C108:D108, E259, E262; PORT!D6.</span></div>
+              <div class="card"><div class="form" id="formTarget"></div></div>
+              <div class="section-head"><h2>Faktor tambang</h2><span class="eyebrow">Recovery dipakai untuk LGO, LGSO, MGSO, HGSO; sisanya waste. Ni dilution absolut untuk semua jenis ore. PLAN!E78:E79, I18.</span></div>
+              <div class="card"><div class="form" id="formFaktor"></div></div>
+              <div class="section-head"><h2>Parameter jam kerja</h2><span class="eyebrow">PLAN!D10:D36. Nilai bawaan dari berkas Agustus 2026.</span></div>
+              <div class="card"><div class="form" id="formParam"></div></div>
+              <div class="section-head"><h2>Hari libur &amp; puasa</h2><span class="eyebrow">Centang libur hanya bila operasi berhenti (jam kerja rencana hari itu 0). Jam puasa mengurangi jam terjadwal.</span></div>
+              <div class="table-wrap" style="max-height:520px"><table id="tblKalender"></table></div>
+              <div class="section-head"><h2>Opsi Excel</h2></div>
+              <div class="card">
+                <label class="kecil"><input type="checkbox" id="cbPotong" checked style="min-height:0;vertical-align:-2px"> Rencana MTD &amp; mingguan dihitung sampai tanggal cut-off</label>
+                <div class="kecil muted" style="margin-top:4px">Tidak dicentang = rencana sebulan penuh; data aktual tetap sampai cut-off.</div>
+              </div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-kkm" hidden>
+              <div class="section-head"><h2>Kertas Kerja Mingguan</h2>
+                <span class="eyebrow">Unggah gambar tabel <b>Total Reserves</b> dan <b>Mining Plan</b> tiap minggu untuk ANTAM dan BUMD (front PCM). Angka dibaca di peramban, dicek silang, lalu diperiksa sebelum disimpan. Gambar tidak disimpan.</span></div>
+              <div class="banner info" id="pptInfo">Hari 1–7 = Senin–Minggu minggu itu. Minggu yang melintasi pergantian bulan cukup diisi sekali.</div>
+              <div class="card" id="daftarMinggu"></div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-barging" hidden>
+              <div class="section-head"><h2>Barging BUMD harian · isian manual</h2><span class="eyebrow">Menggantikan angka barging berkas QAQC per hari dan tidak hilang saat berkas diunggah ulang. Kosongkan sel di tabel QAQC untuk kembali ke angka berkas.</span></div>
+              <div class="card">
+                <div class="kecil muted" style="margin:0 0 10px">Tempel angka barging (WMT) satu per hari, berurutan mulai tanggal yang dipilih; boleh salin satu kolom dari Excel. <b>8,052</b> dan <b>8.052</b> sama-sama dibaca 8.052 WMT.</div>
+                <div class="baris-btn" style="align-items:flex-start">
+                  <label class="kecil">Mulai tanggal<br><input type="date" id="inBargingMulai"></label>
+                  <textarea id="inBargingTempel" rows="3" style="flex:1;min-width:240px;font:inherit;font-variant-numeric:tabular-nums" placeholder="8,052&#10;0&#10;0&#10;4,598&#10;…"></textarea>
+                  <div class="baris-btn" style="flex-direction:column;align-items:stretch">
+                    <button class="btn primary" id="btnBargingTerapkan">Terapkan</button>
+                    <button class="btn" id="btnBargingHapus">Hapus isian manual</button>
+                  </div>
+                </div>
+                <div class="kecil" id="bargingInfo" style="margin-top:8px"></div>
+              </div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-biaya" hidden>
+              <div class="section-head"><h2>Kurs &amp; BBM acuan per minggu</h2><span class="eyebrow">COST!C22:G23. Kosong = nilai bawaan template.</span></div>
+              <div class="table-wrap"><table id="tblKurs"></table></div>
+              <div class="section-head"><h2>Tarif &amp; nilai kontrak</h2><span class="eyebrow">COST baris 174–216. Kosong = nilai bawaan template.</span></div>
+              <div class="card"><div class="form" id="formTarif"></div></div>
+              <div class="section-head"><h2>Plan biaya MTD</h2><span class="eyebrow">COST!C145:C148. Kosong = nilai bawaan template.</span></div>
+              <div class="card"><div class="form" id="formPlanBiaya"></div></div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-drawm" hidden>
+              <div class="section-head"><h2>Dynamic Road Analyzer (DRA)</h2><span class="eyebrow">Skor jalan (%) pada dua tanggal penilaian bulan ini. RSI dan MTD dihitung rumus.</span></div>
+              <div class="table-wrap"><table id="tblDra"></table></div>
+              <div class="section-head"><h2>Water Management (WM)</h2><span class="eyebrow">20 sump modul Water &amp; Road. Kapasitas rencana, volume aktual awal minggu 1, dan ritase pengerukan per minggu (× 13,3 BCM per ritase).</span></div>
+              <div class="table-wrap"><table id="tblWm"></table></div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-dasbor" hidden>
+              <div class="section-head"><h2>Setelan Dashboard Produksi</h2><span class="eyebrow">Berlaku untuk semua bulan. Acuan Operational Excellence dalam ton per hari (DS + NS); kosong = nilai bawaan.</span></div>
+              <div class="card"><div class="form" id="formDasbor"></div><div class="kecil muted" id="infoDasborSet" style="margin-top:10px"></div></div>
+            </div>
+
+            <div class="adv-p" id="adv-arsip" hidden>
+              <div class="section-head"><h2>Arsip bulan</h2><span class="eyebrow">Excel bulan lalu disusun ulang dari isian tersimpan + data Minerva sebulan penuh. Kolom YTD = ringkasan bulan itu untuk sheet WF YTD.</span></div>
+              <div class="card"><div class="table-wrap" style="border:0"><table id="tblArsip"><tbody><tr><td class="muted">Memuat daftar bulan…</td></tr></tbody></table></div></div>
+              <div class="section-head"><h2>Catatan unduhan terakhir</h2><span class="eyebrow">Loader terpilih, porsi EFO, dan hari tanpa data Minerva. Hanya selama halaman terbuka.</span></div>
+              <div class="card"><div class="log" id="logUnduh">Belum ada unduhan di sesi ini.</div></div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-template" hidden>
+              <div class="section-head"><h2>Template Excel</h2><span class="eyebrow">Disimpan di Supabase Storage (bucket privat oe-1on1), bukan di GitHub, karena repo publik.</span></div>
+              <div class="card">
+                <div id="tplInfo" class="kecil">Memeriksa…</div>
+                <div class="baris-btn" style="margin-top:10px">
+                  <label class="btn" for="fileTpl">Unggah template baru…</label>
+                  <input type="file" id="fileTpl" accept=".xlsx" hidden>
+                  <span class="kecil" id="tplStatus"></span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="kecil" id="bargingInfo" style="margin-top:8px"></div>
-    </div>
-    <div class="table-wrap" style="margin-top:14px;max-height:620px"><table id="tblQaqc"></table></div>
-  </section>
 
-  <!-- =================================================================== LOADER -->
-  <section class="view" id="v-loader">
-    <div class="section-head"><h2>Excavator yang dihitung per hari</h2>
-      <span class="eyebrow">Template menghitung jam kerja satu loader mining ANTAM (ACT!G6), satu loader mining BUMD (G79), dan dua loader barging BUMD (G99:G100). Bawaan: excavator dengan ritase terbanyak ke truck 9RD (ANTAM), ke DTR/DTH (BUMD), dan dua teratas BARGING. Isi kolom ganti hanya bila pilihan otomatis perlu dikoreksi.</span></div>
-    <div class="card"><div class="baris-btn"><button class="btn" id="btnCekLoader">Periksa pilihan otomatis dari Minerva</button><span class="kecil muted" id="loaderInfo"></span></div></div>
-    <div class="table-wrap" style="margin-top:14px;max-height:620px"><table id="tblLoader"></table></div>
-  </section>
-
-  <!-- =================================================================== BIAYA -->
-  <section class="view" id="v-biaya">
-    <div class="section-head"><h2>Kurs &amp; BBM acuan per minggu</h2><span class="eyebrow">COST!C22:G23. Kosong = nilai bawaan template.</span></div>
-    <div class="table-wrap"><table id="tblKurs"></table></div>
-    <div class="section-head"><h2>Tarif &amp; nilai kontrak</h2><span class="eyebrow">Tabel biaya COST baris 174–216. Kosong = nilai bawaan template (dari cost_structure, mohon dicek).</span></div>
-    <div class="card"><div class="form" id="formTarif"></div></div>
-    <div class="section-head"><h2>Kuantitas mingguan</h2><span class="eyebrow">Konsumsi BBM ANTAM dan HM excavator sewa BUMD. Sewa excavator ANTAM tidak dihitung lagi.</span></div>
-    <div class="table-wrap"><table id="tblMingguan"></table></div>
-    <div class="section-head"><h2>Plan biaya MTD</h2><span class="eyebrow">Kolom Plan tabel Total Mining Operation Cost (MTD), COST!C145:C148. Kosong = nilai bawaan template. Total plan = Biaya Jasa Mining + Biaya Jasa Barging.</span></div>
-    <div class="card"><div class="form" id="formPlanBiaya"></div></div>
-  </section>
-
-  <!-- =================================================================== DRA & WM -->
-  <section class="view" id="v-drawm">
-    <div class="section-head"><h2>Dynamic Road Analyzer (DRA)</h2><span class="eyebrow">Skor jalan (%) pada dua tanggal penilaian bulan ini. RSI dan MTD dihitung rumus. Fitur Water &amp; Road belum menyimpan skor per minggu, jadi diisi di sini.</span></div>
-    <div class="table-wrap"><table id="tblDra"></table></div>
-    <div class="section-head"><h2>Water Management (WM)</h2><span class="eyebrow">Nama dan urutan sump mengikuti modul Water &amp; Road (20 sump). Isi kapasitas rencana (Plan) dan volume aktual awal minggu 1, lalu ritase pengerukan per minggu (× 13,3 BCM per ritase di template). Aktual minggu berikutnya dan FK dihitung rumus Excel.</span></div>
-    <div class="table-wrap"><table id="tblWm"></table></div>
-  </section>
-
-  <!-- =================================================================== TEMPLATE (admin) -->
-  <section class="view" id="v-template">
-    <div class="section-head"><h2>Template Excel</h2><span class="eyebrow">Template kosong versi perbaikan disimpan di Supabase Storage (bucket privat oe-1on1), bukan di GitHub, karena repo publik.</span></div>
-    <div class="card">
-      <div id="tplInfo" class="kecil">Memeriksa…</div>
-      <div class="baris-btn" style="margin-top:10px">
-        <label class="btn" for="fileTpl">Unggah template baru…</label>
-        <input type="file" id="fileTpl" accept=".xlsx" hidden>
-        <span class="kecil" id="tplStatus"></span>
-      </div>
+      <aside class="data-samping" aria-label="Checklist Excel 1on1">
+        <div class="card cek-kartu">
+          <h3 id="judulRingkas">Checklist Excel 1on1</h3>
+          <div class="cek-list" id="cekList"></div>
+          <div class="cek-catatan" id="cekCatatan"></div>
+          <div class="baris-btn cek-aksi">
+            <button class="btn primary" id="btnUnduh" type="button">Unduh Excel</button>
+            <button class="btn" id="btnLihat" type="button" title="Susun workbook lalu tampilkan di halaman ini">Lihat Excel</button>
+          </div>
+          <div class="kecil muted" id="unduhInfo"></div>
+          <div id="unduhProses" hidden><div class="progres"><i id="progresBar"></i></div><div class="kecil" id="progresTxt"></div></div>
+          <div id="unduhHasil" hidden></div>
+        </div>
+      </aside>
     </div>
   </section>
 </main>
@@ -1181,8 +1286,8 @@ const OE1 = (function () {
     const sheets = await workbookSheets(z);
     const versi = versiTemplate(await z.text('xl/workbook.xml'));
     if (versi < TEMPLATE_VERSI_MIN) throw new Error(`Template di penyimpanan masih versi ${versi || 1}, butuh versi ${TEMPLATE_VERSI} (sheet WM 20 sump Water & Road). ` +
-      'Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.');
-    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} menambah sheet WF YTD (waterfall year-to-date dengan data Januari-Agustus 2026)` + (versi < 5 ? ', menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel' : '') + '. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.');
+      'Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Data → Advanced Data → Template.');
+    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} menambah sheet WF YTD (waterfall year-to-date dengan data Januari-Agustus 2026)` + (versi < 5 ? ', menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel' : '') + '. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Data → Advanced Data → Template.');
     const path = n => { const s = sheets.find(x => x.name === n); if (!s) throw new Error('Sheet tidak ada di template: ' + n); return s.path; };
     const rels = async p => { const rp = p.replace(/worksheets\/(sheet\d+\.xml)$/, 'worksheets/_rels/$1.rels'); return (await z.text(rp)) || ''; };
     const tablePath = async p => { const r = await rels(p); const m = /Target="\.\.\/tables\/(table\d+\.xml)"/.exec(r); return m ? 'xl/tables/' + m[1] : null; };
@@ -4783,14 +4888,13 @@ const DASH = (function () {
   const HARI_PJG = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const NAMA = { A: 'ANTAM', B: 'PCM', T: 'Total' };
   const SLOT = Array.from({ length: 24 }, (_, i) => pad((i + 6) % 24) + '.30');
-  // jendela OPEX (indeks slot): DS lalu NS
+  // ukuran Operational Excellence (indeks slot jam 0 = 06.30): DS lalu NS
   const OPEX = {
-    pertama: { nama: 'Jam pertama', pendek: 'Pertama', ket: 'produksi 06.30–07.30 (DS) + 18.30–19.30 (NS)', slot: [0, 12] },
-    terakhir: { nama: 'Jam terakhir', pendek: 'Terakhir', ket: 'produksi 17.30–18.30 (DS) + 05.30–06.30 (NS)', slot: [11, 23] },
-    cr: { nama: 'Continue running', pendek: 'Continue', ket: 'produksi jam istirahat 11.30–12.30 (DS) + 23.30–00.30 (NS)', slot: [5, 17] },
-    cr4: { nama: '4 jam continue', pendek: '4 jam', ket: 'rata-rata per jam 10.30–14.30 (DS) + 22.30–02.30 (NS)', slot4: [[4, 5, 6, 7], [16, 17, 18, 19]] },
+    pertama: { nama: 'First Hour', ket: '06.30–07.30 (DS) + 18.30–19.30 (NS)', slot: [0, 12] },
+    terakhir: { nama: 'Last Hour', ket: '17.30–18.30 (DS) + 05.30–06.30 (NS)', slot: [11, 23] },
+    cr: { nama: 'Continue Running', ket: 'jam istirahat 11.30–12.30 (DS) + 23.30–00.30 (NS)', slot: [5, 17] },
   };
-  const BASELINE_BAWAAN = { pertama: { A: 190, B: 150 }, terakhir: { A: 190, B: 150 }, cr: { A: 320, B: 250 }, cr4: { A: null, B: null } };
+  const BASELINE_BAWAAN = { pertama: { A: 190, B: 150 }, terakhir: { A: 190, B: 150 }, cr: { A: 320, B: 250 } };
   // arti kode status Minerva yang diketahui (§12.2); kode lain ditampilkan apa adanya
   const LABEL_KODE = { SNJ: 'No job', SNO: 'No operator', SOP: 'No operator', SDP: 'No operator', SRM: 'Istirahat & makan', SCS: 'Ganti shift',
     SCU: 'P2H', SRG: 'Refuel & grease', DTR: 'Refuel & grease', SST: 'Safety talk', SFS: 'Sholat Jumat/Minggu', DME: 'Pindah alat',
@@ -4804,7 +4908,7 @@ const DASH = (function () {
   const hariKe = ymd => new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8))).getUTCDay();
   const escH = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const jml = a => a.reduce((s, v) => s + (v || 0), 0);
-  const labelKode = c => LABEL_KODE[c] || (/^D/.test(c) ? 'delay' : /^S/.test(c) ? 'standby' : '');
+  const labelKode = c => LABEL_KODE[c] || '';
 
   // ---------------------------------------------------------------- turunan dari snapshot
   function turunan(M, set) {
@@ -4871,6 +4975,9 @@ const DASH = (function () {
       const unit = {};
       M.hari.forEach((h, i) => { if (i > iCut) return; const u = (M.mv && M.mv.exca && M.mv.exca[k] && M.mv.exca[k][h]) || ''; if (u) unit[u] = (unit[u] || 0) + 1; });
       d.front[k] = {
+        ore: { mtd: d.mtd.ore[k], plan: d.mtd.planOre[k], kemarin: d.ore[k][iCut], planKemarin: d.planOre[k][iCut] },
+        tmm: { mtd: d.mtd.tmm[k], plan: d.mtd.planTmm[k], kemarin: d.tmm[k][iCut], planKemarin: d.planTmm[k][iCut] },
+        sr: { mtd: d.sr.akt[k], plan: d.sr.plan[k] },
         pa: { mtd: P.paMtd, kemarin: pakai(P.pa)[iCut], hari: pakai(P.pa) },
         ua: { mtd: P.uaMtd, kemarin: pakai(P.ua)[iCut], hari: pakai(P.ua) },
         ewh: { mtd: E.mtd.ewh, plan: Pl.mtd.ewh, kemarin: ewhH[iCut], planKemarin: pakai(Pl.hari.ewh)[iCut], hari: ewhH },
@@ -4925,16 +5032,16 @@ const DASH = (function () {
       M.hari.forEach((h, i) => {
         const J = M.mv && M.mv.jam && M.mv.jam[k] && M.mv.jam[k][h];
         if (i > iCut || !J) { d.opex[k].push(null); return; }
-        const tot = jml(J), avg = a => jml(a.map(s => J[s])) / a.length;
-        d.opex[k].push({ tot, jam: J, pertama: J[0] + J[12], terakhir: J[11] + J[23], cr: J[5] + J[17], cr4: avg([4, 5, 6, 7]) + avg([16, 17, 18, 19]),
-          ds: { pertama: J[0], terakhir: J[11], cr: J[5], cr4: avg([4, 5, 6, 7]) }, ns: { pertama: J[12], terakhir: J[23], cr: J[17], cr4: avg([16, 17, 18, 19]) } });
+        const tot = jml(J);
+        d.opex[k].push({ tot, jam: J, pertama: J[0] + J[12], terakhir: J[11] + J[23], cr: J[5] + J[17],
+          ds: { pertama: J[0], terakhir: J[11], cr: J[5] }, ns: { pertama: J[12], terakhir: J[23], cr: J[17] } });
       });
     }
     return d;
   }
 
-  // Pareto delay terkendali exca utama: jam per kode status di luar EWH, downtime, dan cuaca (pembagian = rumus ACT).
-  // "Tidak tercatat" = delay terkendali ACT − jumlah kode (jam yang tidak punya status di Minerva).
+  // Pareto controllable delay exca utama: jam per kode status di luar EWH, downtime, dan cuaca (pembagian = rumus ACT).
+  // "Tidak tercatat" = controllable delay ACT − jumlah kode (jam yang tidak punya status di Minerva).
   function pareto(M, k, periode) {
     const W = M.wb, iCut = Math.max(0, M.hari.indexOf(M.cutoff));
     const K = W.kode || {}, luar = new Set([K.ewh, K.hujan, K.slip, K.kabut].concat(K.down || []).filter(Boolean));
@@ -5025,7 +5132,8 @@ const DASH = (function () {
   function kotak(x, y, w, h, warna, extra) { return h > 0.5 && w > 0.5 ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${warna}"${extra || ''}/>` : ''; }
   function labelX(i, n, lebarSlot) { const k = lebarSlot >= 18 ? 1 : lebarSlot >= 9 ? 2 : lebarSlot >= 5 ? 5 : 7; return i === 0 || (i + 1) % k === 0; }
   function legenda(items) {
-    return '<div class="d-leg">' + items.map(it => `<span><i class="${it.bentuk || 'kotak'}" style="${it.bentuk === 'garis' ? 'border-color' : it.bentuk === 'putus' ? 'border-color' : 'background'}:${it.w}"></i>${escH(it.t)}</span>`).join('') + '</div>';
+    const garisan = b => b === 'garis' || b === 'putus' || b === 'titik-garis';
+    return '<div class="d-leg">' + items.map(it => `<span><i class="${it.bentuk || 'kotak'}" style="${garisan(it.bentuk) ? 'border-color' : 'background'}:${it.w}"></i>${escH(it.t)}</span>`).join('') + '</div>';
   }
   function lebar(box) { return Math.max(280, Math.floor((box && box.clientWidth) || 600)); }
 
@@ -5077,23 +5185,26 @@ const DASH = (function () {
     const kum = arr => { let c = 0; return arr.map(v => (v == null ? null : (c += v || 0))); };
     const kA = kum(akt), kP = kum(plan.map(v => v || 0));
     const target = S.target != null ? S.target : kP[n - 1];
-    const maks = Math.max(target || 0, kP[n - 1] || 0, S.proyeksi || 0, kA[D.iCut] || 0, 1);
+    const maks = Math.max(target || 0, kP[n - 1] || 0, kA[D.iCut] || 0, 1);
     const sk = skala(maks * 1.04), y = v => T + ph - (v / sk.max) * ph, x = i => L + (i + 0.5) * (pw / n);
     let s = svgBuka(w, h, `Kumulatif ${jenis === 'ore' ? 'ore' : 'TMM'} terhadap rencana bulan`) + gridY(L, L + pw, y, sk);
     const garis = (arr, warna, dash, lebarG) => { let d = ''; arr.forEach((v, i) => { if (v == null) return; d += (d ? 'L' : 'M') + x(i) + ',' + y(v); }); return `<path d="${d}" fill="none" stroke="${warna}" stroke-width="${lebarG || 2}" stroke-linejoin="round" stroke-linecap="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`; };
     s += garis(kP, WARNA.plan, '4 3');
     s += garis(kA.map((v, i) => (i <= D.iCut ? v : null)), WARNA.T, null, 2.5);
-    if (S.proyeksi != null && D.iCut < n - 1) s += `<path d="M${x(D.iCut)},${y(kA[D.iCut])}L${x(n - 1)},${y(S.proyeksi)}" stroke="${WARNA.A}" stroke-width="2" stroke-dasharray="2 4" fill="none" stroke-linecap="round"/>`;
-    s += `<circle cx="${x(D.iCut)}" cy="${y(kA[D.iCut] || 0)}" r="4.5" fill="${WARNA.T}" stroke="#fff" stroke-width="2"/>`;
+    // kebutuhan ke target: dari realisasi hari ini ke target di akhir bulan; bila sudah tercapai, datar (sisa 0)
+    const adaTarget = target > 0, realNow = kA[D.iCut] || 0, tercapai = adaTarget && realNow >= target;
+    const akhirKeb = !adaTarget ? null : tercapai ? realNow : target;
+    if (akhirKeb != null && D.iCut < n - 1) s += `<path d="M${x(D.iCut)},${y(realNow)}L${x(n - 1)},${y(akhirKeb)}" stroke="${WARNA.T}" stroke-width="2" stroke-dasharray="1.5 4" fill="none" stroke-linecap="round"/>`;
+    s += `<circle cx="${x(D.iCut)}" cy="${y(realNow)}" r="4.5" fill="${WARNA.T}" stroke="#fff" stroke-width="2"/>`;
     // label ujung (dipisah bila bertabrakan)
     const lbl = [];
-    if (target) lbl.push({ y: y(target), t1: 'Target ' + ringkas(target), t2: fmt(target) + ' WMT', w: WARNA.plan });
-    if (S.proyeksi != null && D.iCut < n - 1) lbl.push({ y: y(S.proyeksi), t1: 'Proyeksi ' + pct(S.pctProyeksi), t2: fmt(S.proyeksi) + ' WMT', w: WARNA.A });
+    if (adaTarget) lbl.push({ y: y(target), t1: 'Target ' + ringkas(target), t2: tercapai ? 'tercapai · sisa 0' : S.perHari != null && D.nSisa > 0 ? 'perlu ' + fmt(S.perHari) + '/hari' : fmt(target) + ' WMT', w: WARNA.plan });
+    if (tercapai && D.iCut < n - 1) lbl.push({ y: y(realNow), t1: fmt(realNow), t2: 'terlampaui ' + fmt(realNow - target), w: WARNA.T });
     lbl.sort((p, q) => p.y - q.y);
     for (let i = 1; i < lbl.length; i++) if (lbl[i].y - lbl[i - 1].y < 26) lbl[i].y = lbl[i - 1].y + 26;
     lbl.forEach(o => { s += `<text x="${L + pw + 8}" y="${o.y + 1}" class="d-lbl-ujung">${escH(o.t1)}</text><text x="${L + pw + 8}" y="${o.y + 13}" class="d-tick">${escH(o.t2)}</text>`; });
-    const yA = y(kA[D.iCut] || 0);
-    s += `<text x="${x(D.iCut) - 8}" y="${yA - 10}" class="d-lbl-ujung" text-anchor="end">${escH(fmt(kA[D.iCut]))}</text>`;
+    const yA = y(realNow);
+    if (!(tercapai && D.iCut < n - 1)) s += `<text x="${x(D.iCut) - 8}" y="${yA - 10}" class="d-lbl-ujung" text-anchor="end">${escH(fmt(kA[D.iCut]))}</text>`;
     for (let i = 0; i < n; i++) if (labelX(i, n, pw / n)) s += `<text x="${x(i)}" y="${h - 7}" class="d-tick" text-anchor="middle">${i + 1}</text>`;
     // crosshair: satu area per hari
     for (let i = 0; i < n; i++) {
@@ -5101,16 +5212,17 @@ const DASH = (function () {
       if (kA[i] != null && i <= D.iCut) rows.push({ v: fmt(kA[i]) + ' WMT', l: 'Aktual kumulatif', w: WARNA.T, garis: true });
       rows.push({ v: fmt(kP[i]) + ' WMT', l: 'Rencana kumulatif', w: WARNA.plan, garis: true });
       if (kA[i] != null && i <= D.iCut) rows.push({ v: sgn(kA[i] - kP[i]) + ' WMT', l: 'Selisih' });
+      if (i > D.iCut && akhirKeb != null) rows.push({ v: fmt(realNow + (akhirKeb - realNow) * (i - D.iCut) / (n - 1 - D.iCut)) + ' WMT', l: tercapai ? 'target tercapai' : 'kebutuhan kumulatif ke target', w: WARNA.T, garis: true });
       s += `<rect x="${L + i * (pw / n)}" y="${T}" width="${pw / n}" height="${ph}" fill="transparent" data-tt="${daftarTip(rows)}"/>`;
     }
     return s + '</svg>';
   }
 
   // ---------------------------------------------------------------- grafik: waterfall
-  const LABEL_WF = { plan: 'Rencana', jadwal: 'Jam jadwal', hujan: 'Hujan & kabut', slip: 'Slippery', cd: 'Delay terkendali', down: 'Downtime',
+  const LABEL_WF = { plan: 'Rencana', jadwal: 'Jam jadwal', hujan: 'Hujan & kabut', slip: 'Slippery', cd: 'Controllable Delay', down: 'Downtime',
     pty: 'Produktivitas', fleet: 'Jumlah fleet', pfleet: 'Produktivitas fleet', aktual: 'Aktual' };
   const KET_WF = { jadwal: 'selisih total jam (EWH + jam hilang) aktual dan rencana × produktivitas aktual', hujan: '(jam rencana − jam aktual) × produktivitas aktual',
-    slip: '(jam rencana − jam aktual) × produktivitas aktual', cd: '(jam rencana − jam aktual) × produktivitas aktual; negatif = delay lebih lama dari rencana',
+    slip: '(jam rencana − jam aktual) × produktivitas aktual', cd: '(jam rencana − jam aktual) × produktivitas aktual; negatif = controllable delay lebih lama dari rencana',
     down: '(jam rencana − jam aktual) × produktivitas aktual', pty: 'selisih produktivitas per jam × EWH rencana', fleet: 'selisih jumlah fleet × produksi per fleet rencana',
     pfleet: 'selisih produktivitas per fleet × fleet aktual × EWH rencana' };
   function grafikWaterfall(box, langkah, satuan, judul, jam) {
@@ -5155,7 +5267,8 @@ const DASH = (function () {
   }
   // layar sempit: langkah waterfall disusun ke bawah, batang mendatar
   function waterfallMendatar(w, bar, lo, hi, step, satuan, judul, jam) {
-    const rh = 30, T = 4, lbl = 100, R = 58, pw = Math.max(60, w - lbl - R), h = T + bar.length * rh + 20;
+    const lbl = Math.min(150, Math.max(84, Math.max(...bar.map(b => (LABEL_WF[b.o.k] || b.o.k).length)) * 6.6 + 14));
+    const rh = 30, T = 4, R = 58, pw = Math.max(60, w - lbl - R), h = T + bar.length * rh + 20;
     const x = v => lbl + ((v - lo) / (hi - lo)) * pw;
     let s = svgBuka(w, h, judul);
     for (let v = lo; v <= hi + step / 2; v += step) {
@@ -5179,10 +5292,10 @@ const DASH = (function () {
   // ---------------------------------------------------------------- grafik: Pareto (batang mendatar)
   function grafikPareto(box, P, k) {
     const w = lebar(box), baris = Math.min(10, P.daftar.length), rh = 26, T = 6, h = T + baris * rh + 6;
-    if (!baris) return '<div class="d-kosong">Tidak ada delay terkendali tercatat pada periode ini.</div>';
+    if (!baris) return '<div class="d-kosong">Tidak ada controllable delay tercatat.</div>';
     const lbl = w < 420 ? 92 : 150, kanan = 128, pw = Math.max(40, w - lbl - kanan);
     const maks = P.daftar[0].jam || 1;
-    let s = svgBuka(w, h, 'Pareto delay terkendali exca utama');
+    let s = svgBuka(w, h, 'Pareto controllable delay exca utama');
     P.daftar.slice(0, baris).forEach((o, i) => {
       const yy = T + i * rh, bw = Math.max(1, (o.jam / maks) * pw), x0 = lbl;
       const nm = o.kode === '(tak)' ? 'Tidak tercatat' : o.kode, ket = o.kode === '(tak)' ? 'jam tanpa status' : labelKode(o.kode);
@@ -5196,7 +5309,7 @@ const DASH = (function () {
       s += `<text x="${w - 4}" y="${yy + 16}" class="d-tick" text-anchor="end">kum. ${escH(pct(o.kum))}</text>`;
       const rows = [{ t: nm + (ket ? ' · ' + ket : '') }, { v: fmt(o.jam, 1) + ' jam', l: 'total periode ini' }];
       if (k === 'T') rows.push({ v: fmt(o.A, 1) + ' jam', l: 'ANTAM', w: WARNA.A }, { v: fmt(o.B, 1) + ' jam', l: 'PCM', w: WARNA.B });
-      rows.push({ v: pct(o.jam / (P.total || 1)), l: 'dari seluruh delay terkendali' });
+      rows.push({ v: pct(o.jam / (P.total || 1)), l: 'dari total controllable delay' });
       s += `<rect x="0" y="${yy}" width="${w}" height="${rh}" fill="transparent" data-tt="${daftarTip(rows)}"/>`;
     });
     return s + '</svg>';
@@ -5247,40 +5360,33 @@ const DASH = (function () {
     return s + '</svg>';
   }
 
-  // ---------------------------------------------------------------- grafik: profil produksi per jam (OPEX)
-  function grafikProfil(box, M, D) {
-    const w = lebar(box), h = 226, L = 46, R = 10, T = 10, B = 24, pw = w - L - R, ph = h - T - B, slot = pw / 24;
-    if (!D.opex.A.some(o => o && o.tot > 0) && !D.opex.B.some(o => o && o.tot > 0)) return '<div class="d-kosong">Belum ada produksi per jam dari Minerva pada periode ini.</div>';
-    const rata = k => { const hari = D.opex[k].filter(o => o && o.tot > 0); return Array.from({ length: 24 }, (_, s) => hari.length ? jml(hari.map(o => o.jam[s])) / hari.length : 0); };
-    const rA = rata('A'), rB = rata('B'), kem = { A: D.opex.A[D.iCut], B: D.opex.B[D.iCut] };
-    const maks = Math.max(...rA, ...rB, ...((kem.A && kem.A.jam) || [0]), ...((kem.B && kem.B.jam) || [0]), 1);
-    const sk = skala(maks * 1.08), y = v => T + ph - (v / sk.max) * ph, x = i => L + (i + 0.5) * slot;
-    let s = svgBuka(w, h, 'Profil produksi per jam, rata-rata MTD dan kemarin');
-    // jendela: ganti shift & istirahat (pita tipis di latar)
-    const pita = (i, warna) => `<rect x="${L + i * slot}" y="${T}" width="${slot}" height="${ph}" fill="${warna}"/>`;
-    [0, 11, 12, 23].forEach(i => { s += pita(i, '#fbeed6'); });
-    [5, 17].forEach(i => { s += pita(i, '#e2edeb'); });
-    s += gridY(L, L + pw, y, sk);
-    const garis = (arr, warna) => `<path d="${arr.map((v, i) => (i ? 'L' : 'M') + x(i) + ',' + y(v)).join('')}" fill="none" stroke="${warna}" stroke-width="2" stroke-linejoin="round"/>`;
-    s += `<line x1="${L + 12 * slot}" x2="${L + 12 * slot}" y1="${T}" y2="${T + ph}" stroke="${WARNA.sumbu}"/>`;
-    s += garis(rA, WARNA.A) + garis(rB, WARNA.B);
-    for (const k of ['A', 'B']) if (kem[k]) kem[k].jam.forEach((v, i) => { s += `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="#fff" stroke="${WARNA[k]}" stroke-width="2"/>`; });
-    for (let i = 0; i < 24; i += (slot < 22 ? 3 : 2)) s += `<text x="${x(i)}" y="${h - 7}" class="d-tick" text-anchor="middle">${SLOT[i]}</text>`;
-    for (let i = 0; i < 24; i++) {
-      const rows = [{ t: SLOT[i] + '–' + SLOT[(i + 1) % 24] + (i < 12 ? ' · DS' : ' · NS') }, { v: fmt(rA[i]) + ' t', l: 'ANTAM rata-rata MTD', w: WARNA.A, garis: true },
-        { v: fmt(rB[i]) + ' t', l: 'PCM rata-rata MTD', w: WARNA.B, garis: true }];
-      if (kem.A) rows.push({ v: fmt(kem.A.jam[i]) + ' t', l: 'ANTAM kemarin', w: WARNA.A });
-      if (kem.B) rows.push({ v: fmt(kem.B.jam[i]) + ' t', l: 'PCM kemarin', w: WARNA.B });
-      s += `<rect x="${L + i * slot}" y="${T}" width="${slot}" height="${ph}" fill="transparent" data-tt="${daftarTip(rows)}"/>`;
+  // ---------------------------------------------------------------- grafik: garis harian (Operational Excellence, satu ukuran per grafik)
+  // o = {judul, kategori:[label], seri:[{warna, nilai:[], nama}], acuan:[{nilai, warna}], tip(i)=>rows|null, tinggi, sorot: indeks hari kemarin (titik putih)}
+  function grafikGaris(box, o) {
+    const w = lebar(box), h = o.tinggi || 190, L = 40, R = 10, T = 10, B = 22, n = o.kategori.length, pw = w - L - R, ph = h - T - B;
+    const semua = o.seri.flatMap(se => se.nilai.map(v => v || 0)).concat((o.acuan || []).map(a => a.nilai || 0));
+    const sk = skala(Math.max(...semua, 1) * 1.08), y = v => T + ph - (v / sk.max) * ph, slot = pw / n, x = i => L + (i + 0.5) * slot;
+    let s = svgBuka(w, h, o.judul) + gridY(L, L + pw, y, sk);
+    (o.acuan || []).forEach(a => { if (a.nilai != null) s += `<line x1="${L}" x2="${L + pw}" y1="${y(a.nilai)}" y2="${y(a.nilai)}" stroke="${a.warna}" stroke-width="1.5" stroke-dasharray="5 3" opacity=".75" pointer-events="none"/>`; });
+    o.seri.forEach(se => {
+      let d = '', terakhir = -1;
+      se.nilai.forEach((v, i) => { if (v == null) { return; } d += (d && terakhir === i - 1 ? 'L' : 'M') + x(i) + ',' + y(v); terakhir = i; });
+      s += `<path d="${d}" fill="none" stroke="${se.warna}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      se.nilai.forEach((v, i) => { const k = i === o.sorot; if (v != null) s += `<circle cx="${x(i)}" cy="${y(v)}" r="${k ? 4 : 2.2}" fill="${k ? '#fff' : se.warna}" stroke="${se.warna}" stroke-width="${k ? 2 : 0}"/>`; });
+    });
+    for (let i = 0; i < n; i++) {
+      if (labelX(i, n, slot)) s += `<text x="${x(i)}" y="${h - 6}" class="d-tick" text-anchor="middle">${escH(o.kategori[i])}</text>`;
+      const rows = o.tip ? o.tip(i) : null;
+      if (rows) s += `<rect x="${L + i * slot}" y="${T}" width="${slot}" height="${ph}" fill="transparent" data-tt="${daftarTip(rows)}"/>`;
     }
     return s + '</svg>';
   }
 
   // ================================================================== KARTU & BAGIAN
-  // Tiga bagian dalam satu halaman gulir: bulan berjalan (MTD), tahun berjalan (YTD), OPEX jam kritis.
-  // Setiap kartu digambar ulang sendiri saat tombol pilihannya ditekan; grafik digambar ulang saat lebar berubah.
+  // Tiga bagian dalam satu halaman gulir: MTD, YTD, Operational Excellence. Teks penjelas sengaja minim:
+  // angka, rencana pembanding, dan status (panah + warna). Rincian ada di tooltip.
 
-  const PILIHAN_AWAL = { prod: 'ore', wf: 'produksi', parK: 'T', parP: 'mtd', ytdJ: 'ore', wfY: 'produksi', opexM: 'pertama' };
+  const PILIHAN_AWAL = { prod: 'ore', wf: 'produksi', parK: 'T', parP: 'mtd', ytdJ: 'ore', wfY: 'produksi' };
   const namaBln = ym => BULAN[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4);
   const status = (p, batasWarn) => (p == null || !isFinite(p) ? '' : p >= 1 ? 'ok' : p >= (batasWarn || 0.9) ? 'warn' : 'err');
   const panah = s => (s === 'ok' ? '▲' : s ? '▼' : '');
@@ -5299,68 +5405,60 @@ const DASH = (function () {
     if (/^\d+([.,]\d+)?$/.test(t)) return +t.replace(',', '.');
     return NaN;
   }
+  const bagiAman = (a, b) => (a != null && b ? a / b : null);
 
   // ---------------------------------------------------------------- MTD: kartu angka
   function kpiMtd(c) {
-    const D = c.D, M = c.M, i = D.iCut, h = M.cutoff;
+    const D = c.D, M = c.M, i = D.iCut, h = M.cutoff, m = D.mtd;
+    const ab = (a, b, d) => `<div class="d-kpi-p">${sw('A')}ANTAM ${escH(fmt(a, d))}<span class="d-sep"></span>${sw('B')}PCM ${escH(fmt(b, d))}</div>`;
     const tile = (label, nilai, satuan, capai, rencana, rinci) => `<div class="d-kpi">
       <div class="d-kpi-l">${escH(label)}</div>
       <div class="d-kpi-v">${escH(fmt(nilai))}<small>${escH(satuan)}</small></div>
-      <div class="d-kpi-s">${lencana(capai)}${rencana}</div>
-      <div class="d-kpi-p">${rinci}</div></div>`;
-    const rinciAB = (a, b, d) => `${sw('A')}ANTAM ${escH(fmt(a, d))}<span class="d-sep"></span>${sw('B')}PCM ${escH(fmt(b, d))}`;
-    const cp = (a, p) => (p ? a / p : null);
-    const m = D.mtd;
+      <div class="d-kpi-s">${lencana(capai)}<span>rencana ${escH(fmt(rencana))}</span></div>${rinci}</div>`;
     let s = '<div class="d-kpi4">';
-    s += tile('Ore MTD', m.ore.T, 'WMT', cp(m.ore.T, m.planOre.T), `rencana ${escH(fmt(m.planOre.T))} · ${escH(sgn((m.ore.T || 0) - (m.planOre.T || 0)))}`, rinciAB(m.ore.A, m.ore.B));
-    s += tile('TMM MTD', m.tmm.T, 'WMT', cp(m.tmm.T, m.planTmm.T), `rencana ${escH(fmt(m.planTmm.T))} · ${escH(sgn(m.tmm.T - m.planTmm.T))}`, rinciAB(m.tmm.A, m.tmm.B));
-    s += `<div class="d-kpi"><div class="d-kpi-l">Stripping ratio MTD</div>
-      <div class="d-kpi-v">${escH(fmt(D.sr.akt.T, 2))}<small>waste : ore</small></div>
-      <div class="d-kpi-s">rencana ${escH(fmt(D.sr.plan.T, 2))}</div>
-      <div class="d-kpi-p">${rinciAB(D.sr.akt.A, D.sr.akt.B, 2)}</div></div>`;
-    // kemarin: ore & TMM hari cut-off, pembagian DS/NS dari volume Minerva
+    s += tile('Ore', m.ore.T, 'WMT', bagiAman(m.ore.T, m.planOre.T), m.planOre.T, ab(m.ore.A, m.ore.B));
+    s += tile('TMM', m.tmm.T, 'WMT', bagiAman(m.tmm.T, m.planTmm.T), m.planTmm.T, ab(m.tmm.A, m.tmm.B));
+    s += `<div class="d-kpi"><div class="d-kpi-l">Stripping ratio</div>
+      <div class="d-kpi-v">${escH(fmt(D.sr.akt.T, 2))}</div>
+      <div class="d-kpi-s"><span>rencana ${escH(fmt(D.sr.plan.T, 2))}</span></div>${ab(D.sr.akt.A, D.sr.akt.B, 2)}</div>`;
+    // kemarin
     const oreK = D.ore.T[i], tmmK = D.tmm.T[i], pO = D.planOre.T[i], pT = D.planTmm.T[i], src = D.sumber[h] || {};
-    const sh = k => (M.mv && M.mv.shift && M.mv.shift[k] && M.mv.shift[k][h]) || { ds: 0, ns: 0 };
-    const ds = sh('A').ds + sh('B').ds, ns = sh('A').ns + sh('B').ns;
+    const shf = k => (M.mv && M.mv.shift && M.mv.shift[k] && M.mv.shift[k][h]) || { ds: 0, ns: 0 };
+    const ds = shf('A').ds + shf('B').ds, ns = shf('A').ns + shf('B').ns;
     const semO = src.oA === 'minerva' || src.oB === 'minerva', semW = src.wA === 'minerva' || src.wB === 'minerva';
-    s += `<div class="d-kpi"><div class="d-kpi-l">${escH(HARI_PJG[hariKe(h)] + ', ' + tglP(h))} <span class="d-ket">kemarin</span></div>
+    s += `<div class="d-kpi"><div class="d-kpi-l">Kemarin · ${escH(HARI[hariKe(h)] + ' ' + tglP(h))}</div>
       <div class="d-kpi-v">${escH(fmt(oreK))}<small>WMT ore</small></div>
-      <div class="d-kpi-s">${lencana(cp(oreK, pO))}target ${escH(fmt(pO))}${semO ? ' · <span class="d-sem">sementara</span>' : ''}</div>
-      <div class="d-kpi-p">TMM ${escH(fmt(tmmK))} ${lencana(cp(tmmK, pT))}${semW ? ' <span class="d-sem">waste sementara</span>' : ''}</div>
-      ${ds + ns > 0 ? `<div class="d-kpi-p">Minerva DS ${escH(pct(ds / (ds + ns)))} · NS ${escH(pct(ns / (ds + ns)))}</div>` : ''}</div>`;
+      <div class="d-kpi-s">${lencana(bagiAman(oreK, pO))}<span>target ${escH(fmt(pO))}</span>${semO ? '<span class="d-sem">sementara</span>' : ''}</div>
+      <div class="d-kpi-p">TMM ${escH(fmt(tmmK))} ${lencana(bagiAman(tmmK, pT))}${semW ? ' <span class="d-sem">sementara</span>' : ''}</div>
+      ${ds + ns > 0 ? `<div class="d-kpi-p">DS ${escH(pct(ds / (ds + ns)))} · NS ${escH(pct(ns / (ds + ns)))}</div>` : ''}</div>`;
     return s + '</div>';
   }
 
-  // ---------------------------------------------------------------- MTD: sisa target bulan
+  // ---------------------------------------------------------------- MTD: sisa target bulan (ore & TMM)
   function kartuSisa(c) {
     const D = c.D, M = c.M;
-    const judul = 'Sisa target ' + namaBln(M.bulan);
-    if (!D.adaTarget) return kepala(judul) + `<div class="d-kosong">Target ore dan TMM bulan ini belum diisi. ${c.opsi.admin ? 'Isi di kartu target di atas atau tab Rencana.' : 'Admin mengisinya di tab Rencana.'}</div>`;
-    const planMtdPct = { ore: D.target.ore.T ? (D.mtd.planOre.T || 0) / D.target.ore.T : null, tmm: D.target.tmm.T ? (D.mtd.planTmm.T || 0) / D.target.tmm.T : null };
-    const sub = `${D.nSisa > 0 ? D.nSisa + ' hari tersisa (' + tglP(geser(M.cutoff, 1)) + '–' + tglP(M.hari[D.n - 1]) + ')' : 'bulan selesai'} · penanda hitam = posisi rencana s.d. ${escH(tglP(M.cutoff))}`;
-    let s = kepala(judul, '', sub);
-    s += '<div class="d-tbl-wrap"><table class="d-tbl d-tbl-sisa d-tbl-lekat"><thead><tr><th></th><th class="num">Target bulan</th><th class="num">Realisasi MTD</th><th class="num">Sisa</th><th class="num">Perlu per hari</th><th class="num">Rata-rata 7 hari</th><th class="num">Proyeksi akhir bulan</th></tr></thead><tbody>';
+    const kanan = D.nSisa > 0 ? `<span class="d-chip">${D.nSisa} hari lagi</span>` : '<span class="d-chip">bulan selesai</span>';
+    if (!D.adaTarget) return kepala('Sisa target ' + namaBln(M.bulan)) + `<div class="d-kosong">Target ore dan TMM bulan ini belum diisi.</div>`;
+    let s = kepala('Sisa target ' + namaBln(M.bulan), kanan) + '<div class="d-sisa2">';
     for (const jenis of ['ore', 'tmm']) {
-      for (const k of ['T', 'A', 'B']) {
-        const S = D.sisa[jenis][k]; if (S.target == null) continue;
-        const utama = k === 'T', nama = utama ? (jenis === 'ore' ? 'Ore' : 'TMM') : NAMA[k];
-        const lebarBar = Math.max(0, Math.min(1, S.pctReal || 0)), tanda = planMtdPct[jenis];
-        const bar = `<div class="d-bar${utama ? '' : ' kecil'}" data-tt="${daftarTip([{ t: nama + (utama ? '' : ' · ' + (jenis === 'ore' ? 'ore' : 'TMM')) }, { v: pct(S.pctReal, 1), l: 'realisasi dari target bulan' }, { v: tanda != null ? pct(tanda, 1) : '—', l: 'posisi rencana s.d. ' + tglP(M.cutoff) }])}">
-          <i style="width:${(lebarBar * 100).toFixed(1)}%;background:${utama ? WARNA.T : WARNA[k]}"></i>${tanda != null ? `<b style="left:${(Math.min(1, tanda) * 100).toFixed(1)}%"></b>` : ''}</div>`;
-        const tercapai = S.sisa != null && S.sisa <= 0;
-        const lajuSt = !tercapai && S.perHari != null && S.laju != null ? status(S.laju / S.perHari) : '';
-        s += `<tr class="${utama ? 'utama' : 'sub'}${jenis === 'tmm' && utama ? ' pisah' : ''}">
-          <td><div class="d-sisa-nama">${utama ? '' : sw(k)}${escH(nama)}<span class="d-muted">${escH(pct(S.pctReal))}</span></div>${bar}</td>
-          <td class="num">${escH(fmt(S.target))}</td><td class="num">${escH(fmt(S.real))}</td>
-          <td class="num"><b>${tercapai ? '<span class="d-bdg ok">▲ terlampaui ' + escH(fmt(-S.sisa)) + '</span>' : escH(fmt(S.sisa))}</b></td>
-          <td class="num">${tercapai || S.perHari == null ? '—' : escH(fmt(S.perHari))}</td>
-          <td class="num">${S.laju == null ? '—' : `<span class="${lajuSt ? 'd-t-' + lajuSt : ''}">${panah(lajuSt)} ${escH(fmt(S.laju))}</span>`}</td>
-          <td class="num">${S.proyeksi == null ? '—' : escH(fmt(S.proyeksi)) + ' ' + lencana(S.pctProyeksi)}</td></tr>`;
-      }
+      const S = D.sisa[jenis].T, nama = jenis === 'ore' ? 'Ore' : 'TMM';
+      const tanda = D.target[jenis].T ? (jenis === 'ore' ? D.mtd.planOre.T : D.mtd.planTmm.T) / D.target[jenis].T : null;
+      const tercapai = S.sisa != null && S.sisa <= 0;
+      const lajuSt = !tercapai && S.perHari != null && S.laju != null ? status(S.laju / S.perHari) : '';
+      const lebarBar = Math.max(0, Math.min(1, S.pctReal || 0));
+      const tip = daftarTip([{ t: nama }, { v: pct(S.pctReal, 1), l: 'realisasi dari target bulan' }, { v: tanda != null ? pct(tanda, 1) : '—', l: 'rencana s.d. ' + tglP(M.cutoff) + ' (penanda)' }]);
+      s += `<div class="d-sisa">
+        <div class="d-sisa-j"><span>${escH(nama)}</span><span class="d-muted">${escH(pct(S.pctReal))}</span></div>
+        <div class="d-sisa-v">${tercapai ? `<span class="d-t-ok">terlampaui ${escH(fmt(-S.sisa))}</span>` : escH(fmt(S.sisa))}<small>WMT${tercapai ? '' : ' sisa'}</small></div>
+        <div class="d-bar" data-tt="${tip}"><i style="width:${(lebarBar * 100).toFixed(1)}%;background:${WARNA.T}"></i>${tanda != null ? `<b style="left:${(Math.min(1, tanda) * 100).toFixed(1)}%"></b>` : ''}</div>
+        <div class="d-sisa-g">
+          <span>Target</span><b>${escH(fmt(S.target))}</b>
+          <span>Realisasi</span><b>${escH(fmt(S.real))}</b>
+          <span>Perlu per hari</span><b>${tercapai || S.perHari == null ? '—' : escH(fmt(S.perHari))}</b>
+          <span>Rata-rata 7 hari</span><b class="${lajuSt ? 'd-t-' + lajuSt : ''}">${S.laju == null ? '—' : panah(lajuSt) + ' ' + escH(fmt(S.laju))}</b>
+        </div></div>`;
     }
-    s += '</tbody></table></div>';
-    s += '<div class="d-catat">WMT. Perlu per hari = sisa ÷ hari tersisa. Proyeksi = realisasi + rata-rata 7 hari × hari tersisa. TMM = ore + waste.</div>';
-    return s;
+    return s + '</div>';
   }
 
   // ---------------------------------------------------------------- MTD: harian & kumulatif
@@ -5369,11 +5467,11 @@ const DASH = (function () {
     const adaSem = (j === 'ore' ? D.sementara.ore : D.sementara.ore.concat(D.sementara.wst)).length > 0;
     let s = kepala('Produksi harian & kumulatif', segmen('prod', [['ore', 'Ore'], ['tmm', 'TMM']], j, 'Jenis produksi'));
     s += '<div class="d-dua">';
-    s += `<div><div class="d-panel-j">Per hari · ${escH(nm)} (WMT)</div>` +
-      legenda([{ t: 'ANTAM', w: WARNA.A }, { t: 'PCM', w: WARNA.B }, { t: 'Target harian', w: WARNA.plan, bentuk: 'putus' }].concat(adaSem ? [{ t: 'Sementara (Minerva)', w: '#b9cfcc' }] : [])) +
+    s += `<div><div class="d-panel-j">Harian · WMT</div>` +
+      legenda([{ t: 'ANTAM', w: WARNA.A }, { t: 'PCM', w: WARNA.B }, { t: 'Target harian', w: WARNA.plan, bentuk: 'putus' }].concat(adaSem ? [{ t: 'Sementara', w: '#b9cfcc' }] : [])) +
       graf('harian', 230, 'Produksi harian ' + nm) + '</div>';
-    s += `<div><div class="d-panel-j">Kumulatif terhadap rencana · ${escH(nm)} (WMT)</div>` +
-      legenda([{ t: 'Aktual', w: WARNA.T, bentuk: 'garis' }, { t: 'Rencana', w: WARNA.plan, bentuk: 'putus' }, { t: 'Proyeksi 7 hari', w: WARNA.A, bentuk: 'putus' }]) +
+    s += `<div><div class="d-panel-j">Kumulatif · WMT</div>` +
+      legenda([{ t: 'Aktual', w: WARNA.T, bentuk: 'garis' }, { t: 'Rencana', w: WARNA.plan, bentuk: 'putus' }, { t: 'Kebutuhan ke target', w: WARNA.T, bentuk: 'titik-garis' }]) +
       graf('kumulatif', 230, 'Kumulatif ' + nm) + '</div>';
     s += '</div>';
     s += '<details class="d-rinci"><summary>Tabel harian</summary><div class="d-tbl-wrap">' + tabelHarian(c) + '</div></details>';
@@ -5381,8 +5479,8 @@ const DASH = (function () {
   }
   function tabelHarian(c) {
     const D = c.D, M = c.M;
-    let s = '<table class="d-tbl d-tbl-lekat"><thead><tr><th>Tanggal</th><th class="num">Ore ANTAM</th><th class="num">Ore PCM</th><th class="num">Ore total</th><th class="num">Target ore</th>' +
-      '<th class="num">Waste ANTAM</th><th class="num">Waste PCM</th><th class="num">TMM total</th><th class="num">Target TMM</th><th>Sumber ore · waste</th></tr></thead><tbody>';
+    let s = '<table class="d-tbl d-tbl-lekat"><thead><tr><th>Tanggal</th><th class="num">Ore ANTAM</th><th class="num">Ore PCM</th><th class="num">Ore</th><th class="num">Target ore</th>' +
+      '<th class="num">Waste ANTAM</th><th class="num">Waste PCM</th><th class="num">TMM</th><th class="num">Target TMM</th><th>Sumber ore · waste</th></tr></thead><tbody>';
     M.hari.forEach((h, i) => {
       if (i > D.iCut) return;
       const src = D.sumber[h] || {};
@@ -5395,53 +5493,54 @@ const DASH = (function () {
 
   // ---------------------------------------------------------------- MTD: waterfall & Pareto
   function kartuWfMtd(c) {
-    const j = c.st.wf;
-    return kepala('Waterfall capaian MTD', segmen('wf', [['produksi', 'Ore (WMT)'], ['mining', 'TMM (BCM)']], j, 'Jenis waterfall'), 'Rencana s.d. ' + escH(tglP(c.M.cutoff)) + ' → aktual, per penyebab') +
-      legenda([{ t: 'Rencana & aktual', w: WARNA.total }, { t: 'Lebih baik dari rencana', w: WARNA.naik }, { t: 'Kehilangan', w: WARNA.turun }]) +
-      graf('wfMtd', 250, 'Waterfall MTD') + '<div class="d-catat">Arahkan kursor ke batang untuk jam rencana → aktual. Delay terkendali dirinci di Pareto.</div>';
+    return kepala('Waterfall MTD', segmen('wf', [['produksi', 'Ore · WMT'], ['mining', 'TMM · BCM']], c.st.wf, 'Jenis waterfall')) +
+      legenda([{ t: 'Rencana & aktual', w: WARNA.total }, { t: 'Lebih baik', w: WARNA.naik }, { t: 'Kehilangan', w: WARNA.turun }]) +
+      graf('wfMtd', 250, 'Waterfall MTD');
   }
   function kartuPareto(c) {
-    const D = c.D, k = c.st.parK, p = c.st.parP, P = pareto(c.M, k, p);
+    const D = c.D, k = c.st.parK, p = c.st.parP;
     const kont = k === 'T' ? ['A', 'B'] : [k];
     const aktCd = jml(kont.map(x => (p === 'kemarin' ? D.front[x].cd.kemarin : D.front[x].cd.mtd) || 0));
     const planCd = jml(kont.map(x => (p === 'kemarin' ? D.front[x].cd.planKemarin : D.front[x].cd.plan) || 0));
-    const sub = `Delay terkendali exca utama ${p === 'kemarin' ? tglP(c.M.cutoff) : 'MTD'}: <b>${escH(fmt(aktCd, 1))} jam</b> (rencana ${escH(fmt(planCd, 1))} jam)`;
-    const K = (c.M.wb && c.M.wb.kode) || {};
-    const luar = [K.ewh && K.ewh + ' (kerja)', (K.down || []).join('/') && (K.down || []).join('/') + ' (downtime)', K.hujan && K.hujan + ' (hujan)', K.slip && K.slip + ' (slippery)', K.kabut && K.kabut + ' (kabut)'].filter(Boolean).join(', ');
-    return kepala('Pareto delay terkendali', segmen('parK', [['A', 'ANTAM'], ['B', 'PCM'], ['T', 'Semua']], k, 'Front') + segmen('parP', [['mtd', 'MTD'], ['kemarin', 'Kemarin']], p, 'Periode'), sub) +
+    const st = planCd ? (aktCd <= planCd ? 'ok' : aktCd <= planCd * 1.1 ? 'warn' : 'err') : '';
+    const sub = `<b class="${st ? 'd-t-' + st : ''}">${escH(fmt(aktCd, 1))} jam</b> · rencana ${escH(fmt(planCd, 1))} jam`;
+    return kepala('Pareto Controllable Delay', segmen('parK', [['A', 'ANTAM'], ['B', 'PCM'], ['T', 'Semua']], k, 'Front') + segmen('parP', [['mtd', 'MTD'], ['kemarin', 'Kemarin']], p, 'Periode'), sub) +
       (k === 'T' ? legenda([{ t: 'ANTAM', w: WARNA.A }, { t: 'PCM', w: WARNA.B }]) : '') +
-      graf('pareto', 120, 'Pareto delay terkendali') +
-      `<div class="d-catat">Jam status Minerva exca utama di luar ${escH(luar || 'EWH, downtime, dan cuaca')}. "Tidak tercatat" = jam delay terkendali tanpa kode status.</div>`;
+      graf('pareto', 120, 'Pareto controllable delay');
   }
 
-  // ---------------------------------------------------------------- MTD: front
+  // ---------------------------------------------------------------- MTD: front (produksi, SR, alat, jam hilang)
   function kartuFront(c, k) {
     const D = c.D, F = D.front[k];
-    // fmtV(v) -> [angka, satuan]
-    const met = (label, nilai, rencana, kemarin, fmtV, batas) => {
-      const r = nilai != null && rencana ? nilai / rencana : null;
-      const st = status(r, batas || 0.95), [a, u] = fmtV(nilai), rr = fmtV(rencana), kk = fmtV(kemarin);
-      return `<div class="d-met"><div class="d-met-l">${escH(label)}</div>
-        <div class="d-met-v ${st ? 'd-t-' + st : ''}">${panah(st)} ${escH(a)}<small>${escH(u)}</small></div>
-        <div class="d-met-s">rencana ${escH(rr.join(' ').trim())}</div>
-        <div class="d-met-s">kemarin ${escH(kk.join(' ').trim())}</div></div>`;
+    const f1 = v => fmt(v, 1), f0 = v => fmt(v), f2 = v => fmt(v, 2), p1 = v => pct(v, 1);
+    // baris: label, nilai, satuan, rencana, arah (1 = makin besar makin baik, -1 = makin kecil makin baik, 0 = netral), kemarin
+    const baris = (label, v, sat, rencana, fmtV, arah, kem, batas) => {
+      let st = '';
+      if (arah && v != null && rencana) {
+        const r = arah > 0 ? v / rencana : rencana / v;
+        st = arah > 0 ? status(r, batas || 0.95) : (v <= rencana ? 'ok' : v <= rencana * 1.1 ? 'warn' : 'err');
+      }
+      const ar = !st ? '' : arah > 0 ? panah(st) : (st === 'ok' ? '▼' : '▲');
+      const tip = daftarTip([{ t: label + ' · ' + NAMA[k] }, { v: fmtV(v) + (sat ? ' ' + sat : ''), l: 'MTD' }, { v: fmtV(rencana) + (sat ? ' ' + sat : ''), l: 'rencana MTD' }]
+        .concat(kem !== undefined ? [{ v: kem == null ? '—' : fmtV(kem) + (sat ? ' ' + sat : ''), l: 'kemarin' }] : []));
+      return `<tr data-tt="${tip}"><td>${escH(label)}</td><td class="num"><b class="${st ? 'd-t-' + st : ''}">${ar ? ar + ' ' : ''}${escH(fmtV(v))}</b>${sat ? `<small>${escH(sat)}</small>` : ''}</td><td class="num d-muted">${escH(fmtV(rencana))}</td></tr>`;
     };
-    const jamS = v => (v == null ? ['—', ''] : [fmt(v, 1), 'jam']), p1 = v => [pct(v, 1), ''], bj = v => (v == null ? ['—', ''] : [fmt(v, 0), 'BCM/jam']);
-    const jam = v => (v == null ? '—' : fmt(v, 1) + ' jam');
-    // jam hilang: lebih lama dari rencana = buruk
-    const hilang = (label, akt, plan) => {
-      const st = akt != null && plan != null ? (akt <= plan ? 'ok' : akt <= plan * 1.1 ? 'warn' : 'err') : '';
-      return `<span>${escH(label)} <b class="${st ? 'd-t-' + st : ''}">${st === 'ok' ? '▼' : st ? '▲' : ''} ${escH(jam(akt))}</b> <span class="d-muted">rencana ${escH(jam(plan))}</span></span>`;
-    };
-    let s = kepala('Front ' + NAMA[k], `<span class="d-co ${k}">exca utama kemarin: ${escH(F.excaKemarin || '—')}</span>`, 'Performa front: dihitung dari exca utama tiap hari, siapa pun unitnya');
-    s += '<div class="d-met4">' +
-      met('PA', F.pa.mtd, D.planPa, F.pa.kemarin, p1, 0.97) +
-      met('UA', F.ua.mtd, D.planUa, F.ua.kemarin, p1, 0.95) +
-      met('EWH', F.ewh.mtd, F.ewh.plan, F.ewh.kemarin, jamS, 0.9) +
-      met('Produktivitas', F.pty.mtd, F.pty.plan, F.pty.kemarin, bj, 0.9) + '</div>';
-    s += '<div class="d-jam">' + hilang('Delay terkendali', F.cd.mtd, F.cd.plan) + hilang('Downtime', F.down.mtd, F.down.plan) +
-      hilang('Hujan, kabut & slippery', F.cuaca.mtd, F.cuaca.plan) + '</div>';
-    if (F.unit.length) s += `<div class="d-catat">Exca utama bulan ini: ${F.unit.map(([u, n]) => escH(u) + ' ' + n + ' hari').join(' · ')}</div>`;
+    let s = kepala('Front ' + NAMA[k], `<span class="d-co ${k}">exca kemarin ${escH(F.excaKemarin || '—')}</span>`);
+    s += '<table class="d-tbl d-front"><thead><tr><th></th><th class="num">MTD</th><th class="num">Rencana</th></tr></thead><tbody>';
+    s += baris('Ore', F.ore.mtd, 'WMT', F.ore.plan, f0, 1, F.ore.kemarin);
+    s += baris('TMM', F.tmm.mtd, 'WMT', F.tmm.plan, f0, 1, F.tmm.kemarin);
+    s += baris('Stripping ratio', F.sr.mtd, '', F.sr.plan, f2, 0);
+    s += '</tbody><tbody class="pisah">';
+    s += baris('PA', F.pa.mtd, '', D.planPa, p1, 1, F.pa.kemarin, 0.97);
+    s += baris('UA', F.ua.mtd, '', D.planUa, p1, 1, F.ua.kemarin);
+    s += baris('EWH', F.ewh.mtd, 'jam', F.ewh.plan, f1, 1, F.ewh.kemarin, 0.9);
+    s += baris('Produktivitas', F.pty.mtd, 'BCM/jam', F.pty.plan, f0, 1, F.pty.kemarin, 0.9);
+    s += '</tbody><tbody class="pisah">';
+    s += baris('Controllable Delay', F.cd.mtd, 'jam', F.cd.plan, f1, -1, F.cd.kemarin);
+    s += baris('Downtime', F.down.mtd, 'jam', F.down.plan, f1, -1);
+    s += baris('Hujan, kabut & slippery', F.cuaca.mtd, 'jam', F.cuaca.plan, f1, -1);
+    s += '</tbody></table>';
+    if (F.unit.length) s += `<div class="d-catat">Exca utama: ${F.unit.map(([u, n]) => escH(u) + ' ' + n + ' hari').join(' · ')}</div>`;
     return s;
   }
 
@@ -5449,40 +5548,38 @@ const DASH = (function () {
   function kartuMinggu(c) {
     const D = c.D;
     if (!D.minggu.length) return kepala('Performa mingguan') + '<div class="d-kosong">Belum ada data mingguan.</div>';
-    let s = kepala('Performa mingguan', '', 'Rencana minggu berjalan dipotong sampai ' + escH(tglP(c.M.cutoff)) + ' · WMT');
+    let s = kepala('Performa mingguan', '<span class="d-chip">WMT</span>');
     s += '<div class="d-tbl-wrap"><table class="d-tbl d-tbl-lekat"><thead><tr><th>Minggu</th><th class="num">Ore rencana</th><th class="num">Ore aktual</th><th class="num">Deviasi</th><th class="num">Capaian</th><th class="num">TMM rencana</th><th class="num">TMM aktual</th><th class="num">Deviasi</th><th class="num">Capaian</th></tr></thead><tbody>';
     const tot = { op: 0, oa: 0, tp: 0, ta: 0 };
+    const dev = (a, p) => { const v = (a || 0) - (p || 0); return `<span class="${v >= 0 ? 'd-t-ok' : 'd-t-err'}">${v >= 0 ? '▲' : '▼'} ${escH(sgn(v))}</span>`; };
     D.minggu.forEach(w => {
       if (w.lewat) { s += `<tr class="d-muted"><td>W${escH(w.no)} · ${escH(tglP(w.dari))}–${escH(tglP(w.sampai))}</td><td colspan="8">belum berjalan</td></tr>`; return; }
       tot.op += w.ore.plan || 0; tot.oa += w.ore.akt || 0; tot.tp += w.tmm.plan || 0; tot.ta += w.tmm.akt || 0;
-      const dev = (a, p) => { const v = (a || 0) - (p || 0); return `<span class="${v >= 0 ? 'd-t-ok' : 'd-t-err'}">${v >= 0 ? '▲' : '▼'} ${escH(sgn(v))}</span>`; };
       s += `<tr><td>W${escH(w.no)} · ${escH(tglP(w.dari))}–${escH(tglP(w.sampai))}</td><td class="num">${fmt(w.ore.plan)}</td><td class="num"><b>${fmt(w.ore.akt)}</b></td><td class="num">${dev(w.ore.akt, w.ore.plan)}</td><td class="num">${w.ore.plan ? escH(pct(w.ore.akt / w.ore.plan)) : '—'}</td>` +
         `<td class="num">${fmt(w.tmm.plan)}</td><td class="num"><b>${fmt(w.tmm.akt)}</b></td><td class="num">${dev(w.tmm.akt, w.tmm.plan)}</td><td class="num">${w.tmm.plan ? escH(pct(w.tmm.akt / w.tmm.plan)) : '—'}</td></tr>`;
     });
-    s += `<tr class="utama"><td>MTD</td><td class="num">${fmt(tot.op)}</td><td class="num"><b>${fmt(tot.oa)}</b></td><td class="num">${escH(sgn(tot.oa - tot.op))}</td><td class="num">${tot.op ? escH(pct(tot.oa / tot.op)) : '—'}</td>` +
-      `<td class="num">${fmt(tot.tp)}</td><td class="num"><b>${fmt(tot.ta)}</b></td><td class="num">${escH(sgn(tot.ta - tot.tp))}</td><td class="num">${tot.tp ? escH(pct(tot.ta / tot.tp)) : '—'}</td></tr>`;
+    s += `<tr class="utama"><td>MTD</td><td class="num">${fmt(tot.op)}</td><td class="num"><b>${fmt(tot.oa)}</b></td><td class="num">${dev(tot.oa, tot.op)}</td><td class="num">${tot.op ? escH(pct(tot.oa / tot.op)) : '—'}</td>` +
+      `<td class="num">${fmt(tot.tp)}</td><td class="num"><b>${fmt(tot.ta)}</b></td><td class="num">${dev(tot.ta, tot.tp)}</td><td class="num">${tot.tp ? escH(pct(tot.ta / tot.tp)) : '—'}</td></tr>`;
     return s + '</tbody></table></div>';
   }
 
   // ---------------------------------------------------------------- YTD
   function kpiYtd(c) {
-    const D = c.D, Y = D.ytd, K = D.kuota, th = Y.tahun;
+    const Y = c.D.ytd;
     const tile = (label, akt, plan) => `<div class="d-kpi"><div class="d-kpi-l">${escH(label)}</div>
       <div class="d-kpi-v">${escH(fmt(akt))}<small>WMT</small></div>
-      <div class="d-kpi-s">${lencana(plan ? akt / plan : null)}rencana ${escH(fmt(plan))} · ${escH(sgn((akt || 0) - (plan || 0)))}</div>
-      <div class="d-kpi-p">Jan–${escH(tglP(c.M.cutoff))} ${th}</div></div>`;
-    let s = '<div class="d-kpi4">' + tile('Ore YTD', Y.ore.totAkt, Y.ore.totPlan) + tile('TMM YTD', Y.tmm.totAkt, Y.tmm.totPlan);
-    // kuota
-    s += '<div class="d-kpi d-kuota" data-kartu="kuota">' + isiKuota(c) + '</div>';
-    return s + '</div>';
+      <div class="d-kpi-s">${lencana(bagiAman(akt, plan))}<span>rencana ${escH(fmt(plan))}</span></div></div>`;
+    return '<div class="d-kpi4">' + tile('Ore', Y.ore.totAkt, Y.ore.totPlan) + tile('TMM', Y.tmm.totAkt, Y.tmm.totPlan) +
+      '<div class="d-kpi d-kuota" data-kartu="kuota">' + isiKuota(c) + '</div></div>';
   }
   function isiKuota(c) {
     const K = c.D.kuota, th = c.D.ytd.tahun, admin = c.opsi.admin, ubah = c.st.kuotaUbah;
     const form = `<div class="d-kuota-form"><input type="text" inputmode="numeric" class="num" data-kuota-in placeholder="kuota ${th} dalam WMT" aria-label="Kuota produksi ${th} (WMT)" value="${K.nilai ? escH(fmt(K.nilai)) : ''}">` +
       `<button type="button" class="d-btn primer" data-daksi="kuota-simpan">Simpan</button>${K.nilai ? '<button type="button" class="d-btn" data-daksi="kuota-batal">Batal</button>' : ''}<span class="d-kuota-pesan" data-kuota-pesan></span></div>`;
     if (!K.nilai) return `<div class="d-kpi-l">Sisa kuota produksi ${th}</div>` +
-      (admin ? '<div class="d-kpi-s">Kuota tahunan belum diisi. Isi sekali, dipakai sepanjang tahun.</div>' + form : '<div class="d-kosong kiri">Kuota tahunan belum diisi admin.</div>');
+      (admin ? '<div class="d-kpi-s">Kuota tahunan belum diisi.</div>' + form : '<div class="d-kosong kiri">Kuota tahunan belum diisi admin.</div>');
     const perHariSt = K.perHari != null && K.laju != null ? (K.laju <= K.perHari ? 'ok' : 'warn') : '';
+    const habisTahunIni = K.habis && K.habis <= th + '-12-31';
     let s = `<div class="d-kpi-l">Sisa kuota produksi ${th}${admin && !ubah ? ' <button type="button" class="d-link" data-daksi="kuota-ubah">Ubah</button>' : ''}</div>`;
     if (admin && ubah) s += form;
     s += `<div class="d-kpi-v">${escH(fmt(K.sisa))}<small>WMT dari ${escH(fmt(K.nilai))}</small></div>`;
@@ -5493,89 +5590,72 @@ const DASH = (function () {
       <span>Sisa hari s.d. 31 Des</span><b>${escH(fmt(K.sisaHari))} hari</b>
       <span>Rata-rata tersedia</span><b>${K.perHari == null ? '—' : escH(fmt(K.perHari)) + ' WMT/hari'}</b>
       <span>Laju ${escH(namaBln(c.M.bulan).split(' ')[0])}</span><b class="${perHariSt ? 'd-t-' + perHariSt : ''}">${K.laju == null ? '—' : escH(fmt(K.laju)) + ' WMT/hari'}</b>
-      <span>${K.habis && K.habis <= th + '-12-31' ? 'Pada laju ini kuota habis' : 'Proyeksi akhir tahun'}</span><b class="${K.habis && K.habis <= th + '-12-31' ? 'd-t-warn' : ''}">${K.habis && K.habis <= th + '-12-31' ? '± ' + escH(tglP(K.habis)) : K.proyeksi != null ? escH(fmt(K.proyeksi)) + ' WMT (' + escH(pct(K.proyeksi / K.nilai)) + ')' : '—'}</b></div>`;
+      <span>${habisTahunIni ? 'Pada laju ini kuota habis' : 'Proyeksi akhir tahun'}</span><b class="${habisTahunIni ? 'd-t-warn' : ''}">${habisTahunIni ? '± ' + escH(tglP(K.habis)) : K.proyeksi != null ? escH(fmt(K.proyeksi)) + ' WMT (' + escH(pct(K.proyeksi / K.nilai)) + ')' : '—'}</b></div>`;
     return s;
   }
   function kartuBulanan(c) {
-    const j = c.st.ytdJ;
-    if (!c.D.ytd.ada) return kepala('Rencana & realisasi per bulan') + '<div class="d-kosong">Data YTD belum tersedia di template ini (butuh template versi 6).</div>';
-    return kepala('Rencana & realisasi per bulan', segmen('ytdJ', [['ore', 'Ore'], ['tmm', 'TMM']], j, 'Jenis produksi'), 'WMT · persen = capaian terhadap rencana bulan itu') +
-      legenda([{ t: 'Rencana', w: WARNA.hantu }, { t: 'Realisasi', w: WARNA.A }, { t: 'Bulan berjalan (MTD)', w: '#66b9b4' }]) + graf('bulanan', 240, 'Bulanan') +
-      `<div class="d-catat">Sumber per bulan: ${escH(c.D.ytd.sumber.map((x, m) => (x ? BLN[m] + ' ' + x : '')).filter(Boolean).join(' · '))}</div>`;
+    if (!c.D.ytd.ada) return kepala('Rencana & realisasi per bulan') + '<div class="d-kosong">Data YTD belum tersedia di template ini.</div>';
+    return kepala('Rencana & realisasi per bulan', segmen('ytdJ', [['ore', 'Ore'], ['tmm', 'TMM']], c.st.ytdJ, 'Jenis produksi')) +
+      legenda([{ t: 'Rencana', w: WARNA.hantu }, { t: 'Realisasi', w: WARNA.A }, { t: 'MTD', w: '#66b9b4' }]) + graf('bulanan', 240, 'Bulanan');
   }
   function kartuWfYtd(c) {
-    const j = c.st.wfY;
-    if (!c.D.ytd.ada) return kepala('Waterfall capaian YTD') + '<div class="d-kosong">Belum tersedia.</div>';
-    return kepala('Waterfall capaian YTD', segmen('wfY', [['produksi', 'Ore (WMT)'], ['mining', 'TMM (BCM)']], j, 'Jenis waterfall'), 'Jan s.d. ' + escH(tglP(c.M.cutoff)) + ' · termasuk selisih jam jadwal') +
-      legenda([{ t: 'Rencana & aktual', w: WARNA.total }, { t: 'Lebih baik dari rencana', w: WARNA.naik }, { t: 'Kehilangan', w: WARNA.turun }]) + graf('wfYtd', 250, 'Waterfall YTD');
+    if (!c.D.ytd.ada) return kepala('Waterfall YTD') + '<div class="d-kosong">Data YTD belum tersedia di template ini.</div>';
+    return kepala('Waterfall YTD', segmen('wfY', [['produksi', 'Ore · WMT'], ['mining', 'TMM · BCM']], c.st.wfY, 'Jenis waterfall')) +
+      legenda([{ t: 'Rencana & aktual', w: WARNA.total }, { t: 'Lebih baik', w: WARNA.naik }, { t: 'Kehilangan', w: WARNA.turun }]) + graf('wfYtd', 250, 'Waterfall YTD');
   }
 
-  // ---------------------------------------------------------------- OPEX
+  // ---------------------------------------------------------------- Operational Excellence: satu kartu per ukuran
   function ringkasOpex(D, m, k) {
     const hari = D.opex[k].filter(o => o && o.tot > 0), n = hari.length;
-    const rata = f => (n ? jml(hari.map(f)) / n : null);
     const kem = D.opex[k][D.iCut];
-    return { n, avg: rata(o => o[m]), ds: rata(o => o.ds[m]), ns: rata(o => o.ns[m]), kemarin: kem && kem.tot > 0 ? kem[m] : null, base: D.baseline[m][k] };
+    return { n, avg: n ? jml(hari.map(o => o[m])) / n : null, kemarin: kem && kem.tot > 0 ? kem[m] : null, base: D.baseline[m][k] };
   }
-  function kpiOpex(c) {
-    const D = c.D;
-    let s = '<div class="d-kpi4">';
-    for (const m of Object.keys(OPEX)) {
-      const O = OPEX[m];
-      s += `<div class="d-kpi d-opx"><div class="d-kpi-l">${escH(O.nama)}</div><div class="d-ket-blok">${escH(O.ket)}</div>`;
-      for (const k of ['A', 'B']) {
-        const R = ringkasOpex(D, m, k), st = R.base ? status(R.avg / R.base, 0.9) : '';
-        s += `<div class="d-opx-baris" data-tt="${daftarTip([{ t: O.nama + ' · ' + NAMA[k] }, { v: fmt(R.avg) + ' t', l: 'rata-rata per hari MTD (' + R.n + ' hari)' }, { v: fmt(R.ds) + ' / ' + fmt(R.ns) + ' t', l: 'rata-rata DS / NS' }, { v: R.base ? fmt(R.base) + ' t' : '—', l: 'acuan per hari' }, { v: fmt(R.kemarin) + ' t', l: 'kemarin' }])}">
-          ${sw(k)}<span class="d-opx-n">${NAMA[k]}</span><b>${escH(fmt(R.avg))}</b>${R.avg == null ? '<span class="d-muted">belum ada data</span>' : R.base ? `<span class="d-bdg ${st}">${panah(st)} ${escH(sgn(R.avg - R.base))}</span>` : '<span class="d-muted">tanpa acuan</span>'}</div>`;
-      }
-      const A = ringkasOpex(D, m, 'A'), B = ringkasOpex(D, m, 'B');
-      s += `<div class="d-kpi-p">DS/NS ANTAM ${escH(fmt(A.ds))}/${escH(fmt(A.ns))} · PCM ${escH(fmt(B.ds))}/${escH(fmt(B.ns))}</div>`;
-      s += `<div class="d-kpi-p">Kemarin ANTAM ${escH(fmt(A.kemarin))} · PCM ${escH(fmt(B.kemarin))}${A.base || B.base ? ' · acuan ' + escH(fmt(A.base)) + '/' + escH(fmt(B.base)) : ''}</div></div>`;
+  function kartuOpex(c, m) {
+    const D = c.D, O = OPEX[m];
+    let s = kepala(O.nama);
+    s += '<div class="d-opx-angka">';
+    for (const k of ['A', 'B']) {
+      const R = ringkasOpex(D, m, k), st = R.base && R.avg != null ? status(R.avg / R.base, 0.9) : '';
+      const tip = daftarTip([{ t: O.nama + ' · ' + NAMA[k] }, { v: fmt(R.avg) + ' t', l: 'rata-rata per hari MTD (' + R.n + ' hari)' },
+        { v: R.base ? fmt(R.base) + ' t' : '—', l: 'acuan per hari' }, { v: fmt(R.kemarin) + ' t', l: 'kemarin' }, { v: '', l: O.ket }]);
+      s += `<div class="d-opx-baris" data-tt="${tip}">${sw(k)}<span class="d-opx-n">${NAMA[k]}</span><b>${escH(fmt(R.avg))}</b>` +
+        (R.avg == null ? '<span class="d-muted">belum ada data</span>' : R.base ? `<span class="d-bdg ${st}">${panah(st)} ${escH(sgn(R.avg - R.base))}</span>` : '') + '</div>';
     }
-    return s + '</div>';
-  }
-  function kartuProfil(c) {
-    return kepala('Profil produksi per jam', '', 'Rata-rata per jam MTD (garis) dan kemarin (titik), ton Minerva') +
-      legenda([{ t: 'ANTAM', w: WARNA.A, bentuk: 'garis' }, { t: 'PCM', w: WARNA.B, bentuk: 'garis' }, { t: 'Kemarin', w: '#ffffff', bentuk: 'titik' },
-        { t: 'Ganti shift', w: '#fbeed6' }, { t: 'Istirahat', w: '#e2edeb' }]) + graf('profil', 226, 'Profil per jam');
-  }
-  function kartuOpexHarian(c) {
-    const m = c.st.opexM;
-    return kepala('OPEX harian · ' + OPEX[m].nama, segmen('opexM', Object.keys(OPEX).map(k => [k, OPEX[k].pendek]), m, 'Ukuran OPEX'), escH(OPEX[m].ket) + ' · ton per hari') +
-      legenda([{ t: 'ANTAM', w: WARNA.A }, { t: 'PCM', w: WARNA.B }, { t: 'Acuan', w: WARNA.plan, bentuk: 'putus' }]) + graf('opexHarian', 220, 'OPEX harian');
+    s += `</div><div class="d-opx-acuan">acuan ${escH(fmt(D.baseline[m].A))} · ${escH(fmt(D.baseline[m].B))} t/hari</div>`;
+    return s + graf('opex-' + m, 190, O.nama + ' harian');
   }
 
   // ---------------------------------------------------------------- penggambar grafik per jenis
+  function grafOpex(m) {
+    return (el, c) => {
+      const D = c.D, M = c.M;
+      if (!D.opex.A.some(o => o && o.tot > 0) && !D.opex.B.some(o => o && o.tot > 0)) return '<div class="d-kosong">Belum ada produksi per jam dari Minerva.</div>';
+      const nilai = k => D.opex[k].map(o => (o && o.tot > 0 ? o[m] : null));
+      return grafikGaris(el, { judul: OPEX[m].nama + ' harian', kategori: M.hari.map((_, i) => String(i + 1)), sorot: D.iCut,
+        seri: [{ warna: WARNA.A, nilai: nilai('A') }, { warna: WARNA.B, nilai: nilai('B') }],
+        acuan: [{ nilai: D.baseline[m].A, warna: WARNA.A }, { nilai: D.baseline[m].B, warna: WARNA.B }],
+        tip: i => {
+          if (i > D.iCut) return null;
+          const h = M.hari[i], a = D.opex.A[i], b = D.opex.B[i];
+          return [{ t: HARI[hariKe(h)] + ' ' + tglP(h) + ' · ' + OPEX[m].nama },
+            { v: a && a.tot > 0 ? fmt(a[m]) + ' t' : '—', l: 'ANTAM' + (a && a.tot > 0 ? ' (DS ' + fmt(a.ds[m]) + ' · NS ' + fmt(a.ns[m]) + ')' : ''), w: WARNA.A },
+            { v: b && b.tot > 0 ? fmt(b[m]) + ' t' : '—', l: 'PCM' + (b && b.tot > 0 ? ' (DS ' + fmt(b.ds[m]) + ' · NS ' + fmt(b.ns[m]) + ')' : ''), w: WARNA.B },
+            { v: fmt(D.baseline[m].A) + ' · ' + fmt(D.baseline[m].B) + ' t', l: 'acuan ANTAM · PCM' }];
+        } });
+    };
+  }
   const GRAF = {
     harian: (el, c) => grafikHarian(el, c.M, c.D, c.st.prod),
     kumulatif: (el, c) => grafikKumulatif(el, c.M, c.D, c.st.prod),
-    wfMtd: (el, c) => grafikWaterfall(el, c.D.wfMtd[c.st.wf], c.st.wf === 'mining' ? 'BCM' : 'WMT', 'Waterfall capaian MTD', c.D.wfMtd.jam),
+    wfMtd: (el, c) => grafikWaterfall(el, c.D.wfMtd[c.st.wf], c.st.wf === 'mining' ? 'BCM' : 'WMT', 'Waterfall MTD', c.D.wfMtd.jam),
     pareto: (el, c) => grafikPareto(el, pareto(c.M, c.st.parK, c.st.parP), c.st.parK),
     bulanan: (el, c) => grafikBulanan(el, c.D, c.st.ytdJ),
-    wfYtd: (el, c) => grafikWaterfall(el, c.D.wfYtd[c.st.wfY], c.st.wfY === 'mining' ? 'BCM' : 'WMT', 'Waterfall capaian YTD', c.D.wfYtd.jam),
-    profil: (el, c) => grafikProfil(el, c.M, c.D),
-    opexHarian: (el, c) => {
-      const D = c.D, m = c.st.opexM, M = c.M;
-      if (!D.opex.A.some(o => o && o.tot > 0) && !D.opex.B.some(o => o && o.tot > 0)) return '<div class="d-kosong">Belum ada produksi per jam dari Minerva pada periode ini.</div>';
-      const nilai = k => D.opex[k].map(o => (o && o.tot > 0 ? o[m] : null));
-      return grafikKelompok(el, { judul: 'OPEX harian ' + OPEX[m].nama, kategori: M.hari.map((_, i) => String(i + 1)), kanan: 76,
-        seri: [{ k: 'A', warna: WARNA.A, nilai: nilai('A') }, { k: 'B', warna: WARNA.B, nilai: nilai('B') }],
-        garisAcuan: [{ nilai: D.baseline[m].A, warna: WARNA.A, label: 'ANTAM ' + fmt(D.baseline[m].A) }, { nilai: D.baseline[m].B, warna: WARNA.B, label: 'PCM ' + fmt(D.baseline[m].B) }],
-        tip: i => {
-          const h = M.hari[i], a = D.opex.A[i], b = D.opex.B[i];
-          if (i > D.iCut) return null;
-          return [{ t: HARI[hariKe(h)] + ' ' + tglP(h) + ' · ' + OPEX[m].nama },
-            { v: a ? fmt(a[m]) + ' t' : '—', l: 'ANTAM' + (a ? ' (DS ' + fmt(a.ds[m]) + ' / NS ' + fmt(a.ns[m]) + ')' : ''), w: WARNA.A },
-            { v: b ? fmt(b[m]) + ' t' : '—', l: 'PCM' + (b ? ' (DS ' + fmt(b.ds[m]) + ' / NS ' + fmt(b.ns[m]) + ')' : ''), w: WARNA.B },
-            { v: fmt(D.baseline[m].A) + ' / ' + fmt(D.baseline[m].B) + ' t', l: 'acuan ANTAM / PCM' }];
-        } });
-    },
+    wfYtd: (el, c) => grafikWaterfall(el, c.D.wfYtd[c.st.wfY], c.st.wfY === 'mining' ? 'BCM' : 'WMT', 'Waterfall YTD', c.D.wfYtd.jam),
+    'opex-pertama': grafOpex('pertama'), 'opex-terakhir': grafOpex('terakhir'), 'opex-cr': grafOpex('cr'),
   };
-  // kartu yang ikut digambar ulang saat sebuah pilihan berubah
-  const KARTU = {
-    produksi: kartuProduksi, wfMtd: kartuWfMtd, pareto: kartuPareto, bulanan: kartuBulanan, wfYtd: kartuWfYtd, opexHarian: kartuOpexHarian, kuota: isiKuota,
-  };
-  const PILIHAN_KARTU = { prod: 'produksi', wf: 'wfMtd', parK: 'pareto', parP: 'pareto', ytdJ: 'bulanan', wfY: 'wfYtd', opexM: 'opexHarian' };
+  // kartu yang digambar ulang saat sebuah pilihan berubah
+  const KARTU = { produksi: kartuProduksi, wfMtd: kartuWfMtd, pareto: kartuPareto, bulanan: kartuBulanan, wfYtd: kartuWfYtd, kuota: isiKuota };
+  const PILIHAN_KARTU = { prod: 'produksi', wf: 'wfMtd', parK: 'pareto', parP: 'pareto', ytdJ: 'bulanan', wfY: 'wfYtd' };
 
   function gambarGrafik(el, c) {
     const fn = GRAF[el.getAttribute('data-g')]; if (!fn) return;
@@ -5591,23 +5671,20 @@ const DASH = (function () {
     gambarDalam(el, c);
   }
 
+  // hanya peringatan mutu data (hari sementara, laporan gagal/kosong); tidak ada chip bila semua dari QAQC
   function catatanSumber(c) {
     const D = c.D, M = c.M, bits = [];
-    // tanggal berurutan diringkas jadi rentang (24–30 Sep), selain itu didaftar
     const rentang = arr => {
       if (!arr.length) return '';
       const t = arr.map(h => +h.slice(8)), urut = t.every((v, i) => !i || v === t[i - 1] + 1);
-      return urut && t.length > 2 ? t[0] + '–' + t[t.length - 1] + ' ' + BLN[+M.bulan.slice(5) - 1] + ' (' + t.length + ' hari)' :
+      return urut && t.length > 2 ? t[0] + '–' + t[t.length - 1] + ' ' + BLN[+M.bulan.slice(5) - 1] :
         t.length > 6 ? arr.slice(0, 5).map(tglP).join(', ') + ' +' + (t.length - 5) + ' hari' : arr.map(tglP).join(', ');
     };
-    const pagi = M.hari.filter((h, i) => i <= D.iCut && D.sumber[h] && (D.sumber[h].oA === 'pagi' || D.sumber[h].oB === 'pagi'));
-    if (D.sementara.ore.length) bits.push(`<span class="d-chip warn">Ore ${escH(rentang(D.sementara.ore))}: Minerva (sementara, belum QC)</span>`);
-    if (pagi.length) bits.push(`<span class="d-chip">Ore ${escH(rentang(pagi))}: isian pagi QC</span>`);
-    if (D.sementara.wst.length) bits.push(`<span class="d-chip warn">Waste ${escH(rentang(D.sementara.wst))}: Minerva (sementara)</span>`);
+    if (D.sementara.ore.length) bits.push(`<span class="d-chip warn">Ore sementara (Minerva): ${escH(rentang(D.sementara.ore))}</span>`);
+    if (D.sementara.wst.length) bits.push(`<span class="d-chip warn">Waste sementara (Minerva): ${escH(rentang(D.sementara.wst))}</span>`);
     if ((M.mvGagal || []).length) bits.push(`<span class="d-chip err">Minerva gagal diambil: ${escH(rentang(M.mvGagal.slice().sort()))}</span>`);
     if ((M.mvKosong || []).length) bits.push(`<span class="d-chip">Minerva tanpa data: ${escH(rentang(M.mvKosong.slice().sort()))}</span>`);
-    if (!bits.length) bits.push('<span class="d-chip ok">Ore & waste semua hari dari QAQC</span>');
-    return '<div class="d-chips">' + bits.join('') + '</div>';
+    return bits.length ? '<div class="d-chips">' + bits.join('') + '</div>' : '';
   }
 
   /**
@@ -5618,22 +5695,23 @@ const DASH = (function () {
     opsi = opsi || {};
     const c = { root, M, opsi, D: turunan(M, opsi.set), st: Object.assign({}, PILIHAN_AWAL, root._dst || {}) };
     root._dc = c; root._dst = c.st;
-    // bersihkan tooltip lama milik root ini
     root.querySelectorAll('.d-graf, [data-kartu]').forEach(el => (el._tips || []).forEach(id => TIPS.delete(id)));
     if (root._tipsLepas) root._tipsLepas.forEach(id => TIPS.delete(id));
     root._tipsLepas = []; tipScope = root._tipsLepas;
-    const bln = namaBln(M.bulan), wadah = (id, cls) => `<div class="d-kartu${cls ? ' ' + cls : ''}" data-kartu="${id}"></div>`;
+    const wadah = id => `<div class="d-kartu" data-kartu="${id}"></div>`;
+    const kepalaBag = (id, judul, meta) => `<div class="d-bag-kepala"><h2 id="${id}-j">${escH(judul)}</h2><span class="d-sub">${meta}</span></div>`;
     let h = '';
     try {
-      h += `<section class="d-bag" id="d-mtd"><div class="d-bag-kepala"><h2>Bulan berjalan</h2><span class="d-sub">${escH(bln)} · data ${escH(tglP(M.hari[0]))}–${escH(tglP(M.cutoff))}</span></div>` + catatanSumber(c) +
-        kpiMtd(c) + `<div class="d-kartu">${kartuSisa(c)}</div>` + wadah('produksi') +
+      h += `<section class="d-bag" id="d-mtd" aria-labelledby="d-mtd-j">` + kepalaBag('d-mtd', 'MTD', escH((M.hari[0] === M.cutoff ? '' : +M.hari[0].slice(8) + '–') + tglP(M.cutoff) + ' ' + M.bulan.slice(0, 4))) +
+        catatanSumber(c) + kpiMtd(c) + `<div class="d-kartu">${kartuSisa(c)}</div>` + wadah('produksi') +
         '<div class="d-grid2">' + wadah('wfMtd') + wadah('pareto') + '</div>' +
         `<div class="d-grid2"><div class="d-kartu">${kartuFront(c, 'A')}</div><div class="d-kartu">${kartuFront(c, 'B')}</div></div>` +
         `<div class="d-kartu">${kartuMinggu(c)}</div></section>`;
-      h += `<section class="d-bag" id="d-ytd"><div class="d-bag-kepala"><h2>Tahun berjalan</h2><span class="d-sub">${escH(M.bulan.slice(0, 4))} · Januari s.d. ${escH(tglP(M.cutoff))}</span></div>` +
+      h += `<section class="d-bag" id="d-ytd" aria-labelledby="d-ytd-j">` + kepalaBag('d-ytd', 'YTD', escH('1 Jan–' + tglP(M.cutoff) + ' ' + M.bulan.slice(0, 4))) +
         kpiYtd(c) + '<div class="d-grid2">' + wadah('bulanan') + wadah('wfYtd') + '</div></section>';
-      h += `<section class="d-bag" id="d-opex"><div class="d-bag-kepala"><h2>OPEX · jam kritis</h2><span class="d-sub">${escH(bln)} · produksi per jam front dari Minerva (ton, truck ANTAM 9RD & PCM DTR/DTH)</span></div>` +
-        kpiOpex(c) + '<div class="d-grid2">' + `<div class="d-kartu">${kartuProfil(c)}</div>` + wadah('opexHarian') + '</div></section>';
+      h += `<section class="d-bag" id="d-opex" aria-labelledby="d-opex-j">` + kepalaBag('d-opex', 'Operational Excellence', 'rata-rata per hari MTD · ton') +
+        legenda([{ t: 'ANTAM', w: WARNA.A, bentuk: 'garis' }, { t: 'PCM', w: WARNA.B, bentuk: 'garis' }, { t: 'Acuan', w: WARNA.plan, bentuk: 'putus' }, { t: 'Kemarin', w: '#ffffff', bentuk: 'titik' }]) +
+        '<div class="d-grid3">' + Object.keys(OPEX).map(m => `<div class="d-kartu d-opx">${kartuOpex(c, m)}</div>`).join('') + '</div></section>';
     } finally { tipScope = null; }
     root.innerHTML = h;
     root.querySelectorAll('[data-kartu]').forEach(el => { if (!el.innerHTML) isiKartu(el, c); });
@@ -5757,6 +5835,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       ppt: { ANTAM: {}, BUMD: {} },
       qaqc: { hari: {}, berkas: null, lgoKeWaste: true, bargingManual: {}, oreManual: {} },   // bargingManual: ymd -> WMT (menggantikan angka berkas); oreManual: ymd -> {antam, bumd} ore QC pagi (dipakai bila berkas belum ada)
       loader: {},
+      loaderCek: null,           // {sampai, waktu, oleh}: pilihan loader sudah dicek admin s.d. tanggal itu (syarat unduh Excel)
       biaya: { kurs: [], bbm: [], tarif: {}, mingguan: {}, plan: {} },
       dra: { tanggal: [], nilai: {} },
       wm: { sump: {} },          // id sump Water & Road -> {plan, aktual, rit:[5], ket}
@@ -5774,7 +5853,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     tetangga: {},
     // dashboard: model tampil, snapshot, setelan (kuota, acuan OPEX), status hitung
     set: null, setDimuat: false, dToken: 0, dModel: null, dBasi: '', dHitung: false, dUlang: false, dTersimpan: null, dGalatSimpan: '', dGalat: '', dTabel: null,
-    tplWaktu: null, tplJanji: null, ingat: null, mvSegar: false };
+    tplWaktu: null, tplJanji: null, ingat: null, mvSegar: false,
+    // dipinjam: status bulan lain sedang dipakai denganBulan (ringkasan YTD); advAktif: panel Advanced Data; pagiBuka: isian ore QC dibuka manual
+    dipinjam: false, ubahTertunda: false, advAktif: 'rencana', pagiBuka: false };
 
   /* ---------- pil status ---------- */
   function pil(teks, jenis, judul) {
@@ -5800,7 +5881,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     renderSemua();
     mulaiDasbor();
   }
-  // angka PPT bulan sebelum & sesudahnya: minggu yang melintasi pergantian bulan cukup diisi sekali
+  // angka Kertas Kerja Mingguan bulan sebelum & sesudahnya: minggu yang melintasi pergantian bulan cukup diisi sekali
   function bulanGeser(ym, n) { var p = ym.split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1 + n, 1)); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1); }
   async function muatTetangga() {
     S.tetangga = {};
@@ -5811,6 +5892,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   function ubah() {
     if (!S.admin) return;
+    if (S.dipinjam) { S.ubahTertunda = true; S.kotor = true; return; }   // dicatat setelah status bulan ini dikembalikan (denganBulan)
     S.kotor = true; S.versiUbah = (S.versiUbah || 0) + 1; pil('Belum tersimpan', 'warn');
     clearTimeout(S.timer); S.timer = setTimeout(simpan, 1200);
     renderRingkas(); badge(); renderPagi();
@@ -5819,19 +5901,21 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   // pemanggil yang datang saat simpanan lain berjalan menunggu simpanan itu, lalu menyimpan lagi bila masih ada perubahan
   async function simpan(paksa) {
     while (S.menyimpan) { try { await S.simpanJanji; } catch (e) { /* diulang di bawah */ } }
+    if (S.dipinjam) { clearTimeout(S.timer); S.timer = setTimeout(function () { simpan(paksa); }, 1000); return; }   // S.bulan/S.data milik bulan lain sementara
     if (!S.admin || !S.kotor) return;
     S.menyimpan = true;
     S.simpanJanji = simpanInti(paksa);
     return S.simpanJanji;
   }
   async function simpanInti(paksa) {
+    var bulan = S.bulan, data = S.data;           // dikunci di awal: denganBulan bisa meminjam S.bulan/S.data selama menunggu jaringan
     pil('Menyimpan…', 'warn');
     try {
       if (!paksa) {
-        var cek = await rest('/rest/v1/oe_1on1?bulan=eq.' + S.bulan + '&select=updated_at,updated_by', { method: 'GET' });
+        var cek = await rest('/rest/v1/oe_1on1?bulan=eq.' + bulan + '&select=updated_at,updated_by', { method: 'GET' });
         var r0 = cek && cek[0];
         if (r0 && S.updatedAt && r0.updated_at !== S.updatedAt && r0.updated_by !== emailLogin()) {
-          tampilBanner('bannerKonflik', 'Isian ' + esc(namaBulan(S.bulan)) + ' baru diubah oleh <b>' + esc(r0.updated_by) + '</b> (' + esc(jamWit(r0.updated_at)) +
+          tampilBanner('bannerKonflik', 'Isian ' + esc(namaBulan(bulan)) + ' baru diubah oleh <b>' + esc(r0.updated_by) + '</b> (' + esc(jamWit(r0.updated_at)) +
             '). Perubahanmu belum disimpan. <button class="btn kecil" id="btnMuatUlang">Muat versi server</button> <button class="btn kecil" id="btnTimpa">Timpa dengan versiku</button>');
           el('btnMuatUlang').onclick = function () { el('bannerKonflik').hidden = true; muat(); };
           el('btnTimpa').onclick = function () { el('bannerKonflik').hidden = true; S.kotor = true; simpan(true); };
@@ -5841,7 +5925,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       var v0 = S.versiUbah || 0;                                   // isi yang dikirim = isian sampai titik ini
       var res = await rest('/rest/v1/oe_1on1?on_conflict=bulan', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ bulan: S.bulan, data: S.data })
+        body: JSON.stringify({ bulan: bulan, data: data })
       });
       var r = res && res[0];
       S.updatedAt = r ? r.updated_at : S.updatedAt; S.updatedBy = r ? r.updated_by : emailLogin();
@@ -5849,21 +5933,38 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       S.kotor = (S.versiUbah || 0) !== v0;
       if (S.kotor) { pil('Belum tersimpan', 'warn'); clearTimeout(S.timer); S.timer = setTimeout(simpan, 800); }
       else pil('Tersimpan · ' + jamWit(S.updatedAt), 'ok');
-      if (S.arsip && !S.arsip.some(function (x) { return x.bulan === S.bulan; })) muatArsip();   // bulan baru masuk daftar arsip
+      if (S.arsip && !S.arsip.some(function (x) { return x.bulan === bulan; })) muatArsip();   // bulan baru masuk daftar arsip
     } catch (e) { pil('Gagal simpan', 'err', pesan(e)); }
     finally { S.menyimpan = false; }
   }
+  // tunggu sampai status bulan yang dibuka dikembalikan denganBulan (ringkasan YTD bulan lain)
+  function tungguPinjam() { return new Promise(function (ok) { (function cek() { if (!S.dipinjam) ok(); else setTimeout(cek, 250); })(); }); }
   function tampilBanner(id, html) { var b = el(id); b.innerHTML = '<div>' + html + '</div>'; b.hidden = false; }   // .banner = flex: isi dibungkus satu div
 
   /* ---------- navigasi tab ---------- */
-  function pilihTab(v) {
+  // paksa: dipanggil proses yang sedang mengunci halaman (unduh arsip, hitung ulang YTD)
+  function pilihTab(v, paksa) {
+    if (!paksa && (document.body.classList.contains('sibuk') || S.dipinjam)) return;
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.v === v); });
     document.querySelectorAll('.view').forEach(function (s) { s.classList.toggle('active', s.id === 'v-' + v); });
-    if (v === 'template') infoTemplate();
+    el('bannerBaca').hidden = S.admin || v !== 'data';
     if (v === 'dasbor' && S.dBasi && !S.dHitung && !S.sibuk && S.tplAda !== false && !bulanBelumJalan()) hitungDasbor();
   }
 
-  /* ---------- hari-hari bulan & minggu PPT ---------- */
+  // Advanced Data (tab Data): satu panel terbuka pada satu waktu
+  function bukaAdv(nama, gulir) {
+    el('btnAdv').setAttribute('aria-expanded', 'true'); el('advIsi').hidden = false;
+    if (nama) {
+      S.advAktif = nama;
+      el('advNav').querySelectorAll('button[data-adv]').forEach(function (b) { b.classList.toggle('on', b.dataset.adv === nama); b.setAttribute('aria-pressed', String(b.dataset.adv === nama)); });
+      document.querySelectorAll('#advIsi .adv-p').forEach(function (p) { p.hidden = p.id !== 'adv-' + nama; });
+      if (nama === 'template') infoTemplate();
+    }
+    if (gulir) (nama ? el('adv-' + nama) : el('advIsi')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function tutupAdv() { el('btnAdv').setAttribute('aria-expanded', 'false'); el('advIsi').hidden = true; }
+
+  /* ---------- hari-hari bulan & minggu Kertas Kerja Mingguan ---------- */
   function mulai() { return S.bulan + '-01'; }
   function daftarMinggu() { var out = [], a = senin(mulai()), akhir = akhirBulan(S.bulan); for (var m = a; m <= akhir; m = geser(m, 7)) out.push(m); return out; }
   function dalamBulan(ymd) { return ymd.slice(0, 7) === S.bulan; }
@@ -5875,6 +5976,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (attr) Object.keys(attr).forEach(function (k) { i.setAttribute(k, attr[k]); });
     i.disabled = !S.admin;
     i.addEventListener('change', function () { onubah(num(i.value)); });
+    return i;
+  }
+  // angka ribuan (target, BBM, HM): 150.000 / 150,000 / 150000 dibaca sama (angkaTempel), tampil format Indonesia
+  function inputRibuan(nilai, onubah, ph) {
+    var i = document.createElement('input'); i.type = 'text'; i.inputMode = 'decimal'; i.className = 'num'; i.autocomplete = 'off';
+    var tulis = function (v) { i.value = v == null ? '' : angka(v, v % 1 ? 2 : 0); };
+    tulis(nilai); if (ph) i.placeholder = ph; i.disabled = !S.admin;
+    i.addEventListener('change', function () {
+      var v = angkaTempel(i.value);
+      if (v != null && (isNaN(v) || v < 0)) { i.classList.add('salah'); i.title = 'Angka tidak terbaca. Contoh: 150.000'; return; }
+      i.classList.remove('salah'); i.title = ''; tulis(v); onubah(v);
+    });
     return i;
   }
   function field(wadah, label, unit, input) {
@@ -5892,9 +6005,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   function renderPlan() {
     var P = S.data.plan, T = P.target, F = P.faktor;
-    var w = el('formTarget'); w.innerHTML = '';
-    field(w, 'Target produksi ore', 'WMT/bulan', inputAngka(T.produksi, function (v) { T.produksi = v; ubah(); infoTarget(); }, { placeholder: 'mis. 150000' }));
-    field(w, 'Target TMM', 'WMT/bulan', inputAngka(T.tmm, function (v) { T.tmm = v; ubah(); infoTarget(); }, { placeholder: 'mis. 175000' }));
+    var w = el('formTargetUtama'); w.innerHTML = '';
+    field(w, 'Target produksi ore', 'WMT/bulan', inputRibuan(T.produksi, function (v) { T.produksi = v; ubah(); infoTarget(); }, 'mis. 150.000'));
+    field(w, 'Target TMM', 'WMT/bulan', inputRibuan(T.tmm, function (v) { T.tmm = v; ubah(); infoTarget(); }, 'mis. 175.000'));
+    w = el('formTarget'); w.innerHTML = '';
     field(w, 'Produktivitas alat ANTAM', 'rasio', inputAngka(T.rasioA, function (v) { T.rasioA = v; ubah(); infoTarget(); }));
     field(w, 'Produktivitas alat BUMD', 'rasio', inputAngka(T.rasioB, function (v) { T.rasioB = v; ubah(); infoTarget(); }));
     field(w, 'Target barging BUMD', 'WMT/bulan', inputAngka(T.barging, function (v) { T.barging = v; ubah(); }, { placeholder: 'mis. 150000' }));
@@ -5921,7 +6035,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     });
   }
 
-  /* ================================================================ PPT */
+  /* ================================================================ KERTAS KERJA MINGGUAN (data.ppt) */
   var LBL_RES = ['Waste · Volume (BCM)', 'Waste · Tonnage (WMT)', 'LGO · Volume', 'LGO · Tonnage', 'LGO · Ni', 'LGO · Fe', 'LGO · MC',
     'LGSO · Volume', 'LGSO · Tonnage', 'LGSO · Ni', 'LGSO · Fe', 'LGSO · MC', 'HGSO · Volume', 'HGSO · Tonnage', 'HGSO · Ni', 'HGSO · Fe', 'HGSO · MC',
     'Total cadangan · BCM', 'Total cadangan · WMT', 'Densitas waste', 'Densitas LGO', 'Densitas LGSO', 'Densitas HGSO', 'Stripping ratio'];
@@ -5970,7 +6084,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
         var k = b.dataset.k, m = b.dataset.m;
         if (b.dataset.aksi === 'img') pilihGambar(k, m, b.dataset.jenis);
         else if (b.dataset.aksi === 'manual') bukaTinjau(k, m, null, null);
-        else if (b.dataset.aksi === 'hapus') { if (confirm('Hapus angka PPT ' + k + ' minggu ' + tglPendek(m) + '?')) { delete S.data.ppt[k][m]; ubah(); renderPpt(); } }
+        else if (b.dataset.aksi === 'hapus') { if (confirm('Hapus angka Kertas Kerja Mingguan ' + k + ' minggu ' + tglPendek(m) + '?')) { delete S.data.ppt[k][m]; ubah(); renderPpt(); } }
       };
     });
     w.querySelectorAll('.dropzone').forEach(function (z) {
@@ -6090,7 +6204,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       };
     });
     var cat = (R.catatan ? R.catatan + ' ' : '') + (R.ringkas && R.ringkas.cek ? 'Periksa sel merah (arahkan kursor untuk alasannya). ' : '');
-    if (R.ringkas && R.ringkas.info) cat += R.ringkas.info + ' sel bergaris putus-putus tidak cocok cek silang tapi tidak dipakai Excel (biasanya slide-nya sendiri tidak konsisten). ';
+    if (R.ringkas && R.ringkas.info) cat += R.ringkas.info + ' sel bergaris putus-putus tidak cocok cek silang tapi tidak dipakai Excel (biasanya angka kertas kerjanya sendiri tidak konsisten). ';
     if (jen === 'mining') cat += 'Dari Mining Plan yang dipakai hanya jarak angkut; sisanya untuk cek silang.';
     el('dlgCatatan').textContent = cat;
     el('dlgSimpan').disabled = !S.admin;
@@ -6115,6 +6229,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   function simpanTinjau() {
     var T = S.review; if (!T) return;
+    if (S.dipinjam || document.body.classList.contains('sibuk')) { el('dlgCatatan').textContent = 'Tunggu sampai proses Excel/dashboard selesai, lalu simpan lagi.'; return; }
     var e = Object.assign({}, entriPpt(T.k, T.m) || {}); delete e._dari;
     var jadiGrid = function (R) { return R.sel.map(function (row) { return row.map(function (x) { return x.nilai == null ? null : x.nilai; }); }); };
     var adaIsi = function (R) { return R && R.sel.some(function (row) { return row.some(function (x) { return x.nilai != null; }); }); };
@@ -6139,22 +6254,41 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     try {
       var u8 = new Uint8Array(await file.arrayBuffer());
       var h = await OE1.parseQaqc(u8);
-      var n = jumlahHari(S.bulan), hari = {}, isi = 0;
+      var n = jumlahHari(S.bulan), hari = {}, isi = 0, nol = 0, akhirAda = 0;
+      var adaAngka = function (k) { var A = h.hari[k].ANTAM || {}, K = h.hari[k].KONTRAKTOR || {};
+        return [A.oreWmt, A.wasteWmt, A.lgoRampstockWmt, K.oreWmt, K.wasteWmt, K.lgoRampstockWmt, K.bargingWmt].some(function (v) { return v; }); };
+      // berkas mencakup s.d. hari terakhir yang berisi angka; hari 0 sebelum itu = memang tanpa produksi (mis. libur)
+      Object.keys(h.hari).forEach(function (k) { if (adaAngka(k) && +k > akhirAda) akhirAda = +k; });
       Object.keys(h.hari).forEach(function (k) {
-        var d = +k; if (d < 1 || d > n) return;
+        var d = +k; if (d < 1 || d > n || d > akhirAda) return;
         var A = h.hari[k].ANTAM || {}, K = h.hari[k].KONTRAKTOR || {};
-        var ada = [A.oreWmt, A.wasteWmt, A.lgoRampstockWmt, K.oreWmt, K.wasteWmt, K.lgoRampstockWmt, K.bargingWmt].some(function (v) { return v; });
-        if (!ada) return;
+        if (!adaAngka(k)) nol++;
         hari[S.bulan + '-' + pad(d)] = { antamOre: A.oreWmt || 0, antamWaste: A.wasteWmt || 0, antamLgoRs: A.lgoRampstockWmt || 0,
           bumdOre: K.oreWmt || 0, bumdWaste: K.wasteWmt || 0, bumdLgoRs: K.lgoRampstockWmt || 0, barging: K.bargingWmt || 0, antamBarging: A.bargingWmt || 0 };
         isi++;
       });
       S.data.qaqc.hari = hari;
       S.data.qaqc.berkas = { nama: file.name, waktu: new Date().toISOString(), label: h.bulanLabel || '' };
-      el('qaqcInfo').innerHTML = esc(file.name) + ' · ' + isi + ' hari berisi data' + (h.catatan.length ? ' · ' + esc(h.catatan.join('; ')) : '') +
-        (h.bulanLabel ? ' · label bulan di berkas: "' + esc(h.bulanLabel) + '" (tidak dipakai; tanggal mengikuti bulan terpilih)' : '');
+      var lain = labelBulanLain(h.bulanLabel);
+      el('qaqcInfo').innerHTML = esc(file.name) + ' · ' + isi + ' hari' + (nol ? ' (' + nol + ' hari tanpa produksi)' : '') + (h.catatan.length ? ' · ' + esc(h.catatan.join('; ')) : '') +
+        (lain ? ' · <span style="color:var(--bad)">label bulan di berkas "' + esc(lain) + '", bukan ' + esc(namaBulan(S.bulan)) + '</span>' : '');
       ubah(); renderQaqc();
     } catch (e) { el('qaqcInfo').textContent = 'Gagal: ' + pesan(e); }
+  }
+  // hari dianggap ada di QAQC bila punya angka ore/waste (0 boleh); sel kosong atau teks tidak dihitung
+  function qaqcAda(d) {
+    var x = S.data.qaqc.hari[d];
+    return !!x && ['antamOre', 'antamWaste', 'antamLgoRs', 'bumdOre', 'bumdWaste', 'bumdLgoRs'].some(function (k) { return typeof x[k] === 'number' && isFinite(x[k]); });
+  }
+  // label bulan di berkas QAQC menyebut bulan/tahun lain -> teks label (untuk peringatan); cocok atau tidak terbaca -> ''
+  var NAMA_BLN = [['januari', 'january', 'jan'], ['februari', 'february', 'feb'], ['maret', 'march', 'mar'], ['april', 'apr'], ['mei', 'may'], ['juni', 'june', 'jun'],
+    ['juli', 'july', 'jul'], ['agustus', 'august', 'agu', 'aug', 'agt'], ['september', 'sept', 'sep'], ['oktober', 'october', 'okt', 'oct'], ['november', 'nov'], ['desember', 'december', 'des', 'dec']];
+  function labelBulanLain(label) {
+    var t = String(label || '').toLowerCase(); if (!t.trim()) return '';
+    var kata = t.split(/[^a-z]+/), bln = [];
+    NAMA_BLN.forEach(function (n, i) { if (n.some(function (x) { return kata.indexOf(x) >= 0; })) bln.push(i + 1); });
+    var th = (t.match(/\b20\d\d\b/g) || []).map(Number), b = +S.bulan.slice(5), y = +S.bulan.slice(0, 4);
+    return (bln.length && bln.indexOf(b) < 0) || (th.length && th.indexOf(y) < 0) ? String(label).trim().slice(0, 60) : '';
   }
   var KOL_QAQC = [['antamOre', 'ANTAM ore'], ['antamWaste', 'ANTAM waste'], ['antamLgoRs', 'ANTAM LGO rampstock'],
     ['bumdOre', 'BUMD ore'], ['bumdWaste', 'BUMD waste'], ['bumdLgoRs', 'BUMD LGO rampstock'], ['barging', 'Barging BUMD']];
@@ -6231,7 +6365,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
           S.bargingPesan = ''; ubah(); renderQaqc(); return;
         }
         var x = Q.hari[d] || (Q.hari[d] = {});
-        x[inp.dataset.k] = num(inp.value); ubah(); renderQaqc();
+        x[inp.dataset.k] = num(inp.value);
+        if (!Object.keys(x).some(function (k) { return x[k] != null; })) delete Q.hari[d];   // baris kosong = hari belum ada
+        ubah(); renderQaqc();
       };
     });
   }
@@ -6284,8 +6420,40 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     // minggu Prod AK5:AO5 = minggu hari ke-1 s.d. +4 (minggu ke-6 digabung ke kolom ke-5)
     var a = senin(mulai()), out = [];
     for (var i = 0; i < 5; i++) { var m = geser(a, 7 * i), akhir = i === 4 ? akhirBulan(S.bulan) : geser(m, 6);
-      var s = m < mulai() ? mulai() : m; out.push(tglPendek(s) + '–' + tglPendek(akhir > akhirBulan(S.bulan) ? akhirBulan(S.bulan) : akhir)); }
+      var s = m < mulai() ? mulai() : m;
+      out.push(s > akhirBulan(S.bulan) ? '—' : rentangTgl(s, akhir > akhirBulan(S.bulan) ? akhirBulan(S.bulan) : akhir, true)); }   // '—': minggu ke-5 jatuh di bulan berikutnya
     return out;
+  }
+  // kuantitas mingguan wajib (tab Data langkah 4 & 5): minggu yang sudah dimulai s.d. tanggal data harus terisi (0 boleh)
+  var TBL_MINGGUAN = { '184': 'tblBbm', '201': 'tblHm' };
+  function mingguMulai() {
+    var a = senin(mulai()), out = [];
+    for (var i = 0; i < 5; i++) { var m = geser(a, 7 * i); out.push(m < mulai() ? mulai() : m); }
+    return out;
+  }
+  function mingguWajib() { return mingguMulai().filter(function (m) { return m <= S.cutoff; }).length; }
+  function mingguKosong(kode) {
+    var arr = S.data.biaya.mingguan[kode] || [], out = [];
+    mingguMulai().forEach(function (m, i) { if (m <= S.cutoff && (arr[i] == null || isNaN(arr[i]))) out.push(i); });
+    return out;
+  }
+  function renderMingguan(kode) {
+    var t = el(TBL_MINGGUAN[kode]), B = S.data.biaya, ML = mingguLabel(), MM = mingguMulai(), arr = B.mingguan[kode] || [];
+    var fmt = function (v) { return v == null ? '' : angka(v, v % 1 ? 2 : 0); };
+    t.innerHTML = '<thead><tr>' + ML.map(function (m, i) { return '<th class="num">Week-' + (i + 1) + '<br><span class="muted">' + esc(m) + '</span></th>'; }).join('') + '</tr></thead><tbody><tr>' +
+      ML.map(function (m, i) { var v = arr[i], luar = MM[i] > akhirBulan(S.bulan);
+        return '<td class="num' + (MM[i] <= S.cutoff && v == null ? ' perlu' : '') + '"><input class="num" data-i="' + i + '" inputmode="decimal" autocomplete="off" value="' + esc(fmt(v)) + '"' + (S.admin && !luar ? '' : ' disabled') + '></td>'; }).join('') + '</tr></tbody>';
+    t.querySelectorAll('input').forEach(function (inp) {
+      inp.onchange = function () {
+        var i = +inp.dataset.i, v = angkaTempel(inp.value);
+        if (v != null && (isNaN(v) || v < 0)) { inp.classList.add('salah'); inp.title = 'Angka tidak terbaca. Contoh: 12.500'; return; }
+        inp.classList.remove('salah'); inp.title = '';
+        var a = B.mingguan[kode] || (B.mingguan[kode] = []); a[i] = v;
+        inp.value = fmt(v);
+        inp.closest('td').classList.toggle('perlu', mingguMulai()[i] <= S.cutoff && v == null);
+        ubah();
+      };
+    });
   }
   function renderBiaya() {
     var B = S.data.biaya, ML = mingguLabel();
@@ -6297,12 +6465,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     el('tblKurs').querySelectorAll('input').forEach(function (inp) { inp.onchange = function () { var a = B[inp.dataset.a] || (B[inp.dataset.a] = []); a[+inp.dataset.i] = num(inp.value); ubah(); }; });
     var w = el('formTarif'); w.innerHTML = '';
     TARIF.forEach(function (x) { field(w, x[1], x[2] + ' · COST!' + x[0], inputAngka(B.tarif[x[0]], function (v) { if (v == null) delete B.tarif[x[0]]; else B.tarif[x[0]] = v; ubah(); }, { placeholder: 'bawaan template' })); });
-    t = '<thead><tr><th></th>' + ML.map(function (m, i) { return '<th class="num">Week-' + (i + 1) + '<br><span class="muted">' + m + '</span></th>'; }).join('') + '</tr></thead><tbody>';
-    MINGGUAN.forEach(function (k) {
-      t += '<tr><td>' + k[1] + ' <span class="unit">· ' + k[2] + '</span></td>' + [0, 1, 2, 3, 4].map(function (i) { var v = (B.mingguan[k[0]] || [])[i]; return '<td><input class="num" data-r="' + k[0] + '" data-i="' + i + '" value="' + (v == null ? '' : v) + '"' + (S.admin ? '' : ' disabled') + '></td>'; }).join('') + '</tr>';
-    });
-    el('tblMingguan').innerHTML = t + '</tbody>';
-    el('tblMingguan').querySelectorAll('input').forEach(function (inp) { inp.onchange = function () { var a = B.mingguan[inp.dataset.r] || (B.mingguan[inp.dataset.r] = []); a[+inp.dataset.i] = num(inp.value); ubah(); }; });
+    renderMingguan('184'); renderMingguan('201');
     var P = B.plan || (B.plan = {}), wp = el('formPlanBiaya'); wp.innerHTML = '';
     PLAN_BIAYA.forEach(function (x) { field(wp, x[1], x[2] + ' · COST!' + x[0], inputAngka(P[x[0]], function (v) { if (v == null) delete P[x[0]]; else P[x[0]] = v; ubah(); }, { placeholder: 'bawaan template' })); });
   }
@@ -6373,7 +6536,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   async function ambilTemplate() {
     if (S.tplBytes) return S.tplBytes;
     var r = await fetch(SUPA.url + '/storage/v1/object/authenticated/' + BUCKET + '/' + TPL_PATH, { headers: hdr() });
-    if (r.status === 400 || r.status === 404) throw new Error('Template belum diunggah admin (tab Template)');
+    if (r.status === 400 || r.status === 404) throw new Error('Template belum diunggah admin (Advanced Data → Template)');
     if (!r.ok) throw new Error('Template tidak bisa diambil (' + r.status + ')');
     S.tplBytes = new Uint8Array(await r.arrayBuffer());
     return S.tplBytes;
@@ -6448,14 +6611,38 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     return hasil;
   }
   async function cekLoader() {
-    var hari = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; });
+    var bulan = S.bulan, cutoff = S.cutoff, hari = hariBulan(bulan).filter(function (d) { return d <= cutoff; });
+    el('btnCekLoader').disabled = true;
     el('loaderInfo').textContent = 'Mengambil laporan excavator 0/' + hari.length + '…';
     try {
       var ex = await kumpulkan('exca', hari, function (a, b) { el('loaderInfo').textContent = 'Mengambil laporan excavator ' + a + '/' + b + '…'; });
+      await tungguPinjam();
+      if (bulan !== S.bulan || cutoff !== S.cutoff) { el('loaderInfo').textContent = ''; return; }   // bulan/tanggal diganti selama mengambil
       S.loaderAuto = OE1.pilihLoader(ex, hari);
-      el('loaderInfo').textContent = 'Selesai · ' + ex.rows.length.toLocaleString('id-ID') + ' baris' + (ex.kosong.length ? ' · tanpa data: ' + ex.kosong.map(tglPendek).join(', ') : '') + (ex.gagal.length ? ' · gagal: ' + ex.gagal.join(', ') : '');
-      renderLoader();
+      el('loaderInfo').textContent = 'Siap diperiksa' + (ex.kosong.length ? ' · tanpa data Minerva: ' + ex.kosong.map(tglPendek).join(', ') : '') + (ex.gagal.length ? ' · gagal: ' + ex.gagal.join(', ') : '');
+      renderLoader(); el('rinciLoader').open = true;
     } catch (e) { el('loaderInfo').textContent = 'Gagal: ' + pesan(e); }
+    finally { el('btnCekLoader').disabled = false; await tungguPinjam(); renderRingkas(); }
+  }
+  // pilihan otomatis sudah ada untuk semua hari s.d. tanggal data (dari tombol ambil, hitung dashboard, atau unduh)
+  function loaderSiap() {
+    var A = S.loaderAuto; if (!A) return false;
+    return hariBulan(S.bulan).every(function (d) { return d > S.cutoff || !!A[d]; });
+  }
+  // urutan: ambil pilihan otomatis → periksa tabel → tandai sudah dicek (tombol tandai muncul setelah pilihan otomatis siap)
+  function statusLoader() {
+    var b = el('btnLoaderDicek'), LC = S.data.loaderCek, sudah = !!(LC && LC.sampai >= S.cutoff), siap = loaderSiap();
+    b.hidden = !S.admin || sudah || !siap;
+    b.disabled = !!S.sibuk;
+    b.textContent = 'Tandai sudah dicek s.d. ' + tglPendek(S.cutoff);
+    el('btnCekLoader').classList.toggle('primary', S.admin && !sudah && !siap);
+  }
+  function tandaiLoader() {
+    if (!S.admin || S.sibuk || !loaderSiap()) return;
+    var fokus = document.activeElement === el('btnLoaderDicek');
+    S.data.loaderCek = { sampai: S.cutoff, waktu: new Date().toISOString(), oleh: emailLogin() };
+    ubah(); statusLoader();
+    if (fokus) el('btnCekLoader').focus();
   }
 
   /* ================================================================ SUSUN DATA UNTUK GENERATOR */
@@ -6551,6 +6738,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   function kunciKendali() { el('inBulan').disabled = el('inCutoff').disabled = !!(S.sibuk || document.body.classList.contains('sibuk')); }
   function kunciHalaman(on) {
     document.body.classList.toggle('sibuk', on); kunciKendali();
+    document.querySelectorAll('#v-data .kunci-sibuk, nav.tabs, #tblArsip, .cek-list, .adv-nav, #bannerKonflik').forEach(function (e) { e.inert = on; });
     if (on && document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
 
@@ -6568,10 +6756,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   // jalankan fn dengan status bulan lain (tanpa menggambar ulang halaman), lalu kembalikan status bulan yang dibuka
   async function denganBulan(ym, rowData, tetangga, fn) {
+    while (S.menyimpan) { try { await S.simpanJanji; } catch (e) { /* lanjut */ } }   // simpanan yang sedang jalan selesai dulu
     var sim = { bulan: S.bulan, data: S.data, cutoff: S.cutoff, tetangga: S.tetangga, loaderAuto: S.loaderAuto, mv: S.mv };
     S.bulan = ym; S.data = gabung(dataKosong(), rowData || {}); S.cutoff = akhirBulan(ym); S.tetangga = tetangga || {}; S.loaderAuto = null; S.mv = new Map();
+    S.dipinjam = true;
     try { return await fn(); }
-    finally { S.bulan = sim.bulan; S.data = sim.data; S.cutoff = sim.cutoff; S.tetangga = sim.tetangga; S.loaderAuto = sim.loaderAuto; S.mv = sim.mv; }
+    finally {
+      S.bulan = sim.bulan; S.data = sim.data; S.cutoff = sim.cutoff; S.tetangga = sim.tetangga; S.loaderAuto = sim.loaderAuto; S.mv = sim.mv;
+      S.dipinjam = false;
+      if (S.ubahTertunda) { S.ubahTertunda = false; ubah(); }
+    }
   }
   // susun workbook bulan ym sebulan penuh (isian + Minerva), hitung, ambil nilai WF MTD
   // tanpaTruck (dashboard): laporan truck tidak diambil; sel WF MTD yang diringkas tidak bergantung padanya (diuji identik, §27)
@@ -6687,6 +6881,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   async function unduh() { return jalankanExcel('unduh'); }
   async function lihat() { return jalankanExcel('lihat'); }
   async function jalankanExcel(mode) {
+    var kurang = syaratUnduh();
+    if (kurang.length) { el('unduhHasil').hidden = false; el('unduhHasil').innerHTML = '<div class="banner warn"><div>Excel ' + esc(namaBulan(S.bulan)) + ' belum bisa ' + (mode === 'unduh' ? 'diunduh' : 'dilihat') + '. Lengkapi dulu: ' + esc(kurang.join(', ')) + '.</div></div>'; renderRingkas(); return; }
     if (S.sibuk) { el('unduhHasil').hidden = false; el('unduhHasil').innerHTML = '<div class="banner warn"><div>Dashboard sedang dihitung. Tunggu sampai selesai, lalu tekan lagi.</div></div>'; return; }
     S.sibuk = true; kunciHalaman(true);
     var btn = el('btnUnduh'), btn2 = el('btnLihat'); btn.disabled = true; btn2.disabled = true;
@@ -6721,14 +6917,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
           ((L.barging.join(', ') || '—') + '                    ').slice(0, 20) + (efo[d] != null ? angka(efo[d] * 100, 1) + '%' : '—') + o); });
       el('logUnduh').textContent = log.join('\n');
       el('unduhHasil').hidden = false;
-      var info = X.wb ? 'Angka hasil hitung sudah ikut tersimpan di berkas, jadi langsung terlihat walau Excel membukanya dalam <b>Protected View</b>. Saat <b>Enable Editing</b> diklik, Excel menghitung ulang semua rumus (beberapa detik).' :
-        'Saat dibuka, Excel menampilkan pita kuning <b>Protected View</b>: angka baru muncul setelah <b>Enable Editing</b> diklik, karena semua rumus dihitung saat itu. Setelah angka muncul, tekan <b>Ctrl+S</b> sekali supaya hasil hitungan ikut tersimpan di berkas sebelum dikirim.';
-      el('unduhHasil').innerHTML = (mode === 'unduh' ? '<div class="banner ok"><div>Excel terunduh. ' + info + ' Loader dan porsi EFO tercatat di bawah.</div></div>' :
+      var info = X.wb ? 'Angka sudah terhitung di berkas (tampil juga di <b>Protected View</b>).' :
+        'Angka muncul setelah <b>Enable Editing</b>; tekan <b>Ctrl+S</b> sekali sebelum dikirim.';
+      el('unduhHasil').innerHTML = (mode === 'unduh' ? '<div class="banner ok"><div>Excel terunduh. ' + info + ' <button class="btn kecil" type="button" id="btnLogUnduh">Catatan unduhan</button></div></div>' :
         X.wb ? '<div class="banner ok"><div>Workbook dibuka di View Excel. <button class="btn kecil" id="btnBukaLagi">Buka lagi</button> <button class="btn kecil primary" id="btnUnduhLihat">Unduh berkas ini</button></div></div>' :
           '<div class="banner err"><div>View Excel tidak bisa menghitung rumus: ' + esc(pesan(X.galatHitung)) + '. <button class="btn kecil primary" id="btnUnduhLihat">Unduh berkasnya saja</button></div></div>') +
         (ex.gagal.length || tr.gagal.length ? '<div class="banner warn">Sebagian hari gagal diambil dari Minerva. ' + (mode === 'unduh' ? 'Unduh' : 'Susun') + ' ulang untuk mencoba lagi.</div>' : '') +
         (bgCatatan && !bg.rows.length ? '<div class="banner warn">' + esc(bgCatatan) + '. Sheet Minerva Barges kosong; ' + (mode === 'unduh' ? 'unduh' : 'susun') + ' ulang untuk mencoba lagi.</div>' : '') +
-        (bargingNol ? '<div class="banner warn">Barging BUMD 0 WMT sebulan, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Isi angka barging harian di tab QAQC harian (isian manual) lalu ' + (mode === 'unduh' ? 'unduh' : 'susun') + ' ulang.</div>' : '');
+        (bargingNol ? '<div class="banner warn">Barging BUMD 0 WMT sebulan, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Isi angka barging harian di Advanced Data → Barging BUMD lalu ' + (mode === 'unduh' ? 'unduh' : 'susun') + ' ulang.</div>' : '');
+      if (el('btnLogUnduh')) el('btnLogUnduh').onclick = function () { bukaAdv('arsip', true); };
       var bukaViewer = function () { XV.buka({ wb: X.wb, judul: nama + ' · nilai hasil hitung di halaman', sheet: S.xvSheet || 'WF MTD', onSheet: function (n) { S.xvSheet = n; }, onUnduh: function () { simpanBerkas(nama, X.bytes); } }); };
       if (el('btnUnduhLihat')) el('btnUnduhLihat').onclick = function () { simpanBerkas(nama, X.bytes); };
       if (el('btnBukaLagi')) el('btnBukaLagi').onclick = bukaViewer;
@@ -6753,51 +6950,78 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   function badge() {
     var kurangPpt = KONTR.reduce(function (s, k) { var c = cakupanPpt(k); return s + (c.perlu - c.ada); }, 0);
-    var n = el('nPpt'); n.hidden = !kurangPpt; n.textContent = kurangPpt;
-    var kq = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff && !S.data.qaqc.hari[d]; }).length;
-    n = el('nQaqc'); n.hidden = !kq; n.textContent = kq;
+    [['nKkm', kurangPpt], ['nAdv', kurangPpt]].forEach(function (x) { var n = el(x[0]); n.hidden = !x[1]; n.textContent = x[1]; });   // nData: renderRingkas
+  }
+  // lima isian wajib tab Data (urut langkah); semuanya harus terbarui s.d. tanggal data sebelum Excel bisa diunduh
+  var LANGKAH = [['rencana', 'lkRencana', 'stRencana', 'Rencana ore & TMM'], ['qaqc', 'lkQaqc', 'stQaqc', 'QAQC harian'], ['loader', 'lkLoader', 'stLoader', 'Pilihan loader'],
+    ['bbm', 'lkBbm', 'stBbm', 'Konsumsi BBM ANTAM'], ['hm', 'lkHm', 'stHm', 'HM excavator sewa BUMD']];
+  // '1–23 Sep 2026' (tanpaTahun: '1–23 Sep'); satu hari: '1 Okt 2026'
+  function rentangTgl(a, b, tanpaTahun) {
+    var th = tanpaTahun ? '' : ' ' + b.slice(0, 4);
+    if (a === b) return tglPendek(b) + th;
+    return (a.slice(0, 7) === b.slice(0, 7) ? String(+a.slice(8)) : tglPendek(a)) + '–' + tglPendek(b) + th;
+  }
+  function ringkasTgl(a) { return a.length <= 3 ? a.map(tglPendek).join(', ') : a.length + ' hari (' + tglPendek(a[0]) + ' … ' + tglPendek(a[a.length - 1]) + ')'; }
+  function statusData() {
+    var T = S.data.plan.target, LC = S.data.loaderCek, r = {};
+    var hq = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; });
+    r.rencana = T.produksi > 0 && T.tmm > 0 ? { ok: true, pil: 'Terisi', teks: 'Ore ' + angka(T.produksi) + ' · TMM ' + angka(T.tmm) + ' WMT' } :
+      { ok: false, pil: 'Belum diisi', teks: 'Target ore dan TMM belum diisi' };
+    var kq = hq.filter(function (d) { return !qaqcAda(d); });
+    r.qaqc = kq.length ? { ok: false, pil: kq.length + ' hari belum ada', teks: 'Belum ada: ' + ringkasTgl(kq) } :
+      { ok: true, pil: 'Lengkap s.d. ' + tglPendek(S.cutoff), teks: rentangTgl(mulai(), S.cutoff, true) + ' lengkap' };
+    r.loader = LC && LC.sampai >= S.cutoff ? { ok: true, pil: 'Dicek s.d. ' + tglPendek(LC.sampai), teks: 'Dicek s.d. ' + tglPendek(LC.sampai) } :
+      { ok: false, pil: LC && LC.sampai ? 'Perlu dicek s.d. ' + tglPendek(S.cutoff) : 'Belum dicek', teks: LC && LC.sampai ? 'Dicek s.d. ' + tglPendek(LC.sampai) + ', perlu s.d. ' + tglPendek(S.cutoff) : 'Belum dicek s.d. ' + tglPendek(S.cutoff) };
+    [['bbm', '184'], ['hm', '201']].forEach(function (x) {
+      var k = mingguKosong(x[1]), n = mingguWajib();
+      var W = function (a) { return a.length > 2 && a[a.length - 1] - a[0] === a.length - 1 ? 'Week-' + (a[0] + 1) + '–' + (a[a.length - 1] + 1) : a.map(function (i) { return 'Week-' + (i + 1); }).join(', '); };
+      r[x[0]] = k.length ? { ok: false, pil: k.length === 1 ? 'Week-' + (k[0] + 1) + ' kosong' : k.length + ' minggu kosong', teks: W(k) + ' belum diisi' } :
+        { ok: true, pil: 'Terisi s.d. Week-' + n, teks: 'Week-1' + (n > 1 ? '–' + n : '') + ' terisi' };
+    });
+    return r;
+  }
+  function syaratUnduh() {
+    var r = statusData(), out = LANGKAH.filter(function (x) { return !r[x[0]].ok; }).map(function (x) { return x[3]; });
+    if (S.tplAda === false) out.push('Template Excel');
+    return out;
+  }
+  function keLangkah(id) {
+    var lk = el(id); if (!lk) return;
+    lk.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!S.admin || !lk.classList.contains('belum')) return;
+    var i = lk.querySelector('td.perlu input:not([disabled])') ||
+      (id === 'lkRencana' ? Array.prototype.filter.call(lk.querySelectorAll('input.num:not([disabled])'), function (x) { return !x.value; })[0] : null);
+    if (i) setTimeout(function () { i.focus({ preventScroll: true }); }, 400);
   }
   function renderRingkas() {
-    var P = S.data.plan, T = P.target, it = [];
-    el('judulRingkas').textContent = 'Excel 1on1 · ' + namaBulan(S.bulan);
-    it.push(S.tplAda === true ? ['ok', 'Template Excel tersedia', 'Template versi perbaikan di Supabase Storage.'] :
-      S.tplAda === false ? ['err', 'Template belum diunggah', 'Admin: tab Template → unggah oe1on1_template_v1.xlsx.'] : ['warn', 'Template belum diperiksa', 'Buka tab Template.']);
-    var tOk = T.produksi && T.tmm && T.barging;
-    it.push([tOk ? 'ok' : 'err', 'Target bulanan', tOk ? 'Ore ' + angka(T.produksi) + ' · TMM ' + angka(T.tmm) + ' · barging ' + angka(T.barging) + ' WMT · rasio ' + T.rasioA + ':' + T.rasioB : 'Isi di tab Rencana (target produksi, TMM, barging).']);
-    KONTR.forEach(function (k) {
-      var c = cakupanPpt(k);
-      it.push([c.ada >= c.perlu ? 'ok' : c.ada ? 'warn' : 'err', 'PPT ' + (k === 'BUMD' ? 'BUMD (PCM)' : 'ANTAM'),
-        'Cadangan ' + c.ada + '/' + c.perlu + ' hari s.d. cut-off · jarak angkut ' + c.jarak + '/' + c.perlu + ' hari' + (c.jarak < c.perlu && c.jarak ? ' (sisanya ikut hari terdekat)' : '')]);
+    var r = statusData();
+    el('judulData').textContent = 'Data · ' + namaBulan(S.bulan);
+    el('dataSub').textContent = 'Excel 1on1 · data ' + rentangTgl(mulai(), S.cutoff);
+    LANGKAH.forEach(function (x) {
+      var st = r[x[0]], lk = el(x[1]);
+      lk.classList.toggle('ok', st.ok); lk.classList.toggle('belum', !st.ok);
+      el(x[2]).innerHTML = '<span class="pil ' + (st.ok ? 'ok' : 'err') + '">' + (st.ok ? '✓ ' : '') + esc(st.pil) + '</span>';
     });
+    el('cekList').innerHTML = LANGKAH.map(function (x) {
+      var st = r[x[0]];
+      return '<button type="button" class="cek ' + (st.ok ? 'ok' : 'err') + '" data-ke="' + x[1] + '"><span class="ik">' + (st.ok ? '✓' : '!') + '</span><div><b>' + esc(x[3]) + '</b><small>' + esc(st.teks) + '</small></div></button>';
+    }).join('');
+    el('cekList').querySelectorAll('button[data-ke]').forEach(function (b) { b.onclick = function () { keLangkah(b.dataset.ke); }; });
+    // catatan: tidak menahan unduh, kecuali template
+    var cat = [], hq = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; });
+    if (S.tplAda === false) cat.push(['err', 'Template Excel belum diunggah' + (S.admin ? ' (Advanced Data → Template).' : '.')]);
     var jtw = jarakTakWajar();
-    if (jtw.length) it.push(['err', 'Jarak angkut tidak wajar', jtw.slice(0, 6).join(' · ') + (jtw.length > 6 ? ' · +' + (jtw.length - 6) + ' lagi' : '') + '. Buka tab PPT mingguan, periksa baris Avg Hauling Distance di Mining Plan minggu itu.']);
-    var hq = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; }), q = hq.filter(function (d) { return S.data.qaqc.hari[d]; }).length;
-    var bargingQ = hq.reduce(function (t, d) { return t + bargingHari(d); }, 0), nMan = hq.filter(function (d) { return bargingManual()[d] != null; }).length;
-    it.push([q >= hq.length && (bargingQ > 0 || !q) ? 'ok' : q ? 'warn' : 'err', 'QAQC harian', q + '/' + hq.length + ' hari s.d. cut-off' + (q || nMan ? ' · barging BUMD ' + angka(bargingQ) + ' WMT' + (nMan ? ' (isian manual ' + nMan + ' hari)' : '') : '') +
-      (q && !bargingQ ? ' (0 sebulan: isi barging harian di tab QAQC harian, bagian isian manual)' : '') + (S.data.qaqc.berkas ? ' · ' + S.data.qaqc.berkas.nama : '')]);
-    var omR = S.data.qaqc.oreManual || {}, nOm = hq.filter(function (d) { return !oreBerkas(d) && omR[d] && (omR[d].antam != null || omR[d].bumd != null); });
-    if (nOm.length) it.push(['warn', 'Ore dari isian pagi', nOm.length + ' hari belum ada di berkas QAQC (' + nOm.slice(-6).map(tglPendek).join(', ') + ') memakai ore isian pagi di Excel; waste hari itu kosong sampai berkas QAQC diunggah.']);
-    it.push(['ok', 'Data Minerva', 'Excavator, truck, dan tongkang diambil otomatis saat unduh (' + hq.length + ' hari).']);
-    var nb = Object.keys(S.data.biaya.tarif || {}).length + MINGGUAN.filter(function (k) { return (S.data.biaya.mingguan[k[0]] || []).some(function (v) { return v != null; }); }).length;
-    it.push([nb ? 'ok' : 'warn', 'Biaya', nb ? 'Ada isian tarif/kuantitas.' : 'Kosong: tarif bawaan template dipakai, kuantitas mingguan kosong (biaya mining ANTAM = 0).']);
-    var nDra = Object.keys(S.data.dra.nilai || {}).length, nWm = Object.keys(S.data.wm.sump || {}).filter(function (id) { return wmIsi(S.data.wm.sump[id]); }).length;
-    it.push([nDra || nWm ? 'ok' : 'warn', 'DRA & WM', nDra || nWm ? 'DRA ' + nDra + '/' + JALAN.length + ' jalan · WM ' + nWm + '/' + SUMP.length + ' sump terisi.' : 'Kosong (opsional).']);
-    el('cekList').innerHTML = it.map(function (x) { return '<div class="cek ' + x[0] + '"><span class="ik">' + (x[0] === 'ok' ? '✓' : x[0] === 'err' ? '!' : '•') + '</span><div><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></div></div>'; }).join('');
-    el('unduhInfo').textContent = 'Data ' + tglPendek(mulai()) + ' s.d. ' + tglPendek(S.cutoff) + ' ' + S.bulan.slice(0, 4);
-    el('btnUnduh').disabled = el('btnLihat').disabled = S.tplAda === false || S.sibuk;
-    if (S.dHitung) el('unduhInfo').textContent = 'Dashboard sedang dihitung…';
-    // WF YTD: bulan tertutup yang diambil dari sistem
-    var ytdB = bulanYtd(S.bulan);
-    if (ytdB.length && S.arsip) {
-      var ada = ytdB.filter(function (ym) { return S.arsip.some(function (r) { return r.bulan === ym; }); });
-      var siap = ytdB.filter(function (ym) { return S.arsip.some(function (r) { return r.bulan === ym && r.rk; }); });
-      var tanpa = ytdB.filter(function (ym) { return ada.indexOf(ym) < 0; });
-      var cek = document.createElement('div');
-      cek.className = 'cek ' + (tanpa.length ? 'warn' : 'ok');
-      cek.innerHTML = '<span class="ik">' + (tanpa.length ? '•' : '✓') + '</span><div><b>WF YTD</b><small>' + esc('Jan–Agu 2026 dari berkas QAQC & 1on1 (template). ' +
-        ytdB.map(function (ym) { return BLN[+ym.slice(5) - 1] + (siap.indexOf(ym) >= 0 ? ' ✓ ringkasan tersimpan' : ada.indexOf(ym) >= 0 ? ' · dihitung saat unduh' : ' · tidak ada isian'); }).join(' · ') + '.') + '</small></div>';
-      el('cekList').appendChild(cek);
-    }
+    if (jtw.length) cat.push(['', 'Jarak angkut tidak wajar di Kertas Kerja Mingguan: ' + jtw.slice(0, 4).join(' · ') + (jtw.length > 4 ? ' · +' + (jtw.length - 4) + ' lagi' : '')]);
+    if (hq.some(qaqcAda) && !hq.reduce(function (t, d) { return t + bargingHari(d); }, 0))
+      cat.push(['', 'Barging BUMD 0 WMT s.d. ' + tglPendek(S.cutoff) + '. Bila ada tongkang, isi di Advanced Data → Barging BUMD.']);
+    var lb = S.data.qaqc.berkas && labelBulanLain(S.data.qaqc.berkas.label);
+    if (lb) cat.push(['', 'Label bulan di berkas QAQC: "' + lb + '". Pastikan berkasnya untuk ' + namaBulan(S.bulan) + '.']);
+    el('cekCatatan').innerHTML = cat.map(function (c) { return '<div' + (c[0] ? ' class="' + c[0] + '"' : '') + '>' + esc(c[1]) + '</div>'; }).join('');
+    var kurang = syaratUnduh(), nD = el('nData');
+    nD.hidden = !kurang.length; nD.textContent = kurang.length;
+    el('btnUnduh').disabled = el('btnLihat').disabled = kurang.length > 0 || !!S.sibuk;
+    el('unduhInfo').textContent = S.dHitung ? 'Dashboard sedang dihitung…' : kurang.length ? 'Lengkapi dulu: ' + kurang.join(', ') + '.' : '';
+    statusLoader();
   }
   function renderSemua() { renderRingkas(); renderPlan(); renderPpt(); renderQaqc(); renderLoader(); renderBiaya(); renderDrawm(); badge(); renderArsip(); renderPagi(); renderSetelanDasbor(); }
 
@@ -6836,11 +7060,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   async function hitungUlangYtd(ym) {
     if (S.sibuk || !S.admin) return; S.sibuk = true; kunciHalaman(true);
     el('unduhProses').hidden = false; el('unduhHasil').hidden = true; el('btnUnduh').disabled = el('btnLihat').disabled = true; renderArsip();
-    pilihTab('ringkas'); el('unduhProses').scrollIntoView({ block: 'center' });
+    pilihTab('data', true); el('unduhProses').scrollIntoView({ block: 'center' });
     try {
       if (S.kotor) await simpan();
       var tpl = await ambilTemplate(), versi = OE1.versiTemplate(await OE1.unzip(tpl).text('xl/workbook.xml'));
-      if (versi < 6) throw new Error('Template di penyimpanan belum versi 6 (sheet WF YTD). Unggah template terbaru di tab Template.');
+      if (versi < 6) throw new Error('Template di penyimpanan belum versi 6 (sheet WF YTD). Unggah template terbaru di Advanced Data → Template.');
       var rows = await rest('/rest/v1/oe_1on1?bulan=eq.' + ym + '&select=bulan,data,updated_at', { method: 'GET' });
       var row = rows && rows[0]; if (!row) throw new Error('Isian ' + namaBulan(ym) + ' tidak ada');
       var rk = await hitungRingkasan(tpl, ym, row.data, function (p, t) { progres(p, 'Ringkasan ' + namaBulan(ym) + ': ' + t); });
@@ -6865,7 +7089,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var akhir = akhirBulan(ym);
     if (ym !== S.bulan || S.cutoff !== akhir) await bukaBulan(ym, akhir);
     el('cbPotong').checked = true;
-    pilihTab('ringkas'); el('btnUnduh').scrollIntoView({ block: 'center' });
+    pilihTab('data', true); el('btnUnduh').scrollIntoView({ block: 'center' });
     await (mode === 'lihat' ? lihat() : unduh());
   }
 
@@ -6939,6 +7163,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   // '' = snapshot masih berlaku; selain itu alasan perlu dihitung ulang
   async function alasanBasi(M) {
+    await tungguPinjam();
     if (!M) return 'belum pernah dihitung';
     if (M.v !== DASH.VERSI) return 'versi dashboard berubah';
     if (M.cutoff !== S.cutoff) return 'data s.d. ' + tglPendek(M.cutoff) + ', sekarang s.d. ' + tglPendek(S.cutoff);
@@ -6961,10 +7186,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     renderPagi(); tampilDasbor();
     if (bulanBelumJalan()) { cekIngat(); return; }
     try {
-      await muatSetelan();
+      await muatSetelan(); await tungguPinjam();
       if (tk !== S.dToken) return;
       renderSetelanDasbor();
       var snap = S.cutoff === cutoffBawaan(bulan) ? await ambilSnapshot(bulan) : null;
+      await tungguPinjam();
       if (tk !== S.dToken) return;
       if (snap && snapshotSah(snap.data, bulan)) { S.dModel = snap.data; S.dTersimpan = true; S.dOleh = snap.updated_by || ''; }
       tampilDasbor();
@@ -6978,6 +7204,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   function prosesDasbor(p, t) { el('dBar').style.width = Math.round(p * 100) + '%'; el('dProsesTxt').textContent = t; }
   function kunciDasbor() {
     el('v-dasbor').classList.toggle('d-sibuk', !!S.sibuk); kunciKendali();
+    el('dPagi').inert = el('dIngat').inert = !!S.sibuk;
     document.body.classList.toggle('d-hitung', !!S.dHitung);
     var b = el('btnDHitung'); b.disabled = !!S.sibuk; b.textContent = S.dHitung ? 'Menghitung…' : 'Hitung ulang';
   }
@@ -7057,14 +7284,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     el('dJudul').textContent = 'Dashboard Produksi · ' + namaBulan(S.bulan);
     if (S.dHitung) t.push('<b>Menghitung…</b>');
     if (M) {
-      t.push('Data <b>' + esc(tglPendek(M.hari[0])) + '–' + esc(tglPendek(M.cutoff)) + ' ' + esc(M.bulan.slice(0, 4)) + '</b>');
-      t.push('dihitung ' + esc(jamWit(M.dibuat)) + (S.dOleh ? ' oleh ' + esc(S.dOleh) : ''));
-      if (S.dTersimpan) t.push('tersimpan untuk semua pengguna');
-      else if (S.dGalatSimpan === 'lokal') t.push('hitungan di perangkat ini (tanggal data pilihan sendiri), tidak disimpan');
-      else if (S.dGalatSimpan === 'gagal') t.push('<span style="color:var(--bad)">sebagian laporan Minerva gagal diambil, tidak disimpan</span>');
+      t.push('Data <b>' + esc(rentangTgl(M.hari[0], M.cutoff)) + '</b>');
+      t.push('dihitung ' + esc(jamWit(M.dibuat)));
+      if (S.dTersimpan) { /* tersimpan: tidak perlu ditulis */ }
+      else if (S.dGalatSimpan === 'lokal') t.push('tidak disimpan (tanggal data pilihan sendiri)');
+      else if (S.dGalatSimpan === 'gagal') t.push('<span style="color:var(--bad)">sebagian laporan Minerva gagal diambil</span>');
       else if (S.dGalatSimpan) t.push('<span style="color:var(--warn)">tidak tersimpan: ' + esc(S.dGalatSimpan) + '</span>');
     } else if (!S.dHitung) t.push('Belum ada hasil hitung');
-    if (S.dBasi && !S.dHitung) t.push('<span style="color:var(--warn)">perlu diperbarui: ' + esc(S.dBasi) + '</span>');
+    if (S.dBasi && !S.dHitung) t.push('<span style="color:var(--warn)" title="' + esc(S.dBasi) + '">perlu diperbarui</span>');
     if (S.admin && M) t.push('<button type="button" class="d-link" id="btnDSegar"' + (S.sibuk ? ' disabled' : '') + ' title="Unduh ulang semua laporan excavator bulan ini dari Minerva, mis. setelah data Minerva dikoreksi">ambil ulang data Minerva</button>');
     el('dStatus').innerHTML = t.join(' · ');
     if (el('btnDSegar')) el('btnDSegar').onclick = function () {
@@ -7078,12 +7305,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     renderStatusDasbor();
     var root = el('dIsi');
     if (!S.dModel && bulanBelumJalan()) {
-      root.innerHTML = '<div class="d-kartu"><div class="d-kosong">' + esc(namaBulan(S.bulan)) + ' belum berjalan. Dashboard bulan ini tersedia mulai ' + esc(tglPendek(geser(S.bulan + '-01', 1))) +
-        ' (data tanggal 1). Isian rencana bulan ini bisa disiapkan di tab Rencana dan PPT mingguan.</div></div>';
+      root.innerHTML = '<div class="d-kartu"><div class="d-kosong">' + esc(namaBulan(S.bulan)) + ' belum berjalan. Dashboard tersedia mulai ' + esc(tglPendek(geser(S.bulan + '-01', 1))) + '.</div></div>';
       return;
     }
     if (!S.dModel) {
-      root.innerHTML = '<div class="d-kartu"><div class="d-kosong">' + (S.dHitung ? 'Menghitung dashboard ' + esc(namaBulan(S.bulan)) + '… Laporan Minerva diambil per hari; hari yang sudah lewat dua hari dibaca dari simpanan, jadi cepat.' :
+      root.innerHTML = '<div class="d-kartu"><div class="d-kosong">' + (S.dHitung ? 'Menghitung dashboard ' + esc(namaBulan(S.bulan)) + '…' :
         'Belum ada hasil hitung untuk ' + esc(namaBulan(S.bulan)) + ' s.d. ' + esc(tglPendek(S.cutoff)) + '.<br><br><button class="btn primary" type="button" id="btnDMulai">Hitung sekarang</button>') + '</div></div>';
       if (el('btnDMulai')) el('btnDMulai').onclick = function () { hitungDasbor(); };
       return;
@@ -7092,24 +7318,36 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     catch (e) { root.innerHTML = '<div class="banner err"><div>Dashboard tidak bisa digambar: ' + esc(e.message) + '</div></div>'; if (window.console) console.error(e); }
   }
 
-  /* ---------- ore QC pagi (admin) ---------- */
+  /* ---------- ore QC pagi (admin): satu baris; diringkas bila semua hari s.d. tanggal data sudah terisi ---------- */
+  function hariKurangOre() {
+    return hariBulan(S.bulan).filter(function (x) { if (x > S.cutoff) return false; var mm = oreManual()[x]; return !oreBerkas(x) && !(mm && (mm.antam != null || mm.bumd != null)); });
+  }
   function renderPagi() {
     var w = el('dPagi');
-    if (!S.admin || bulanBelumJalan()) { w.innerHTML = ''; return; }
-    if (!el('dPagiTgl')) {
-      w.innerHTML = '<div class="d-isian"><div class="d-kk"><div><h3>Ore QC harian</h3><div class="d-kk-sub">Isi tiap pagi dari laporan QC. Kosong = ore Minerva (sementara); isi 0 bila memang tidak ada ore. ' +
-        'Waste hari itu memakai Minerva sampai berkas QAQC diunggah di tab QAQC harian (Excel 1on1 tetap memakai waste berkas QAQC).</div></div></div>' +
-        '<div class="d-isian-baris"><div class="field"><label for="dPagiTgl">Tanggal</label><input type="date" id="dPagiTgl"></div>' +
-        '<div class="field"><label for="dPagiA">Ore ANTAM · WMT</label><input type="text" class="num" id="dPagiA" inputmode="decimal" autocomplete="off"></div>' +
-        '<div class="field"><label for="dPagiB">Ore PCM · WMT</label><input type="text" class="num" id="dPagiB" inputmode="decimal" autocomplete="off"></div>' +
-        '<button class="btn primary" type="button" id="btnDPagi">Simpan &amp; perbarui dashboard</button></div>' +
-        '<div class="d-isian-info" id="dPagiInfo"></div><div class="d-chips" id="dPagiKurang" style="margin:10px 0 0"></div></div>';
-      el('dPagiTgl').onchange = isiPagi;
-      el('btnDPagi').onclick = simpanPagi;
-      ['dPagiA', 'dPagiB'].forEach(function (id) { el(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') simpanPagi(); }); });
+    if (!S.admin || bulanBelumJalan()) { w.innerHTML = ''; w.dataset.mode = ''; return; }
+    var kurang = hariKurangOre(), mode = kurang.length || S.pagiBuka ? 'buka' : 'tutup';
+    if (w.dataset.mode !== mode) {
+      w.dataset.mode = mode;
+      if (mode === 'tutup') {
+        w.innerHTML = '<div class="d-pagi ringkas"><span class="d-pagi-j">Ore QC harian</span><span class="d-chip ok" id="dPagiSd"></span><button type="button" class="d-link" id="btnDPagiBuka">Ubah</button></div>';
+        el('btnDPagiBuka').onclick = function () { S.pagiBuka = true; renderPagi(); if (el('dPagiA') && !el('dPagiA').disabled) el('dPagiA').focus(); };
+      } else {
+        w.innerHTML = '<div class="d-pagi"><span class="d-pagi-j">Ore QC harian</span>' +
+          '<input type="date" id="dPagiTgl" aria-label="Tanggal ore QC">' +
+          '<label>ANTAM <input type="text" class="num" id="dPagiA" inputmode="decimal" autocomplete="off" placeholder="WMT"></label>' +
+          '<label>PCM <input type="text" class="num" id="dPagiB" inputmode="decimal" autocomplete="off" placeholder="WMT"></label>' +
+          '<button class="btn primary" type="button" id="btnDPagi">Simpan</button>' +
+          '<span class="d-pagi-info" id="dPagiInfo"></span><span class="d-chips" id="dPagiKurang"></span>' +
+          '<button type="button" class="d-link" id="btnDPagiTutup" hidden>Tutup</button></div>';
+        el('dPagiTgl').onchange = isiPagi;
+        el('btnDPagi').onclick = simpanPagi;
+        el('btnDPagiTutup').onclick = function () { S.pagiBuka = false; renderPagi(); if (el('btnDPagiBuka')) el('btnDPagiBuka').focus(); };
+        ['dPagiA', 'dPagiB'].forEach(function (id) { el(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') simpanPagi(); }); });
+      }
     }
+    if (mode === 'tutup') { el('dPagiSd').textContent = '✓ Lengkap s.d. ' + tglPendek(S.cutoff); return; }
     var tgl = el('dPagiTgl'); tgl.min = mulai(); tgl.max = S.cutoff;
-    if (!tgl.value || tgl.value < mulai() || tgl.value > S.cutoff) tgl.value = S.cutoff;
+    if (!tgl.value || tgl.value < mulai() || tgl.value > S.cutoff) tgl.value = kurang.length ? kurang[kurang.length - 1] : S.cutoff;
     isiPagi();
   }
   function isiPagi() {
@@ -7118,37 +7356,37 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var tulis = function (inp, v) { if (document.activeElement !== inp) inp.value = v == null ? '' : angka(v, v % 1 ? 2 : 0); };
     if (f) {
       tulis(a, f.antamOre); tulis(b, f.bumdOre); a.disabled = b.disabled = btn.disabled = true;
-      info.className = 'd-isian-info ok';
-      info.textContent = tglPendek(d) + ' sudah ada di berkas QAQC (ANTAM ' + angka(f.antamOre) + ' · PCM ' + angka(f.bumdOre) + ' WMT), tidak perlu diisi.';
+      info.className = 'd-pagi-info ok'; info.textContent = 'Ada di berkas QAQC';
     } else {
       tulis(a, m.antam); tulis(b, m.bumd); a.disabled = b.disabled = btn.disabled = !!S.sibuk;
-      info.className = 'd-isian-info';
-      info.textContent = m.antam != null || m.bumd != null ? 'Tersimpan untuk ' + tglPendek(d) + '. Ubah angkanya lalu simpan lagi bila perlu; kosongkan keduanya untuk menghapus.' :
-        'Belum ada ore QC ' + tglPendek(d) + ': dashboard memakai ore Minerva (sementara) untuk hari ini.';
+      var ada = m.antam != null || m.bumd != null;
+      info.className = 'd-pagi-info' + (ada ? ' ok' : ''); info.textContent = ada ? '✓ Tersimpan' : '';
     }
-    var kurang = hariBulan(S.bulan).filter(function (x) { if (x > S.cutoff) return false; var mm = oreManual()[x]; return !oreBerkas(x) && !(mm && (mm.antam != null || mm.bumd != null)); });
-    el('dPagiKurang').innerHTML = kurang.length ? '<span class="d-chip warn">Belum ada ore QC: ' + kurang.length + ' hari</span>' +
-      kurang.slice(-10).map(function (x) { return '<button type="button" class="d-chip" data-tgl="' + x + '">' + esc(tglPendek(x)) + '</button>'; }).join('') :
-      '<span class="d-chip ok">Ore QC lengkap s.d. ' + esc(tglPendek(S.cutoff)) + '</span>';
+    var kurang = hariKurangOre();
+    el('dPagiKurang').innerHTML = kurang.length ? '<span class="d-pagi-info">Belum:</span>' +
+      kurang.slice(-6).map(function (x) { return '<button type="button" class="d-chip warn' + (x === d ? ' on' : '') + '" data-tgl="' + x + '">' + esc(tglPendek(x)) + '</button>'; }).join('') +
+      (kurang.length > 6 ? '<span class="d-chip">+' + (kurang.length - 6) + '</span>' : '') : '';
+    el('btnDPagiTutup').hidden = !!kurang.length;
     el('dPagiKurang').querySelectorAll('button[data-tgl]').forEach(function (bt) { bt.onclick = function () { el('dPagiTgl').value = bt.dataset.tgl; isiPagi(); el('dPagiA').focus(); }; });
   }
   async function simpanPagi() {
     if (!S.admin || S.sibuk) return;
     var d = el('dPagiTgl').value, info = el('dPagiInfo');
-    var salah = function (t) { info.className = 'd-isian-info err'; info.textContent = t; };
-    if (!d || !dalamBulan(d) || d > S.cutoff) return salah('Pilih tanggal di ' + namaBulan(S.bulan) + ' sampai ' + tglPendek(S.cutoff) + '.');
+    var salah = function (t) { info.className = 'd-pagi-info err'; info.textContent = t; };
+    if (!d || !dalamBulan(d) || d > S.cutoff) return salah('Pilih tanggal ' + tglPendek(mulai()) + '–' + tglPendek(S.cutoff));
     if (oreBerkas(d)) return;
     var a = angkaTempel(el('dPagiA').value), b = angkaTempel(el('dPagiB').value);
-    if ((a != null && (isNaN(a) || a < 0)) || (b != null && (isNaN(b) || b < 0))) return salah('Angka tidak terbaca. Contoh: 2250 atau 2.250');
+    if ((a != null && (isNaN(a) || a < 0)) || (b != null && (isNaN(b) || b < 0))) return salah('Angka tidak terbaca. Contoh: 2.250');
     var M = oreManual();
     if (a == null && b == null) delete M[d];
     else { M[d] = {}; if (a != null) M[d].antam = a; if (b != null) M[d].bumd = b; }
     el('dPagiA').blur(); el('dPagiB').blur();
     S.kotor = true; clearTimeout(S.timer);
-    info.className = 'd-isian-info'; info.textContent = 'Menyimpan…';
+    info.className = 'd-pagi-info'; info.textContent = 'Menyimpan…';
     await simpan();
-    if (S.kotor) return salah('Belum tersimpan (lihat pesan di atas).');
-    renderQaqc(); badge(); renderRingkas(); isiPagi();
+    if (S.kotor) return salah('Belum tersimpan (lihat pesan di atas)');
+    S.pagiBuka = false;
+    renderQaqc(); badge(); renderRingkas(); renderPagi();
     hitungDasbor();
   }
 
@@ -7160,6 +7398,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (hi >= geser(akhirBulan(ini), -1)) calon.push(depan);
     try {
       var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + [bulanGeser(ini, -1)].concat(calon).join(',') + ')&select=bulan,plan:data->plan', { method: 'GET' }) || [];
+      await tungguPinjam();
       var cari = function (ym) { return rows.filter(function (r) { return r.bulan === ym; })[0] || null; };
       var target = null;
       for (var i = 0; i < calon.length; i++) {
@@ -7183,10 +7422,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     // target bulan lalu hanya jadi petunjuk (placeholder), bukan isian: target tiap bulan diisi dengan sadar
     var sendiri = I.dasarBulan === I.ym, blnLalu = I.dasarBulan ? BULAN_PJG[+I.dasarBulan.slice(5) - 1] : '';
     var ph = function (v, contoh) { return ' placeholder="' + esc(!sendiri && v ? blnLalu + ': ' + angka(v) : 'mis. ' + contoh) + '"'; };
-    var salin = I.dasarBulan && I.dasarBulan !== I.ym ? ' Parameter jam kerja, PA, rasio produktivitas ANTAM:PCM, target barging, dan tarif disalin dari ' + namaBulan(I.dasarBulan) + '.' : '';
+    var salin = I.dasarBulan && I.dasarBulan !== I.ym ? 'Parameter lain disalin dari ' + namaBulan(I.dasarBulan) + '.' : '';
     w.innerHTML = '<div class="d-ingat"><h3>' + (lewat ? 'Target ' + esc(nm) + ' belum diisi' : 'Isi target ' + esc(nm) + ' sebelum ' + esc(tglPendek(awal)) + ' ' + esc(awal.slice(0, 4))) + '</h3>' +
-      '<div class="d-kk-sub">' + (lewat ? 'Sisa target di dashboard dan Excel 1on1 bulan ini butuh target ore dan TMM.' : 'Mulai ' + esc(tglPendek(awal)) + ', dashboard dan Excel 1on1 memakai target ini.') + esc(salin) +
-      ' EWH rencana dihitung dari parameter jam kerja; yang biasanya berubah tiap bulan hanya jam hujan. Parameter lain ada di tab Rencana.</div>' +
+      (salin ? '<div class="d-kk-sub">' + esc(salin) + '</div>' : '') +
       '<div class="d-isian-baris">' +
       '<div class="field"><label for="dIngOre">Target ore · WMT/bulan</label><input type="text" class="num" id="dIngOre" inputmode="decimal" autocomplete="off"' + ph(T.produksi, '150.000') + (sendiri ? val(T.produksi) : '') + '></div>' +
       '<div class="field"><label for="dIngTmm">Target TMM · WMT/bulan</label><input type="text" class="num" id="dIngTmm" inputmode="decimal" autocomplete="off"' + ph(T.tmm, '175.000') + (sendiri ? val(T.tmm) : '') + '></div>' +
@@ -7248,7 +7486,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     } catch (e) { salah('Gagal menyimpan: ' + pesan(e)); btn.disabled = false; }
   }
 
-  /* ---------- setelan dashboard di tab Rencana ---------- */
+  /* ---------- setelan dashboard (tab Data → Advanced Data) ---------- */
   function renderSetelanDasbor() {
     var w = el('formDasbor'); if (!w) return;
     w.innerHTML = '';
@@ -7299,19 +7537,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     S.cutoff = cutoff || cutoffBawaan(ym);
     el('inBulan').value = ym; el('inCutoff').value = S.cutoff;
     el('inCutoff').min = ym + '-01'; el('inCutoff').max = akhirBulan(ym) < hariIni ? akhirBulan(ym) : hariIni;
-    el('qaqcInfo').textContent = ''; S.bargingPesan = ''; el('inBargingMulai').value = ym + '-01';
+    el('qaqcInfo').textContent = ''; el('loaderInfo').textContent = ''; S.bargingPesan = ''; S.pagiBuka = false; el('inBargingMulai').value = ym + '-01';
+    el('unduhHasil').hidden = true; el('unduhHasil').innerHTML = '';
   }
   async function mulaiHalaman() {
     if (!token()) { el('bannerSesi').hidden = false; pil('Belum login', 'err'); }
     setBulan(geser(hariIniWit(), -1).slice(0, 7));                // tanggal 1: bulan lalu sebulan penuh (bahan rapat pagi)
     try { S.admin = !!(await rest('/rest/v1/rpc/op_is_admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })); } catch (e) { S.admin = false; }
-    el('bannerBaca').hidden = S.admin; el('tabTemplate').hidden = !S.admin;
+    el('bannerBaca').hidden = S.admin || tabAktif() !== 'data'; el('advTemplate').hidden = !S.admin;
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.onclick = function () { pilihTab(b.dataset.v); }; });
     el('inBulan').onchange = async function () { if (S.sibuk) { el('inBulan').value = S.bulan; return; } if (!el('inBulan').value) return; bukaBulan(el('inBulan').value); };
     el('inCutoff').onchange = function () { var v = el('inCutoff').value; if (!S.sibuk && v && v.slice(0, 7) === S.bulan) { S.cutoff = v; S.loaderAuto = null; renderSemua(); mulaiDasbor(); } else el('inCutoff').value = S.cutoff; };
     el('btnUnduh').onclick = unduh;
     el('btnLihat').onclick = lihat;
     el('btnCekLoader').onclick = cekLoader;
+    el('btnLoaderDicek').onclick = tandaiLoader;
+    el('btnAdv').onclick = function () { if (el('btnAdv').getAttribute('aria-expanded') === 'true') tutupAdv(); else bukaAdv(S.advAktif); };
+    el('advNav').querySelectorAll('button[data-adv]').forEach(function (b) { b.onclick = function () { bukaAdv(b.dataset.adv); }; });
     el('fileQaqc').onchange = function () { if (this.files[0]) prosesQaqc(this.files[0]); this.value = ''; };
     el('cbLgo').onchange = function () { S.data.qaqc.lgoKeWaste = this.checked; ubah(); renderQaqc(); };
     el('fileTpl').onchange = function () { if (this.files[0]) unggahTemplate(this.files[0]); this.value = ''; };
