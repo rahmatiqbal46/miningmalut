@@ -144,7 +144,9 @@ body{
 .side-credit span{display:block}
 .side-credit b{display:block;font-size:var(--f-callout);line-height:1.35;font-weight:590;color:#bcd9d1}
 
-/* Baris akun di kaki sidebar, pintu masuk ke popover Setting. */
+/* Baris akun di kaki sidebar. Sejak 24 September 2026 langsung menjadi tombol
+   Keluar: popover Setting dihapus karena Input Data pindah ke bilah atas Mine
+   Development dan Mode Tampilan dibuang, sehingga isinya tinggal Keluar. */
 .setwrap{position:relative;flex:0 0 auto;margin-top:4px}
 .setbtn{
   display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;border:0;
@@ -161,27 +163,7 @@ body{
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .setbtn .t span{display:block;font-size:9.5px;color:#9cc2c0}
 .setbtn svg{width:15px;height:15px;flex:0 0 auto;stroke:#9cc2c0;fill:none;stroke-width:1.8}
-
-/* Popover: lapisan kontrol, jadi kaca. Isinya memakai isian biasa, bukan kaca
-   kedua, karena kaca di atas kaca dilarang. */
-.setpop{
-  position:absolute;bottom:52px;left:0;right:0;display:none;padding:6px;border-radius:12px;
-  background:linear-gradient(176deg, rgba(0,48,47,.88), rgba(0,31,31,.92));
-  backdrop-filter:blur(26px) saturate(1.7);
-  -webkit-backdrop-filter:blur(26px) saturate(1.7);
-  box-shadow:0 20px 50px rgba(0,16,15,.5),
-    inset 0 1px 1px rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.14);
-}
-.setpop.show{display:block}
-.setpop button{
-  display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;
-  color:#e8f2f1;font:inherit;font-size:var(--f-body);font-weight:450;
-  padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;
-}
-.setpop button:hover{background:#ffffff14}
-.setpop .who{font-size:var(--f-foot);line-height:1.45;color:#9cc2c0;
-  padding:9px 10px 5px;border-top:1px solid rgba(255,255,255,.12);margin-top:5px}
-.setpop .who b{color:#fff;font-weight:590}
+.setbtn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
 /* ======================================================================= main */
 /* showApp() memasang display:flex pada #app lewat gaya sebaris — itu perilaku
@@ -232,7 +214,7 @@ iframe.page.show{display:block}
 .isi{flex:1 1 auto;min-height:0;overflow:auto;padding:18px 22px 30px var(--sisip)}
 
 /* Blok sapaan, menggantikan spanduk hero. Isinya teks yang sama. */
-.hero{padding:4px 2px 4px}
+.hero{padding:4px 2px 4px;container-type:inline-size}
 .hero .eyebrow{font-size:var(--f-sub);line-height:var(--lh-sub);font-weight:590;color:var(--amber-dk)}
 .hero h1{font-size:var(--f-large);line-height:var(--lh-large);font-weight:660;
   letter-spacing:-.022em;margin-top:3px}
@@ -244,6 +226,18 @@ iframe.page.show{display:block}
 .stat .k{font-size:var(--f-sub);line-height:var(--lh-sub);font-weight:530;color:var(--muted)}
 .stat .v{font-size:var(--f-t1);line-height:1.15;font-weight:640;letter-spacing:-.02em;margin-top:2px}
 .stat .v small{font-size:var(--f-callout);font-weight:530;color:var(--muted)}
+/* Keterangan kecil di bawah angka: sisa target bulan (Ore MTD) dan sisa kuota
+   tahun (Ore YTD), dari Dashboard Produksi (blok home-produksi). */
+.stat .s{font-size:var(--f-sub);line-height:var(--lh-sub);font-weight:530;color:var(--muted);
+  margin-top:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat .s:empty{display:none}
+.stat .s.lebih{color:var(--hijau)}
+.stat .s.awas{color:var(--oranye)}
+.stats-ket{font-size:var(--f-foot);line-height:var(--lh-foot);color:var(--muted);margin-top:10px}
+.stats-ket:empty{display:none}
+.stats-ket button{background:none;border:0;padding:0;font:inherit;font-weight:590;color:var(--t700);cursor:pointer}
+.stats-ket button:hover{text-decoration:underline}
+.stats-ket button:focus-visible{outline:2px solid var(--t700);outline-offset:2px}
 
 /* Direktori. #bento harus tetap berada di dalam .dir: tiga blok Home
    menyisipkan dirinya dengan el('bento').closest('.dir'). */
@@ -442,21 +436,33 @@ iframe.page.show{display:block}
   .bento{grid-template-columns:1fr}
   .stat{padding-right:18px;margin-right:18px}
 }
+/* Enam angka hanya muat sebaris bila blok sapaan cukup lebar. Di bawahnya kisi rapi
+   tiga lalu dua kolom, tanpa garis pemisah yang menggantung di ujung baris. Diukur
+   dari lebar .hero (container query), bukan lebar jendela: sidebar ikut memakan
+   ruang, dan angka YTD memanjang sepanjang tahun. */
+@container (max-width:1000px){
+  .stats{display:grid;grid-template-columns:repeat(3,max-content);gap:12px 34px}
+  .stat{padding-right:0;margin-right:0;border-right:0}
+}
+@container (max-width:520px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+  .stat .s{white-space:normal}
+}
 @media(max-height:560px){.side{overflow-y:auto}.nav{flex:0 0 auto;overflow:visible}}
 
 /* ======================================== penyetelan aksesibilitas Apple ==== */
 /* Reduce Transparency membuat kaca membeku dan menutup konten di belakangnya. */
 @media (prefers-reduced-transparency: reduce){
-  .side,.setpop,.card-login,.toolbar,.sw-toast,.mbar{
+  .side,.card-login,.toolbar,.sw-toast,.mbar{
     backdrop-filter:none;-webkit-backdrop-filter:none}
-  .side,.setpop,.mbar{background:#00302f}
+  .side,.mbar{background:#00302f}
   .card-login,.sw-toast{background:#002b2a}
   .toolbar{background:#f4f8f7}
   .tepi-gulir{display:none}
 }
 /* Increase Contrast: elemen jadi tegas dengan garis tepi pembeda. */
 @media (prefers-contrast: more){
-  .side,.setpop,.card-login{background:#00201f;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
+  .side,.card-login{background:#00201f;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
   .card,.ph .ic{box-shadow:0 0 0 1px var(--muted)}
   .item.active,.leaf.active{box-shadow:inset 0 0 0 1px #1b1205}
 }
@@ -488,13 +494,7 @@ iframe.page.show{display:block}
   </nav>
   <div class="side-credit"><span>FullStack Vibe Developer<b>Rahmat Iqbal</b></span><span>Speed Watcher contributor<b>Ariqsyah Rahman</b></span><span>Dispatch Monitoring contributor<b>Randy Caesario Simangunsong</b></span></div>
   <div class="setwrap">
-   <div class="setpop" id="setpop">
-     <button id="btnInput"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8fbdb2" stroke-width="1.9"><path d="M12 5v14M5 12h14"/></svg>Input Data</button>
-     <button id="btnMode"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8fbdb2" stroke-width="1.9"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Mode Tampilan</button>
-     <div class="who">Masuk sebagai <b id="whoEmail">—</b><br><span id="whoRole">—</span></div>
-     <button id="btnLogout"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e8a; stroke-width:1.9" stroke="#e0a06a" stroke-width="1.9"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Keluar</button>
-   </div>
-   <button class="setbtn" id="setbtn"><span class="ava" id="sideAva">RI</span><span class="t"><b id="sideGreet2">Rahmat Iqbal</b><span>Setelan</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8a2 2 0 1 1-2.7 2.7a1.6 1.6 0 0 0-2.7 1.1a2 2 0 0 1-4 0a1.6 1.6 0 0 0-2.7-1.1a2 2 0 1 1-2.7-2.7a1.6 1.6 0 0 0 .3-1.8a2 2 0 0 1 0-4a1.6 1.6 0 0 0-.3-1.8a2 2 0 1 1 2.7-2.7a1.6 1.6 0 0 0 2.7-1.1a2 2 0 0 1 4 0a1.6 1.6 0 0 0 2.7 1.1a2 2 0 1 1 2.7 2.7a1.6 1.6 0 0 0-.3 1.8a2 2 0 0 1 0 4z"/></svg></button>
+   <button class="setbtn" id="setbtn" type="button" title="Keluar" aria-label="Keluar"><span class="ava" id="sideAva">RI</span><span class="t"><b id="sideGreet2">Rahmat Iqbal</b><span>Keluar</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </div>
 </aside>
  <main class="main"><div class="mbar" id="mbar"><button class="burger" id="burger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button><div class="mlogo"></div><b>UBPN Maluku Utara</b></div><div class="frame" id="frame">
@@ -507,11 +507,14 @@ iframe.page.show{display:block}
        <h1>Selamat datang, <span id="greetName">Rahmat</span></h1>
        <p>Operasi tambang Pulau Pakal dalam satu layar: posisi armada, kecepatan, kepatuhan rencana, dan penjadwalan Biro Mining.</p>
        <div class="stats">
-         <div class="stat"><div class="k">Unit Aktif</div><div class="v"><span id="hUnit">—</span></div></div>
-         <div class="stat"><div class="k">Ore Hari Ini</div><div class="v"><span id="hOre">—</span> <small>t</small></div></div>
-         <div class="stat"><div class="k">Barging</div><div class="v"><span id="hBarge">—</span> <small>t</small></div></div>
          <div class="stat"><div class="k">Shift</div><div class="v" id="hShift">—</div></div>
+         <div class="stat"><div class="k">Ore Hari Ini</div><div class="v"><span id="hOre">—</span> <small>WMT</small></div></div>
+         <div class="stat"><div class="k">Ore MTD</div><div class="v"><span id="hOreMtd">—</span> <small>WMT</small></div><div class="s" id="hOreMtdSisa"></div></div>
+         <div class="stat"><div class="k">Ore YTD</div><div class="v"><span id="hOreYtd">—</span> <small>WMT</small></div><div class="s" id="hOreYtdSisa"></div></div>
+         <div class="stat"><div class="k">SR MTD</div><div class="v" id="hSrMtd">—</div></div>
+         <div class="stat"><div class="k">SR YTD</div><div class="v" id="hSrYtd">—</div></div>
        </div>
+       <div class="stats-ket" id="hProdKet"></div>
      </div>
      <div class="dir"><h2>Direktori</h2><div class="lead">Pilih modul</div>
        <div class="bento" id="bento"></div>
@@ -625,22 +628,20 @@ function closeDrawer(){side.classList.remove('open');scrim.classList.remove('on'
 document.getElementById('burger').onclick=()=>{side.classList.toggle('open');scrim.classList.toggle('on');};
 scrim.onclick=closeDrawer;
 document.querySelectorAll('#nav .item,#nav .leaf').forEach(b=>b.addEventListener('click',closeDrawer));
-// setting popover
-const setpop=document.getElementById('setpop');
-document.getElementById('setbtn').onclick=(e)=>{e.stopPropagation();setpop.classList.toggle('show');};
-document.addEventListener('click',()=>setpop.classList.remove('show'));
-setpop.onclick=e=>e.stopPropagation();
-document.getElementById('btnInput').onclick=()=>{setpop.classList.remove('show');showPage('input');};
-document.getElementById('btnMode').onclick=()=>{setpop.classList.remove('show');alert('Mode tampilan: Terang (default).');};
-document.getElementById('btnLogout').onclick=()=>{try{localStorage.removeItem(AUTHKEY);localStorage.removeItem('pakal_auth_required');}catch(e){}location.reload();};
+// baris akun = tombol Keluar (popover Setting dihapus 24 September 2026;
+// Input Data kini tombol di bilah atas Mine Development)
+document.getElementById('setbtn').onclick=()=>{try{localStorage.removeItem(AUTHKEY);localStorage.removeItem('pakal_auth_required');}catch(e){}location.reload();};
 // login flow
 /* Minerva: data tonase per shift, tidak berubah tiap 20 detik.
    Jaringan hanya dipanggil tiap 5 menit, dan hanya saat tab terlihat DAN
-   Home sedang aktif. Kartu lokal (unit & shift) tetap segar tiap menit. */
+   Home sedang aktif. Label shift (lokal) tetap segar tiap menit. */
 const HOME_POLL_MS=300000; let homeLast=0;
 function homeLokal(){
- try{const u=localStorage.getItem('rtup_units');if(u)document.getElementById('hUnit').textContent=u;}catch(e){}
- /* Shift berganti 06:30 dan 18:30 WIT, bukan 07:00 dan 19:00. Operator
+ /* Deret angka Home sejak 24 September 2026: Shift, Ore Hari Ini (di sini dan
+    fetchHomeStats), lalu Ore MTD, Ore YTD, SR MTD, SR YTD (blok home-produksi,
+    dari Dashboard Produksi). Unit Aktif dan Barging dilepas.
+
+    Shift berganti 06:30 dan 18:30 WIT, bukan 07:00 dan 19:00. Operator
     Performance sengaja memakai 07:00/19:00 sebagai jeda sinkronisasi; kartu
     ini menampilkan shift yang SEDANG berjalan, jadi memakai batas sebenarnya. */
  const d=new Date(), mnt=((d.getUTCHours()*60+d.getUTCMinutes())+540)%1440;
@@ -654,8 +655,7 @@ async function fetchHomeStats(paksa){
  if(homeLast&&Date.now()-homeLast<jeda)return;
  homeLast=Date.now();
  try{const r=await fetch('/api/minerva');if(r.ok){const m=await r.json();
-   if(m&&m.tmm&&m.tmm.ore!=null)document.getElementById('hOre').textContent=Number(m.tmm.ore).toLocaleString('id-ID');
-   if(m&&m.barging&&m.barging.transhipment!=null)document.getElementById('hBarge').textContent=Number(m.barging.transhipment).toLocaleString('id-ID');}}catch(e){}
+   if(m&&m.tmm&&m.tmm.ore!=null)document.getElementById('hOre').textContent=Number(m.tmm.ore).toLocaleString('id-ID');}}catch(e){}
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')fetchHomeStats(true);});
 
@@ -684,8 +684,9 @@ function showApp(){
  var sg2=document.getElementById('sideGreet2'); if(sg2)sg2.textContent=fullName();
  var av=document.getElementById('sideAva');
  if(av)av.textContent=fullName().split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
- document.getElementById('whoEmail').textContent=email()||'—';
- document.getElementById('whoRole').textContent='Peran: '+(isAdmin()?'Admin':'Viewer');
+ /* Identitas yang dulu tampil di popover Setting kini cukup di tooltip tombol Keluar. */
+ var sb=document.getElementById('setbtn');
+ if(sb)sb.title='Keluar · masuk sebagai '+(email()||'—')+' ('+(isAdmin()?'Admin':'Viewer')+')';
  tickJam(); buildBento(); showPage('home'); fetchHomeStats(); if(homeTimer)clearInterval(homeTimer); homeTimer=setInterval(fetchHomeStats,60000);
 }
 document.getElementById('btnLogin').onclick=async()=>{
@@ -2178,6 +2179,188 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     pasangWadah();
     window.addEventListener('homeperiode', function () { tarik(true); });
     window.addEventListener('hometick', function () { tarik(false); });
+  });
+})();
+</script>
+<script id="home-produksi">
+/* =============================================================================
+   Deret angka Home: Ore MTD, Ore YTD, SR MTD, SR YTD (24 September 2026).
+
+   Sumbernya snapshot Dashboard Produksi di tabel oe_dasbor (§27): baris
+   'snap|YYYY-MM' (workbook 1on1 yang dihitung OECalc) dan 'setelan' (kuota
+   produksi tahunan). Home TIDAK menghitung ulang workbook; ia membaca angka
+   yang sama dengan yang tampil di Dashboard Produksi:
+
+     Ore MTD      wb.prod.mtd.aktO.T                kartu Ore (MTD)
+     sisa target  wb.plan.target.ore − Ore MTD      kartu Sisa target <bulan>
+     SR MTD       wb.prod.mtd.aktW.T ÷ aktO.T       kartu Stripping ratio
+     Ore YTD      wb.ytd.total.aktO (WF YTD P88)    kartu Ore (YTD)
+     sisa kuota   setelan.kuota[tahun] − Ore YTD    kartu Sisa kuota produksi
+     SR YTD       wb.ytd.total.aktWb × wb.prod.densWaste ÷ Ore YTD
+                  = (TMM YTD − Ore YTD) ÷ Ore YTD: waste WMT ÷ ore WMT seperti
+                  SR MTD. Dashboard sendiri tidak menampilkan SR YTD.
+
+   RUMUSNYA DISALIN DARI turunan() di data-1on1.html — ubah di sana, ubah juga
+   di sini.
+
+   Bulan yang dibaca sama dengan bawaan Dashboard Produksi: bulan berjalan,
+   kecuali tanggal 1 → bulan lalu sebulan penuh (cutoffBawaan). Snapshot baru
+   dihitung saat Dashboard Produksi dibuka, jadi tanggal datanya ditulis di bawah
+   deret angka ("data s.d. …").
+
+   Yang ditarik hanya jalur JSON yang dipakai (±1 KB), bukan snapshot utuh yang
+   berisi produksi per jam sebulan. Snapshot boleh ditulis semua pengguna login,
+   jadi setiap nilai diperiksa angka/tanggal dan ditulis lewat textContent.
+   Tarikan hanya saat Home terlihat (denyut hometick blok home-periode).
+   ============================================================================= */
+(function () {
+  var SEGAR_MS = 600000;    // 10 menit: snapshot hanya berubah saat dashboard dihitung ulang
+  var MUNCUL_MS = 20000;    // kembali ke Home dari modul lain: segarkan bila lebih tua dari 20 detik
+  var BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  var PILIH = 'kunci,data->kuota,data->>bulan,data->>cutoff,data->wb->prod->mtd,' +
+    'data->wb->plan->target,data->wb->ytd->total,data->wb->prod->densWaste,data->sidik->lengkap';
+  var TAUTAN = '<button type="button" data-buka="oe1on1">Dashboard Produksi</button>';
+  var terakhir = 0, sibuk = false, adaIsi = false, tglTarik = '';
+
+  function el(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function hariIniWIT() {
+    var d = new Date(Date.now() + 9 * 3600000);
+    return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+  }
+  function bulanDasbor() {
+    var t = hariIniWIT(), y = +t.slice(0, 4), m = +t.slice(5, 7);
+    if (t.slice(8) === '01') { m -= 1; if (m < 1) { m = 12; y -= 1; } }
+    return y + '-' + pad(m);
+  }
+  function angka(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
+  function jalur(o, ks) {
+    for (var i = 0; i < ks.length; i++) { if (!o || typeof o !== 'object') return null; o = o[ks[i]]; }
+    return o;
+  }
+  function fmt(v, d) {
+    return v == null ? '—' : Number(v).toLocaleString('id-ID', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+  }
+  function tgl(ymd) { return (+ymd.slice(8)) + ' ' + BLN[+ymd.slice(5, 7) - 1] + ' ' + ymd.slice(0, 4); }
+  function sesi() {
+    try {
+      var a = JSON.parse(localStorage.getItem('pakal_auth') || 'null');
+      if (a && a.access_token && (!a.expires_at || a.expires_at * 1000 > Date.now())) return a.access_token;
+    } catch (e) {}
+    return null;
+  }
+  function tulis(id, teks, kelas) {
+    var e = el(id); if (!e) return;
+    e.textContent = teks;
+    if (kelas !== undefined) e.className = kelas;
+  }
+  function ket(html) { var e = el('hProdKet'); if (e) e.innerHTML = html; }
+  function kosongkan() {
+    ['hOreMtd', 'hOreYtd', 'hSrMtd', 'hSrYtd'].forEach(function (id) { tulis(id, '—'); });
+    tulis('hOreMtdSisa', '', 's'); tulis('hOreYtdSisa', '', 's');
+    adaIsi = false;
+  }
+
+  function tampil(bulan, snap, set) {
+    var th = +bulan.slice(0, 4), nb = BLN[+bulan.slice(5, 7) - 1];
+    var cutoff = typeof snap.cutoff === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(snap.cutoff) &&
+      snap.cutoff.slice(0, 7) === bulan ? snap.cutoff : null;
+    if (snap.bulan !== bulan || !cutoff) {
+      kosongkan(); ket('Hasil hitung ' + TAUTAN + ' ' + nb + ' ' + th + ' tidak terbaca; buka modulnya untuk menghitung ulang.');
+      return;
+    }
+    var oreM = angka(jalur(snap.mtd, ['aktO', 'T'])), wstM = angka(jalur(snap.mtd, ['aktW', 'T']));
+    var target = angka(jalur(snap.target, ['ore']));
+    var oreY = angka(jalur(snap.total, ['aktO'])), wbY = angka(jalur(snap.total, ['aktWb']));
+    var dens = angka(snap.densWaste) || 1.64;
+    var kuota = set && set.kuota && typeof set.kuota === 'object' ? (angka(+set.kuota[th]) || null) : null;
+
+    tulis('hOreMtd', fmt(oreM));
+    if (target) {
+      var sisa = target - (oreM || 0);
+      if (sisa > 0) tulis('hOreMtdSisa', 'Sisa target ' + nb + ' ' + fmt(sisa), 's');
+      else tulis('hOreMtdSisa', sisa < 0 ? 'Target ' + nb + ' terlampaui ' + fmt(-sisa) : 'Target ' + nb + ' tercapai', 's lebih');
+    } else tulis('hOreMtdSisa', 'Target ' + nb + ' belum diisi', 's');
+    tulis('hSrMtd', oreM && wstM != null ? fmt(wstM / oreM, 2) : '—');
+
+    tulis('hOreYtd', fmt(oreY));
+    if (kuota && oreY != null) {
+      var sk = kuota - oreY;
+      if (sk > 0) tulis('hOreYtdSisa', 'Sisa kuota ' + th + ' ' + fmt(sk), 's');
+      else tulis('hOreYtdSisa', sk < 0 ? 'Kuota ' + th + ' terlampaui ' + fmt(-sk) : 'Kuota ' + th + ' habis', 's awas');
+    } else tulis('hOreYtdSisa', !kuota ? 'Kuota ' + th + ' belum diisi' : '', 's');
+    tulis('hSrYtd', oreY && wbY != null ? fmt(wbY * dens / oreY, 2) : '—');
+
+    /* sidik.lengkap = false: dihitung sebelum 07.00 WIT, shift malam hari terakhir belum
+       masuk penuh (Dashboard Produksi menghitung ulang saat dibuka lagi). */
+    ket('Ore MTD, Ore YTD, dan SR dari ' + TAUTAN + ' · data s.d. ' + tgl(cutoff) +
+      (snap.lengkap === false ? ' (belum lengkap)' : ''));
+    adaIsi = true;
+  }
+
+  function tarik(e) {
+    if (!el('hOreMtd') || typeof CFG === 'undefined') return;
+    var paksa = hariIniWIT() !== tglTarik;       // tanggal WIT berganti: tanggal data dashboard ikut bergeser
+    var muncul = !!(e && e.detail && e.detail.baruMuncul);
+    if (!paksa && terakhir && Date.now() - terakhir < (muncul ? MUNCUL_MS : SEGAR_MS)) return;
+    if (sibuk) return;
+    var token = sesi();
+    if (!token) {
+      if (!adaIsi) { kosongkan(); ket('Sesi login berakhir: keluar lalu masuk lagi untuk memuat angka ' + TAUTAN + '.'); }
+      return;
+    }
+    sibuk = true;
+    tglTarik = hariIniWIT();
+    var bulan = bulanDasbor();
+    var url = CFG.url.replace(/\/+$/, '') + '/rest/v1/oe_dasbor?select=' + encodeURIComponent(PILIH) +
+      '&kunci=in.' + encodeURIComponent('(setelan,"snap|' + bulan + '")');
+    fetch(url, { headers: { apikey: CFG.key, Authorization: 'Bearer ' + token, Accept: 'application/json' } })
+      .then(function (r) {
+        if (!r.ok) {
+          return r.text().then(function (x) {
+            var g = new Error('HTTP ' + r.status); g.status = r.status;
+            g.belumAda = r.status === 404 || /PGRST205|42P01/.test(x || '');
+            throw g;
+          });
+        }
+        return r.json();
+      })
+      .then(function (rows) {
+        terakhir = Date.now();
+        rows = Array.isArray(rows) ? rows : [];
+        var snap = null, set = null;
+        rows.forEach(function (x) {
+          if (!x || typeof x !== 'object') return;
+          if (x.kunci === 'setelan') set = x;
+          else if (x.kunci === 'snap|' + bulan) snap = x;
+        });
+        if (!snap) {
+          terakhir = Date.now() - SEGAR_MS + 60000; // mungkin sedang dihitung: periksa lagi semenit lagi
+          kosongkan();
+          ket('Ore MTD, Ore YTD, dan SR ' + BLN[+bulan.slice(5, 7) - 1] + ' ' + bulan.slice(0, 4) +
+            ' belum dihitung: buka ' + TAUTAN + ' sekali.');
+          return;
+        }
+        tampil(bulan, snap, set);
+      })
+      .catch(function (g) {
+        terakhir = Date.now() - SEGAR_MS + 60000;   // coba lagi semenit lagi
+        if (adaIsi) return;                         // angka lama tetap sah di layar
+        kosongkan();
+        if (g && g.status === 401) ket('Sesi login berakhir: keluar lalu masuk lagi untuk memuat angka ' + TAUTAN + '.');
+        else if (g && g.belumAda) ket('Tabel ' + TAUTAN + ' (oe_dasbor) belum ada di Supabase.');
+        else ket('Angka ' + TAUTAN + ' tidak terbaca (' + (g && g.status ? 'HTTP ' + (+g.status) : 'jaringan') + ').');
+      })
+      .then(function () { sibuk = false; });
+  }
+
+  window.addEventListener('load', function () {
+    var k = el('hProdKet');
+    if (k) k.addEventListener('click', function (ev) {
+      var b = ev.target && ev.target.closest ? ev.target.closest('[data-buka]') : null;
+      if (b) { try { showPage(b.getAttribute('data-buka')); } catch (x) {} }
+    });
+    window.addEventListener('hometick', tarik);
   });
 })();
 </script>
