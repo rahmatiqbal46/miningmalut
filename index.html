@@ -476,7 +476,7 @@ iframe.page.show{display:block}
   <nav class="nav" id="nav">
    <button class="item active" data-page="home"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Home</button>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg>Mine Production<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="rtup">Mining Malut Digital Twin</button><button class="leaf" data-page="operator">Operator Performance</button><button class="leaf" data-page="oe1on1">Data 1on1</button></div></div>
+    <div class="sub"><button class="leaf" data-page="rtup">Mining Malut Digital Twin</button><button class="leaf" data-page="operator">Operator Performance</button><button class="leaf" data-page="oe1on1">Dashboard Produksi</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Mine Development<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="reklamasi">Capaian Reklamasi</button><button class="leaf" data-page="smr">Jam Kerja SMR</button><button class="leaf" data-page="water">Water &amp; Road</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Mine Plan<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -528,7 +528,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_asesmen" title="Asesmen Go/No-Go"></iframe>
    <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
    <iframe class="page" id="if_operator" title="Operator Performance"></iframe>
-   <iframe class="page" id="if_oe1on1" title="Data 1on1"></iframe>
+   <iframe class="page" id="if_oe1on1" title="Dashboard Produksi" allow="fullscreen" allowfullscreen></iframe>
    <!-- placeholders -->
    <div class="ph" id="ph"></div>
  </div></main>
@@ -606,7 +606,7 @@ function showPage(key){
 const BENTO=[
  ['rtup','Mining Malut Digital Twin','Mine Production','Peta 3D Pulau Pakal dari topo & citra terbaru, unit live, jalan, dan batas kecepatan.',['3D','GPS live','Topo & citra']],
  ['operator','Operator Performance','Mine Production','Ranking operator ANTAM dan PCM dari scorecard Minerva.',['Minerva','Ranking']],
- ['oe1on1','Data 1on1','Mine Production','Isian rencana, PPT mingguan, dan QAQC harian, lalu unduh workbook 1-on-1 OE dengan rumus aktif.',['Excel','Minerva','PPT']],
+ ['oe1on1','Dashboard Produksi','Mine Production','Capaian MTD dan YTD, sisa target dan kuota, waterfall, Pareto delay, dan OPEX jam kritis; isian dan unduhan Excel 1on1.',['MTD · YTD','OPEX','Excel 1on1']],
  ['speed','Speed Watcher','ROC','Pemantauan kecepatan unit & pelanggaran, live dari Wialon.',['Wialon','Speed']],
  ['dispatch','Dispatch Monitoring','ROC','Deviasi ritase Minerva vs checker, kepatuhan operator, log isu & tindak lanjut.',['Deviasi','Kepatuhan','Log Isu']],
  ['reklamasi','Mine Development','Reklamasi · SMR · Water','Capaian reklamasi, jam kerja SMR, water & road.',['Capaian Reklamasi','Jam Kerja SMR','Water & Road']],
@@ -1197,7 +1197,7 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     amora:    '<circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="17" r="2.2"/><path d="M8 8.5c3 1.5 3 5.5 8 7"/><path d="M6 9.2V15a2 2 0 0 0 2 2h3"/>',
     jadwal:   '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M8 14h3v3H8z"/>',
     asesmen:  '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.3-4.4"/>',
-    oe1on1:   '<path d="M13 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7"/><path d="M4 9h16M9.5 4v16"/><path d="M17.5 15.5v5M15.3 18.4l2.2 2.2 2.2-2.2"/>'
+    oe1on1:   '<path d="M3.5 20h17"/><path d="M6.5 20v-6.5M6.5 11V9"/><path d="M12 20v-9M12 8.5V5"/><path d="M17.5 20v-4.5M17.5 13v-2.5"/><path d="M4 7.5h16" stroke-dasharray="2.2 2.2"/>'
   };
 
   /* Pratinjau: bentuknya mengikuti data yang benar-benar ada di modul itu,
@@ -1258,17 +1258,18 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
                (r === 2 ? '' : '<rect x="164" y="' + (6 + r * 12) + '" width="20" height="9" rx="2.5" class="v3"/>');
       }).join('') + '</g>' +
       '<circle class="simpul buang" cx="174" cy="34.5" r="5"/>',
-    /* workbook harian: kolom tanggal 1 s.d. cut-off terisi, garis amber = cut-off,
-       kolom sesudahnya masih kosong */
+    /* produksi harian: kolom ANTAM (teal) + PCM (amber) sampai kemarin, garis putus = target
+       harian, garis amber = cut-off; kolom sesudahnya belum ada */
     oe1on1:
-      '<g class="sel">' +
-      [0,1,2,3,4,5,6,7,8,9].map(function (c) {
-        return [0,1,2].map(function (r) {
-          var v = c < 7 ? ['v1','v2','v3'][r] : 'v0';
-          return '<rect x="' + (13 + c * 17.6) + '" y="' + (11 + r * 13) + '" width="14" height="9" rx="2.5" class="' + v + '"/>';
-        }).join('');
-      }).join('') + '</g>' +
-      '<path class="cutoff" d="M134.4 7v45"/><circle class="tanda" cx="134.4" cy="6" r="3"/>'
+      '<g class="tumpuk">' +
+      [[26,9],[30,11],[18,6],[22,4],[31,9],[27,0],[16,5],[24,8],[20,3]].map(function (v, c) {
+        var x = 12 + c * 15.4, dasar = 50;
+        return '<rect class="a" x="' + x + '" y="' + (dasar - v[0]) + '" width="10" height="' + v[0] + '" rx="1.5"/>' +
+          (v[1] ? '<rect class="b" x="' + x + '" y="' + (dasar - v[0] - v[1] - 1.5) + '" width="10" height="' + v[1] + '" rx="1.5"/>' : '');
+      }).join('') +
+      [0,1,2].map(function (c) { return '<rect class="k" x="' + (12 + (9 + c) * 15.4) + '" y="46" width="10" height="4" rx="1.5"/>'; }).join('') + '</g>' +
+      '<path class="rencana" d="M8 24h184"/><path class="dasar" d="M8 50h184"/>' +
+      '<path class="cutoff" d="M147.5 7v45"/><circle class="tanda" cx="147.5" cy="6" r="3"/>'
   };
 
   var MOD = [
@@ -1276,8 +1277,8 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
      'Peta 3D Pulau Pakal dari topo dan citra terbaru: unit live, jalan dan batas kecepatan, air dan sump, serta putar ulang shift.'],
     ['operator', 'Operator Performance', 'Mine Production',
      'Nilai scorecard Minerva tiap operator ANTAM dan PCM: ranking, juara bulanan, dan yang perlu pendampingan.'],
-    ['oe1on1', 'Data 1on1', 'Mine Production',
-     'Isian rencana, slide PPT mingguan, dan QAQC harian, lalu unduh workbook 1-on-1 OE kantor pusat dari tanggal 1 sampai kemarin dengan rumus aktif.'],
+    ['oe1on1', 'Dashboard Produksi', 'Mine Production',
+     'Capaian produksi bulan dan tahun berjalan, sisa target dan kuota, penyebab selisih, dan OPEX jam kritis dari QC dan Minerva. Isian 1on1 dan unduhan Excel ada di tab berikutnya.'],
     ['speed', 'Speed Watcher', 'ROC',
      'Pelanggaran kecepatan direkam di server 24 jam, dengan batas sendiri untuk tiap ruas jalan.'],
     ['dispatch', 'Dispatch Monitoring', 'ROC',
@@ -1354,6 +1355,9 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
       '.peek .sel rect.v2{fill:#7cabaa}',
       '.peek .sel rect.v3{fill:var(--t700)}',
       '.peek .cutoff{fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:3 3;stroke-linecap:round}',
+      '.peek .tumpuk .a{fill:var(--t700)}.peek .tumpuk .b{fill:var(--amber)}.peek .tumpuk .k{fill:#dee9e8}',
+      '.peek .tumpuk rect{transform-box:fill-box;transform-origin:bottom}',
+      '.mod:hover .peek .tumpuk rect,.mod:focus-visible .peek .tumpuk rect{animation:tumbuh .6s cubic-bezier(.16,1,.3,1) both}',
 
       /* isi kartu */
       '.mod-body{display:flex;gap:13px;padding:15px 17px 17px}',

@@ -1,19 +1,31 @@
 // =====================================================================
-// DATA 1ON1 · Edge Function "oe-minerva"
+// DATA 1ON1 · Edge Function "oe-minerva"  (versi 2: dengan simpanan Storage)
 //
-// Ditempel lewat Supabase → Edge Functions → Deploy a new function →
-// Via Editor, nama "oe-minerva". Tidak butuh CLI.
+// Ditempel lewat Supabase → Edge Functions → oe-minerva → Code → ganti
+// seluruh isi → Deploy. Tidak butuh CLI.
 //
 // Secret yang dipakai (sudah ada untuk Operator Performance):
 //   MINERVA_TOKEN  token Minerva, bagian setelah "token=" di address bar
 // SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY tersedia otomatis.
 //
-// Meneruskan berkas laporan Minerva apa adanya (tidak diurai di sini,
-// supaya ringan). Halaman Data 1on1 yang membaca isinya.
+// Meneruskan berkas laporan Minerva apa adanya (tidak diurai di server).
+// Halaman Dashboard Produksi / Data 1on1 yang membaca isinya.
 //
 //   GET ?jenis=exca&tanggal=2026-09-01     laporan FMS excavator 1 hari
 //   GET ?jenis=truck&tanggal=2026-09-01    laporan FMS truck 1 hari
 //   GET ?jenis=barge&dari=2026-09-01&sampai=2026-09-23   tongkang FINISH
+//   tambahan &segar=1  = abaikan simpanan, ambil ulang dari Minerva
+//
+// Simpanan (versi 2): laporan exca/truck untuk tanggal yang sudah lewat
+// DUA hari (WIT) disimpan di bucket privat oe-1on1, folder
+// minerva/<jenis>/<tanggal>.xlsx. Permintaan berikutnya untuk tanggal itu
+// dijawab dari simpanan tanpa menghubungi Minerva; halaman juga membacanya
+// langsung dari Storage. Kemarin dan hari ini tidak disimpan karena datanya
+// masih bisa dikoreksi. Folder minerva/ boleh dihapus kapan saja: isinya
+// hanya salinan dan akan diisi ulang saat dibutuhkan.
+//
+// Header jawaban: x-oe-cache = hit (dari simpanan) | simpan (dari Minerva,
+// lalu disimpan) | tidak (dari Minerva, tidak disimpan).
 //
 // Yang boleh memanggil: pengguna yang login (token login shell).
 // =====================================================================
@@ -21,18 +33,34 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const HOST = "https://pakal-micro-production.minervasuite.app";
+const BUCKET = "oe-1on1";
+const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Expose-Headers": "x-oe-status, x-oe-jenis",
+  "Access-Control-Expose-Headers": "x-oe-status, x-oe-jenis, x-oe-cache",
 };
 
 function jawab(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 }
+function berkas(buf, jenis, cache) {
+  return new Response(buf, {
+    status: 200,
+    headers: { ...CORS, "Content-Type": "application/octet-stream", "x-oe-status": "ok", "x-oe-jenis": jenis, "x-oe-cache": cache, "Cache-Control": "no-store" },
+  });
+}
 const TGL = /^\d{4}-\d{2}-\d{2}$/;
+const adalahXlsx = (b) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b;
+
+// tanggal hari ini di WIT (UTC+9), digeser n hari
+function hariWit(n) {
+  const d = new Date(Date.now() + 9 * 3600_000);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 
 function alamat(jenis, p) {
   if (jenis === "exca" || jenis === "truck") {
@@ -66,6 +94,17 @@ Deno.serve(async (req) => {
   const tujuan = alamat(jenis, p);
   if (!tujuan) return jawab({ status: "gagal", message: "parameter salah: jenis=exca|truck + tanggal, atau jenis=barge + dari & sampai (YYYY-MM-DD)" }, 400);
 
+  // --- simpanan: hanya laporan harian yang sudah lewat dua hari ---
+  const bisaSimpan = (jenis === "exca" || jenis === "truck") && p.tanggal <= hariWit(-2);
+  const jalur = `minerva/${jenis}/${p.tanggal}.xlsx`;
+  if (bisaSimpan && p.segar !== "1") {
+    const { data: blob } = await sb.storage.from(BUCKET).download(jalur);
+    if (blob) {
+      const b = new Uint8Array(await blob.arrayBuffer());
+      if (adalahXlsx(b)) return berkas(b, jenis, "hit");
+    }
+  }
+
   const token = Deno.env.get("MINERVA_TOKEN");
   if (!token) return jawab({ status: "gagal", message: "Secret MINERVA_TOKEN belum diatur" }, 500);
 
@@ -89,13 +128,16 @@ Deno.serve(async (req) => {
   if (!res.ok) return jawab({ status: "gagal", message: `Minerva membalas ${res.status}` }, 502);
 
   const buf = new Uint8Array(await res.arrayBuffer());
-  // berkas xlsx diawali "PK"; selain itu balasan JSON/teks = tidak ada data atau pesan galat
-  if (!(buf[0] === 0x50 && buf[1] === 0x4b)) {
+  // berkas xlsx diawali "PK"; selain itu balasan JSON/teks = tidak ada data atau pesan galat (tidak disimpan)
+  if (!adalahXlsx(buf)) {
     const teks = new TextDecoder().decode(buf.slice(0, 400));
     return jawab({ status: "kosong", message: teks }, 200);
   }
-  return new Response(buf, {
-    status: 200,
-    headers: { ...CORS, "Content-Type": "application/octet-stream", "x-oe-status": "ok", "x-oe-jenis": jenis, "Cache-Control": "no-store" },
-  });
+  let cache = "tidak";
+  if (bisaSimpan) {
+    // gagal menyimpan tidak menggagalkan jawaban: berkas tetap dikirim
+    const { error } = await sb.storage.from(BUCKET).upload(jalur, buf, { contentType: XLSX, upsert: true });
+    cache = error ? "tidak" : "simpan";
+  }
+  return berkas(buf, jenis, cache);
 });
