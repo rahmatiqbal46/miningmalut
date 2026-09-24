@@ -178,6 +178,53 @@
   .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
   .ringkas-baca{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
   @media(max-width:560px){main{padding:14px 12px 60px}.topbar-inner{padding:8px 12px}}
+  /* sedang menyusun Excel: isian dikunci supaya tidak berubah di tengah proses */
+  body.sibuk main .view:not(#v-ringkas), body.sibuk .kendali, body.sibuk nav.tabs, body.sibuk #tblArsip, body.sibuk .cek-list{pointer-events:none;opacity:.55}
+
+  /* ================= View Excel (penampil workbook) ================= */
+  body.xv-terbuka{overflow:hidden}
+  .xv{position:fixed;inset:0;z-index:400;background:#fff;display:flex;flex-direction:column;font-family:var(--font);color:#111}
+  .xv-atas{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(180deg,var(--t800),var(--t700));color:#fff;flex-wrap:wrap}
+  .xv-judul{font-size:var(--f-callout);font-weight:620;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+  .xv-sp{flex:1}
+  .xv-atas .btn{box-shadow:none}
+  .xv-atas .btn:not(.primary){background:#ffffff26;color:#fff}
+  .xv-atas .btn.primary{background:#fff;color:var(--t800)}
+  .xv-atas .btn.aktif{background:var(--amber);color:#fff}
+  #xvRentang{display:none}
+  .xv.sentuh #xvRentang{display:inline-flex}
+  .xv-fx{display:flex;align-items:center;gap:0;border-bottom:1px solid #d5d9d9;background:#f7f9f9;min-height:30px}
+  .xv-fx input{width:118px;min-height:28px;border-radius:0;box-shadow:none;background:#fff;border-right:1px solid #d5d9d9;font:12px var(--mono);padding:4px 8px}
+  .xv-f{padding:0 8px;color:#6a7a7b;font-style:italic;font-size:12px;border-right:1px solid #d5d9d9}
+  .xv-isi{flex:1;padding:4px 10px;font:12px/1.4 var(--mono);white-space:nowrap;overflow-x:auto;color:#1c2b2c;user-select:text}
+  .xv-area{position:relative;flex:1;overflow:hidden;background:#fff}
+  .xv-sudut,.xv-kepala,.xv-kiri{position:absolute;overflow:hidden;background:#f3f5f5;z-index:2}
+  .xv-sudut{left:0;top:0;z-index:3}
+  .xv-kepala{top:0;right:0}
+  .xv-kiri{left:0;bottom:0}
+  .xv-badan{position:absolute;right:0;bottom:0;overflow:auto;outline:none;background:#fff;touch-action:pan-x pan-y}
+  .xv-ukur{position:relative}
+  .xv-lap{position:absolute;left:0;top:0}
+  .xv-kepala .xv-lap .xv-lap,.xv-kiri .xv-lap .xv-lap{background:#fff}
+  .xc{position:absolute;box-sizing:border-box;border-right:1px solid #e4e8e8;border-bottom:1px solid #e4e8e8;padding:0 4px;display:flex;align-items:center;
+    white-space:nowrap;overflow:hidden;font-size:12px;line-height:14px;color:#111;background-clip:padding-box;cursor:cell}
+  .xc.ka{justify-content:flex-end} .xc.te{justify-content:center}
+  .xc.wr{white-space:normal;align-items:flex-start;padding-top:2px;overflow-wrap:anywhere}
+  .xc.dp{background-image:linear-gradient(rgba(0,95,90,.13),rgba(0,95,90,.13))}
+  .xh,.xr,.xs{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:11px;color:#5d6d6e;
+    border-right:1px solid #d5dada;border-bottom:1px solid #d5dada;background:#f3f5f5;cursor:pointer;user-select:none}
+  .xs{left:0;top:0}
+  .xh.on,.xr.on{background:#dbe9e7;color:var(--t800);font-weight:640}
+  .xsel{position:absolute;box-sizing:border-box;border:2px solid var(--accent);pointer-events:none;z-index:2}
+  .xakt{position:absolute;box-sizing:border-box;border:2px solid var(--t800);pointer-events:none;z-index:3;box-shadow:inset 0 0 0 1px #fff}
+  .xv-bawah{display:flex;align-items:center;gap:10px;border-top:1px solid #d5d9d9;background:#f3f5f5;min-height:34px}
+  .xv-tabs{display:flex;gap:2px;overflow-x:auto;flex:1;padding:4px 6px;scrollbar-width:thin}
+  .xv-tab{appearance:none;border:0;background:transparent;border-radius:6px;padding:5px 11px;font-size:12px;color:#33484a;white-space:nowrap;cursor:pointer}
+  .xv-tab:hover{background:#e3eaea}
+  .xv-tab.aktif{background:#fff;color:var(--t800);font-weight:640;box-shadow:0 1px 2px rgba(0,48,47,.18)}
+  .xv-stat{padding:0 12px;font-size:12px;color:#33484a;white-space:nowrap}
+  .xv-pesan{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);background:var(--t800);color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;z-index:5;box-shadow:var(--sh-naik)}
+  @media(max-width:560px){.xv-fx input{width:88px}.xv-stat{display:none}.xv-judul{max-width:100%;flex-basis:100%}}
 </style>
 </head>
 <body>
@@ -227,6 +274,7 @@
         </div>
         <div class="baris-btn">
           <button class="btn primary besar" id="btnUnduh">Unduh Excel</button>
+          <button class="btn besar" id="btnLihat" title="Susun workbook lalu tampilkan di halaman ini: cek angka cepat, pilih & salin baris/kolom">Lihat Excel</button>
           <span class="kecil muted" id="unduhInfo"></span>
         </div>
         <div id="unduhProses" hidden>
@@ -236,7 +284,7 @@
         <div id="unduhHasil" style="margin-top:12px" hidden></div>
       </div>
     </div>
-    <div class="section-head"><h2>Arsip bulan</h2><span class="eyebrow">Yang disimpan hanya isian tiap bulan, bukan berkas Excel. Excel bulan lalu disusun ulang saat diunduh: isian bulan itu + data Minerva yang diambil lagi, sebulan penuh (1 s.d. akhir bulan), memakai template terbaru.</span></div>
+    <div class="section-head"><h2>Arsip bulan</h2><span class="eyebrow">Yang disimpan hanya isian tiap bulan, bukan berkas Excel. Excel bulan lalu disusun ulang saat diunduh: isian bulan itu + data Minerva yang diambil lagi, sebulan penuh (1 s.d. akhir bulan), memakai template terbaru. Kolom YTD: ringkasan bulan itu (EWH, tonase, penjualan, jam barging) untuk sheet WF YTD bulan-bulan berikutnya; dihitung otomatis saat unduh bila belum ada atau isiannya berubah.</span></div>
     <div class="card"><div class="table-wrap" style="border:0"><table id="tblArsip"><tbody><tr><td class="muted">Memuat daftar bulan…</td></tr></tbody></table></div></div>
     <div class="section-head"><h2>Catatan hasil unduhan terakhir</h2><span class="eyebrow">Loader terpilih, porsi EFO, dan hari tanpa data Minerva. Hanya tersimpan selama halaman terbuka.</span></div>
     <div class="card"><div class="log" id="logUnduh">Belum ada unduhan di sesi ini.</div></div>
@@ -863,10 +911,34 @@ const OE1 = (function () {
     return out;
   }
   const WM_JUMLAH_SUMP = 20;            // sheet WM template v2 = 20 sump modul Water & Road
-  const TEMPLATE_VERSI = 5;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
+  const TEMPLATE_VERSI = 6;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
   const TEMPLATE_VERSI_MIN = 2;         // di bawah ini tata letak sel isian berbeda: menyusun Excel ditolak
   const SHEETS = { PLAN: 'PLAN', ACT: 'ACT', COST: 'COST', PORT: 'PORT', DRA: 'DRA', WM: 'WM', WFW: 'WF WEEKLY',
     EXCA: 'Minerva Exca', TRUCK: 'Minerva Trucks', BARGE: 'Minerva Barges' };
+  // sheet WF YTD (template v6): blok data tersimpan per bulan (kolom D..O = Jan..Des), diisi dari ringkasan bulan tertutup
+  const YTD = {
+    SHEET: 'WF YTD', ROW_TAHUN: 101, ROW_SUMBER: 102, TAHUN_DATA: 2026, MULAI: '2026-09',   // Jan-Agu 2026 sudah di template
+    PLAN: [['ewh', 103, 'D3'], ['hujan', 104, 'D4'], ['slippery', 105, 'D5'], ['cd', 106, 'D6'], ['downtime', 107, 'D7'], ['fleet', 108, 'D10'],
+      ['waste', 109, 'D11'], ['ore', 110, 'D12'], ['produksi', 111, 'D16'], ['penjualan', 112, 'D17'], ['faktor', 113, 'D23']],
+    AKT: [['ewh', 114, 'E3'], ['hujan', 115, 'E4'], ['slippery', 116, 'E5'], ['cd', 117, 'E6'], ['downtime', 118, 'E7'], ['fleet', 119, 'E10'],
+      ['waste', 120, 'E11'], ['ore', 121, 'E12'], ['produksi', 122, 'E16'], ['penjualan', 123, 'E17']],
+    BRG: [['ewh', 124, 'G3'], ['hujan', 125, 'G4'], ['slippery', 126, 'G5'], ['cd', 127, 'G6'], ['downtime', 128, 'G7']],
+  };
+  // ringkasan satu bulan dari sheet WF MTD workbook yang sudah dihitung. get(ref) -> nilai sel WF MTD
+  function ringkasanWf(get) {
+    const angka = v => (typeof v === 'number' && isFinite(v) ? v : null);
+    const out = { plan: {}, aktual: {}, barging: {}, galat: [] };
+    for (const [grup, daftar] of [['plan', YTD.PLAN], ['aktual', YTD.AKT], ['barging', YTD.BRG]]) {
+      for (const [k, , ref] of daftar) {
+        const v = get(ref), n = angka(v);
+        if (n === null && v !== null && v !== undefined && v !== '') out.galat.push(ref);
+        out[grup][k] = n === null ? 0 : n;
+      }
+    }
+    // bulan tanpa rencana & tanpa realisasi pengapalan: jam barging tidak dihitung (sama dengan data Jan-Agu 2026)
+    if (!(out.plan.penjualan > 0) && !(out.aktual.penjualan > 0)) { out.plan.faktor = 0; for (const k of Object.keys(out.barging)) out.barging[k] = 0; }
+    return out;
+  }
   const PLAN_COLS = Array.from({ length: 31 }, (_, i) => n2col(9 + i));   // I..AM
   const ACT_COLS = Array.from({ length: 31 }, (_, i) => n2col(7 + i));    // G..AK
   const PARAM_CELLS = { jamShift: 'D15', jumlahShift: 'D10', shiftOff: 'D12', shiftDelay: 'D13', hujan: 'D23', kabut: 'D24',
@@ -888,13 +960,34 @@ const OE1 = (function () {
    * }
    */
   async function isiTemplate(templateU8, data, onProgress) {
+    const s = await susunWorkbook(templateU8, data, (p, t) => onProgress && onProgress(p * 0.8, t));
+    return kemasWorkbook(s, (p, t) => onProgress && onProgress(0.8 + 0.2 * p, t));
+  }
+  // bagian workbook hasil susun: teks bagian yang diubah, selain itu dari template
+  function bagianWorkbook(s) {
+    const cache = new Map();
+    return async name => {
+      if (s.changed.has(name)) { const v = s.changed.get(name); return typeof v === 'string' ? v : TD.decode(v); }
+      if (!cache.has(name)) cache.set(name, await s.z.text(name));
+      return cache.get(name);
+    };
+  }
+  async function kemasWorkbook(s, onProgress) {
+    const prog = (p, t) => onProgress && onProgress(p, t);
+    prog(0, 'Mengemas berkas');
+    const files = s.z.entries.map(e => (s.changed.has(e.name) ? { name: e.name, data: s.changed.get(e.name) } : { name: e.name, raw: e }));
+    const out = await zip(files, (i, n) => prog(i / n, 'Mengemas berkas'));
+    prog(1, 'Selesai');
+    return out;
+  }
+  async function susunWorkbook(templateU8, data, onProgress) {
     const prog = (p, t) => onProgress && onProgress(p, t);
     const z = unzip(templateU8);
     const sheets = await workbookSheets(z);
     const versi = versiTemplate(await z.text('xl/workbook.xml'));
     if (versi < TEMPLATE_VERSI_MIN) throw new Error(`Template di penyimpanan masih versi ${versi || 1}, butuh versi ${TEMPLATE_VERSI} (sheet WM 20 sump Water & Road). ` +
       'Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.');
-    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.`);
+    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} menambah sheet WF YTD (waterfall year-to-date dengan data Januari-Agustus 2026)` + (versi < 5 ? ', menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel' : '') + '. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Template.');
     const path = n => { const s = sheets.find(x => x.name === n); if (!s) throw new Error('Sheet tidak ada di template: ' + n); return s.path; };
     const rels = async p => { const rp = p.replace(/worksheets\/(sheet\d+\.xml)$/, 'worksheets/_rels/$1.rels'); return (await z.text(rp)) || ''; };
     const tablePath = async p => { const r = await rels(p); const m = /Target="\.\.\/tables\/(table\d+\.xml)"/.exec(r); return m ? 'xl/tables/' + m[1] : null; };
@@ -1143,21 +1236,2193 @@ const OE1 = (function () {
         .replace(/<cp:lastModifiedBy>[^<]*<\/cp:lastModifiedBy>/, '<cp:lastModifiedBy>MiningMalut · Data 1on1</cp:lastModifiedBy>'));
     }
 
-    // ---------------- zip
-    prog(0.8, 'Mengemas berkas');
-    const files = z.entries.map(e => (changed.has(e.name) ? { name: e.name, data: changed.get(e.name) } : { name: e.name, raw: e }));
-    const out = await zip(files, (i, n) => prog(0.8 + 0.2 * i / n, 'Mengemas berkas'));
-    prog(1, 'Selesai');
-    return out;
+    // ---------------- WF YTD (template v6): data tersimpan bulan tertutup (ringkasan dari sistem)
+    // data.ytd = { tahun, bulan: { 9: ringkasan, ... } } ; Jan-Agu 2026 sudah ada di template dan tidak ditimpa
+    if (versi >= 6 && data.ytd && sheets.some(x => x.name === YTD.SHEET)) {
+      const YE = new Map(), th = +data.ytd.tahun;
+      const bawaan = th === YTD.TAHUN_DATA;                          // tahun data template (Jan-Agu dari berkas Iqbal)
+      const mulaiSistem = bawaan ? +YTD.MULAI.slice(5) : 1;
+      if (!bawaan) YE.set(`C${YTD.ROW_TAHUN}`, { n: th });
+      for (let m = 1; m <= 12; m++) {
+        const c = n2col(3 + m);
+        if (m < mulaiSistem) continue;
+        const r = (data.ytd.bulan || {})[m];
+        const tulis = (daftar, grup) => { for (const [k, row] of daftar) { const v = r && r[grup] ? r[grup][k] : null; YE.set(`${c}${row}`, v != null && isFinite(v) ? { n: +v } : { clear: true }); } };
+        YE.set(`${c}${YTD.ROW_SUMBER}`, r ? { s: r.sumber || 'Sistem' } : { clear: true });
+        tulis(YTD.PLAN, 'plan'); tulis(YTD.AKT, 'aktual'); tulis(YTD.BRG, 'barging');
+      }
+      if (YE.size) changed.set(path(YTD.SHEET), editSheetXml(await z.text(path(YTD.SHEET)), YE));
+    }
+    prog(1, 'Workbook tersusun');
+    return { z, changed, versi, sheets };
   }
 
   return {
     crc32, unzip, zip, inflate, deflate, readXlsx, readReport, parseQaqc, pilihLoader, porsiEfo, tanggalShift,
     editSheetXml, isiTemplate, ymd2serial, serial2ymd, addDays, daysInMonth, weeknum2, mingguLipat, n2col, col2n,
     PARAM_CELLS, RES_ROWS, versiTemplate, TEMPLATE_VERSI, TEMPLATE_VERSI_MIN, WM_JUMLAH_SUMP, angkakanKolom, aktivitasTruck, idx, fixDimension,
+    susunWorkbook, kemasWorkbook, bagianWorkbook, ringkasanWf, YTD,
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = OE1;
+</script>
+<script>
+/* ===========================================================================
+   OECalc — mesin rumus Excel ringan untuk workbook "1 on 1 Nikel OE"
+   Dipakai data-1on1.html untuk: View Excel (nilai tiap sel sebelum diunduh),
+   ringkasan bulan tertutup untuk sheet WF YTD, dan nilai tersimpan di berkas unduhan.
+   Cakupan: fungsi yang dipakai template & workbook kantor pusat (SUMIFS, AVERAGEIFS,
+   COUNTIFS, SUMPRODUCT, HLOOKUP, TEXT, fungsi tanggal/teks, UNIQUE, FILTER, MAP,
+   LAMBDA, LET, IFS, ...), structured reference tabel, rumus bersama (shared),
+   rumus array (CSE & dinamis), perpotongan implisit. Diuji terhadap nilai hasil
+   Excel (workbook kantor pusat) dan LibreOffice.
+   =========================================================================== */
+const OECalc = (function () {
+  'use strict';
+
+  // ------------------------------------------------------------------ nilai
+  class XErr { constructor(c) { this.c = c; } toString() { return this.c; } }
+  const ERR = Object.create(null);
+  ['#NULL!', '#DIV/0!', '#VALUE!', '#REF!', '#NAME?', '#NUM!', '#N/A', '#GETTING_DATA', '#SPILL!', '#CALC!', '#FIELD!', '#BLOCKED!', '#UNKNOWN!', '#CONNECT!', '#BUSY!']
+    .forEach(c => { ERR[c] = new XErr(c); });
+  const eDIV = ERR['#DIV/0!'], eVAL = ERR['#VALUE!'], eREF = ERR['#REF!'], eNAME = ERR['#NAME?'], eNUM = ERR['#NUM!'], eNA = ERR['#N/A'], eCALC = ERR['#CALC!'];
+  const isErr = v => v instanceof XErr;
+  const errOf = t => ERR[t] || new XErr(t);
+  const MISSING = { missing: true };               // argumen kosong, mis. IF(A1,,1)
+
+  class Ref {                                        // rentang sel (belum dibaca nilainya)
+    constructor(sh, r1, c1, r2, c2) { this.sh = sh; this.r1 = r1; this.c1 = c1; this.r2 = r2; this.c2 = c2; }
+    get nr() { return this.r2 - this.r1 + 1; }
+    get nc() { return this.c2 - this.c1 + 1; }
+    get single() { return this.r1 === this.r2 && this.c1 === this.c2; }
+  }
+  class Arr {                                        // larik nilai (baris-mayor)
+    constructor(nr, nc, d) { this.nr = nr; this.nc = nc; this.d = d || new Array(nr * nc); }
+    get(i, j) { return this.d[i * this.nc + j]; }
+  }
+  class Lam { constructor(params, body, scope) { this.params = params; this.body = body; this.scope = scope; } }
+
+  const MAXR = 1048576, MAXC = 16384;
+  const col2n = s => { let n = 0; for (let i = 0; i < s.length; i++) n = n * 26 + s.charCodeAt(i) - 64; return n; };
+  const n2col = n => { let s = ''; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - 1 - r) / 26; } return s; };
+  const a1 = (r, c) => n2col(c) + r;
+
+  // ------------------------------------------------------------------ XML
+  const ENT = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' };
+  function unesc(s) {
+    if (s.indexOf('&') < 0) return s;
+    return s.replace(/&(lt|gt|quot|apos|amp|#\d+|#x[0-9a-fA-F]+);/g, (m, e) => ENT[e] || (e[1] === 'x' ? String.fromCodePoint(parseInt(e.slice(2), 16)) : String.fromCodePoint(+e.slice(1))));
+  }
+  const escX = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const xEsc = s => s.indexOf('_x') < 0 ? s : s.replace(/_x([0-9A-Fa-f]{4})_/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
+  function attrs(s) { const o = {}; const re = /([\w:]+)="([^"]*)"/g; let m; while ((m = re.exec(s))) o[m[1]] = m[2]; return o; }
+
+  // ------------------------------------------------------------------ angka & teks
+  const MS_DAY = 86400000, EPOCH = 25569;            // serial Excel 25569 = 1970-01-01
+  const serialToDate = n => new Date(Math.round((n - EPOCH) * MS_DAY));
+  const dateToSerial = (y, m, d) => Date.UTC(y, m - 1, d) / MS_DAY + EPOCH;
+  const canon = x => (Number.isInteger(x) ? x : Number(x.toPrecision(15)));
+  function numCmp(a, b) { if (a === b) return 0; if (canon(a) === canon(b)) return 0; return a < b ? -1 : 1; }
+  // teks -> angka seperti Excel (en-US): angka biasa, ribuan, %, (neg), tanggal ISO / m/d/yyyy, jam
+  const RE_PLAIN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+  const RE_THOU = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?$/;
+  const RE_ISO = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?)?$/;
+  const RE_US = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i;
+  const RE_TIME = /^(\d{1,2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?\s*(AM|PM)?$/i;
+  const BLN_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const RE_DMONY = /^(\d{1,2})[- ]([A-Za-z]{3,9})[- ](\d{2,4})$/;
+  function yr2(y) { return y < 100 ? (y < 30 ? 2000 + y : 1900 + y) : y; }
+  function parseNumText(s0) {
+    let s = String(s0).trim();
+    if (!s) return null;
+    if (RE_PLAIN.test(s)) return +s;
+    let neg = false;
+    if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1).trim(); }
+    let pct = false;
+    if (s.endsWith('%')) { pct = true; s = s.slice(0, -1).trim(); }
+    if (s.startsWith('$')) s = s.slice(1).trim();
+    let v = null;
+    if (RE_PLAIN.test(s)) v = +s;
+    else if (RE_THOU.test(s)) v = +s.replace(/,/g, '');
+    if (v !== null) { if (pct) v /= 100; return neg ? -v : v; }
+    if (neg || pct) return null;
+    let m = RE_ISO.exec(s);
+    if (m) {
+      const y = +m[1], mo = +m[2], d = +m[3];
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+      let t = dateToSerial(y, mo, d);
+      if (m[4] !== undefined) t += (+m[4] * 3600 + +m[5] * 60 + (m[6] ? +m[6] : 0)) / 86400;
+      return t;
+    }
+    m = RE_US.exec(s);
+    if (m) {
+      const mo = +m[1], d = +m[2], y = yr2(+m[3]);
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+      let t = dateToSerial(y, mo, d);
+      if (m[4] !== undefined) { let h = +m[4]; if (m[7]) { h %= 12; if (/pm/i.test(m[7])) h += 12; } t += (h * 3600 + +m[5] * 60 + (m[6] ? +m[6] : 0)) / 86400; }
+      return t;
+    }
+    m = RE_TIME.exec(s);
+    if (m) {
+      let h = +m[1]; if (m[4]) { if (h > 12) return null; h %= 12; if (/pm/i.test(m[4])) h += 12; }
+      if (+m[2] > 59) return null;
+      return (h * 3600 + +m[2] * 60 + (m[3] ? +m[3] : 0)) / 86400;
+    }
+    m = RE_DMONY.exec(s);
+    if (m) { const mi = BLN_EN.indexOf(m[2].slice(0, 3).toLowerCase()); if (mi >= 0) return dateToSerial(yr2(+m[3]), mi + 1, +m[1]); }
+    return null;
+  }
+  // angka -> teks format "General" (dipakai operator & dan TEXT tanpa format)
+  function generalText(n) {
+    if (!isFinite(n)) return '#NUM!';
+    if (n === 0) return '0';
+    const a = Math.abs(n);
+    if (a >= 1e15 || a < 1e-9) {
+      let s = n.toExponential(14).replace(/\.?0+e/, 'e');
+      const m = /^(-?[\d.]+)e([+-])(\d+)$/.exec(s);
+      return m ? `${m[1]}E${m[2]}${m[3].padStart(2, '0')}` : s;
+    }
+    let s = Number(n.toPrecision(15)).toString();
+    if (/e/.test(s)) { s = Number(n.toPrecision(15)).toFixed(20).replace(/\.?0+$/, ''); }
+    return s;
+  }
+  function toNum(x) {
+    if (typeof x === 'number') return x;
+    if (x === null || x === undefined || x === MISSING) return 0;
+    if (typeof x === 'boolean') return x ? 1 : 0;
+    if (typeof x === 'string') { const n = parseNumText(x); return n === null ? eVAL : n; }
+    if (isErr(x)) return x;
+    return eVAL;
+  }
+  function toStr(x) {
+    if (typeof x === 'string') return x;
+    if (typeof x === 'number') return generalText(x);
+    if (typeof x === 'boolean') return x ? 'TRUE' : 'FALSE';
+    if (x === null || x === undefined || x === MISSING) return '';
+    if (isErr(x)) return x;
+    return '';
+  }
+  function toBool(x) {
+    if (typeof x === 'boolean') return x;
+    if (typeof x === 'number') return x !== 0;
+    if (x === null || x === undefined || x === MISSING) return false;
+    if (typeof x === 'string') { const u = x.toUpperCase(); if (u === 'TRUE') return true; if (u === 'FALSE') return false; return eVAL; }
+    if (isErr(x)) return x;
+    return eVAL;
+  }
+  const typeRank = x => (typeof x === 'number' ? 1 : typeof x === 'string' ? 2 : 3);
+  function cmpVals(x, y) {
+    if (x === null || x === MISSING) x = typeof y === 'string' ? '' : typeof y === 'boolean' ? false : 0;
+    if (y === null || y === MISSING) y = typeof x === 'string' ? '' : typeof x === 'boolean' ? false : 0;
+    const tx = typeRank(x), ty = typeRank(y);
+    if (tx !== ty) return tx < ty ? -1 : 1;
+    if (tx === 1) return numCmp(x, y);
+    if (tx === 2) { const a = x.toLowerCase(), b = y.toLowerCase(); return a < b ? -1 : a > b ? 1 : 0; }
+    return x === y ? 0 : x ? 1 : -1;
+  }
+  function cmpOp(c, op) {
+    switch (op) { case '=': return c === 0; case '<>': return c !== 0; case '<': return c < 0; case '>': return c > 0; case '<=': return c <= 0; case '>=': return c >= 0; }
+    return false;
+  }
+  function wildRe(pat) {
+    let s = '';
+    for (let i = 0; i < pat.length; i++) {
+      const ch = pat[i];
+      if (ch === '~' && i + 1 < pat.length && '*?~'.includes(pat[i + 1])) { s += '\\' + pat[++i]; continue; }
+      if (ch === '*') s += '[\\s\\S]*'; else if (ch === '?') s += '[\\s\\S]';
+      else s += ch.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    }
+    return new RegExp('^' + s + '$', 'i');
+  }
+
+  // ------------------------------------------------------------------ tokenizer & parser rumus
+  const RE_SHEETQ = /'((?:[^']|'')+)'!/y;
+  const RE_SHEET = /((?:\[\d+\])?[A-Za-z_\u00C0-\uFFFF][\w.\u00C0-\uFFFF]*)!/y;
+  const RE_AREA = /(\$?)([A-Z]{1,3})(\$?)(\d+)(?::(\$?)([A-Z]{1,3})(\$?)(\d+))?/y;
+  const RE_COLS = /(\$?)([A-Z]{1,3}):(\$?)([A-Z]{1,3})/y;
+  const RE_ROWS = /(\$?)(\d+):(\$?)(\d+)/y;
+  const RE_NUM = /(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/y;
+  const RE_IDENT = /[A-Za-z_\\\u00C0-\uFFFF][\w.\u00C0-\uFFFF]*/y;
+  const RE_ERRT = /#(?:NULL!|DIV\/0!|VALUE!|REF!|NAME\?|NUM!|N\/A|GETTING_DATA|SPILL!|CALC!|FIELD!|BLOCKED!|UNKNOWN!|CONNECT!|BUSY!)/y;
+  const IDCH = /[\w.(\[]/;
+  const normFn = s => s.toUpperCase().replace(/^(_XLFN\.)?(_XLWS\.)?/, '');
+
+  function tokenize(src) {
+    const toks = []; let p = 0; const n = src.length;
+    const idAfter = k => k < n && IDCH.test(src[k]);
+    function readBracket() {             // p di '[' ; kembalikan isi di antara kurung terluar
+      let depth = 0, q = p;
+      for (; q < n; q++) {
+        const ch = src[q];
+        if (ch === "'") { q++; continue; }
+        if (ch === '[') depth++;
+        else if (ch === ']') { depth--; if (depth === 0) break; }
+      }
+      const s = src.slice(p + 1, q); p = q + 1; return s;
+    }
+    function readRef() {
+      let q = p, sheet = null, m;
+      if (src[q] === "'") { RE_SHEETQ.lastIndex = q; m = RE_SHEETQ.exec(src); if (!m) return null; sheet = m[1].replace(/''/g, "'"); q += m[0].length; }
+      else { RE_SHEET.lastIndex = q; m = RE_SHEET.exec(src); if (m) { sheet = m[1]; q += m[0].length; } }
+      if (sheet !== null && src.startsWith('#REF!', q)) { p = q + 5; return { t: 'err', v: '#REF!' }; }
+      RE_AREA.lastIndex = q; m = RE_AREA.exec(src);
+      if (m && !idAfter(q + m[0].length)) {
+        p = q + m[0].length;
+        const r1 = +m[4], c1 = col2n(m[2]);
+        const tok = { t: 'ref', sheet, r1, c1, r2: r1, c2: c1, ar1: !!m[3], ac1: !!m[1], ar2: !!m[3], ac2: !!m[1], kind: 'cell' };
+        if (m[5] !== undefined) { tok.r2 = +m[8]; tok.c2 = col2n(m[6]); tok.ar2 = !!m[7]; tok.ac2 = !!m[5]; tok.kind = 'area'; }
+        return tok;
+      }
+      RE_COLS.lastIndex = q; m = RE_COLS.exec(src);
+      if (m && !idAfter(q + m[0].length)) {
+        p = q + m[0].length;
+        return { t: 'ref', sheet, r1: 1, r2: MAXR, c1: col2n(m[2]), c2: col2n(m[4]), ar1: true, ar2: true, ac1: !!m[1], ac2: !!m[3], kind: 'cols' };
+      }
+      RE_ROWS.lastIndex = q; m = RE_ROWS.exec(src);
+      if (m && !idAfter(q + m[0].length)) {
+        p = q + m[0].length;
+        return { t: 'ref', sheet, c1: 1, c2: MAXC, r1: +m[2], r2: +m[4], ac1: true, ac2: true, ar1: !!m[1], ar2: !!m[3], kind: 'rows' };
+      }
+      if (sheet !== null) {               // Sheet!NamaTerdefinisi
+        RE_IDENT.lastIndex = q; m = RE_IDENT.exec(src);
+        if (m) { p = q + m[0].length; return { t: 'name', v: m[0], sheet }; }
+        throw new Error('referensi tak dikenal: ' + src.slice(p, p + 20));
+      }
+      return null;
+    }
+    while (p < n) {
+      const ch = src[p];
+      if (ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t' || ch === ' ') { p++; continue; }
+      if (ch === '"') {
+        let s = '', q = p + 1;
+        for (;;) {
+          const k = src.indexOf('"', q); if (k < 0) throw new Error('teks tak tertutup');
+          s += src.slice(q, k);
+          if (src[k + 1] === '"') { s += '"'; q = k + 2; } else { p = k + 1; break; }
+        }
+        toks.push({ t: 'str', v: s }); continue;
+      }
+      if (ch === '#') { RE_ERRT.lastIndex = p; const m = RE_ERRT.exec(src); if (m) { p += m[0].length; toks.push({ t: 'err', v: m[0] }); continue; } throw new Error('token # tak dikenal: ' + src.slice(p, p + 12)); }
+      if (ch === "'" || ch === '[' || /[A-Za-z_$0-9]/.test(ch)) { const r = readRef(); if (r) { toks.push(r); continue; } }
+      if ((ch >= '0' && ch <= '9') || ch === '.') { RE_NUM.lastIndex = p; const m = RE_NUM.exec(src); if (m) { p += m[0].length; toks.push({ t: 'num', v: +m[0] }); continue; } }
+      if (/[A-Za-z_\\\u00C0-\uFFFF]/.test(ch)) {
+        RE_IDENT.lastIndex = p; const m = RE_IDENT.exec(src); const id = m[0]; p += id.length;
+        let k = p; while (k < n && src[k] === ' ') k++;
+        if (src[p] === '(') { toks.push({ t: 'fn', v: normFn(id) }); p++; continue; }
+        if (src[p] === '[') { const spec = readBracket(); toks.push({ t: 'sref', table: id, spec }); continue; }
+        const up = id.toUpperCase();
+        if (up === 'TRUE' || up === 'FALSE') { toks.push({ t: 'bool', v: up === 'TRUE' }); continue; }
+        toks.push({ t: 'name', v: id }); continue;
+      }
+      const two = src.substr(p, 2);
+      if (two === '<>' || two === '<=' || two === '>=') { toks.push({ t: 'op', v: two }); p += 2; continue; }
+      if ('+-*/^&=<>%'.includes(ch)) { toks.push({ t: 'op', v: ch }); p++; continue; }
+      if (ch === '(') { toks.push({ t: 'lp' }); p++; continue; }
+      if (ch === ')') { toks.push({ t: 'rp' }); p++; continue; }
+      if (ch === ',') { toks.push({ t: 'comma' }); p++; continue; }
+      if (ch === ';') { toks.push({ t: 'semi' }); p++; continue; }
+      if (ch === '{') { toks.push({ t: 'lb' }); p++; continue; }
+      if (ch === '}') { toks.push({ t: 'rb' }); p++; continue; }
+      if (ch === ':') { toks.push({ t: 'colon' }); p++; continue; }
+      if (ch === '@') { p++; continue; }   // operator perpotongan implisit eksplisit: diabaikan
+      throw new Error('karakter tak dikenal: ' + ch);
+    }
+    return toks;
+  }
+  const BIN = { '=': 1, '<>': 1, '<': 1, '>': 1, '<=': 1, '>=': 1, '&': 2, '+': 3, '-': 3, '*': 4, '/': 4, '^': 5 };
+  function parseSpec(s) {                // isi kurung structured ref -> {sp:Set, c1, c2}
+    const out = { sp: new Set(), c1: null, c2: null };
+    const unq = x => x.replace(/'(.)/g, '$1').trim();
+    if (!s.startsWith('[')) {
+      const t = unq(s);
+      if (t.startsWith('#') || t === '@') out.sp.add(t.toLowerCase()); else if (t.startsWith('@')) { out.sp.add('#this row'); out.c1 = out.c2 = t.slice(1); } else { out.c1 = out.c2 = t; }
+      return out;
+    }
+    const items = []; let depth = 0, cur = '';
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === "'") { cur += ch + (s[i + 1] || ''); i++; continue; }
+      if (ch === '[') { depth++; if (depth === 1) { cur += '['; continue; } }
+      if (ch === ']') { depth--; if (depth === 0) { cur += ']'; continue; } }
+      if (ch === ',' && depth === 0) { items.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    if (cur.trim()) items.push(cur.trim());
+    for (const it of items) {
+      const parts = it.split(/\]\s*:\s*\[/);
+      if (parts.length === 2) { out.c1 = unq(parts[0].replace(/^\[/, '')); out.c2 = unq(parts[1].replace(/\]$/, '')); continue; }
+      const t = unq(it.replace(/^\[/, '').replace(/\]$/, ''));
+      if (t.startsWith('#')) out.sp.add(t.toLowerCase()); else if (t === '@') out.sp.add('#this row'); else { out.c1 = out.c2 = t; }
+    }
+    return out;
+  }
+  function parse(src) {
+    const toks = tokenize(src); let i = 0;
+    const need = t => { const k = toks[i]; if (!k || k.t !== t) throw new Error('rumus: harap ' + t + ' di token ' + i); i++; return k; };
+    function expr(minP) {
+      let a = unary();
+      for (;;) {
+        const k = toks[i];
+        if (!k || k.t !== 'op' || !(k.v in BIN)) break;
+        const pr = BIN[k.v]; if (pr < minP) break;
+        i++; const b = expr(pr + 1);
+        a = { t: 'bin', op: k.v, a, b };
+      }
+      return a;
+    }
+    function unary() {
+      const k = toks[i];
+      if (k && k.t === 'op' && (k.v === '-' || k.v === '+')) { i++; const a = unary(); return k.v === '-' ? { t: 'neg', a } : { t: 'pos', a }; }
+      return postfix();
+    }
+    function postfix() {
+      let a = primary();
+      for (;;) {
+        const k = toks[i];
+        if (k && k.t === 'op' && k.v === '%') { i++; a = { t: 'pct', a }; continue; }
+        if (k && k.t === 'colon') { i++; const b = primary(); a = { t: 'range', a, b }; continue; }
+        break;
+      }
+      return a;
+    }
+    function constant() {
+      let k = toks[i++], neg = false;
+      if (k.t === 'op' && (k.v === '-' || k.v === '+')) { neg = k.v === '-'; k = toks[i++]; }
+      if (k.t === 'num') return neg ? -k.v : k.v;
+      if (k.t === 'str') return k.v;
+      if (k.t === 'bool') return k.v;
+      if (k.t === 'err') return errOf(k.v);
+      throw new Error('konstanta larik tak sah');
+    }
+    function primary() {
+      const k = toks[i++];
+      if (!k) throw new Error('rumus terpotong');
+      switch (k.t) {
+        case 'num': return { t: 'lit', v: k.v };
+        case 'str': return { t: 'lit', v: k.v };
+        case 'bool': return { t: 'lit', v: k.v };
+        case 'err': return { t: 'lit', v: errOf(k.v) };
+        case 'ref': return k;
+        case 'sref': return { t: 'sref', table: k.table, spec: parseSpec(k.spec) };
+        case 'name': return { t: 'name', v: k.v, sheet: k.sheet || null };
+        case 'fn': {
+          const args = [];
+          if (toks[i] && toks[i].t === 'rp') { i++; return { t: 'fn', n: k.v, args }; }
+          for (;;) {
+            const c = toks[i];
+            if (c && (c.t === 'comma' || c.t === 'rp')) args.push({ t: 'missing' }); else args.push(expr(1));
+            const s = toks[i++];
+            if (!s) throw new Error('kurung fungsi tak tertutup');
+            if (s.t === 'rp') break;
+            if (s.t !== 'comma') throw new Error('harap koma di argumen ' + k.v);
+          }
+          // LAMBDA langsung dipanggil: LAMBDA(x,..)(arg)
+          if (toks[i] && toks[i].t === 'lp' && k.v === 'LAMBDA') {
+            i++; const cargs = [];
+            if (!(toks[i] && toks[i].t === 'rp')) for (;;) { cargs.push(expr(1)); const s = toks[i++]; if (s.t === 'rp') break; }
+            else i++;
+            return { t: 'call', f: { t: 'fn', n: k.v, args }, args: cargs };
+          }
+          return { t: 'fn', n: k.v, args };
+        }
+        case 'lp': { const e = expr(1); need('rp'); return e; }
+        case 'lb': {
+          const rows = [[]];
+          for (;;) {
+            rows[rows.length - 1].push(constant());
+            const s = toks[i++];
+            if (s.t === 'rb') break;
+            if (s.t === 'semi') rows.push([]); else if (s.t !== 'comma') throw new Error('larik tak sah');
+          }
+          const nc = rows[0].length;
+          return { t: 'lit', v: new Arr(rows.length, nc, [].concat(...rows)) };
+        }
+      }
+      throw new Error('token tak terduga: ' + k.t);
+    }
+    const ast = expr(1);
+    if (i < toks.length) throw new Error('sisa token setelah rumus');
+    return ast;
+  }
+
+  // ------------------------------------------------------------------ format angka (tampilan & TEXT)
+  const BUILTIN_FMT = {
+    0: 'General', 1: '0', 2: '0.00', 3: '#,##0', 4: '#,##0.00', 5: '$#,##0_);($#,##0)', 6: '$#,##0_);[Red]($#,##0)', 7: '$#,##0.00_);($#,##0.00)',
+    8: '$#,##0.00_);[Red]($#,##0.00)', 9: '0%', 10: '0.00%', 11: '0.00E+00', 12: '# ?/?', 13: '# ??/??', 14: 'm/d/yyyy', 15: 'd-mmm-yy', 16: 'd-mmm',
+    17: 'mmm-yy', 18: 'h:mm AM/PM', 19: 'h:mm:ss AM/PM', 20: 'h:mm', 21: 'h:mm:ss', 22: 'm/d/yyyy h:mm', 37: '#,##0 ;(#,##0)', 38: '#,##0 ;[Red](#,##0)',
+    39: '#,##0.00;(#,##0.00)', 40: '#,##0.00;[Red](#,##0.00)', 41: '_(* #,##0_);_(* \\(#,##0\\);_(* "-"_);_(@_)', 42: '_("$"* #,##0_);_("$"* \\(#,##0\\);_("$"* "-"_);_(@_)',
+    43: '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)', 44: '_("$"* #,##0.00_);_("$"* \\(#,##0.00\\);_("$"* "-"??_);_(@_)', 45: 'mm:ss', 46: '[h]:mm:ss',
+    47: 'mmss.0', 48: '##0.0E+0', 49: '@',
+  };
+  const MON_L = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const DAY_L = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const COLOR_NAMES = { black: '#000000', blue: '#0000FF', cyan: '#00FFFF', green: '#00FF00', magenta: '#FF00FF', red: '#FF0000', white: '#FFFFFF', yellow: '#FFFF00' };
+  const fmtCache = new Map();
+  function splitSections(code) {
+    const out = []; let cur = '', q = false, b = false;
+    for (let i = 0; i < code.length; i++) {
+      const ch = code[i];
+      if (ch === '"' && !b) q = !q;
+      else if (ch === '\\' && !q && !b) { cur += ch + (code[i + 1] || ''); i++; continue; }
+      else if (ch === '[' && !q) b = true; else if (ch === ']' && !q) b = false;
+      if (ch === ';' && !q && !b) { out.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    out.push(cur); return out;
+  }
+  function compileSection(sec) {
+    // token: {k:'lit',v} | {k:'dt',v} | {k:'num'} (pola angka) | {k:'at'}
+    const toks = []; let color = null, cond = null, i = 0, isDate = false, hasNum = false, elapsed = false;
+    const lit = v => { const l = toks[toks.length - 1]; if (l && l.k === 'lit') l.v += v; else toks.push({ k: 'lit', v }); };
+    let numPat = '';
+    const flushNum = () => { if (numPat) { toks.push({ k: 'num', v: numPat }); numPat = ''; hasNum = true; } };
+    while (i < sec.length) {
+      const ch = sec[i];
+      if (ch === '"') { flushNum(); const k = sec.indexOf('"', i + 1); lit(sec.slice(i + 1, k < 0 ? sec.length : k)); i = k < 0 ? sec.length : k + 1; continue; }
+      if (ch === '\\') { flushNum(); lit(sec[i + 1] || ''); i += 2; continue; }
+      if (ch === '_') { flushNum(); lit(' '); i += 2; continue; }
+      if (ch === '*') { flushNum(); i += 2; continue; }
+      if (ch === '[') {
+        const k = sec.indexOf(']', i); const inner = sec.slice(i + 1, k < 0 ? sec.length : k); i = k < 0 ? sec.length : k + 1;
+        const lo = inner.toLowerCase();
+        if (COLOR_NAMES[lo]) color = COLOR_NAMES[lo];
+        else if (/^color\d+$/.test(lo)) color = null;
+        else if (/^[<>=]/.test(inner)) { const m = /^(<=|>=|<>|<|>|=)(-?[\d.]+)$/.exec(inner); if (m) cond = { op: m[1], v: +m[2] }; }
+        else if (/^\$/.test(inner)) { flushNum(); const sym = inner.slice(1).split('-')[0]; if (sym) lit(sym); }
+        else if (/^(h+|m+|s+)$/i.test(inner)) { flushNum(); toks.push({ k: 'dt', v: '[' + lo + ']' }); isDate = true; elapsed = true; }
+        continue;
+      }
+      if (/[0#?.,%]/.test(ch) || (ch === 'E' || ch === 'e') && /[+-]/.test(sec[i + 1] || '') && numPat) {
+        if ((ch === 'E' || ch === 'e')) { numPat += 'E' + sec[i + 1]; i += 2; while (/[0#]/.test(sec[i] || '')) numPat += sec[i++]; continue; }
+        if (ch === ',' && !numPat) { lit(','); i++; continue; }
+        if (ch === '.' && !numPat && !/[0#?]/.test(sec[i + 1] || '')) { lit('.'); i++; continue; }
+        numPat += ch; i++; continue;
+      }
+      if (ch === '@') { flushNum(); toks.push({ k: 'at' }); i++; continue; }
+      const low = sec.slice(i).toLowerCase();
+      if (/^(am\/pm|a\/p)/.test(low)) { flushNum(); const t = low.startsWith('am/pm') ? 'am/pm' : 'a/p'; toks.push({ k: 'dt', v: t }); i += t.length; isDate = true; continue; }
+      const dm = /^(yyyy|yy|y|mmmmm|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|e)/i.exec(sec.slice(i));
+      if (dm && (ch !== 'e' && ch !== 'E' || !numPat)) {
+        flushNum(); let v = dm[1].toLowerCase(); if (v === 'e') v = 'yyyy'; toks.push({ k: 'dt', v }); i += dm[1].length; isDate = true; continue;
+      }
+      flushNum(); lit(ch); i++;
+    }
+    flushNum();
+    // m sesudah h atau sebelum s = menit
+    for (let k = 0; k < toks.length; k++) {
+      const t = toks[k]; if (t.k !== 'dt' || (t.v !== 'm' && t.v !== 'mm')) continue;
+      let prev = null, next = null;
+      for (let j = k - 1; j >= 0; j--) if (toks[j].k === 'dt') { prev = toks[j].v; break; }
+      for (let j = k + 1; j < toks.length; j++) if (toks[j].k === 'dt') { next = toks[j].v; break; }
+      if ((prev && /^h|^\[h/.test(prev)) || (next && /^s|^\[s/.test(next))) t.v = t.v === 'm' ? 'min' : 'mmin';
+    }
+    return { toks, color, cond, isDate: isDate && !hasNum || isDate && toks.some(t => t.k === 'dt'), hasNum, elapsed, hasAt: toks.some(t => t.k === 'at') };
+  }
+  function compileFmt(code) {
+    let c = fmtCache.get(code); if (c) return c;
+    const secs = splitSections(code).map(compileSection);
+    c = { code, secs, general: /^general$/i.test(code.trim()) };
+    fmtCache.set(code, c); return c;
+  }
+  function fmtNumPattern(n, pat, loc) {
+    // pat: kombinasi 0 # ? , . % E+
+    let pct = 0; for (const ch of pat) if (ch === '%') pct++;
+    let v = n * Math.pow(100, pct);
+    let p = pat.replace(/%/g, '');
+    let exp = null; const ei = p.search(/E[+-]/);
+    if (ei >= 0) { exp = p.slice(ei); p = p.slice(0, ei); }
+    // skala: koma di ujung bagian bulat
+    let intPart = p, decPart = ''; const di = p.indexOf('.');
+    if (di >= 0) { intPart = p.slice(0, di); decPart = p.slice(di + 1); }
+    let scale = 0; while (intPart.endsWith(',')) { scale++; intPart = intPart.slice(0, -1); }
+    v = v / Math.pow(1000, scale);
+    const thousands = intPart.includes(',');
+    const intDigits = intPart.replace(/[^0#?]/g, '');
+    const decDigits = decPart.replace(/[^0#?]/g, '');
+    const nd = decDigits.length;
+    let eStr = '';
+    if (exp !== null) {
+      if (v === 0) { eStr = 'E+00'; }
+      else {
+        const ePlaces = Math.max(1, intDigits.length);
+        let e = Math.floor(Math.log10(Math.abs(v)));
+        e = e - ((e % ePlaces) + ePlaces) % ePlaces;
+        v = v / Math.pow(10, e);
+        const eDig = exp.slice(2).replace(/[^0#]/g, '').length || 2;
+        eStr = 'E' + (e < 0 ? '-' : (exp[1] === '+' ? '+' : '')) + String(Math.abs(e)).padStart(eDig, '0');
+      }
+    }
+    let s = Math.abs(v).toFixed(Math.min(nd, 20));
+    // pembulatan Excel (setengah menjauhi nol) untuk kasus toFixed .5 biner
+    const fx = Number(Math.abs(v).toPrecision(15)); s = roundHalfUp(fx, Math.min(nd, 20)).toFixed(Math.min(nd, 20));
+    let [ip, dp = ''] = s.split('.');
+    // desimal opsional (#) : buang nol di ujung
+    if (nd) {
+      let keep = dp.split('');
+      for (let k = decDigits.length - 1; k >= 0; k--) { if (decDigits[k] === '0') break; if (keep[k] === '0') keep[k] = decDigits[k] === '?' ? ' ' : ''; else break; }
+      dp = keep.join('');
+    }
+    const minInt = (intDigits.match(/0/g) || []).length;
+    if (ip === '0' && minInt === 0) ip = '';
+    while (ip.length < minInt) ip = '0' + ip;
+    if (thousands && ip.length > 3) ip = ip.replace(/\B(?=(\d{3})+(?!\d))/g, '\u0001');
+    let out = ip.replace(/\u0001/g, loc.grp);
+    if (nd && dp !== '') out += loc.dec + dp; else if (nd && decDigits.includes('0')) out += loc.dec;
+    else if (nd && /^\s*$/.test(dp) === false) out += loc.dec + dp;
+    else if (pat.includes('.') && !nd) out += '';
+    return out + eStr + '%'.repeat(pct);
+  }
+  function roundHalfUp(x, d) {
+    const p = Math.pow(10, d); const y = Number((Math.abs(x) * p).toPrecision(15));
+    return Math.sign(x) * Math.floor(y + 0.5) / p;
+  }
+  function fmtDate(n, sec, loc, names) {
+    let whole = Math.floor(n), frac = n - whole;
+    let secs = Math.round(frac * 86400);
+    const hasFracSec = false;
+    if (secs >= 86400) { secs -= 86400; whole += 1; }
+    const d = serialToDate(whole);
+    const Y = d.getUTCFullYear(), M = d.getUTCMonth(), D = d.getUTCDate(), W = d.getUTCDay();
+    let H = Math.floor(secs / 3600), Mi = Math.floor(secs % 3600 / 60), S = secs % 60;
+    const ampm = sec.toks.some(t => t.k === 'dt' && (t.v === 'am/pm' || t.v === 'a/p'));
+    let out = '';
+    for (const t of sec.toks) {
+      if (t.k === 'lit') { out += t.v; continue; }
+      if (t.k === 'num') { out += fmtNumPattern(n, t.v, loc); continue; }
+      if (t.k === 'at') continue;
+      const h12 = ampm ? (H % 12 || 12) : H;
+      switch (t.v) {
+        case 'yyyy': out += String(Y); break;
+        case 'yy': case 'y': out += String(Y % 100).padStart(2, '0'); break;
+        case 'mmmmm': out += names.mon[M][0]; break;
+        case 'mmmm': out += names.mon[M]; break;
+        case 'mmm': out += names.mon[M].slice(0, 3); break;
+        case 'mm': out += String(M + 1).padStart(2, '0'); break;
+        case 'm': out += String(M + 1); break;
+        case 'dddd': out += names.day[W]; break;
+        case 'ddd': out += names.day[W].slice(0, 3); break;
+        case 'dd': out += String(D).padStart(2, '0'); break;
+        case 'd': out += String(D); break;
+        case 'hh': out += String(h12).padStart(2, '0'); break;
+        case 'h': out += String(h12); break;
+        case 'mmin': out += String(Mi).padStart(2, '0'); break;
+        case 'min': out += String(Mi); break;
+        case 'ss': out += String(S).padStart(2, '0'); break;
+        case 's': out += String(S); break;
+        case 'am/pm': out += H < 12 ? 'AM' : 'PM'; break;
+        case 'a/p': out += H < 12 ? 'A' : 'P'; break;
+        case '[h]': case '[hh]': out += String(Math.floor(n * 24)); break;
+        case '[m]': case '[mm]': out += String(Math.floor(n * 1440)); break;
+        case '[s]': case '[ss]': out += String(Math.floor(n * 86400)); break;
+        default: out += t.v;
+      }
+    }
+    return out;
+  }
+  const LOC_EN = { dec: '.', grp: ',' };
+  const NAMES_EN = { mon: MON_L, day: DAY_L };
+  // v: nilai sel; code: kode format. Hasil {t: teks, color}
+  function formatValue(v, code, loc, names, generalMax) {
+    loc = loc || LOC_EN; names = names || NAMES_EN;
+    if (v === null || v === undefined) return { t: '' };
+    if (isErr(v)) return { t: v.c };
+    if (typeof v === 'boolean') return { t: v ? 'TRUE' : 'FALSE' };
+    const f = compileFmt(code || 'General');
+    if (typeof v === 'string') {
+      const sec = f.secs.length >= 4 ? f.secs[3] : (f.secs.length === 1 && f.secs[0].hasAt ? f.secs[0] : null);
+      if (!sec) return { t: v };
+      let out = ''; for (const t of sec.toks) out += t.k === 'lit' ? t.v : t.k === 'at' ? v : '';
+      return { t: out, color: sec.color };
+    }
+    if (typeof v !== 'number') return { t: String(v) };
+    if (f.general) return { t: generalDisplay(v, loc, generalMax) };
+    let secs = f.secs, sec, val = v, forceMinus = false;
+    const conds = secs.some(s => s.cond);
+    if (conds) {
+      sec = secs.find(s => s.cond && cmpOp(numCmp(v, s.cond.v), s.cond.op)) || secs.find(s => !s.cond) || secs[0];
+      if (v < 0 && !sec.cond) forceMinus = true;
+      val = Math.abs(v);
+      if (sec.cond && v < 0) forceMinus = true;
+    } else if (v > 0 || secs.length === 1 || (v === 0 && secs.length < 3)) {
+      sec = secs[0]; if (v < 0) { forceMinus = true; val = -v; }
+      if (v === 0 && secs.length === 2) sec = secs[0];
+    } else if (v < 0) { sec = secs[1] || secs[0]; val = -v; if (!secs[1]) forceMinus = true; }
+    else sec = secs[2] || secs[0];
+    if (/^\s*$/.test(sec.toks.map(t => t.k === 'lit' ? t.v : 'x').join('')) && sec.toks.every(t => t.k === 'lit')) return { t: sec.toks.map(t => t.v).join(''), color: sec.color };
+    let out;
+    if (sec.isDate && sec.toks.some(t => t.k === 'dt')) {
+      if (v < 0) return { t: '#'.repeat(8) };
+      out = fmtDate(v, sec, loc, names);
+    } else {
+      out = '';
+      const nums = sec.toks.filter(t => t.k === 'num');
+      // bila lebih dari satu pola angka (jarang), gabung jadi satu
+      let first = true;
+      for (const t of sec.toks) {
+        if (t.k === 'lit') out += t.v;
+        else if (t.k === 'num') { if (first) { out += fmtNumPattern(val, nums.length > 1 ? nums.map(x => x.v).join('') : t.v, loc); first = false; } }
+        else if (t.k === 'at') out += generalText(val);
+      }
+      if (forceMinus && /[1-9]/.test(out)) out = '-' + out;
+    }
+    return { t: out, color: sec.color };
+  }
+  function generalDisplay(v, loc, maxLen) {
+    maxLen = maxLen || 11;
+    if (v === 0) return '0';
+    const a = Math.abs(v);
+    let s;
+    if (a >= 1e11 || a < 1e-9) {
+      s = v.toExponential(5).replace(/\.?0+e/, 'e');
+      const m = /^(-?[\d.]+)e([+-])(\d+)$/.exec(s); s = m ? `${m[1]}E${m[2]}${m[3].padStart(2, '0')}` : s;
+    } else if (Number.isInteger(v)) s = String(v);
+    else {
+      const intLen = Math.floor(Math.log10(a)) + 1;
+      const dec = Math.max(0, maxLen - Math.max(intLen, 1) - 1 - (v < 0 ? 1 : 0));
+      s = roundHalfUp(v, Math.min(dec, 15)).toFixed(Math.min(dec, 15)).replace(/\.?0+$/, '');
+      if (s === '-0') s = '0';
+    }
+    return loc.dec === '.' ? s : s.replace('.', loc.dec);
+  }
+  function textFn(v, code) {            // fungsi TEXT: en-US
+    if (typeof v === 'string') { const n = parseNumText(v); if (n === null) return formatValue(v, code).t; v = n; }
+    if (typeof v === 'boolean') v = v ? 1 : 0;
+    if (v === null || v === MISSING) v = 0;
+    if (/^general$/i.test(code)) return generalText(v);
+    return formatValue(v, code, LOC_EN, NAMES_EN, 99).t;
+  }
+
+  // ------------------------------------------------------------------ tanggal
+  function weekday(n, type) {
+    const w = serialToDate(Math.floor(n)).getUTCDay();   // 0 = Minggu
+    switch (type) {
+      case 1: case 17: return w + 1;
+      case 2: case 11: return (w + 6) % 7 + 1;
+      case 3: return (w + 6) % 7;
+      case 12: return (w + 5) % 7 + 1;
+      case 13: return (w + 4) % 7 + 1;
+      case 14: return (w + 3) % 7 + 1;
+      case 15: return (w + 2) % 7 + 1;
+      case 16: return (w + 1) % 7 + 1;
+    }
+    return eNUM;
+  }
+  function isoWeek(n) {
+    const d = serialToDate(Math.floor(n)); const day = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - day + 3);
+    const y = d.getUTCFullYear(); const j4 = new Date(Date.UTC(y, 0, 4));
+    return 1 + Math.round(((d - j4) / MS_DAY - 3 + ((j4.getUTCDay() + 6) % 7)) / 7);
+  }
+  function weeknum(n, type) {
+    if (type === 21) return isoWeek(n);
+    const start = { 1: 0, 17: 0, 2: 1, 11: 1, 12: 2, 13: 3, 14: 4, 15: 5, 16: 6 }[type];
+    if (start === undefined) return eNUM;
+    const d = serialToDate(Math.floor(n)); const y = d.getUTCFullYear();
+    const jan1 = new Date(Date.UTC(y, 0, 1)); const w1 = (jan1.getUTCDay() - start + 7) % 7;
+    const doy = Math.floor((d - jan1) / MS_DAY);
+    return Math.floor((doy + w1) / 7) + 1;
+  }
+
+  // ------------------------------------------------------------------ workbook
+  class Sheet {
+    constructor(wb, idx, name, path) {
+      this.wb = wb; this.idx = idx; this.name = name; this.path = path;
+      this.cv = [];                  // cv[c][r] = nilai
+      this.st = [];                  // st[c][r] = indeks gaya sel
+      this.fm = new Map();           // kunci r*16384+c -> objek rumus
+      this.maxR = 0; this.maxC = 0;
+      this.colW = []; this.colHidden = []; this.colStyle = [];
+      this.rowH = []; this.rowHidden = []; this.rowStyle = [];
+      this.merges = []; this.freeze = null; this.defRowH = 15; this.defColW = 8.43;
+      this.tables = []; this.hidden = false; this.tabColor = null;
+    }
+    col(c) { let a = this.cv[c]; if (!a) a = this.cv[c] = []; return a; }
+    setV(r, c, v) { this.col(c)[r] = v; if (r > this.maxR) this.maxR = r; if (c > this.maxC) this.maxC = c; }
+    raw(r, c) { const a = this.cv[c]; if (!a) return null; const v = a[r]; return v === undefined ? null : v; }
+    style(r, c) {
+      const a = this.st[c]; const s = a ? a[r] : undefined;
+      if (s !== undefined) return s;
+      if (this.rowStyle[r] !== undefined) return this.rowStyle[r];
+      if (this.colStyle[c] !== undefined) return this.colStyle[c];
+      return 0;
+    }
+  }
+
+  const KEY = (r, c) => r * 16384 + c;
+
+  class Workbook {
+    constructor() {
+      this.sheets = []; this.byName = new Map(); this.names = new Map(); this.tables = new Map();
+      this.sst = []; this.styles = null; this.theme = null; this.date1904 = false;
+      this.idxCache = new Map(); this.matchCache = new Map(); this.arrCache = new Map();
+      this.diag = { parseErr: [], unknownFn: new Map(), circular: [], spill: [], internal: [] };
+      this.nFormula = 0;
+    }
+    sheet(x) { return typeof x === 'number' ? this.sheets[x] : this.byName.get(String(x).toLowerCase()) || null; }
+
+    // ------------------------------------------------ nilai sel
+    val(sh, r, c) {
+      const f = sh.fm.get(r * 16384 + c);
+      if (f !== undefined && f.st !== 2) return this.evalFormula(f);
+      const a = sh.cv[c]; if (!a) return null;
+      const v = a[r]; return v === undefined ? null : v;
+    }
+    evalFormula(f) {
+      if (f.am) { if (f.am.st !== 2) this.evalFormula(f.am); f.st = 2; return f.sh.raw(f.r, f.c); }
+      if (f.st === 2) return f.sh.raw(f.r, f.c);
+      if (f.st === 1) { if (this.diag.circular.length < 50) this.diag.circular.push(`${f.sh.name}!${a1(f.r, f.c)}`); return 0; }
+      f.st = 1;
+      const ctx = { wb: this, sh: f.sh, r: f.r, c: f.c, dr: f.dr, dc: f.dc, arr: f.arrMode, scope: null };
+      let v;
+      try { v = f.ast ? ev(f.ast, ctx) : eNAME; }
+      catch (e) {
+        if (e instanceof RangeError) throw e;
+        if (this.diag.internal.length < 50) this.diag.internal.push(`${f.sh.name}!${a1(f.r, f.c)}: ${e.message}`);
+        v = eVAL;
+      }
+      if (f.ar) {                         // rumus array di rentang
+        const [r1, c1, r2, c2] = f.ar;
+        let A = v instanceof Ref ? refToArr(this, v) : v instanceof Arr ? v : new Arr(1, 1, [fin(v)]);
+        for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
+          const i = r - r1, j = c - c1;
+          let x = pick(A, i, j);
+          f.sh.setV(r, c, fin(x));
+        }
+        if (f.dyn && (A.nr > r2 - r1 + 1 || A.nc > c2 - c1 + 1) && this.diag.spill.length < 50) this.diag.spill.push(`${f.sh.name}!${a1(f.r, f.c)} ${A.nr}x${A.nc}`);
+      } else {
+        if (v instanceof Ref) v = v.single ? this.val(v.sh, v.r1, v.c1) : (f.arrMode ? pick(refToArr(this, v), 0, 0) : isect(this, v, ctx));
+        if (v instanceof Arr) { if (f.dyn && (v.nr > 1 || v.nc > 1) && this.diag.spill.length < 50) this.diag.spill.push(`${f.sh.name}!${a1(f.r, f.c)} ${v.nr}x${v.nc}`); v = v.d[0]; }
+        f.sh.setV(f.r, f.c, fin(v));
+      }
+      f.st = 2;
+      return f.sh.raw(f.r, f.c);
+    }
+    // hitung semua rumus; onProgress(frac); jeda sesekali agar UI tetap hidup
+    async calcAll(onProgress, opt) {
+      opt = opt || {};
+      const all = [];
+      for (const sh of this.sheets) {
+        if (opt.sheets && !opt.sheets.includes(sh.name)) continue;
+        const keys = [...sh.fm.keys()].sort((a, b) => a - b);
+        // urut baris-mayor: kunci r*16384+c sudah baris-mayor
+        for (const k of keys) all.push(sh.fm.get(k));
+      }
+      let t0 = Date.now();
+      for (let i = 0; i < all.length; i++) {
+        const f = all[i];
+        if (f.st !== 2) this.evalFormula(f);
+        if (onProgress && (i & 255) === 0 && Date.now() - t0 > 40) { onProgress(i / all.length); await new Promise(res => setTimeout(res, 0)); t0 = Date.now(); }
+      }
+      if (onProgress) onProgress(1);
+    }
+    // nilai sel berdasar nama sheet & alamat A1
+    get(sheetName, ref) {
+      const sh = this.sheet(sheetName); if (!sh) return eREF;
+      const m = /^\$?([A-Z]+)\$?(\d+)$/.exec(ref); if (!m) return eREF;
+      return this.val(sh, +m[2], col2n(m[1]));
+    }
+    formulaText(sh, r, c) {
+      const f = sh.fm.get(KEY(r, c)); if (!f) return null;
+      const m = f.am ? f.am : f;
+      if (!m.src) return null;
+      if (m.master) return shiftFormula(m.master.src, r - m.master.r, c - m.master.c);
+      if (f.am) return '{=' + m.src + '}';
+      return (m.ar ? '{=' : '=') + m.src + (m.ar ? '}' : '');
+    }
+  }
+  function fin(v) {
+    if (v === null || v === undefined || v === MISSING) return 0;
+    if (v instanceof Lam) return eCALC;
+    if (v instanceof Ref || v instanceof Arr) return eVAL;
+    if (typeof v === 'number' && !isFinite(v)) return eNUM;
+    return v;
+  }
+  // geser referensi relatif pada teks rumus (untuk bilah rumus sel shared)
+  function shiftFormula(src, dr, dc) {
+    let out = '', i = 0;
+    const re = /('(?:[^']|'')+'!|[A-Za-z_][\w.]*!)?(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\w(\[])/y;
+    while (i < src.length) {
+      const ch = src[i];
+      if (ch === '"') { const k = src.indexOf('"', i + 1); let j = k; while (src[j + 1] === '"') j = src.indexOf('"', j + 2); out += src.slice(i, j + 1); i = j + 1; continue; }
+      if (ch === '[') { let d = 0, j = i; for (; j < src.length; j++) { if (src[j] === '[') d++; else if (src[j] === ']') { d--; if (!d) break; } } out += src.slice(i, j + 1); i = j + 1; continue; }
+      re.lastIndex = i; const m = re.exec(src);
+      if (m && (i === 0 || !/[\w.$]/.test(src[i - 1]))) {
+        const c = m[2] ? col2n(m[3]) : col2n(m[3]) + dc, r = m[4] ? +m[5] : +m[5] + dr;
+        out += (m[1] || '') + m[2] + n2col(c) + m[4] + r; i = re.lastIndex; continue;
+      }
+      out += ch; i++;
+    }
+    return '=' + out;
+  }
+
+  // ------------------------------------------------------------------ evaluasi
+  function sheetOf(ctx, name) {
+    if (name === null || name === undefined) return ctx.sh;
+    return ctx.wb.byName.get(name.toLowerCase()) || null;
+  }
+  function refOf(n, ctx) {
+    const sh = n._sh || (n._sh = sheetOf(ctx, n.sheet));
+    if (!sh) return eREF;
+    let r1 = n.r1, c1 = n.c1, r2 = n.r2, c2 = n.c2;
+    if (ctx.dr || ctx.dc) {
+      if (!n.ar1) r1 += ctx.dr; if (!n.ac1) c1 += ctx.dc; if (!n.ar2) r2 += ctx.dr; if (!n.ac2) c2 += ctx.dc;
+    }
+    if (r1 < 1 || c1 < 1 || r2 > MAXR || c2 > MAXC || r2 < 1 || c2 < 1) return eREF;
+    if (r1 > r2) { const t = r1; r1 = r2; r2 = t; }
+    if (c1 > c2) { const t = c1; c1 = c2; c2 = t; }
+    return new Ref(sh, r1, c1, r2, c2);
+  }
+  function srefOf(n, ctx) {
+    const t = ctx.wb.tables.get(n.table.toLowerCase());
+    if (!t) return eREF;
+    const sp = n.spec.sp;
+    let r1 = t.r1, r2 = t.r2;
+    const hdr = t.hdr, tot = t.tot;
+    if (sp.has('#this row')) { if (ctx.r < t.r1 + hdr || ctx.r > t.r2 - tot) return eVAL; r1 = r2 = ctx.r; }
+    else if (sp.has('#all')) { /* seluruh tabel */ }
+    else if (sp.has('#headers') && !sp.has('#data')) { if (!hdr) return eREF; r2 = r1; }
+    else if (sp.has('#totals') && !sp.has('#data')) { if (!tot) return eREF; r1 = r2; }
+    else { r1 = t.r1 + hdr; r2 = t.r2 - tot; if (sp.has('#headers')) r1 = t.r1; if (sp.has('#totals')) r2 = t.r2; }
+    let c1 = t.c1, c2 = t.c2;
+    if (n.spec.c1 !== null) {
+      const i1 = t.colIdx.get(n.spec.c1.toLowerCase()), i2 = t.colIdx.get(n.spec.c2.toLowerCase());
+      if (i1 === undefined || i2 === undefined) return eREF;
+      c1 = t.c1 + Math.min(i1, i2); c2 = t.c1 + Math.max(i1, i2);
+    }
+    if (r2 < r1) r2 = r1;
+    return new Ref(t.sh, r1, c1, r2, c2);
+  }
+  function isect(wb, ref, ctx) {
+    if (ref.single) return wb.val(ref.sh, ref.r1, ref.c1);
+    if (ref.c1 === ref.c2 && ctx.r >= ref.r1 && ctx.r <= ref.r2) return wb.val(ref.sh, ctx.r, ref.c1);
+    if (ref.r1 === ref.r2 && ctx.c >= ref.c1 && ctx.c <= ref.c2) return wb.val(ref.sh, ref.r1, ctx.c);
+    return eVAL;
+  }
+  function refKey(ref) { return ref.sh.idx + ':' + ref.r1 + ':' + ref.c1 + ':' + ref.r2 + ':' + ref.c2; }
+  function clampRows(ref) { return Math.min(ref.r2, Math.max(ref.r1, ref.sh.maxR)); }
+  function refToArr(wb, ref) {
+    const r2 = ref.r2 > ref.sh.maxR ? Math.max(ref.r1, ref.sh.maxR) : ref.r2;
+    const c2 = ref.c2 > ref.sh.maxC ? Math.max(ref.c1, ref.sh.maxC) : ref.c2;
+    const k = ref.sh.idx + ':' + ref.r1 + ':' + ref.c1 + ':' + r2 + ':' + c2;
+    let A = wb.arrCache.get(k);
+    if (A) return A;
+    const nr = r2 - ref.r1 + 1, nc = c2 - ref.c1 + 1;
+    A = new Arr(nr, nc);
+    for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) A.d[i * nc + j] = wb.val(ref.sh, ref.r1 + i, ref.c1 + j);
+    A.id = k;
+    if (nr * nc > 64) wb.arrCache.set(k, A);
+    return A;
+  }
+  function pick(A, i, j) {
+    if (A.nr === 1 && A.nc === 1) return A.d[0];
+    if (A.nr === 1) return j < A.nc ? A.d[j] : eNA;
+    if (A.nc === 1) return i < A.nr ? A.d[i] : eNA;
+    return i < A.nr && j < A.nc ? A.d[i * A.nc + j] : eNA;
+  }
+  // operand operator: Ref -> nilai tunggal / perpotongan implisit / larik (mode array)
+  function opnd(v, ctx) {
+    if (v instanceof Ref) { if (v.single) return ctx.wb.val(v.sh, v.r1, v.c1); return ctx.arr ? refToArr(ctx.wb, v) : isect(ctx.wb, v, ctx); }
+    return v;
+  }
+  function toArrV(v, ctx) {
+    if (v instanceof Ref) return refToArr(ctx.wb, v);
+    if (v instanceof Arr) return v;
+    return new Arr(1, 1, [v]);
+  }
+  function lift(vals, fn) {
+    let nr = 1, nc = 1, any = false;
+    for (const v of vals) if (v instanceof Arr) { any = true; if (v.nr > nr) nr = v.nr; if (v.nc > nc) nc = v.nc; }
+    if (!any) return fn(...vals);
+    const out = new Arr(nr, nc); const m = vals.length; const xs = new Array(m);
+    for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) {
+      for (let k = 0; k < m; k++) { const v = vals[k]; xs[k] = v instanceof Arr ? pick(v, i, j) : v; }
+      out.d[i * nc + j] = fn(...xs);
+    }
+    return out;
+  }
+  function arith(op, x, y) {
+    if (op === '&') { if (isErr(x)) return x; if (isErr(y)) return y; return toStr(x) + toStr(y); }
+    if (op === '=' || op === '<>' || op === '<' || op === '>' || op === '<=' || op === '>=') {
+      if (isErr(x)) return x; if (isErr(y)) return y; return cmpOp(cmpVals(x, y), op);
+    }
+    const a = toNum(x); if (isErr(a)) return a;
+    const b = toNum(y); if (isErr(b)) return b;
+    let r;
+    switch (op) {
+      case '+': r = a + b; break;
+      case '-': r = a - b; break;
+      case '*': r = a * b; break;
+      case '/': if (b === 0) return eDIV; r = a / b; break;
+      case '^': if (a === 0 && b === 0) return eNUM; if (a === 0 && b < 0) return eDIV; r = Math.pow(a, b); if (isNaN(r)) return eNUM; break;
+    }
+    return isFinite(r) ? r : eNUM;
+  }
+  function ev(n, ctx) {
+    switch (n.t) {
+      case 'lit': return n.v;
+      case 'ref': return refOf(n, ctx);
+      case 'sref': return srefOf(n, ctx);
+      case 'name': return nameVal(n, ctx);
+      case 'fn': return callFn(n, ctx);
+      case 'missing': return MISSING;
+      case 'neg': { const v = opnd(ev(n.a, ctx), ctx); return lift([v], x => { const a = toNum(x); return isErr(a) ? a : -a; }); }
+      case 'pos': return ev(n.a, ctx);
+      case 'pct': { const v = opnd(ev(n.a, ctx), ctx); return lift([v], x => { const a = toNum(x); return isErr(a) ? a : a / 100; }); }
+      case 'bin': {
+        const a = opnd(ev(n.a, ctx), ctx), b = opnd(ev(n.b, ctx), ctx);
+        if (a instanceof Arr || b instanceof Arr) return lift([a, b], (x, y) => arith(n.op, x, y));
+        return arith(n.op, a, b);
+      }
+      case 'range': {
+        const a = ev(n.a, ctx), b = ev(n.b, ctx);
+        if (!(a instanceof Ref) || !(b instanceof Ref) || a.sh !== b.sh) return eREF;
+        return new Ref(a.sh, Math.min(a.r1, b.r1), Math.min(a.c1, b.c1), Math.max(a.r2, b.r2), Math.max(a.c2, b.c2));
+      }
+      case 'call': {
+        const f = ev(n.f, ctx); if (!(f instanceof Lam)) return eVAL;
+        return callLam(f, n.args.map(a => opnd(ev(a, ctx), ctx)), ctx);
+      }
+    }
+    return eVAL;
+  }
+  function nameVal(n, ctx) {
+    const low = n.v.toLowerCase();
+    for (let s = ctx.scope; s; s = s.up) if (s.name === low) return s.val;
+    const wb = ctx.wb;
+    const list = wb.names.get(low);
+    if (!list) return eNAME;
+    let def = null;
+    const shIdx = n.sheet ? (sheetOf(ctx, n.sheet) || {}).idx : ctx.sh.idx;
+    def = list.find(d => d.local === shIdx) || list.find(d => d.local === null);
+    if (!def) return eNAME;
+    if (def.ast === undefined) { try { def.ast = parse(def.text); } catch (e) { def.ast = null; } }
+    if (!def.ast) return eNAME;
+    return ev(def.ast, { wb, sh: ctx.sh, r: ctx.r, c: ctx.c, dr: 0, dc: 0, arr: ctx.arr, scope: null });
+  }
+  function callLam(lam, args, ctx) {
+    let scope = lam.scope;
+    for (let k = 0; k < lam.params.length; k++) scope = { name: lam.params[k], val: k < args.length ? args[k] : MISSING, up: scope };
+    return ev(lam.body, Object.assign({}, ctx, { scope }));
+  }
+  function callFn(n, ctx) {
+    const f = FN[n.n];
+    if (!f) {
+      const m = ctx.wb.diag.unknownFn; m.set(n.n, (m.get(n.n) || 0) + 1);
+      return eNAME;
+    }
+    return f(n.args, ctx);
+  }
+
+  // ------------------------------------------------------------------ bantuan argumen
+  const sv = (node, ctx) => opnd(ev(node, ctx), ctx);          // nilai (Ref -> skalar / larik di mode array)
+  function scalarArgs(args, ctx) { return args.map(a => (a.t === 'missing' ? MISSING : sv(a, ctx))); }
+  // fungsi skalar dengan pengangkatan larik
+  function S(fn, min, max) {
+    return (args, ctx) => {
+      if (args.length < min || (max >= 0 && args.length > max)) return eVAL;
+      return lift(scalarArgs(args, ctx), fn);
+    };
+  }
+  const numArg = (x, def) => (x === MISSING || x === undefined ? def : toNum(x));
+  // iterasi nilai numerik (untuk SUM/AVERAGE/MIN/MAX); kembalikan error bila ada
+  function eachNum(args, ctx, cb, opts) {
+    for (const a of args) {
+      if (a.t === 'missing') { cb(0); continue; }
+      const v = ev(a, ctx);
+      if (v instanceof Ref) {
+        const r2 = Math.min(v.r2, v.sh.maxR), c2 = Math.min(v.c2, v.sh.maxC);
+        for (let r = v.r1; r <= r2; r++) for (let c = v.c1; c <= c2; c++) {
+          const x = ctx.wb.val(v.sh, r, c);
+          if (typeof x === 'number') cb(x); else if (isErr(x)) return x;
+        }
+      } else if (v instanceof Arr) {
+        for (const x of v.d) { if (typeof x === 'number') cb(x); else if (isErr(x)) return x; else if (opts && opts.arrBool && typeof x === 'boolean') cb(x ? 1 : 0); }
+      } else {
+        const x = toNum(v); if (isErr(x)) return x; cb(x);
+      }
+    }
+    return null;
+  }
+
+  // ------------------------------------------------------------------ kriteria (SUMIFS dkk)
+  function mkCrit(v) {
+    if (v === null || v === undefined || v === MISSING) v = 0;
+    if (typeof v === 'number') return { op: '=', num: v, txt: null, key: 'n' + canon(v) };
+    if (typeof v === 'boolean') return { op: '=', bool: v, key: 'b' + (v ? 1 : 0) };
+    if (isErr(v)) return { op: '=', err: v.c, key: 'e' + v.c };
+    let s = String(v), op = '=';
+    const m = /^(<=|>=|<>|=|<|>)/.exec(s);
+    if (m) { op = m[1]; s = s.slice(m[1].length); }
+    if (s === '') return { op, blank: true, key: op + 'z' };
+    const nv = parseNumText(s);
+    if (nv !== null) return { op, num: nv, txt: s.toLowerCase(), key: op + 'n' + canon(nv) + '|' + s.toLowerCase() };
+    const up = s.toUpperCase();
+    if (up === 'TRUE' || up === 'FALSE') return { op, bool: up === 'TRUE', key: op + 'b' + up };
+    if (ERR[up]) return { op, err: up, key: op + 'e' + up };
+    const wild = (op === '=' || op === '<>') && /[*?~]/.test(s);
+    return { op, str: s.toLowerCase(), wild, re: wild ? wildRe(s) : null, key: op + (wild ? 'w' : 's') + s.toLowerCase() };
+  }
+  function critMatch(cr, x) {
+    const op = cr.op;
+    if (cr.blank) { const b = x === null || x === ''; return op === '=' ? b : op === '<>' ? !b : false; }
+    if (x === null) return op === '<>';
+    if (cr.num !== undefined) {
+      if (typeof x === 'number') return cmpOp(numCmp(x, cr.num), op);
+      if (typeof x === 'string') {
+        // Excel: '=' mencocokkan teks yang terbaca angka sama (mis. "00123" = 123); '<>' menganggap teks selalu beda
+        if (op === '=') { const p = parseNumText(x); return p !== null && numCmp(p, cr.num) === 0; }
+        return op === '<>';
+      }
+      return op === '<>';
+    }
+    if (cr.bool !== undefined) { if (typeof x === 'boolean') return cmpOp(x === cr.bool ? 0 : x ? 1 : -1, op); return op === '<>'; }
+    if (cr.err !== undefined) { if (isErr(x)) return op === '=' ? x.c === cr.err : op === '<>' ? x.c !== cr.err : false; return op === '<>'; }
+    if (typeof x === 'string') {
+      if (cr.wild) { const t = cr.re.test(x); return op === '=' ? t : !t; }
+      const a = x.toLowerCase(); return cmpOp(a < cr.str ? -1 : a > cr.str ? 1 : 0, op);
+    }
+    return op === '<>';
+  }
+  const idxKeyOf = x => (x === null || x === '' ? 'z' : typeof x === 'number' ? 'n' + canon(x) : typeof x === 'string' ? 's' + x.toLowerCase() : typeof x === 'boolean' ? 'b' + (x ? 1 : 0) : isErr(x) ? 'e' + x.c : 'z');
+  const RE_MAYBE_NUM = /^[\s(+$-]*[\d.]/;
+  // indeks nilai satu kolom: Map(kunci -> Int32Array offset)
+  function colIndex(wb, ref, r2) {
+    const k = 'I' + ref.sh.idx + ':' + ref.c1 + ':' + ref.r1 + ':' + r2;
+    let ix = wb.idxCache.get(k); if (ix) return ix;
+    const tmp = new Map();
+    const add = (key, o) => { let a = tmp.get(key); if (!a) tmp.set(key, a = []); a.push(o); };
+    for (let r = ref.r1; r <= r2; r++) {
+      const x = wb.val(ref.sh, r, ref.c1);
+      add(idxKeyOf(x), r - ref.r1);
+      if (typeof x === 'string' && RE_MAYBE_NUM.test(x)) { const p = parseNumText(x); if (p !== null) add('p' + canon(p), r - ref.r1); }
+    }
+    ix = new Map(); for (const [key, a] of tmp) ix.set(key, Int32Array.from(a));
+    wb.idxCache.set(k, ix); return ix;
+  }
+  function mergeSorted(a, b) {
+    if (!a || !a.length) return b || new Int32Array(0); if (!b || !b.length) return a;
+    const out = new Int32Array(a.length + b.length); let i = 0, j = 0, k = 0;
+    while (i < a.length && j < b.length) { if (a[i] < b[j]) out[k++] = a[i++]; else if (a[i] > b[j]) out[k++] = b[j++]; else { out[k++] = a[i++]; j++; } }
+    while (i < a.length) out[k++] = a[i++]; while (j < b.length) out[k++] = b[j++];
+    return out.subarray(0, k);
+  }
+  function intersect(a, b) {
+    const out = new Int32Array(Math.min(a.length, b.length)); let i = 0, j = 0, k = 0;
+    while (i < a.length && j < b.length) { if (a[i] < b[j]) i++; else if (a[i] > b[j]) j++; else { out[k++] = a[i]; i++; j++; } }
+    return out.subarray(0, k);
+  }
+  const SMALL = 512;
+  // daftar offset (baris-mayor dalam rentang yang dipotong ke data) yang cocok
+  function matchList(wb, ref, cr, nr, nc) {
+    const n = nr * nc;
+    const scan = () => {
+      const out = [];
+      for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) if (critMatch(cr, wb.val(ref.sh, ref.r1 + i, ref.c1 + j))) out.push(i * nc + j);
+      return Int32Array.from(out);
+    };
+    if (n <= SMALL) return scan();
+    const k = 'M' + ref.sh.idx + ':' + ref.r1 + ':' + ref.c1 + ':' + nr + ':' + nc + ':' + cr.key;
+    let L = wb.matchCache.get(k); if (L) return L;
+    if (nc === 1 && cr.op === '=' && !cr.wild && !cr.blank && cr.err === undefined) {
+      const ix = colIndex(wb, ref, ref.r1 + nr - 1);
+      if (cr.num !== undefined) L = mergeSorted(ix.get('n' + canon(cr.num)), ix.get('p' + canon(cr.num)));
+      else if (cr.bool !== undefined) L = ix.get('b' + (cr.bool ? 1 : 0)) || new Int32Array(0);
+      else L = ix.get('s' + cr.str) || new Int32Array(0);
+    } else L = scan();
+    wb.matchCache.set(k, L); return L;
+  }
+  // pasangan [ref, kriteria] -> {offs, nr, nc, extraBlank}
+  function ifsMatch(args, start, ctx, shape) {
+    const pairs = [];
+    for (let k = start; k + 1 < args.length; k += 2) {
+      const rv = ev(args[k], ctx);
+      if (!(rv instanceof Ref)) return { err: isErr(rv) ? rv : eVAL };
+      let cv = sv(args[k + 1], ctx);
+      if (cv instanceof Arr) cv = cv.d[0];
+      pairs.push([rv, mkCrit(cv)]);
+    }
+    if (!pairs.length) return { err: eVAL };
+    const R0 = shape || pairs[0][0];
+    const fullR = R0.nr, fullC = R0.nc;
+    for (const [rf] of pairs) if (rf.nr !== fullR || rf.nc !== fullC) return { err: eVAL };
+    // potong baris kosong di luar data (kolom penuh)
+    let nr = fullR;
+    const maxData = Math.max(...pairs.map(([rf]) => rf.sh.maxR - rf.r1 + 1), shape ? shape.sh.maxR - shape.r1 + 1 : 0);
+    if (nr > maxData) nr = Math.max(1, maxData);
+    const nc = fullC;
+    let offs = null;
+    const lists = pairs.map(([rf, cr]) => matchList(ctx.wb, rf, cr, nr, nc));
+    lists.sort((a, b) => a.length - b.length);
+    offs = lists[0];
+    for (let i = 1; i < lists.length && offs.length; i++) offs = intersect(offs, lists[i]);
+    const extraBlank = fullR > nr && pairs.every(([, cr]) => critMatch(cr, null)) ? (fullR - nr) * nc : 0;
+    return { offs, nr, nc, extraBlank };
+  }
+  function sumAt(wb, ref, offs, nc, cb) {
+    for (let k = 0; k < offs.length; k++) {
+      const o = offs[k], i = (o / nc) | 0, j = o - i * nc;
+      const x = wb.val(ref.sh, ref.r1 + i, ref.c1 + j);
+      if (typeof x === 'number') cb(x); else if (isErr(x)) return x;
+    }
+    return null;
+  }
+
+  // ------------------------------------------------------------------ fungsi
+  const FN = Object.create(null);
+  FN.IF = (a, ctx) => {
+    if (a.length < 1 || a.length > 3) return eVAL;
+    const c = sv(a[0], ctx);
+    const br = k => (a.length > k ? (a[k].t === 'missing' ? 0 : ev(a[k], ctx)) : (k === 1 ? true : false));
+    if (c instanceof Arr) {
+      const t = opnd(br(1), ctx), f = opnd(br(2), ctx);
+      return lift([c, t, f], (cc, tt, ff) => { const b = toBool(cc); if (isErr(b)) return b; return b ? tt : ff; });
+    }
+    const b = toBool(c); if (isErr(b)) return b;
+    return b ? br(1) : br(2);
+  };
+  FN.IFERROR = (a, ctx) => {
+    if (a.length !== 2) return eVAL;
+    const v = sv(a[0], ctx);
+    if (v instanceof Arr) { let alt; return lift([v], x => { if (!isErr(x)) return x; if (alt === undefined) alt = sv(a[1], ctx); return alt instanceof Arr ? alt.d[0] : alt; }); }
+    return isErr(v) ? (a[1].t === 'missing' ? 0 : ev(a[1], ctx)) : v;
+  };
+  FN.IFNA = (a, ctx) => { const v = sv(a[0], ctx); return v === eNA ? ev(a[1], ctx) : v; };
+  FN.IFS = (a, ctx) => {
+    if (a.length < 2 || a.length % 2) return eVAL;
+    for (let k = 0; k < a.length; k += 2) {
+      let c = sv(a[k], ctx); if (c instanceof Arr) c = c.d[0];
+      const b = toBool(c); if (isErr(b)) return b;
+      if (b) return ev(a[k + 1], ctx);
+    }
+    return eNA;
+  };
+  function logic(a, ctx, isAnd) {
+    let seen = false, acc = isAnd;
+    for (const node of a) {
+      const v = ev(node, ctx);
+      const each = x => {
+        if (isErr(x)) return x;
+        if (typeof x === 'boolean' || typeof x === 'number') { seen = true; const b = typeof x === 'boolean' ? x : x !== 0; acc = isAnd ? acc && b : acc || b; }
+        return null;
+      };
+      if (v instanceof Ref) {
+        for (let r = v.r1; r <= Math.min(v.r2, v.sh.maxR); r++) for (let c = v.c1; c <= Math.min(v.c2, v.sh.maxC); c++) { const e = each(ctx.wb.val(v.sh, r, c)); if (e) return e; }
+      } else if (v instanceof Arr) { for (const x of v.d) { const e = each(x); if (e) return e; } }
+      else {
+        if (v === MISSING) continue;
+        const b = toBool(v); if (isErr(b)) return b; seen = true; acc = isAnd ? acc && b : acc || b;
+      }
+    }
+    return seen ? acc : eVAL;
+  }
+  FN.AND = (a, ctx) => logic(a, ctx, true);
+  FN.OR = (a, ctx) => logic(a, ctx, false);
+  FN.NOT = S(x => { const b = toBool(x); return isErr(b) ? b : !b; }, 1, 1);
+  FN.TRUE = () => true; FN.FALSE = () => false;
+  FN.SUM = (a, ctx) => { let s = 0; const e = eachNum(a, ctx, x => { s += x; }); return e || s; };
+  FN.AVERAGE = (a, ctx) => { let s = 0, n = 0; const e = eachNum(a, ctx, x => { s += x; n++; }); return e || (n ? s / n : eDIV); };
+  FN.MIN = (a, ctx) => { let m = Infinity; const e = eachNum(a, ctx, x => { if (x < m) m = x; }); return e || (m === Infinity ? 0 : m); };
+  FN.MAX = (a, ctx) => { let m = -Infinity; const e = eachNum(a, ctx, x => { if (x > m) m = x; }); return e || (m === -Infinity ? 0 : m); };
+  FN.COUNT = (a, ctx) => { let n = 0; for (const node of a) { const v = ev(node, ctx); if (v instanceof Ref) { for (let r = v.r1; r <= Math.min(v.r2, v.sh.maxR); r++) for (let c = v.c1; c <= Math.min(v.c2, v.sh.maxC); c++) if (typeof ctx.wb.val(v.sh, r, c) === 'number') n++; } else if (v instanceof Arr) { for (const x of v.d) if (typeof x === 'number') n++; } else if (typeof v === 'number' || (typeof v === 'string' && parseNumText(v) !== null) || typeof v === 'boolean') n++; } return n; };
+  FN.COUNTA = (a, ctx) => { let n = 0; for (const node of a) { const v = ev(node, ctx); if (v instanceof Ref) { for (let r = v.r1; r <= Math.min(v.r2, v.sh.maxR); r++) for (let c = v.c1; c <= Math.min(v.c2, v.sh.maxC); c++) if (ctx.wb.val(v.sh, r, c) !== null) n++; } else if (v instanceof Arr) { for (const x of v.d) if (x !== null) n++; } else if (v !== MISSING) n++; } return n; };
+  FN.SUMPRODUCT = (a, ctx) => {
+    const c2 = ctx.arr ? ctx : Object.assign({}, ctx, { arr: true });
+    const raw = a.map(n => opnd(ev(n, c2), c2));
+    for (const v of raw) if (isErr(v)) return v;
+    const arrs = raw.map(v => toArrV(v, c2));
+    if (!arrs.length) return eVAL;
+    const nr = arrs[0].nr, nc = arrs[0].nc;
+    for (const A of arrs) { if (isErr(A.d[0]) && A.nr === 1 && A.nc === 1 && (nr > 1 || nc > 1)) return A.d[0]; if (A.nr !== nr || A.nc !== nc) return eVAL; }
+    let s = 0; const m = arrs.length, N = nr * nc;
+    for (let k = 0; k < N; k++) {
+      let p = 1;
+      for (let q = 0; q < m; q++) { const x = arrs[q].d[k]; if (isErr(x)) return x; p *= typeof x === 'number' ? x : 0; }
+      s += p;
+    }
+    return s;
+  };
+  FN.ROWS = (a, ctx) => { const v = ev(a[0], ctx); if (v instanceof Ref) return v.nr; if (v instanceof Arr) return v.nr; if (isErr(v)) return v; return 1; };
+  FN.COLUMNS = (a, ctx) => { const v = ev(a[0], ctx); if (v instanceof Ref) return v.nc; if (v instanceof Arr) return v.nc; if (isErr(v)) return v; return 1; };
+  FN.N = (a, ctx) => {
+    let v = ev(a[0], ctx);
+    if (v instanceof Ref) v = ctx.wb.val(v.sh, v.r1, v.c1);
+    if (v instanceof Arr) return lift([v], x => (typeof x === 'number' ? x : typeof x === 'boolean' ? (x ? 1 : 0) : isErr(x) ? x : 0));
+    return typeof v === 'number' ? v : typeof v === 'boolean' ? (v ? 1 : 0) : isErr(v) ? v : 0;
+  };
+  FN.ISNUMBER = S(x => typeof x === 'number', 1, 1);
+  FN.ISTEXT = S(x => typeof x === 'string', 1, 1);
+  FN.ISBLANK = (a, ctx) => { const v = ev(a[0], ctx); if (v instanceof Ref) return ctx.wb.val(v.sh, v.r1, v.c1) === null && !v.sh.fm.has(KEY(v.r1, v.c1)); return false; };
+  FN.ISERROR = S(x => isErr(x), 1, 1);
+  FN.ISNA = S(x => x === eNA, 1, 1);
+  FN.VALUE = S(x => { if (typeof x === 'number') return x; if (isErr(x)) return x; if (x === null || x === MISSING) return 0; if (typeof x === 'boolean') return eVAL; const n = parseNumText(x); return n === null ? eVAL : n; }, 1, 1);
+  FN.LEFT = S((t, n) => { const s = toStr(t); if (isErr(s)) return s; const k = numArg(n, 1); if (isErr(k)) return k; if (k < 0) return eVAL; return s.slice(0, Math.floor(k)); }, 1, 2);
+  FN.RIGHT = S((t, n) => { const s = toStr(t); if (isErr(s)) return s; const k = numArg(n, 1); if (isErr(k)) return k; if (k < 0) return eVAL; return k === 0 ? '' : s.slice(-Math.floor(k)); }, 1, 2);
+  FN.MID = S((t, st, n) => { const s = toStr(t); if (isErr(s)) return s; const a0 = toNum(st), k = toNum(n); if (isErr(a0)) return a0; if (isErr(k)) return k; if (a0 < 1 || k < 0) return eVAL; return s.substr(Math.floor(a0) - 1, Math.floor(k)); }, 3, 3);
+  FN.LEN = S(t => { const s = toStr(t); return isErr(s) ? s : s.length; }, 1, 1);
+  FN.TRIM = S(t => { const s = toStr(t); return isErr(s) ? s : s.trim().replace(/ +/g, ' '); }, 1, 1);
+  FN.UPPER = S(t => { const s = toStr(t); return isErr(s) ? s : s.toUpperCase(); }, 1, 1);
+  FN.LOWER = S(t => { const s = toStr(t); return isErr(s) ? s : s.toLowerCase(); }, 1, 1);
+  FN.CONCATENATE = S((...xs) => { let o = ''; for (const x of xs) { const s = toStr(x); if (isErr(s)) return s; o += s; } return o; }, 1, -1);
+  FN.SEARCH = S((find, within, start) => {
+    const f = toStr(find), w = toStr(within); if (isErr(f)) return f; if (isErr(w)) return w;
+    const st = numArg(start, 1); if (isErr(st)) return st;
+    if (st < 1 || st > w.length + 1) return eVAL;
+    if (f === '') return Math.floor(st);
+    if (/[*?~]/.test(f)) {
+      const re = wildRe(f).source.slice(1, -1);
+      const m = new RegExp(re, 'i').exec(w.slice(st - 1));
+      return m ? m.index + Math.floor(st) : eVAL;
+    }
+    const k = w.toLowerCase().indexOf(f.toLowerCase(), Math.floor(st) - 1);
+    return k < 0 ? eVAL : k + 1;
+  }, 2, 3);
+  FN.FIND = S((find, within, start) => { const f = toStr(find), w = toStr(within); const st = numArg(start, 1); const k = w.indexOf(f, st - 1); return k < 0 ? eVAL : k + 1; }, 2, 3);
+  FN.TEXT = S((v, f) => { if (isErr(v)) return v; const code = toStr(f); if (isErr(code)) return code; return textFn(v, code); }, 2, 2);
+  FN.ROUND = S((x, d) => { const a = toNum(x), n = numArg(d, 0); if (isErr(a)) return a; if (isErr(n)) return n; return roundX(a, Math.trunc(n), 0); }, 1, 2);
+  FN.ROUNDUP = S((x, d) => { const a = toNum(x), n = numArg(d, 0); if (isErr(a)) return a; if (isErr(n)) return n; return roundX(a, Math.trunc(n), 1); }, 1, 2);
+  FN.ROUNDDOWN = S((x, d) => { const a = toNum(x), n = numArg(d, 0); if (isErr(a)) return a; if (isErr(n)) return n; return roundX(a, Math.trunc(n), -1); }, 1, 2);
+  FN.INT = S(x => { const a = toNum(x); return isErr(a) ? a : Math.floor(a); }, 1, 1);
+  FN.ABS = S(x => { const a = toNum(x); return isErr(a) ? a : Math.abs(a); }, 1, 1);
+  FN.MOD = S((x, y) => { const a = toNum(x), b = toNum(y); if (isErr(a)) return a; if (isErr(b)) return b; if (b === 0) return eDIV; return a - b * Math.floor(a / b); }, 2, 2);
+  function roundX(a, n, mode) {
+    const p = Math.pow(10, n);
+    let y = Math.abs(a) * p; y = Number(y.toPrecision(15));
+    let r = mode === 0 ? Math.floor(y + 0.5) : mode > 0 ? Math.ceil(y) : Math.floor(y);
+    r = r / p;
+    return a < 0 ? -r : r;
+  }
+  FN.DATE = S((y, m, d) => {
+    let Y = toNum(y), M = toNum(m), D = toNum(d);
+    if (isErr(Y)) return Y; if (isErr(M)) return M; if (isErr(D)) return D;
+    Y = Math.trunc(Y); M = Math.trunc(M); D = Math.trunc(D);
+    if (Y < 1900) Y += 1900;
+    const s = Date.UTC(Y, M - 1, D) / MS_DAY + EPOCH;
+    return s < 0 ? eNUM : s;
+  }, 3, 3);
+  FN.TIME = S((h, m, s) => {
+    const H = toNum(h), M = toNum(m), SS = toNum(s); if (isErr(H)) return H; if (isErr(M)) return M; if (isErr(SS)) return SS;
+    const t = (Math.trunc(H) * 3600 + Math.trunc(M) * 60 + Math.trunc(SS)) / 86400;
+    return t < 0 ? eNUM : t - Math.floor(t);
+  }, 3, 3);
+  const dateArg = x => { if (typeof x === 'string') { const n = parseNumText(x); return n === null ? eVAL : n; } const n = toNum(x); return isErr(n) ? n : n < 0 ? eNUM : n; };
+  FN.DATEVALUE = S(x => { if (typeof x !== 'string') return isErr(x) ? x : eVAL; const n = parseNumText(x); if (n === null || RE_PLAIN.test(x.trim())) return eVAL; return Math.floor(n); }, 1, 1);
+  FN.DAY = S(x => { const n = dateArg(x); return isErr(n) ? n : serialToDate(Math.floor(n)).getUTCDate(); }, 1, 1);
+  FN.MONTH = S(x => { const n = dateArg(x); return isErr(n) ? n : serialToDate(Math.floor(n)).getUTCMonth() + 1; }, 1, 1);
+  FN.YEAR = S(x => { const n = dateArg(x); return isErr(n) ? n : serialToDate(Math.floor(n)).getUTCFullYear(); }, 1, 1);
+  FN.WEEKDAY = S((x, t) => { const n = dateArg(x); if (isErr(n)) return n; const ty = numArg(t, 1); if (isErr(ty)) return ty; return weekday(n, Math.trunc(ty)); }, 1, 2);
+  FN.WEEKNUM = S((x, t) => { const n = dateArg(x); if (isErr(n)) return n; const ty = numArg(t, 1); if (isErr(ty)) return ty; return weeknum(n, Math.trunc(ty)); }, 1, 2);
+  FN.ISOWEEKNUM = S(x => { const n = dateArg(x); return isErr(n) ? n : isoWeek(n); }, 1, 1);
+  FN.EOMONTH = S((x, k) => {
+    const n = dateArg(x); if (isErr(n)) return n; const m = toNum(k); if (isErr(m)) return m;
+    const d = serialToDate(Math.floor(n));
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + Math.trunc(m) + 1, 0) / MS_DAY + EPOCH;
+  }, 2, 2);
+  FN.EDATE = S((x, k) => {
+    const n = dateArg(x); if (isErr(n)) return n; const m = toNum(k); if (isErr(m)) return m;
+    const d = serialToDate(Math.floor(n)); const y = d.getUTCFullYear(), mo = d.getUTCMonth() + Math.trunc(m);
+    const last = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+    return Date.UTC(y, mo, Math.min(d.getUTCDate(), last)) / MS_DAY + EPOCH;
+  }, 2, 2);
+  FN.TODAY = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / MS_DAY + EPOCH; };
+  FN.NOW = () => { const d = new Date(); return (d.getTime() - d.getTimezoneOffset() * 60000) / MS_DAY + EPOCH; };
+  FN.HLOOKUP = (a, ctx) => lookup(a, ctx, true);
+  FN.VLOOKUP = (a, ctx) => lookup(a, ctx, false);
+  function lookup(a, ctx, horiz) {
+    if (a.length < 3 || a.length > 4) return eVAL;
+    let key = sv(a[0], ctx); if (key instanceof Arr) key = key.d[0];
+    if (isErr(key)) return key;
+    const tv = ev(a[1], ctx);
+    const T = tv instanceof Ref ? tv : tv instanceof Arr ? tv : null;
+    if (!T) return isErr(tv) ? tv : eNA;
+    let idx = sv(a[2], ctx); if (idx instanceof Arr) idx = idx.d[0];
+    idx = toNum(idx); if (isErr(idx)) return idx; idx = Math.trunc(idx);
+    let approx = true; if (a.length > 3 && a[3].t !== 'missing') { let x = sv(a[3], ctx); if (x instanceof Arr) x = x.d[0]; const b = toBool(x); if (isErr(b)) return b; approx = b; }
+    const nr = T.nr, nc = T.nc, len = horiz ? nc : nr, depth = horiz ? nr : nc;
+    if (idx < 1) return eVAL; if (idx > depth) return eREF;
+    const at = (i, j) => (T instanceof Ref ? ctx.wb.val(T.sh, T.r1 + i, T.c1 + j) : T.get(i, j));
+    const keyAt = k => (horiz ? at(0, k) : at(k, 0));
+    let hit = -1;
+    if (!approx) {
+      const wild = typeof key === 'string' && /[*?~]/.test(key) ? wildRe(key) : null;
+      for (let k = 0; k < len; k++) {
+        const x = keyAt(k);
+        if (wild) { if (typeof x === 'string' && wild.test(x)) { hit = k; break; } }
+        else if (x !== null && typeRank(x) === typeRank(key) && cmpVals(x, key) === 0) { hit = k; break; }
+      }
+    } else {
+      for (let k = 0; k < len; k++) { const x = keyAt(k); if (x === null) continue; if (typeRank(x) !== typeRank(key)) continue; if (cmpVals(x, key) <= 0) hit = k; else break; }
+    }
+    if (hit < 0) return eNA;
+    const v = horiz ? at(idx - 1, hit) : at(hit, idx - 1);
+    return v === null ? 0 : v;
+  }
+  FN.INDEX = (a, ctx) => {
+    const v = ev(a[0], ctx);
+    const r = a.length > 1 && a[1].t !== 'missing' ? toNum(sv(a[1], ctx)) : 0;
+    const c = a.length > 2 && a[2].t !== 'missing' ? toNum(sv(a[2], ctx)) : 0;
+    if (isErr(r)) return r; if (isErr(c)) return c;
+    if (v instanceof Ref) {
+      let rr = r, cc = c; if (v.nr === 1 && a.length === 2) { cc = r; rr = 1; }
+      if (rr > v.nr || cc > v.nc) return eREF;
+      if (!rr && !cc) return v;
+      if (!rr) return new Ref(v.sh, v.r1, v.c1 + cc - 1, v.r2, v.c1 + cc - 1);
+      if (!cc) return new Ref(v.sh, v.r1 + rr - 1, v.c1, v.r1 + rr - 1, v.c2);
+      return new Ref(v.sh, v.r1 + rr - 1, v.c1 + cc - 1, v.r1 + rr - 1, v.c1 + cc - 1);
+    }
+    const A = toArrV(v, ctx);
+    let rr = r || 1, cc = c || 1; if (A.nr === 1 && a.length === 2) { cc = r; rr = 1; }
+    if (rr > A.nr || cc > A.nc) return eREF;
+    return A.get(rr - 1, cc - 1);
+  };
+  // --- *IFS
+  FN.SUMIFS = (a, ctx) => {
+    if (a.length < 3 || a.length % 2 === 0) return eVAL;
+    const sr = ev(a[0], ctx); if (!(sr instanceof Ref)) return isErr(sr) ? sr : eVAL;
+    const m = ifsMatch(a, 1, ctx, sr); if (m.err) return m.err;
+    let s = 0; const e = sumAt(ctx.wb, sr, m.offs, m.nc, x => { s += x; }); return e || s;
+  };
+  FN.AVERAGEIFS = (a, ctx) => {
+    if (a.length < 3 || a.length % 2 === 0) return eVAL;
+    const sr = ev(a[0], ctx); if (!(sr instanceof Ref)) return isErr(sr) ? sr : eVAL;
+    const m = ifsMatch(a, 1, ctx, sr); if (m.err) return m.err;
+    let s = 0, n = 0; const e = sumAt(ctx.wb, sr, m.offs, m.nc, x => { s += x; n++; }); if (e) return e;
+    return n ? s / n : eDIV;
+  };
+  FN.COUNTIFS = (a, ctx) => {
+    if (a.length < 2 || a.length % 2) return eVAL;
+    const m = ifsMatch(a, 0, ctx, null); if (m.err) return m.err;
+    return m.offs.length + m.extraBlank;
+  };
+  FN.COUNTIF = (a, ctx) => (a.length === 2 ? FN.COUNTIFS(a, ctx) : eVAL);
+  function ifSingle(a, ctx, avg) {
+    if (a.length < 2 || a.length > 3) return eVAL;
+    const rg = ev(a[0], ctx); if (!(rg instanceof Ref)) return isErr(rg) ? rg : eVAL;
+    let sr = rg;
+    if (a.length === 3 && a[2].t !== 'missing') {
+      const x = ev(a[2], ctx); if (!(x instanceof Ref)) return isErr(x) ? x : eVAL;
+      sr = new Ref(x.sh, x.r1, x.c1, x.r1 + rg.nr - 1, x.c1 + rg.nc - 1);      // Excel: ukuran ikut rentang kriteria
+    }
+    const m = ifsMatch([a[0], a[1]], 0, ctx, null); if (m.err) return m.err;
+    let s = 0, n = 0; const e = sumAt(ctx.wb, sr, m.offs, m.nc, x => { s += x; n++; }); if (e) return e;
+    return avg ? (n ? s / n : eDIV) : s;
+  }
+  FN.SUMIF = (a, ctx) => ifSingle(a, ctx, false);
+  FN.AVERAGEIF = (a, ctx) => ifSingle(a, ctx, true);
+  // --- larik dinamis
+  const arrCtx = ctx => (ctx.arr ? ctx : Object.assign({}, ctx, { arr: true }));
+  function rowKey(A, i) {
+    let k = ''; for (let j = 0; j < A.nc; j++) { const x = A.d[i * A.nc + j]; k += idxKeyOf(x) + '\u0001'; } return k;
+  }
+  FN.UNIQUE = (a, ctx) => {
+    const c2 = arrCtx(ctx);
+    const a0 = opnd(ev(a[0], c2), c2); if (isErr(a0)) return a0;
+    const A = toArrV(a0, c2);
+    const byCol = a.length > 1 && a[1].t !== 'missing' ? toBool(sv(a[1], ctx)) : false;
+    const once = a.length > 2 && a[2].t !== 'missing' ? toBool(sv(a[2], ctx)) : false;
+    if (isErr(byCol)) return byCol; if (isErr(once)) return once;
+    const B = byCol ? transpose(A) : A;
+    const seen = new Map(), order = [];
+    for (let i = 0; i < B.nr; i++) { const k = rowKey(B, i); const e = seen.get(k); if (e) e.n++; else { seen.set(k, { i, n: 1 }); order.push(k); } }
+    const rows = order.map(k => seen.get(k)).filter(e => !once || e.n === 1).map(e => e.i);
+    if (!rows.length) return eCALC;
+    const out = new Arr(rows.length, B.nc);
+    rows.forEach((i, k) => { for (let j = 0; j < B.nc; j++) out.d[k * B.nc + j] = B.d[i * B.nc + j]; });
+    return byCol ? transpose(out) : out;
+  };
+  function transpose(A) { const B = new Arr(A.nc, A.nr); for (let i = 0; i < A.nr; i++) for (let j = 0; j < A.nc; j++) B.d[j * A.nr + i] = A.d[i * A.nc + j]; return B; }
+  FN.TRANSPOSE = (a, ctx) => { const c2 = arrCtx(ctx); const v = opnd(ev(a[0], c2), c2); return isErr(v) ? v : transpose(toArrV(v, c2)); };
+  FN.FILTER = (a, ctx) => {
+    if (a.length < 2 || a.length > 3) return eVAL;
+    const c2 = arrCtx(ctx);
+    const a0 = opnd(ev(a[0], c2), c2); if (isErr(a0)) return a0;
+    const i0 = opnd(ev(a[1], c2), c2); if (isErr(i0)) return i0;
+    const A = toArrV(a0, c2), I = toArrV(i0, c2);
+    let rows = null, cols = null;
+    const inc = x => { if (isErr(x)) return x; if (typeof x === 'boolean') return x; if (typeof x === 'number') return x !== 0; if (x === null) return false; return eVAL; };
+    if (I.nc === 1 && I.nr === A.nr) { rows = []; for (let i = 0; i < A.nr; i++) { const b = inc(I.d[i]); if (isErr(b)) return b; if (b) rows.push(i); } }
+    else if (I.nr === 1 && I.nc === A.nc) { cols = []; for (let j = 0; j < A.nc; j++) { const b = inc(I.d[j]); if (isErr(b)) return b; if (b) cols.push(j); } }
+    else return eVAL;
+    if ((rows && !rows.length) || (cols && !cols.length)) return a.length > 2 && a[2].t !== 'missing' ? ev(a[2], ctx) : eCALC;
+    if (rows) { const out = new Arr(rows.length, A.nc); rows.forEach((i, k) => { for (let j = 0; j < A.nc; j++) out.d[k * A.nc + j] = A.d[i * A.nc + j]; }); return out; }
+    const out = new Arr(A.nr, cols.length); for (let i = 0; i < A.nr; i++) cols.forEach((j, k) => { out.d[i * cols.length + k] = A.d[i * A.nc + j]; }); return out;
+  };
+  FN.LAMBDA = (a, ctx) => {
+    if (!a.length) return eVAL;
+    const params = a.slice(0, -1).map(p => (p.t === 'name' ? p.v.toLowerCase() : null));
+    if (params.some(p => p === null)) return eVAL;
+    return new Lam(params, a[a.length - 1], ctx.scope);
+  };
+  FN.LET = (a, ctx) => {
+    if (a.length < 3 || a.length % 2 === 0) return eVAL;
+    let scope = ctx.scope;
+    for (let k = 0; k + 1 < a.length; k += 2) {
+      if (a[k].t !== 'name') return eVAL;
+      const c2 = Object.assign({}, ctx, { scope });
+      const v = ev(a[k + 1], c2);
+      scope = { name: a[k].v.toLowerCase(), val: v, up: scope };
+    }
+    return ev(a[a.length - 1], Object.assign({}, ctx, { scope }));
+  };
+  FN.MAP = (a, ctx) => {
+    if (a.length < 2) return eVAL;
+    const c2 = arrCtx(ctx);
+    const lam = ev(a[a.length - 1], c2); if (!(lam instanceof Lam)) return eVAL;
+    const arrs = a.slice(0, -1).map(n => toArrV(opnd(ev(n, c2), c2), c2));
+    const nr = arrs[0].nr, nc = arrs[0].nc;
+    const out = new Arr(nr, nc);
+    for (let k = 0; k < nr * nc; k++) {
+      let v = callLam(lam, arrs.map(A => A.d[k] === undefined ? eNA : A.d[k]), c2);
+      v = opnd(v, c2); if (v instanceof Arr) v = v.d[0];
+      out.d[k] = v;
+    }
+    return out;
+  };
+  FN.SEQUENCE = (a, ctx) => {
+    const [r, c, st, sp] = scalarArgs(a, ctx);
+    const R = numArg(r, 1), C = numArg(c, 1), S0 = numArg(st, 1), P = numArg(sp, 1);
+    const out = new Arr(R, C); for (let k = 0; k < R * C; k++) out.d[k] = S0 + k * P; return out;
+  };
+
+  // ------------------------------------------------------------------ muat workbook dari bagian xlsx
+  const STD_COLORS = ['000000', 'FFFFFF', 'FF0000', '00FF00', '0000FF', 'FFFF00', 'FF00FF', '00FFFF', '000000', 'FFFFFF', 'FF0000', '00FF00', '0000FF', 'FFFF00', 'FF00FF', '00FFFF',
+    '800000', '008000', '000080', '808000', '800080', '008080', 'C0C0C0', '808080', '9999FF', '993366', 'FFFFCC', 'CCFFFF', '660066', 'FF8080', '0066CC', 'CCCCFF',
+    '000080', 'FF00FF', 'FFFF00', '00FFFF', '800080', '800000', '008080', '0000FF', '00CCFF', 'CCFFFF', 'CCFFCC', 'FFFF99', '99CCFF', 'FF99CC', 'CC99FF', 'FFCC99',
+    '3366FF', '33CCCC', '99CC00', 'FFCC00', 'FF9900', 'FF6600', '666699', '969696', '003366', '339966', '003300', '333300', '993300', '993366', '333399', '333333'];
+  function parseTheme(xml) {
+    const out = [];
+    if (!xml) return ['FFFFFF', '000000', 'E7E6E6', '44546A', '4472C4', 'ED7D31', 'A5A5A5', 'FFC000', '5B9BD5', '70AD47', '0563C1', '954F72'];
+    const cs = /<a:clrScheme\b[\s\S]*?<\/a:clrScheme>/.exec(xml); const s = cs ? cs[0] : '';
+    const get = tag => { const m = new RegExp('<a:' + tag + '>([\\s\\S]*?)</a:' + tag + '>').exec(s); if (!m) return '000000'; const c = /lastClr="([0-9A-Fa-f]{6})"/.exec(m[1]) || /val="([0-9A-Fa-f]{6})"/.exec(m[1]); return c ? c[1].toUpperCase() : '000000'; };
+    for (const t of ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink']) out.push(get(t));
+    return out;
+  }
+  function tintColor(hex, tint) {
+    if (!tint) return hex;
+    let r = parseInt(hex.slice(0, 2), 16) / 255, g = parseInt(hex.slice(2, 4), 16) / 255, b = parseInt(hex.slice(4, 6), 16) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0, l = (mx + mn) / 2;
+    if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+    l = tint < 0 ? l * (1 + tint) : l * (1 - tint) + tint;
+    const hue = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+    if (s === 0) r = g = b = l; else { const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q; r = hue(p, q, h + 1 / 3); g = hue(p, q, h); b = hue(p, q, h - 1 / 3); }
+    const hx = x => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0');
+    return (hx(r) + hx(g) + hx(b)).toUpperCase();
+  }
+  function colorOf(a, theme) {
+    if (!a) return null;
+    if (a.rgb) return '#' + a.rgb.slice(-6);
+    if (a.theme !== undefined) { const base = theme[+a.theme] || '000000'; return '#' + tintColor(base, a.tint ? +a.tint : 0); }
+    if (a.indexed !== undefined) { const i = +a.indexed; if (i === 64 || i === 65) return null; return STD_COLORS[i] ? '#' + STD_COLORS[i] : null; }
+    return null;
+  }
+  function parseStyles(xml, theme) {
+    const st = { numFmt: new Map(), xf: [], fonts: [], fills: [] };
+    if (!xml) { st.xf.push({ fmt: 'General', font: {}, fill: null, align: null }); return st; }
+    for (const m of xml.matchAll(/<numFmt\b([^>]*)\/?>/g)) { const a = attrs(m[1]); st.numFmt.set(+a.numFmtId, unesc(a.formatCode || 'General')); }
+    const sect = tag => { const m = new RegExp('<' + tag + '\\b[^>]*>([\\s\\S]*?)</' + tag + '>').exec(xml); return m ? m[1] : ''; };
+    for (const m of sect('fonts').matchAll(/<font\b[^>]*?(?:\/>|>([\s\S]*?)<\/font>)/g)) {
+      const b = m[1] || '';
+      const col = /<color\b([^>]*)\/?>/.exec(b);
+      const sz = /<sz\s+val="([\d.]+)"/.exec(b);
+      st.fonts.push({ b: /<b\s*\/>|<b\s+val="(1|true)"/.test(b), i: /<i\s*\/>|<i\s+val="(1|true)"/.test(b), u: /<u\b/.test(b), color: col ? colorOf(attrs(col[1]), theme) : null, sz: sz ? +sz[1] : 11 });
+    }
+    for (const m of sect('fills').matchAll(/<fill>([\s\S]*?)<\/fill>/g)) {
+      const pf = /<patternFill\b([^>]*)>([\s\S]*?)<\/patternFill>|<patternFill\b([^>]*)\/>/.exec(m[1]);
+      let fill = null;
+      if (pf) { const pa = attrs(pf[1] || pf[3] || ''); if (pa.patternType && pa.patternType !== 'none') { const fg = /<fgColor\b([^>]*)\/?>/.exec(pf[2] || ''); fill = fg ? colorOf(attrs(fg[1]), theme) : null; if (!fill && pa.patternType === 'solid') fill = null; } }
+      st.fills.push(fill);
+    }
+    for (const m of sect('cellXfs').matchAll(/<xf\b([^>]*?)(?:\/>|>([\s\S]*?)<\/xf>)/g)) {
+      const a = attrs(m[1]); const al = /<alignment\b([^>]*)\/?>/.exec(m[2] || '');
+      const id = +(a.numFmtId || 0);
+      st.xf.push({ fmt: st.numFmt.get(id) || BUILTIN_FMT[id] || 'General', fmtId: id, font: st.fonts[+(a.fontId || 0)] || {}, fill: st.fills[+(a.fillId || 0)] || null, align: al ? attrs(al[1]) : null });
+    }
+    if (!st.xf.length) st.xf.push({ fmt: 'General', font: {}, fill: null, align: null });
+    return st;
+  }
+  // getText(path) -> Promise<string|null>. opt.cached: simpan nilai tersimpan rumus (untuk uji)
+  async function load(getText, opt) {
+    opt = opt || {};
+    const wb = new Workbook();
+    const wbx = await getText('xl/workbook.xml');
+    if (!wbx) throw new Error('workbook.xml tidak ada');
+    wb.date1904 = /date1904="(1|true)"/.test(wbx);
+    const relx = (await getText('xl/_rels/workbook.xml.rels')) || '';
+    const rels = new Map();
+    for (const m of relx.matchAll(/<Relationship\b([^>]*)\/?>/g)) { const a = attrs(m[1]); rels.set(a.Id, a.Target); }
+    const resolve = (base, t) => { if (t.startsWith('/')) return t.slice(1); const parts = base.split('/'); parts.pop(); for (const seg of t.split('/')) { if (seg === '..') parts.pop(); else if (seg !== '.') parts.push(seg); } return parts.join('/'); };
+    const sheetDefs = [];
+    for (const m of wbx.matchAll(/<sheet\b([^>]*)\/?>/g)) {
+      const a = attrs(m[1]);
+      sheetDefs.push({ name: unesc(a.name), rid: a['r:id'], state: a.state || 'visible', path: resolve('xl/workbook.xml', rels.get(a['r:id']) || '') });
+    }
+    for (const m of wbx.matchAll(/<definedName\b([^>]*)>([\s\S]*?)<\/definedName>/g)) {
+      const a = attrs(m[1]); const nm = unesc(a.name); const low = nm.toLowerCase();
+      if (!wb.names.has(low)) wb.names.set(low, []);
+      wb.names.get(low).push({ name: nm, local: a.localSheetId !== undefined ? +a.localSheetId : null, text: unesc(m[2]), hidden: a.hidden === '1' });
+    }
+    // tautan workbook luar: nilai tersimpan di xl/externalLinks (dipakai workbook kantor pusat)
+    const extIds = [...wbx.matchAll(/<externalReference\b[^>]*r:id="([^"]+)"/g)].map(m => m[1]);
+    const extSheets = [];
+    for (let k = 0; k < extIds.length; k++) {
+      const t = rels.get(extIds[k]); if (!t) continue;
+      const ex = await getText(resolve('xl/workbook.xml', t)); if (!ex) continue;
+      const names = [...ex.matchAll(/<sheetName\s+val="([^"]*)"/g)].map(m => unesc(m[1]));
+      const sets = new Map();
+      for (const sd of ex.matchAll(/<sheetData\s+sheetId="(\d+)"[^>]*?(?:\/>|>([\s\S]*?)<\/sheetData>)/g)) sets.set(+sd[1], sd[2] || '');
+      names.forEach((nm, j) => extSheets.push({ name: `[${k + 1}]${nm}`, body: sets.get(j) || '' }));
+    }
+    const sstx = await getText('xl/sharedStrings.xml');
+    if (sstx) {
+      for (const m of sstx.matchAll(/<si>([\s\S]*?)<\/si>/g)) {
+        const body = m[1].replace(/<rPh\b[\s\S]*?<\/rPh>/g, '');
+        let s = ''; for (const t of body.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>|<t\b[^>]*\/>/g)) s += t[1] ? unesc(t[1]) : '';
+        wb.sst.push(xEsc(s));
+      }
+    }
+    const themeX = await getText('xl/theme/theme1.xml');
+    wb.theme = parseTheme(themeX);
+    wb.styles = parseStyles(await getText('xl/styles.xml'), wb.theme);
+    // sheet
+    for (let i = 0; i < sheetDefs.length; i++) {
+      const d = sheetDefs[i];
+      const sh = new Sheet(wb, i, d.name, d.path); sh.hidden = d.state !== 'visible';
+      wb.sheets.push(sh); wb.byName.set(d.name.toLowerCase(), sh);
+    }
+    extSheets.forEach((d, j) => {
+      const sh = new Sheet(wb, 10000 + j, d.name, null); sh.external = true;
+      wb.byName.set(d.name.toLowerCase(), sh);
+      for (const m of d.body.matchAll(/<cell\s+r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/cell>)/g)) {
+        const t = (/\bt="(\w+)"/.exec(m[3]) || [])[1]; const vv = /<v>([\s\S]*?)<\/v>/.exec(m[4] || '');
+        if (!vv) continue;
+        const raw = unesc(vv[1]);
+        sh.setV(+m[2], col2n(m[1]), t === 's' || t === 'str' ? raw : t === 'b' ? raw === '1' : t === 'e' ? errOf(raw) : +raw);
+      }
+    });
+    for (const sh of wb.sheets) {
+      const xml = await getText(sh.path);
+      if (!xml) continue;
+      // tabel
+      const rp = sh.path.replace(/([^/]+)$/, '_rels/$1.rels');
+      const rx = await getText(rp);
+      if (rx) for (const m of rx.matchAll(/<Relationship\b([^>]*)\/?>/g)) {
+        const a = attrs(m[1]);
+        if (!/\/table$/.test(a.Type || '')) continue;
+        const tp = resolve(sh.path, a.Target); const tx = await getText(tp); if (!tx) continue;
+        const ta = attrs(/<table\b([^>]*)>/.exec(tx)[1]);
+        const [p1, p2] = ta.ref.split(':');
+        const m1 = /^([A-Z]+)(\d+)$/.exec(p1), m2 = /^([A-Z]+)(\d+)$/.exec(p2 || p1);
+        const cols = []; for (const c of tx.matchAll(/<tableColumn\b([^>]*?)(?:\/>|>)/g)) cols.push(unesc(attrs(c[1]).name));
+        const t = { name: ta.displayName || ta.name, sh, r1: +m1[2], c1: col2n(m1[1]), r2: +m2[2], c2: col2n(m2[1]),
+          hdr: ta.headerRowCount === '0' ? 0 : 1, tot: ta.totalsRowCount ? +ta.totalsRowCount : 0, cols, colIdx: new Map(cols.map((c, k) => [c.toLowerCase(), k])) };
+        wb.tables.set(t.name.toLowerCase(), t); if (ta.name) wb.tables.set(ta.name.toLowerCase(), t);
+        sh.tables.push(t);
+      }
+      parseSheet(wb, sh, xml, opt);
+    }
+    return wb;
+  }
+  function parseSheet(wb, sh, xml, opt) {
+    const fp = /<sheetFormatPr\b([^>]*)\/?>/.exec(xml);
+    if (fp) { const a = attrs(fp[1]); if (a.defaultRowHeight) sh.defRowH = +a.defaultRowHeight; if (a.defaultColWidth) sh.defColW = +a.defaultColWidth; else if (a.baseColWidth) sh.defColW = +a.baseColWidth + 0.71; }
+    const tc = /<tabColor\b([^>]*)\/?>/.exec(xml); if (tc) sh.tabColor = colorOf(attrs(tc[1]), wb.theme);
+    const colsX = /<cols>([\s\S]*?)<\/cols>/.exec(xml);
+    if (colsX) for (const m of colsX[1].matchAll(/<col\b([^>]*)\/?>/g)) {
+      const a = attrs(m[1]); const lo = +a.min, hi = Math.min(+a.max, 16384);
+      for (let c = lo; c <= hi && c <= 1024; c++) {
+        if (a.width) sh.colW[c] = +a.width; if (a.hidden === '1') sh.colHidden[c] = true; if (a.style && a.style !== '0') sh.colStyle[c] = +a.style;
+      }
+    }
+    const pane = /<pane\b([^>]*)\/?>/.exec(xml);
+    if (pane) { const a = attrs(pane[1]); if (a.state === 'frozen' || a.state === 'frozenSplit') sh.freeze = { x: +(a.xSplit || 0), y: +(a.ySplit || 0) }; }
+    const mc = /<mergeCells\b[^>]*>([\s\S]*?)<\/mergeCells>/.exec(xml);
+    if (mc) for (const m of mc[1].matchAll(/<mergeCell\s+ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"/g)) sh.merges.push([+m[2], col2n(m[1]), +m[4], col2n(m[3])]);
+    const i0 = xml.indexOf('<sheetData'); if (i0 < 0) return;
+    const i1 = xml.indexOf('</sheetData>', i0);
+    const body = i1 < 0 ? '' : xml.slice(xml.indexOf('>', i0) + 1, i1);
+    const shared = new Map();
+    const reRow = /<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g;
+    const reC = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+    let rm, autoR = 0;
+    while ((rm = reRow.exec(body))) {
+      const ra = rm[1];
+      const rr = /\br="(\d+)"/.exec(ra); const R = rr ? +rr[1] : autoR + 1; autoR = R;
+      if (ra.indexOf('ht=') >= 0) { const h = /\bht="([\d.]+)"/.exec(ra); if (h && /customHeight="1"/.test(ra)) sh.rowH[R] = +h[1]; else if (h) sh.rowH[R] = +h[1]; }
+      if (ra.indexOf('hidden="1"') >= 0) sh.rowHidden[R] = true;
+      if (ra.indexOf('customFormat="1"') >= 0) { const s = /\bs="(\d+)"/.exec(ra); if (s) sh.rowStyle[R] = +s[1]; }
+      if (R > sh.maxR) sh.maxR = R;
+      const cb = rm[2]; if (!cb) continue;
+      reC.lastIndex = 0; let cm, autoC = 0;
+      while ((cm = reC.exec(cb))) {
+        const ca = cm[1];
+        let C, r = R;
+        const ri = ca.indexOf('r="');
+        if (ri >= 0) {
+          let k = ri + 3, cn = 0; while (ca.charCodeAt(k) >= 65 && ca.charCodeAt(k) <= 90) { cn = cn * 26 + ca.charCodeAt(k) - 64; k++; }
+          C = cn; let rn = 0; while (ca.charCodeAt(k) >= 48 && ca.charCodeAt(k) <= 57) { rn = rn * 10 + ca.charCodeAt(k) - 48; k++; } if (rn) r = rn;
+        } else C = autoC + 1;
+        autoC = C;
+        let t = null, s = 0;
+        const ti = ca.indexOf(' t="'); if (ti >= 0) t = ca.slice(ti + 4, ca.indexOf('"', ti + 4));
+        const si = ca.indexOf(' s="'); if (si >= 0) s = +ca.slice(si + 4, ca.indexOf('"', si + 4));
+        if (s) { let a = sh.st[C]; if (!a) a = sh.st[C] = []; a[r] = s; }
+        else if (sh.rowStyle[r] !== undefined || sh.colStyle[C] !== undefined) { let a = sh.st[C]; if (!a) a = sh.st[C] = []; a[r] = 0; }
+        if (C > sh.maxC) sh.maxC = C;
+        const inner = cm[2];
+        if (!inner) continue;
+        let v = null;
+        const vi = inner.indexOf('<v');
+        if (vi >= 0) {
+          const vs = inner.indexOf('>', vi) + 1, ve = inner.indexOf('</v>', vs);
+          if (inner[vs - 2] !== '/') {
+            const raw = inner.slice(vs, ve);
+            if (t === 's') v = wb.sst[+raw] !== undefined ? wb.sst[+raw] : '';
+            else if (t === 'str') v = xEsc(unesc(raw));
+            else if (t === 'b') v = raw === '1' || raw === 'true';
+            else if (t === 'e') v = errOf(raw);
+            else if (t === 'd') { const n = parseNumText(raw); v = n === null ? raw : n; }
+            else if (t === 'inlineStr') v = xEsc(unesc(raw));
+            else v = +raw;
+          }
+        } else if (t === 'inlineStr') {
+          let sx = ''; for (const tt of inner.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)) sx += unesc(tt[1]); v = xEsc(sx);
+        }
+        const fi = inner.indexOf('<f');
+        if (fi >= 0) {
+          const fe = inner.indexOf('>', fi);
+          const fa = inner.slice(fi + 2, inner[fe - 1] === '/' ? fe - 1 : fe);
+          const selfClose = inner[fe - 1] === '/';
+          const ftext = selfClose ? '' : unesc(inner.slice(fe + 1, inner.indexOf('</f>', fe)));
+          const A = attrs(fa);
+          const f = { sh, r, c: C, ast: null, dr: 0, dc: 0, st: 0, arrMode: false, ar: null, dyn: ca.indexOf(' cm="') >= 0, src: null };
+          if (opt.cached) f.cached = v;
+          if (A.t === 'shared') {
+            if (A.ref !== undefined && ftext) {
+              f.src = ftext; f.ast = safeParse(wb, ftext, sh, r, C);
+              shared.set(A.si, f);
+            } else {
+              const m0 = shared.get(A.si);
+              if (m0) { f.ast = m0.ast; f.dr = r - m0.r; f.dc = C - m0.c; f.master = m0; f.src = m0.src; }
+            }
+          } else {
+            f.src = ftext; f.ast = safeParse(wb, ftext, sh, r, C);
+            if (A.t === 'array') {
+              f.arrMode = true;
+              const m = /^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/.exec(A.ref || '');
+              if (m) {
+                const r1 = +m[2], c1 = col2n(m[1]), r2 = m[3] ? +m[4] : r1, c2 = m[3] ? col2n(m[3]) : c1;
+                f.ar = [r1, c1, r2, c2];
+                for (let rr2 = r1; rr2 <= r2; rr2++) for (let cc = c1; cc <= c2; cc++) {
+                  if (rr2 === r && cc === C) continue;
+                  sh.fm.set(KEY(rr2, cc), { sh, r: rr2, c: cc, am: f, st: 0 });
+                }
+              }
+            }
+          }
+          if (f.dyn) f.arrMode = true;
+          sh.fm.set(KEY(r, C), f); wb.nFormula++;
+          if (v !== null) sh.setV(r, C, v);
+          continue;
+        }
+        if (v !== null) {
+          const ex = sh.fm.get(KEY(r, C));
+          if (ex && ex.am) { if (opt.cached) ex.cached = v; }
+          sh.setV(r, C, v);
+        }
+      }
+    }
+  }
+  function safeParse(wb, text, sh, r, c) {
+    try { return parse(text); }
+    catch (e) { if (wb.diag.parseErr.length < 50) wb.diag.parseErr.push(`${sh.name}!${a1(r, c)}: ${e.message} :: ${text.slice(0, 80)}`); return null; }
+  }
+
+  // ------------------------------------------------------------------ tulis nilai tersimpan ke XML sheet (untuk berkas unduhan)
+  // Nilai hasil hitung ditaruh di <v> sel rumus supaya berkas langsung tampil angkanya (Protected View / penampil lain).
+  const ERR_KLASIK = new Set(['#NULL!', '#DIV/0!', '#VALUE!', '#REF!', '#NAME?', '#NUM!', '#N/A']);
+  function injectValues(wb, sh, xml) {
+    const i0 = xml.indexOf('<sheetData'); if (i0 < 0) return xml;
+    const i1 = xml.indexOf('</sheetData>', i0);
+    const head = xml.slice(0, xml.indexOf('>', i0) + 1), body = xml.slice(xml.indexOf('>', i0) + 1, i1), tail = xml.slice(i1);
+    const out = body.replace(/<c\b([^>]*?)(\/>|>([\s\S]*?)<\/c>)/g, (m, ca, rest, inner) => {
+      const rr = /\br="([A-Z]+)(\d+)"/.exec(ca); if (!rr) return m;
+      const r = +rr[2], c = col2n(rr[1]);
+      const f = sh.fm.get(KEY(r, c)); if (!f || f.st !== 2) return m;
+      const v = sh.raw(r, c);
+      if (isErr(v) && !ERR_KLASIK.has(v.c)) return m;          // #CALC!/#SPILL! dll: biarkan Excel yang mengisi
+      let t = '', vx;
+      if (typeof v === 'number') vx = String(v);
+      else if (typeof v === 'string') { t = 'str'; vx = escX(v); }
+      else if (typeof v === 'boolean') { t = 'b'; vx = v ? '1' : '0'; }
+      else if (isErr(v)) { t = 'e'; vx = v.c; }
+      else vx = '0';
+      let a2 = ca.replace(/\s+t="[^"]*"/, '') + (t ? ` t="${t}"` : '');
+      let fpart = '';
+      if (inner) { const fm = /<f\b[^>]*\/>|<f\b[^>]*>[\s\S]*?<\/f>/.exec(inner); if (fm) fpart = fm[0]; }
+      return `<c${a2}>${fpart}<v>${vx}</v></c>`;
+    });
+    return head + out + tail;
+  }
+
+  return {
+    load, parse, tokenize, formatValue, generalText, parseNumText, textFn, injectValues, shiftFormula,
+    XErr, ERR, Ref, Arr, isErr, col2n, n2col, a1, KEY, BUILTIN_FMT,
+  };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = OECalc;
+</script>
+<script>
+/* ===========================================================================
+   XV — penampil workbook (View Excel) di halaman Data 1on1.
+   Menampilkan nilai hasil hitung OECalc per sheet seperti Excel: tab sheet,
+   header kolom/baris, panel beku, lebar kolom & baris tersembunyi, format angka,
+   sel gabungan. Pilih sel/rentang/kolom/baris lalu salin (Ctrl+C atau tombol
+   Salin): teks biasa (dipisah tab) + tabel HTML (angka asli untuk Excel).
+   Hanya baris & kolom yang terlihat yang digambar (sheet Minerva ~40 ribu baris).
+   =========================================================================== */
+const XV = (function () {
+  'use strict';
+  const HX = 46, HY = 22;                              // lebar kolom nomor baris, tinggi baris huruf kolom
+  const MAX_SALIN = 400000;                            // batas sel sekali salin
+  let W = null;                                        // status penampil
+  const esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  function lokal() {
+    try {
+      const s = (1234.5).toLocaleString();
+      if (/1\.234,5/.test(s)) return { dec: ',', grp: '.' };
+      if (/1 234,5|1\u00a0234,5|1\u202f234,5/.test(s)) return { dec: ',', grp: '\u00a0' };
+    } catch (e) { /* bawaan */ }
+    return { dec: '.', grp: ',' };
+  }
+  const n2col = n => { let s = ''; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - 1 - r) / 26; } return s; };
+  const col2n = s => { let n = 0; for (let i = 0; i < s.length; i++) n = n * 26 + s.charCodeAt(i) - 64; return n; };
+
+  // ------------------------------------------------------------------ geometri sheet
+  function geom(sh) {
+    if (sh._xv) return sh._xv;
+    let maxR = Math.max(sh.maxR, 1), maxC = Math.max(sh.maxC, 1);
+    for (const m of sh.merges) { if (m[2] > maxR) maxR = m[2]; if (m[3] > maxC) maxC = m[3]; }
+    const nR = maxR + (maxR < 4000 ? 6 : 1), nC = Math.min(16384, maxC + 3);
+    const cw = c => (sh.colHidden[c] ? 0 : Math.max(0, Math.round((sh.colW[c] !== undefined ? sh.colW[c] : sh.defColW) * 7 + 5)));
+    const rh = r => (sh.rowHidden[r] ? 0 : Math.max(0, Math.round((sh.rowH[r] !== undefined ? sh.rowH[r] : sh.defRowH) * 4 / 3)));
+    const X = new Float64Array(nC + 2), Y = new Float64Array(nR + 2);
+    X[1] = 0; for (let c = 1; c <= nC; c++) X[c + 1] = X[c] + cw(c);
+    Y[1] = 0; for (let r = 1; r <= nR; r++) Y[r + 1] = Y[r] + rh(r);
+    const fr = sh.freeze || { x: 0, y: 0 };
+    const fx = Math.min(fr.x || 0, nC), fy = Math.min(fr.y || 0, nR);
+    // indeks sel gabungan: kiri-atas -> [r2,c2]; sel tertutup -> true
+    const mTop = new Map(), mCov = new Set();
+    for (const [r1, c1, r2, c2] of sh.merges) {
+      mTop.set(r1 * 16384 + c1, [r2, c2]);
+      for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) if (r !== r1 || c !== c1) mCov.add(r * 16384 + c);
+    }
+    sh._xv = { nR, nC, X, Y, fx, fy, mTop, mCov, cache: new Map(), sel: null, scroll: [0, 0] };
+    return sh._xv;
+  }
+  function cari(A, v, n) {                             // indeks terbesar i (1..n) dengan A[i] <= v
+    let lo = 1, hi = n;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (A[mid] <= v) lo = mid; else hi = mid - 1; }
+    return lo;
+  }
+
+  // ------------------------------------------------------------------ tampilan sel
+  let kanvas = null, hurufXv = null;
+  const ukuran = new Map();
+  function lebarTeks(t, css) {                          // lebar teks (px) untuk luberan ke sel kosong di kanan
+    const k = css + '|' + t; let w = ukuran.get(k); if (w !== undefined) return w;
+    if (kanvas === null) { try { kanvas = document.createElement('canvas').getContext('2d'); hurufXv = getComputedStyle(W.E.root).fontFamily; } catch (e) { kanvas = false; } }
+    if (!kanvas) w = t.length * 7.2;
+    else { const m = /font-size:(\d+)px/.exec(css); kanvas.font = (/font-weight:6/.test(css) ? '640 ' : '400 ') + (/font-style:italic/.test(css) ? 'italic ' : '') + (m ? m[1] : 12) + 'px ' + hurufXv; w = kanvas.measureText(t).width; }
+    if (ukuran.size > 20000) ukuran.clear();
+    ukuran.set(k, w); return w;
+  }
+  const xfCss = new Map();
+  function gayaXf(wb, i) {
+    let g = xfCss.get(i); if (g) return g;
+    const x = wb.styles.xf[i] || wb.styles.xf[0] || {};
+    const f = x.font || {}, al = x.align || {};
+    let css = '';
+    if (f.b) css += 'font-weight:640;';
+    if (f.i) css += 'font-style:italic;';
+    if (f.u) css += 'text-decoration:underline;';
+    if (f.color && !/^#000000$/i.test(f.color)) css += 'color:' + f.color + ';';
+    if (x.fill && !/^#FFFFFF$/i.test(x.fill)) css += 'background:' + x.fill + ';';
+    if (f.sz && f.sz >= 12) css += 'font-size:' + Math.min(16, Math.round(f.sz * 1.15)) + 'px;';
+    g = { css, h: al.horizontal || 'general', wrap: al.wrapText === '1', fmt: x.fmt || 'General', indent: +(al.indent || 0) };
+    xfCss.set(i, g); return g;
+  }
+  function tampil(sh, r, c) {
+    const G = sh._xv, k = r * 16384 + c;
+    let d = G.cache.get(k); if (d) return d;
+    const wb = W.wb;
+    const v = wb.val(sh, r, c);
+    const g = gayaXf(wb, sh.style(r, c));
+    let t = '', color = null, jenis = 'kosong';
+    if (v !== null && v !== undefined) {
+      if (OECalc.isErr(v)) { t = v.c; jenis = 'err'; }
+      else if (typeof v === 'number') {
+        let fmt = g.fmt;
+        if (fmt === 'm/d/yyyy') fmt = W.loc.dec === ',' ? 'dd/mm/yyyy' : 'm/d/yyyy';
+        const o = OECalc.formatValue(v, fmt, W.loc, null, 11); t = o.t; color = o.color; jenis = 'num';
+      } else if (typeof v === 'boolean') { t = v ? 'TRUE' : 'FALSE'; jenis = 'bool'; }
+      else { const o = OECalc.formatValue(String(v), g.fmt, W.loc); t = o.t; color = o.color; jenis = 'txt'; }
+    }
+    let al = g.h;
+    if (al === 'general') al = jenis === 'num' ? 'right' : jenis === 'err' || jenis === 'bool' ? 'center' : 'left';
+    if (al === 'centerContinuous') al = 'center';
+    if (al === 'fill' || al === 'justify' || al === 'distributed') al = 'left';
+    d = { t, css: g.css + (color ? 'color:' + color + ';' : ''), al, wrap: g.wrap, kosong: t === '' && !g.css.includes('background'), jenis, v, ind: g.indent };
+    G.cache.set(k, d); return d;
+  }
+
+  // ------------------------------------------------------------------ DOM
+  function bangun() {
+    const root = document.createElement('div');
+    root.className = 'xv'; root.id = 'xv';
+    root.innerHTML =
+      '<div class="xv-atas"><b class="xv-judul" id="xvJudul"></b><span class="xv-sp"></span>' +
+      '<button class="btn kecil" id="xvRentang" title="Ketuk sel awal lalu sel akhir untuk memilih rentang (layar sentuh)">Pilih rentang</button>' +
+      '<button class="btn kecil" id="xvSalin" title="Salin pilihan (Ctrl+C)">Salin</button>' +
+      '<button class="btn kecil primary" id="xvUnduh">Unduh Excel</button>' +
+      '<button class="btn kecil" id="xvTutup" title="Tutup (Esc)">Tutup</button></div>' +
+      '<div class="xv-fx"><input id="xvAlamat" spellcheck="false" title="Ketik alamat sel lalu Enter, mis. D25 atau PLAN!AN113"><span class="xv-f">fx</span><div id="xvIsi" class="xv-isi"></div></div>' +
+      '<div class="xv-area" id="xvArea">' +
+      '<div class="xv-sudut" id="xvSudut"></div><div class="xv-kepala" id="xvKepala"><div class="xv-lap" id="xvKepalaL"></div></div>' +
+      '<div class="xv-kiri" id="xvKiri"><div class="xv-lap" id="xvKiriL"></div></div>' +
+      '<div class="xv-badan" id="xvBadan" tabindex="0"><div class="xv-ukur" id="xvUkur"></div><div class="xv-lap" id="xvBadanL"></div></div>' +
+      '</div>' +
+      '<div class="xv-bawah"><div class="xv-tabs" id="xvTabs"></div><div class="xv-stat" id="xvStat"></div></div>' +
+      '<div class="xv-pesan" id="xvPesan" hidden></div>';
+    document.body.appendChild(root);
+    try { if (navigator.maxTouchPoints > 0 || matchMedia('(pointer:coarse)').matches) root.classList.add('sentuh'); } catch (e) { /* abaikan */ }
+    const $ = id => root.querySelector('#' + id);
+    const E = { root, judul: $('xvJudul'), rentang: $('xvRentang'), salin: $('xvSalin'), unduh: $('xvUnduh'), tutup: $('xvTutup'), alamat: $('xvAlamat'),
+      isi: $('xvIsi'), area: $('xvArea'), sudut: $('xvSudut'), kepala: $('xvKepala'), kepalaL: $('xvKepalaL'), kiri: $('xvKiri'), kiriL: $('xvKiriL'),
+      badan: $('xvBadan'), ukur: $('xvUkur'), badanL: $('xvBadanL'), tabs: $('xvTabs'), stat: $('xvStat'), pesan: $('xvPesan') };
+    E.tutup.onclick = tutup;
+    E.salin.onclick = () => { E.badan.focus(); salin(); };
+    E.rentang.onclick = () => { W.modeRentang = !W.modeRentang; E.rentang.classList.toggle('aktif', W.modeRentang); };
+    E.unduh.onclick = () => { if (W.onUnduh) W.onUnduh(); };
+    E.badan.addEventListener('scroll', () => jadwal());
+    window.addEventListener('resize', () => { if (W && W.buka) jadwal(); });
+    E.alamat.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pergi(E.alamat.value); } else if (e.key === 'Escape') { E.alamat.blur(); E.badan.focus(); } });
+    // pilih dengan mouse (seret) atau sentuh (ketuk)
+    const posisi = (ev, wadah) => {
+      const b = wadah.getBoundingClientRect(); const G = W.sh._xv;
+      const fw = G.X[G.fx + 1], fh = G.Y[G.fy + 1];
+      let x = ev.clientX - b.left, y = ev.clientY - b.top;
+      if (wadah === E.badan) { x += E.badan.scrollLeft + fw; y += E.badan.scrollTop + fh; }
+      else if (wadah === E.kepala) { x += E.badan.scrollLeft + fw; y -= HY; }          // y < 0 = huruf kolom
+      else if (wadah === E.kiri) { x -= HX; y += E.badan.scrollTop + fh; }             // x < 0 = nomor baris
+      else { x -= HX; y -= HY; }
+      return { r: y < 0 ? 0 : cari(G.Y, y, G.nR), c: x < 0 ? 0 : cari(G.X, x, G.nC) };
+    };
+    const mulaiPilih = (wadah, ev) => {
+      if (ev.button !== 0) return;
+      const p = posisi(ev, wadah), G = W.sh._xv;
+      const semuaR = p.r === 0, semuaC = p.c === 0;
+      if (semuaR && semuaC) { pilih([1, 1], [G.nR, G.nC], true); return; }
+      const titik = [semuaR ? 1 : p.r, semuaC ? 1 : p.c];
+      const ujung = [semuaR ? G.nR : p.r, semuaC ? G.nC : p.c];
+      if (ev.shiftKey && G.sel) pilih(G.sel.a, ujung, false, [semuaR, semuaC]);
+      else pilih(titik, ujung, false, [semuaR, semuaC]);
+      W.seret = { wadah, mode: [semuaR, semuaC] };
+      ev.preventDefault(); E.badan.focus({ preventScroll: true });
+    };
+    [E.badan, E.kepala, E.kiri, E.sudut].forEach(w => {
+      w.addEventListener('pointerdown', ev => { W.jenisTekan = ev.pointerType; if (ev.pointerType === 'touch') root.classList.add('sentuh'); if (ev.pointerType === 'mouse') mulaiPilih(w, ev); });
+      w.addEventListener('click', ev => {
+        if (W.jenisTekan === 'mouse' || ev.detail === 0) return;          // mouse sudah ditangani pointerdown
+        const p = posisi(ev, w), G = W.sh._xv;
+        const semuaR = p.r === 0, semuaC = p.c === 0;
+        const ujung = [semuaR ? G.nR : Math.max(1, p.r), semuaC ? G.nC : Math.max(1, p.c)];
+        const titik = [semuaR ? 1 : Math.max(1, p.r), semuaC ? 1 : Math.max(1, p.c)];
+        if (W.modeRentang && G.sel) pilih(G.sel.a, ujung, false); else pilih(titik, ujung, false, [semuaR, semuaC]);
+      });
+    });
+    document.addEventListener('pointermove', ev => {
+      if (!W || !W.seret || ev.pointerType !== 'mouse') return;
+      const G = W.sh._xv;
+      let p = posisi(ev, W.seret.wadah === E.sudut ? E.badan : W.seret.wadah);
+      if (W.seret.wadah === E.badan) {             // gulir otomatis di tepi
+        const b = E.badan.getBoundingClientRect(), g = 24;
+        W.gulir = [ev.clientX > b.right - g ? 1 : ev.clientX < b.left + g ? -1 : 0, ev.clientY > b.bottom - g ? 1 : ev.clientY < b.top + g ? -1 : 0];
+        if (!W.tGulir && (W.gulir[0] || W.gulir[1])) W.tGulir = setInterval(() => {
+          if (!W.seret || !(W.gulir[0] || W.gulir[1])) { clearInterval(W.tGulir); W.tGulir = null; return; }
+          E.badan.scrollLeft += W.gulir[0] * 40; E.badan.scrollTop += W.gulir[1] * 40;
+        }, 50);
+      }
+      const [aR, aC] = W.seret.mode;
+      const ujung = [aR ? G.nR : Math.max(1, p.r), aC ? G.nC : Math.max(1, p.c)];
+      if (!G.sel || G.sel.b[0] !== ujung[0] || G.sel.b[1] !== ujung[1]) pilih(G.sel.a, ujung, false);
+    });
+    document.addEventListener('pointerup', () => { if (W && W.seret) { W.seret = null; if (W.tGulir) { clearInterval(W.tGulir); W.tGulir = null; } } });
+    E.badan.addEventListener('keydown', kunci);
+    document.addEventListener('copy', ev => {
+      if (!W || !W.buka) return;
+      const a = document.activeElement;
+      if (a && a !== E.badan && a !== document.body && E.root.contains(a) && a.tagName === 'INPUT') return;   // salin teks di kotak alamat
+      const isi = isiSalin(); if (!isi) return;
+      ev.clipboardData.setData('text/plain', isi.teks);
+      ev.clipboardData.setData('text/html', isi.html);
+      ev.preventDefault();
+      pesan(isi.n.toLocaleString() + ' sel disalin');
+    });
+    document.addEventListener('keydown', ev => { if (W && W.buka && ev.key === 'Escape' && document.activeElement !== E.alamat) tutup(); });
+    return E;
+  }
+  function pesan(t) {
+    const p = W.E.pesan; p.textContent = t; p.hidden = false;
+    clearTimeout(W.tPesan); W.tPesan = setTimeout(() => { p.hidden = true; }, 1800);
+  }
+
+  // ------------------------------------------------------------------ buka / tutup / tab
+  function buka(opt) {
+    if (!W) W = { E: null };
+    if (!W.E) W.E = bangun();
+    Object.assign(W, { wb: opt.wb, onUnduh: opt.onUnduh || null, onSheet: opt.onSheet || null, loc: opt.loc || lokal(), buka: true, modeRentang: false });
+    W.E.judul.textContent = opt.judul || 'Workbook';
+    W.E.unduh.hidden = !opt.onUnduh;
+    W.E.rentang.classList.remove('aktif');
+    const lembar = W.wb.sheets.filter(s => !s.hidden && !s.external);
+    W.E.tabs.innerHTML = lembar.map(s => '<button class="xv-tab" data-i="' + s.idx + '"' + (s.tabColor ? ' style="box-shadow:inset 0 -3px 0 ' + s.tabColor + '"' : '') + '>' + esc(s.name) + '</button>').join('');
+    W.E.tabs.querySelectorAll('.xv-tab').forEach(b => { b.onclick = () => ganti(W.wb.sheets[+b.dataset.i]); });
+    W.E.root.hidden = false; document.body.classList.add('xv-terbuka');
+    const awal = (opt.sheet && W.wb.sheet(opt.sheet)) || lembar[lembar.length - 1] || lembar[0];
+    ganti(awal);
+    W.E.badan.focus({ preventScroll: true });
+  }
+  function tutup() {
+    if (!W || !W.buka) return;
+    W.buka = false; W.E.root.hidden = true; document.body.classList.remove('xv-terbuka');
+  }
+  function ganti(sh) {
+    if (W.sh && W.sh._xv) W.sh._xv.scroll = [W.E.badan.scrollLeft, W.E.badan.scrollTop];
+    W.sh = sh; const G = geom(sh);
+    if (W.onSheet) { try { W.onSheet(sh.name); } catch (e) { /* abaikan */ } }
+    W.E.tabs.querySelectorAll('.xv-tab').forEach(b => b.classList.toggle('aktif', +b.dataset.i === sh.idx));
+    const t = W.E.tabs.querySelector('.xv-tab.aktif'); if (t) t.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const fw = G.X[G.fx + 1], fh = G.Y[G.fy + 1];
+    const E = W.E;
+    E.sudut.style.width = HX + fw + 'px'; E.sudut.style.height = HY + fh + 'px';
+    E.kepala.style.left = HX + fw + 'px'; E.kepala.style.height = HY + fh + 'px';
+    E.kiri.style.top = HY + fh + 'px'; E.kiri.style.width = HX + fw + 'px';
+    E.badan.style.left = HX + fw + 'px'; E.badan.style.top = HY + fh + 'px';
+    E.ukur.style.width = G.X[G.nC + 1] - fw + 'px'; E.ukur.style.height = G.Y[G.nR + 1] - fh + 'px';
+    E.badan.scrollLeft = G.scroll[0]; E.badan.scrollTop = G.scroll[1];
+    if (!G.sel) G.sel = { a: [G.fy + 1, G.fx + 1], b: [G.fy + 1, G.fx + 1] };
+    gambar(); infoSel();
+  }
+
+  // ------------------------------------------------------------------ gambar
+  function jadwal() { if (W.raf) return; W.raf = requestAnimationFrame(() => { W.raf = 0; gambar(); }); }
+  function selRect() {
+    const s = W.sh._xv.sel; if (!s) return null;
+    return [Math.min(s.a[0], s.b[0]), Math.min(s.a[1], s.b[1]), Math.max(s.a[0], s.b[0]), Math.max(s.a[1], s.b[1])];
+  }
+  // gambar sel baris r0..r1, kolom c0..c1 ke dalam lapisan; ox/oy = geser koordinat (piksel) lapisan
+  function sel(sh, r0, r1, c0, c1, ox, oy, batasKanan) {
+    const G = sh._xv, X = G.X, Y = G.Y, S = selRect();
+    let h = '';
+    for (let r = r0; r <= r1; r++) {
+      const hgt = Y[r + 1] - Y[r]; if (!hgt) continue;
+      for (let c = c0; c <= c1; c++) {
+        const wid = X[c + 1] - X[c]; if (!wid) continue;
+        const k = r * 16384 + c;
+        if (G.mCov.has(k)) continue;
+        let w = wid, hh = hgt;
+        const m = G.mTop.get(k);
+        if (m) { w = X[Math.min(m[1], G.nC) + 1] - X[c]; hh = Y[Math.min(m[0], G.nR) + 1] - Y[r]; }
+        const d = tampil(sh, r, c);
+        const dipilih = S && r >= S[0] && r <= S[2] && c >= S[1] && c <= S[3];
+        if (d.kosong && !dipilih && !m) continue;
+        // teks rata kiri boleh meluber ke sel kosong di kanannya (seperti Excel)
+        if (d.jenis === 'txt' && d.al === 'left' && !d.wrap && !m) {
+          let cc = c + 1, lebar = w; const perlu = lebarTeks(d.t, d.css) + 10;
+          while (lebar < perlu && cc <= Math.min(batasKanan, c + 25)) {
+            const kk = r * 16384 + cc;
+            if (G.mCov.has(kk) || G.mTop.has(kk)) break;
+            const d2 = tampil(sh, r, cc); if (d2.t !== '') break;
+            lebar += X[cc + 1] - X[cc]; cc++;
+          }
+          if (lebar > w) w = lebar;
+        }
+        let cls = 'xc';
+        if (d.wrap) cls += ' wr';
+        if (d.al !== 'left') cls += d.al === 'right' ? ' ka' : ' te';
+        if (dipilih) cls += ' dp';
+        h += '<div class="' + cls + '" style="left:' + (X[c] - ox) + 'px;top:' + (Y[r] - oy) + 'px;width:' + w + 'px;height:' + hh + 'px;' + d.css +
+          (d.ind ? 'padding-left:' + (4 + d.ind * 9) + 'px;' : '') + (m ? 'z-index:1;background-clip:padding-box;' + (d.css.includes('background') ? '' : 'background:#fff;') : '') + '">' + esc(d.t) + '</div>';
+      }
+    }
+    return h;
+  }
+  function gambar() {
+    const E = W.E, sh = W.sh, G = sh._xv, X = G.X, Y = G.Y;
+    const fw = X[G.fx + 1], fh = Y[G.fy + 1];
+    const sl = E.badan.scrollLeft, st = E.badan.scrollTop;
+    const vw = E.badan.clientWidth, vh = E.badan.clientHeight;
+    // rentang terlihat (bagian bergulir)
+    const c0 = Math.max(G.fx + 1, cari(X, fw + sl, G.nC)), c1 = Math.min(G.nC, cari(X, fw + sl + vw, G.nC));
+    const r0 = Math.max(G.fy + 1, cari(Y, fh + st, G.nR)), r1 = Math.min(G.nR, cari(Y, fh + st + vh, G.nR));
+    const S = selRect();
+    // badan
+    E.badanL.innerHTML = sel(sh, r0, r1, c0, c1, fw, fh, c1) + garisPilih(S, fw, fh, r0, r1, c0, c1);
+    // kepala: huruf kolom + baris beku
+    let h = '';
+    for (let c = c0; c <= c1; c++) { const w = X[c + 1] - X[c]; if (!w) continue; const on = S && c >= S[1] && c <= S[3];
+      h += '<div class="xh' + (on ? ' on' : '') + '" style="left:' + (X[c] - fw - sl) + 'px;top:0;width:' + w + 'px;height:' + HY + 'px">' + n2col(c) + '</div>'; }
+    if (G.fy) h += '<div class="xv-lap" style="top:' + HY + 'px">' + sel(sh, 1, G.fy, c0, c1, fw + sl, 0, c1) + '</div>';
+    E.kepalaL.innerHTML = h;
+    // kiri: nomor baris + kolom beku
+    h = '';
+    for (let r = r0; r <= r1; r++) { const hh = Y[r + 1] - Y[r]; if (!hh) continue; const on = S && r >= S[0] && r <= S[2];
+      h += '<div class="xr' + (on ? ' on' : '') + '" style="top:' + (Y[r] - fh - st) + 'px;left:0;width:' + HX + 'px;height:' + hh + 'px">' + r + '</div>'; }
+    if (G.fx) h += '<div class="xv-lap" style="left:' + HX + 'px">' + sel(sh, r0, r1, 1, G.fx, 0, fh + st, G.fx) + '</div>';
+    E.kiriL.innerHTML = h;
+    // sudut
+    h = '<div class="xs" style="width:' + HX + 'px;height:' + HY + 'px" title="Pilih semua"></div>';
+    for (let c = 1; c <= G.fx; c++) { const w = X[c + 1] - X[c]; if (w) h += '<div class="xh' + (S && c >= S[1] && c <= S[3] ? ' on' : '') + '" style="left:' + (HX + X[c]) + 'px;top:0;width:' + w + 'px;height:' + HY + 'px">' + n2col(c) + '</div>'; }
+    for (let r = 1; r <= G.fy; r++) { const hh = Y[r + 1] - Y[r]; if (hh) h += '<div class="xr' + (S && r >= S[0] && r <= S[2] ? ' on' : '') + '" style="top:' + (HY + Y[r]) + 'px;left:0;width:' + HX + 'px;height:' + hh + 'px">' + r + '</div>'; }
+    if (G.fx && G.fy) h += '<div class="xv-lap" style="left:' + HX + 'px;top:' + HY + 'px">' + sel(sh, 1, G.fy, 1, G.fx, 0, 0, G.fx) + '</div>';
+    E.sudut.innerHTML = h;
+  }
+  function garisPilih(S, fw, fh, r0, r1, c0, c1) {
+    if (!S) return '';
+    const G = W.sh._xv, X = G.X, Y = G.Y;
+    const a = G.sel.b;                                   // sel aktif
+    let h = '';
+    const x0 = X[Math.max(S[1], G.fx + 1)] - fw, y0 = Y[Math.max(S[0], G.fy + 1)] - fh;
+    const x1 = X[Math.min(S[3], G.nC) + 1] - fw, y1 = Y[Math.min(S[2], G.nR) + 1] - fh;
+    if (x1 > x0 && y1 > y0) h += '<div class="xsel" style="left:' + x0 + 'px;top:' + y0 + 'px;width:' + (x1 - x0) + 'px;height:' + (y1 - y0) + 'px"></div>';
+    if (a[0] > G.fy && a[1] > G.fx) h += '<div class="xakt" style="left:' + (X[a[1]] - fw) + 'px;top:' + (Y[a[0]] - fh) + 'px;width:' + (X[a[1] + 1] - X[a[1]]) + 'px;height:' + (Y[a[0] + 1] - Y[a[0]]) + 'px"></div>';
+    return h;
+  }
+
+  // ------------------------------------------------------------------ pilihan
+  function pilih(a, b, semua) {
+    const G = W.sh._xv;
+    G.sel = { a: [Math.max(1, Math.min(G.nR, a[0])), Math.max(1, Math.min(G.nC, a[1]))], b: [Math.max(1, Math.min(G.nR, b[0])), Math.max(1, Math.min(G.nC, b[1]))], semua: !!semua };
+    gambar(); infoSel();
+  }
+  function lihatSel(r, c) {                            // gulir supaya sel (r,c) terlihat
+    const E = W.E, G = W.sh._xv, X = G.X, Y = G.Y, fw = X[G.fx + 1], fh = Y[G.fy + 1];
+    if (c > G.fx) { const x0 = X[c] - fw, x1 = X[c + 1] - fw; if (x0 < E.badan.scrollLeft) E.badan.scrollLeft = x0; else if (x1 > E.badan.scrollLeft + E.badan.clientWidth) E.badan.scrollLeft = x1 - E.badan.clientWidth; }
+    if (r > G.fy) { const y0 = Y[r] - fh, y1 = Y[r + 1] - fh; if (y0 < E.badan.scrollTop) E.badan.scrollTop = y0; else if (y1 > E.badan.scrollTop + E.badan.clientHeight) E.badan.scrollTop = y1 - E.badan.clientHeight; }
+  }
+  function kunci(ev) {
+    const G = W.sh._xv; if (!G.sel) return;
+    const ctrl = ev.ctrlKey || ev.metaKey;
+    if (ctrl && (ev.key === 'a' || ev.key === 'A')) { ev.preventDefault(); pilih([1, 1], [G.nR, G.nC], true); return; }
+    if (ctrl && (ev.key === 'c' || ev.key === 'C')) return;            // event copy
+    const langkah = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], Enter: [1, 0], Tab: [0, 1] }[ev.key];
+    if (!langkah) {
+      if (ev.key === 'PageDown' || ev.key === 'PageUp') { ev.preventDefault(); const n = Math.max(1, Math.floor(W.E.badan.clientHeight / 20) - 1) * (ev.key === 'PageDown' ? 1 : -1); geser([n, 0], ev.shiftKey); }
+      if (ev.key === 'Home') { ev.preventDefault(); geserKe([G.sel.b[0], 1], ev.shiftKey); }
+      return;
+    }
+    ev.preventDefault();
+    let d = langkah;
+    if (ev.key === 'Enter' && ev.shiftKey) d = [-1, 0];
+    if (ev.key === 'Tab' && ev.shiftKey) d = [0, -1];
+    if (ctrl) {                                      // Ctrl+panah: loncat ke ujung data
+      let [r, c] = G.sel.b;
+      const ada = (rr, cc) => tampil(W.sh, rr, cc).t !== '';
+      const maju = () => { r += d[0]; c += d[1]; };
+      if (r + d[0] < 1 || c + d[1] < 1 || r + d[0] > G.nR || c + d[1] > G.nC) return;
+      const awal = ada(r, c) && ada(r + d[0], c + d[1]);
+      maju();
+      while (r + d[0] >= 1 && c + d[1] >= 1 && r + d[0] <= G.nR && c + d[1] <= G.nC && (awal ? ada(r + d[0], c + d[1]) : !ada(r, c))) maju();
+      geserKe([r, c], ev.shiftKey && ev.key !== 'Enter' && ev.key !== 'Tab');
+      return;
+    }
+    geser(d, ev.shiftKey && ev.key !== 'Enter' && ev.key !== 'Tab');
+  }
+  function geser(d, luas) {
+    const G = W.sh._xv; let [r, c] = G.sel.b;
+    // lewati baris/kolom tersembunyi
+    do { r += d[0]; } while (d[0] && r > 1 && r < G.nR && G.Y[r + 1] === G.Y[r]);
+    do { c += d[1]; } while (d[1] && c > 1 && c < G.nC && G.X[c + 1] === G.X[c]);
+    geserKe([r, c], luas);
+  }
+  function geserKe(p, luas) {
+    const G = W.sh._xv;
+    const b = [Math.max(1, Math.min(G.nR, p[0])), Math.max(1, Math.min(G.nC, p[1]))];
+    lihatSel(b[0], b[1]); pilih(luas ? G.sel.a : b, b);          // gulir dulu supaya gambar langsung benar
+  }
+  function pergi(txt) {
+    const m = /^\s*(?:(?:'([^']+)'|([^!]+))!)?\$?([A-Za-z]{1,3})\$?(\d+)(?::\$?([A-Za-z]{1,3})\$?(\d+))?\s*$/.exec(txt || '');
+    if (!m) { pesan('Alamat tidak dikenal'); return; }
+    const nm = m[1] || m[2];
+    if (nm) { const sh = W.wb.sheet(nm.trim()); if (!sh || sh.external) { pesan('Sheet "' + nm + '" tidak ada'); return; } if (sh !== W.sh) ganti(sh); }
+    const r = +m[4], c = col2n(m[3].toUpperCase());
+    const r2 = m[6] ? +m[6] : r, c2 = m[5] ? col2n(m[5].toUpperCase()) : c;
+    lihatSel(r, c); pilih([r, c], [r2, c2]); W.E.badan.focus({ preventScroll: true });
+  }
+  function infoSel() {
+    const G = W.sh._xv, S = selRect(), E = W.E; if (!S) return;
+    const [r, c] = G.sel.b;
+    const alamat = n2col(S[1]) + S[0] + (S[0] !== S[2] || S[1] !== S[3] ? ':' + n2col(S[3]) + S[2] : '');
+    if (document.activeElement !== E.alamat) E.alamat.value = alamat;
+    const f = W.wb.formulaText(W.sh, r, c);
+    const d = tampil(W.sh, r, c);
+    let isi = f || '';
+    if (!isi && d.v !== null && d.v !== undefined) isi = OECalc.isErr(d.v) ? d.v.c : typeof d.v === 'number' ? OECalc.generalText(d.v) : String(d.v);
+    E.isi.textContent = isi;
+    E.isi.title = f ? 'Nilai: ' + d.t : '';
+    // statistik pilihan (seperti bilah status Excel)
+    let jum = 0, n = 0, isiN = 0;
+    const rMax = Math.min(S[2], W.sh.maxR || S[2]), cMax = Math.min(S[3], W.sh.maxC || S[3]);
+    const total = (rMax - S[0] + 1) * (cMax - S[1] + 1);
+    if (total > 1 && total <= 2000000) {
+      for (let rr = S[0]; rr <= rMax; rr++) {
+        if (G.Y[rr + 1] === G.Y[rr]) continue;
+        for (let cc = S[1]; cc <= cMax; cc++) {
+          const v = W.wb.val(W.sh, rr, cc);
+          if (v === null || v === undefined || v === '') continue;
+          isiN++; if (typeof v === 'number') { jum += v; n++; }
+        }
+      }
+      const fmt = x => OECalc.formatValue(x, Math.abs(x) >= 100 ? '#,##0.00' : '#,##0.0000', W.loc).t;
+      E.stat.textContent = n ? 'Rata-rata ' + fmt(jum / n) + ' · Hitung ' + isiN.toLocaleString() + ' · Jumlah ' + fmt(jum) : isiN ? 'Hitung ' + isiN.toLocaleString() : '';
+    } else E.stat.textContent = total > 2000000 ? 'Pilihan sangat besar' : '';
+  }
+
+  // ------------------------------------------------------------------ salin
+  function isiSalin() {
+    const S = selRect(); if (!S) return null;
+    const sh = W.sh, G = sh._xv;
+    const r2 = Math.min(S[2], Math.max(sh.maxR, S[0])), c2 = Math.min(S[3], Math.max(sh.maxC, S[1]));
+    const n = (r2 - S[0] + 1) * (c2 - S[1] + 1);
+    if (n > MAX_SALIN) { pesan('Pilihan terlalu besar untuk disalin (' + n.toLocaleString() + ' sel, batas ' + MAX_SALIN.toLocaleString() + ')'); return null; }
+    const baris = [], html = ['<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table>'];
+    for (let r = S[0]; r <= r2; r++) {
+      const sel = [], hs = [];
+      for (let c = S[1]; c <= c2; c++) {
+        const d = tampil(sh, r, c);
+        sel.push(/[\t\n"]/.test(d.t) ? '"' + d.t.replace(/"/g, '""') + '"' : d.t);
+        const v = d.v;
+        if (typeof v === 'number') {
+          const tgl = /[dmyhs]/i.test((gayaXf(W.wb, sh.style(r, c)).fmt || '').replace(/"[^"]*"|\[[^\]]*\]/g, '')) && !/^[#0.,% ?]+$/.test(gayaXf(W.wb, sh.style(r, c)).fmt);
+          hs.push('<td x:num="' + v + '"' + (tgl ? ' style="mso-number-format:\'Short Date\'"' : '') + '>' + esc(d.t) + '</td>');
+        } else hs.push('<td' + (typeof v === 'string' ? ' style="mso-number-format:\'\\@\'"' : '') + '>' + esc(d.t) + '</td>');
+      }
+      baris.push(sel.join('\t')); html.push('<tr>' + hs.join('') + '</tr>');
+    }
+    html.push('</table></body></html>');
+    return { teks: baris.join('\r\n'), html: html.join(''), n };
+  }
+  function salin() {
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    if (!ok) {
+      const isi = isiSalin(); if (!isi) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(isi.teks).then(() => pesan(isi.n.toLocaleString() + ' sel disalin (teks)'), () => pesan('Gagal menyalin'));
+    }
+  }
+
+  return { buka, tutup, lokal, _isiSalin: () => isiSalin(), _pilih: (a, b) => pilih(a, b), _pergi: t => pergi(t), _status: () => W };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = XV;
 </script>
 <script>
 /* ===========================================================================
@@ -2272,11 +4537,11 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
   function renderPlan() {
     var P = S.data.plan, T = P.target, F = P.faktor;
     var w = el('formTarget'); w.innerHTML = '';
-    field(w, 'Target produksi ore', 'WMT/bulan', inputAngka(T.produksi, function (v) { T.produksi = v; ubah(); infoTarget(); }, { placeholder: 'mis. 150378' }));
-    field(w, 'Target TMM', 'WMT/bulan', inputAngka(T.tmm, function (v) { T.tmm = v; ubah(); infoTarget(); }, { placeholder: 'mis. 172347' }));
+    field(w, 'Target produksi ore', 'WMT/bulan', inputAngka(T.produksi, function (v) { T.produksi = v; ubah(); infoTarget(); }, { placeholder: 'mis. 150000' }));
+    field(w, 'Target TMM', 'WMT/bulan', inputAngka(T.tmm, function (v) { T.tmm = v; ubah(); infoTarget(); }, { placeholder: 'mis. 175000' }));
     field(w, 'Produktivitas alat ANTAM', 'rasio', inputAngka(T.rasioA, function (v) { T.rasioA = v; ubah(); infoTarget(); }));
     field(w, 'Produktivitas alat BUMD', 'rasio', inputAngka(T.rasioB, function (v) { T.rasioB = v; ubah(); infoTarget(); }));
-    field(w, 'Target barging BUMD', 'WMT/bulan', inputAngka(T.barging, function (v) { T.barging = v; ubah(); }, { placeholder: 'mis. 170000' }));
+    field(w, 'Target barging BUMD', 'WMT/bulan', inputAngka(T.barging, function (v) { T.barging = v; ubah(); }, { placeholder: 'mis. 150000' }));
     field(w, 'Porsi rencana barging dari ETO', '0–1, sisanya EFO', inputAngka(T.porsiEto, function (v) { T.porsiEto = v; ubah(); }));
     field(w, 'Kapasitas rata-rata tongkang', 'WMT/unit (PORT)', inputAngka(P.kapasitasTongkang, function (v) { P.kapasitasTongkang = v; ubah(); }));
     var info = document.createElement('div'); info.className = 'kecil muted'; info.style.gridColumn = '1/-1'; info.id = 'infoTarget';
@@ -2886,37 +5151,158 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     }).length;
   }
   function progres(p, t) { el('progresBar').style.width = Math.round(p * 100) + '%'; el('progresTxt').textContent = t; }
-  async function unduh() {
-    if (S.sibuk) return; S.sibuk = true;
-    var btn = el('btnUnduh'); btn.disabled = true; el('unduhProses').hidden = false; el('unduhHasil').hidden = true;
+  function namaBerkas() { var p = S.bulan.split('-'); return '1_on_1_Nikel_OE_' + p[0] + '_' + BULAN_PJG[+p[1] - 1] + '_sd_' + S.cutoff.slice(8) + '.xlsx'; }
+  function simpanBerkas(nama, bytes) {
+    var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = nama; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
+  }
+  // selama menyusun Excel isian dikunci: ringkasan bulan lain dihitung dengan meminjam status halaman (denganBulan)
+  function kunciHalaman(on) {
+    document.body.classList.toggle('sibuk', on);
+    if (on && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+
+  /* ---------- WF YTD: ringkasan bulan tertutup ---------- */
+  // sidik isian (tanpa ringkasan): berubah bila isian bulan itu diubah -> ringkasan dihitung ulang
+  function kanon(v) {
+    if (Array.isArray(v)) return '[' + v.map(kanon).join(',') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).filter(function (k) { return v[k] !== undefined; }).sort().map(function (k) { return JSON.stringify(k) + ':' + kanon(v[k]); }).join(',') + '}';
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  async function sidik(data) {
+    var d = Object.assign({}, data || {}); delete d.ringkasan;
+    var h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(kanon(d))));
+    return Array.from(h.slice(0, 12)).map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
+  }
+  // jalankan fn dengan status bulan lain (tanpa menggambar ulang halaman), lalu kembalikan status bulan yang dibuka
+  async function denganBulan(ym, rowData, tetangga, fn) {
+    var sim = { bulan: S.bulan, data: S.data, cutoff: S.cutoff, tetangga: S.tetangga, loaderAuto: S.loaderAuto, mv: S.mv };
+    S.bulan = ym; S.data = gabung(dataKosong(), rowData || {}); S.cutoff = akhirBulan(ym); S.tetangga = tetangga || {}; S.loaderAuto = null; S.mv = new Map();
+    try { return await fn(); }
+    finally { S.bulan = sim.bulan; S.data = sim.data; S.cutoff = sim.cutoff; S.tetangga = sim.tetangga; S.loaderAuto = sim.loaderAuto; S.mv = sim.mv; }
+  }
+  // susun workbook bulan ym sebulan penuh (isian + Minerva), hitung, ambil nilai WF MTD
+  async function hitungRingkasan(tpl, ym, rowData, prog) {
+    var tet = {};
+    try {
+      var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + bulanGeser(ym, -1) + ',' + bulanGeser(ym, 1) + ')&select=bulan,ppt:data->ppt', { method: 'GET' });
+      (rows || []).forEach(function (r) { tet[r.bulan] = r.ppt || {}; });
+    } catch (e) { if (e.jenis === 'sesi') throw e; }
+    return denganBulan(ym, rowData, tet, async function () {
+      var hari = hariBulan(ym), akhir = akhirBulan(ym);
+      var ex = await kumpulkan('exca', hari, function (a, b) { prog(0.45 * a / b, 'laporan excavator ' + a + '/' + b); });
+      var tr = await kumpulkan('truck', hari, function (a, b) { prog(0.45 + 0.4 * a / b, 'laporan truck ' + a + '/' + b); });
+      var bg = { header: [], rows: [] };
+      try { var hb = await ambilMinerva('barge', { dari: ym + '-01', sampai: akhir }); if (!hb.kosong && hb.rows.length) bg = hb; }
+      catch (e) { if (e.jenis === 'sesi') throw e; }
+      S.loaderAuto = OE1.pilihLoader(ex, hari);
+      var data = dataGenerator(); data.penuh = true; data.cutoff = akhir; data.minerva = { exca: ex, truck: tr, barge: bg }; data.catatan = [];
+      prog(0.87, 'menyusun & menghitung workbook');
+      var s = await OE1.susunWorkbook(tpl, data);
+      var wb = await OECalc.load(OE1.bagianWorkbook(s));
+      var rk = OE1.ringkasanWf(function (ref) { return wb.get('WF MTD', ref); });
+      rk.cutoff = akhir; rk.gagalHari = ex.gagal.length + tr.gagal.length;
+      prog(1, 'selesai');
+      return rk;
+    });
+  }
+  // simpan ringkasan ke baris bulan itu (isian lain ikut dikirim apa adanya). Bila isian berubah sejak dibaca, tidak disimpan.
+  async function simpanRingkasan(ym, rowData, rk, updatedAt) {
+    if (updatedAt) {
+      var cek = await rest('/rest/v1/oe_1on1?bulan=eq.' + ym + '&select=updated_at', { method: 'GET' });
+      if (!cek || !cek[0] || cek[0].updated_at !== updatedAt) throw galat('isian ' + namaBulan(ym) + ' berubah selama dihitung', 'berubah');
+    }
+    await rest('/rest/v1/oe_1on1?on_conflict=bulan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ bulan: ym, data: Object.assign({}, rowData, { ringkasan: rk }) })
+    });
+  }
+  // bulan tertutup yang dipakai WF YTD bulan ini: ringkasan tersimpan dipakai bila isian tidak berubah, selain itu dihitung ulang
+  function bulanYtd(ym) {
+    var th = +ym.slice(0, 4), bl = +ym.slice(5), Y = OE1.YTD;
+    if (th < Y.TAHUN_DATA) return [];
+    var dari = th === Y.TAHUN_DATA ? +Y.MULAI.slice(5) : 1, out = [];
+    for (var m = dari; m < bl; m++) out.push(th + '-' + pad(m));
+    return out;
+  }
+  async function siapkanYtd(tpl, versi, log, prog) {
+    var hasil = { tahun: +S.bulan.slice(0, 4), bulan: {} }, daftar = bulanYtd(S.bulan);
+    if (!daftar.length) return hasil;
+    var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + daftar.join(',') + ')&select=bulan,data,updated_at', { method: 'GET' }) || [];
+    for (var i = 0; i < daftar.length; i++) {
+      var ym = daftar[i], m = +ym.slice(5), row = rows.filter(function (r) { return r.bulan === ym; })[0];
+      if (!row || !row.data) { log.push('WF YTD ' + namaBulan(ym) + ': tidak ada isian di sistem, kolom bulan itu kosong (ditandai "belum ada")'); continue; }
+      var hash = await sidik(row.data), rk = row.data.ringkasan;
+      if (rk && rk.v === 1 && rk.hash === hash && rk.tpl === versi) { hasil.bulan[m] = rk; log.push('WF YTD ' + namaBulan(ym) + ': ringkasan tersimpan (dihitung ' + jamWit(rk.dihitung) + ')'); continue; }
+      var sub = (function (i, ym) { return function (p, t) { prog((i + p) / daftar.length, 'Ringkasan ' + namaBulan(ym) + ' untuk WF YTD: ' + t); }; })(i, ym);
+      rk = await hitungRingkasan(tpl, ym, row.data, sub);
+      rk.v = 1; rk.hash = hash; rk.tpl = versi; rk.dihitung = new Date().toISOString(); rk.sumber = 'Sistem';
+      hasil.bulan[m] = rk;
+      var ket = '';
+      if (rk.gagalHari) ket = ' · ' + rk.gagalHari + ' laporan Minerva gagal diambil, ringkasan tidak disimpan (dihitung lagi saat unduh berikutnya)';
+      else if (S.admin) { try { await simpanRingkasan(ym, row.data, rk, row.updated_at); ket = ' dan disimpan'; } catch (e) { if (e.jenis === 'sesi') throw e; ket = ' · tidak disimpan (' + pesan(e) + '); dihitung lagi saat unduh berikutnya'; } }
+      else ket = ' (hanya admin yang menyimpan ringkasan)';
+      log.push('WF YTD ' + namaBulan(ym) + ': ringkasan dihitung dari isian + Minerva sebulan penuh' + ket + (rk.galat && rk.galat.length ? ' · sel error di WF MTD: ' + rk.galat.join(', ') : ''));
+    }
+    return hasil;
+  }
+
+  /* ---------- susun Excel (dipakai Unduh & Lihat) ---------- */
+  async function susunExcel(log) {
+    if (S.kotor) await simpan();
+    progres(0.01, 'Mengambil template…');
+    var tpl = await ambilTemplate();
+    var versi = OE1.versiTemplate(await OE1.unzip(tpl).text('xl/workbook.xml'));
+    var ytd = versi >= 6 ? await siapkanYtd(tpl, versi, log, function (p, t) { progres(0.02 + 0.3 * p, t); }) : null;
+    var a0 = ytd && bulanYtd(S.bulan).length ? 0.32 : 0.03;
+    var hari = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; });
+    var ex = await kumpulkan('exca', hari, function (a, b) { progres(a0 + (0.5 - a0 / 2) * 0.5 * a / b, 'Laporan excavator Minerva ' + a + '/' + b); });
+    var a1 = a0 + (0.5 - a0 / 2) * 0.5;
+    var tr = await kumpulkan('truck', hari, function (a, b) { progres(a1 + (0.68 - a1) * a / b, 'Laporan truck Minerva ' + a + '/' + b); });
+    progres(0.69, 'Daftar tongkang Minerva…');
+    var bg = { header: [], rows: [] }, bgCatatan = '';
+    try {
+      var hb = await ambilMinerva('barge', { dari: mulai(), sampai: S.cutoff });
+      if (hb.kosong || !hb.rows.length) bgCatatan = 'Minerva tidak mengirim daftar tongkang' + (hb.pesan ? ' (' + hb.pesan.slice(0, 120) + ')' : '');
+      else bg = hb;
+    } catch (e) { if (e.jenis === 'sesi') throw e; bgCatatan = 'Daftar tongkang gagal diambil: ' + e.message; }
+    S.loaderAuto = OE1.pilihLoader(ex, hari);
+    var efo = OE1.porsiEfo(ex);
+    var data = dataGenerator(); data.minerva = { exca: ex, truck: tr, barge: bg }; data.catatan = [];
+    if (ytd) data.ytd = ytd;
+    progres(0.71, 'Menyusun workbook…');
+    var s = await OE1.susunWorkbook(tpl, data, function (p, t) { progres(0.71 + 0.05 * p, t); });
+    // hitung semua rumus: untuk View Excel dan supaya angka sudah tersimpan di berkas (tampil walau Protected View)
+    var wb = null, galatHitung = null;
+    try {
+      progres(0.76, 'Menghitung rumus…');
+      wb = await OECalc.load(OE1.bagianWorkbook(s));
+      await wb.calcAll(function (p) { progres(0.78 + 0.15 * p, 'Menghitung rumus… ' + Math.round(p * 100) + '%'); });
+      var baca = OE1.bagianWorkbook(s);
+      for (var i = 0; i < wb.sheets.length; i++) {
+        var sh = wb.sheets[i];
+        if (/^Minerva /.test(sh.name) || !sh.fm.size || !sh.path) continue;       // tabel Minerva sudah bernilai
+        s.changed.set(sh.path, OECalc.injectValues(wb, sh, await baca(sh.path)));
+      }
+    } catch (e) { galatHitung = e; wb = null; if (window.console) console.error(e); }
+    var bytes = await OE1.kemasWorkbook(s, function (p, t) { progres(0.93 + 0.07 * p, t); });
+    return { nama: namaBerkas(), bytes: bytes, wb: wb, galatHitung: galatHitung, data: data, ex: ex, tr: tr, bg: bg, bgCatatan: bgCatatan, efo: efo, hari: hari, versi: versi };
+  }
+  async function unduh() { return jalankanExcel('unduh'); }
+  async function lihat() { return jalankanExcel('lihat'); }
+  async function jalankanExcel(mode) {
+    if (S.sibuk) return; S.sibuk = true; kunciHalaman(true);
+    var btn = el('btnUnduh'), btn2 = el('btnLihat'); btn.disabled = true; btn2.disabled = true;
+    el('unduhProses').hidden = false; el('unduhHasil').hidden = true; renderArsip();
     var log = [];
     try {
-      if (S.kotor) await simpan();
-      progres(0.02, 'Mengambil template…');
-      var tpl = await ambilTemplate();
-      var hari = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; });
-      var ex = await kumpulkan('exca', hari, function (a, b) { progres(0.04 + 0.33 * a / b, 'Laporan excavator Minerva ' + a + '/' + b); });
-      var tr = await kumpulkan('truck', hari, function (a, b) { progres(0.37 + 0.33 * a / b, 'Laporan truck Minerva ' + a + '/' + b); });
-      progres(0.71, 'Daftar tongkang Minerva…');
-      var bg = { header: [], rows: [] }, bgCatatan = '';
-      try {
-        var hb = await ambilMinerva('barge', { dari: mulai(), sampai: S.cutoff });
-        if (hb.kosong || !hb.rows.length) bgCatatan = 'Minerva tidak mengirim daftar tongkang' + (hb.pesan ? ' (' + hb.pesan.slice(0, 120) + ')' : '');
-        else bg = hb;
-      } catch (e) { if (e.jenis === 'sesi') throw e; bgCatatan = 'Daftar tongkang gagal diambil: ' + e.message; }
-      S.loaderAuto = OE1.pilihLoader(ex, hari);
-      var efo = OE1.porsiEfo(ex);
-      var data = dataGenerator(); data.minerva = { exca: ex, truck: tr, barge: bg }; data.catatan = [];
-      progres(0.74, 'Menyusun workbook…');
-      var out = await OE1.isiTemplate(tpl, data, function (p, t) { progres(0.74 + 0.26 * p, t); });
-      var p = S.bulan.split('-');
-      var nama = '1_on_1_Nikel_OE_' + p[0] + '_' + BULAN_PJG[+p[1] - 1] + '_sd_' + S.cutoff.slice(8) + '.xlsx';
-      var blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = nama; document.body.appendChild(a); a.click();
-      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
-      progres(1, 'Selesai · ' + nama + ' (' + angka(out.length / 1048576, 1) + ' MB)');
+      var X = await susunExcel(log);
+      var ex = X.ex, tr = X.tr, bg = X.bg, bgCatatan = X.bgCatatan, hari = X.hari, efo = X.efo, data = X.data, nama = X.nama;
+      if (mode === 'unduh') simpanBerkas(nama, X.bytes);
+      progres(1, (mode === 'unduh' ? 'Selesai · ' : 'Siap dilihat · ') + nama + ' (' + angka(X.bytes.length / 1048576, 1) + ' MB)');
       // catatan
-      log.push('Berkas: ' + nama + ' · ' + angka(out.length / 1048576, 1) + ' MB · data ' + tglPendek(mulai()) + ' s.d. ' + tglPendek(S.cutoff) + (data.penuh ? ' · rencana sebulan penuh' : ' · rencana dipotong sampai cut-off'));
+      log.unshift('Berkas: ' + nama + ' · ' + angka(X.bytes.length / 1048576, 1) + ' MB · data ' + tglPendek(mulai()) + ' s.d. ' + tglPendek(S.cutoff) + (data.penuh ? ' · rencana sebulan penuh' : ' · rencana dipotong sampai cut-off') + (mode === 'lihat' ? ' · dibuka di View Excel' : ''));
       log.push('Minerva excavator: ' + ex.rows.length.toLocaleString('id-ID') + ' baris' + (ex.kosong.length ? ' · tanpa data: ' + ex.kosong.map(tglPendek).join(', ') : '') + (ex.gagal.length ? ' · GAGAL: ' + ex.gagal.join(', ') : ''));
       log.push('Minerva truck: ' + tr.rows.length.toLocaleString('id-ID') + ' baris' + (tr.kosong.length ? ' · tanpa data: ' + tr.kosong.map(tglPendek).join(', ') : '') + (tr.gagal.length ? ' · GAGAL: ' + tr.gagal.join(', ') : ''));
       log.push('Tongkang: ' + hitungTongkang(bg) + ' selesai ' + tglPendek(mulai()) + '–' + tglPendek(S.cutoff) + ' masuk Excel (dari ' + bg.rows.length + ' baris Minerva)' + (bgCatatan ? ' · ' + bgCatatan : ''));
@@ -2927,6 +5313,8 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
       var nTongkang = hitungTongkang(bg), bargingQ = hari.reduce(function (t, d) { var x = data.act.qaqc[d]; return t + (x && x.barging || 0); }, 0);
       var bargingNol = nTongkang > 0 && !bargingQ;
       if (bargingNol) log.push('PERINGATAN: barging BUMD 0 WMT (berkas QAQC dan isian manual), padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Barging aktual, PORT loading rate, waterfall shipment, dan biaya barging di Excel ikut 0.');
+      if (X.wb) log.push('Rumus dihitung di halaman: ' + X.wb.nFormula.toLocaleString('id-ID') + ' sel' + (X.wb.diag.circular.length ? ' · rujukan melingkar: ' + X.wb.diag.circular.slice(0, 5).join(', ') : '') + (X.wb.diag.unknownFn.size ? ' · fungsi tidak dikenal: ' + Array.from(X.wb.diag.unknownFn.keys()).join(', ') : ''));
+      else log.push('Rumus TIDAK dihitung di halaman (' + pesan(X.galatHitung) + '): berkas tetap lengkap, angka muncul setelah Enable Editing di Excel.');
       (data.catatan || []).forEach(function (t) { log.push(t); });
       log.push('');
       log.push('Tanggal     Loader ANTAM  Loader BUMD  Barging BUMD        Porsi EFO');
@@ -2935,17 +5323,26 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
           ((L.barging.join(', ') || '—') + '                    ').slice(0, 20) + (efo[d] != null ? angka(efo[d] * 100, 1) + '%' : '—') + o); });
       el('logUnduh').textContent = log.join('\n');
       el('unduhHasil').hidden = false;
-      el('unduhHasil').innerHTML = '<div class="banner ok"><div>Excel terunduh. Saat dibuka, Excel menampilkan pita kuning <b>Protected View</b> (berkas dari internet): angka baru muncul setelah <b>Enable Editing</b> diklik, karena semua rumus dihitung saat itu (beberapa detik). Setelah angka muncul, tekan <b>Ctrl+S</b> sekali supaya hasil hitungan ikut tersimpan di berkas sebelum dikirim. Loader dan porsi EFO tercatat di bawah.</div></div>' +
-        (ex.gagal.length || tr.gagal.length ? '<div class="banner warn">Sebagian hari gagal diambil dari Minerva. Unduh ulang untuk mencoba lagi.</div>' : '') +
-        (bgCatatan && !bg.rows.length ? '<div class="banner warn">' + esc(bgCatatan) + '. Sheet Minerva Barges kosong; unduh ulang untuk mencoba lagi.</div>' : '') +
-        (bargingNol ? '<div class="banner warn">Barging BUMD 0 WMT sebulan, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Isi angka barging harian di tab QAQC harian (isian manual) lalu unduh ulang.</div>' : '');
+      var info = X.wb ? 'Angka hasil hitung sudah ikut tersimpan di berkas, jadi langsung terlihat walau Excel membukanya dalam <b>Protected View</b>. Saat <b>Enable Editing</b> diklik, Excel menghitung ulang semua rumus (beberapa detik).' :
+        'Saat dibuka, Excel menampilkan pita kuning <b>Protected View</b>: angka baru muncul setelah <b>Enable Editing</b> diklik, karena semua rumus dihitung saat itu. Setelah angka muncul, tekan <b>Ctrl+S</b> sekali supaya hasil hitungan ikut tersimpan di berkas sebelum dikirim.';
+      el('unduhHasil').innerHTML = (mode === 'unduh' ? '<div class="banner ok"><div>Excel terunduh. ' + info + ' Loader dan porsi EFO tercatat di bawah.</div></div>' :
+        X.wb ? '<div class="banner ok"><div>Workbook dibuka di View Excel. <button class="btn kecil" id="btnBukaLagi">Buka lagi</button> <button class="btn kecil primary" id="btnUnduhLihat">Unduh berkas ini</button></div></div>' :
+          '<div class="banner err"><div>View Excel tidak bisa menghitung rumus: ' + esc(pesan(X.galatHitung)) + '. <button class="btn kecil primary" id="btnUnduhLihat">Unduh berkasnya saja</button></div></div>') +
+        (ex.gagal.length || tr.gagal.length ? '<div class="banner warn">Sebagian hari gagal diambil dari Minerva. ' + (mode === 'unduh' ? 'Unduh' : 'Susun') + ' ulang untuk mencoba lagi.</div>' : '') +
+        (bgCatatan && !bg.rows.length ? '<div class="banner warn">' + esc(bgCatatan) + '. Sheet Minerva Barges kosong; ' + (mode === 'unduh' ? 'unduh' : 'susun') + ' ulang untuk mencoba lagi.</div>' : '') +
+        (bargingNol ? '<div class="banner warn">Barging BUMD 0 WMT sebulan, padahal Minerva mencatat ' + nTongkang + ' tongkang selesai. Isi angka barging harian di tab QAQC harian (isian manual) lalu ' + (mode === 'unduh' ? 'unduh' : 'susun') + ' ulang.</div>' : '');
+      var bukaViewer = function () { XV.buka({ wb: X.wb, judul: nama + ' · nilai hasil hitung di halaman', sheet: S.xvSheet || 'WF MTD', onSheet: function (n) { S.xvSheet = n; }, onUnduh: function () { simpanBerkas(nama, X.bytes); } }); };
+      if (el('btnUnduhLihat')) el('btnUnduhLihat').onclick = function () { simpanBerkas(nama, X.bytes); };
+      if (el('btnBukaLagi')) el('btnBukaLagi').onclick = bukaViewer;
+      if (mode === 'lihat' && X.wb) bukaViewer();
       renderLoader();
     } catch (e) {
       progres(0, '');
       el('unduhHasil').hidden = false;
       var saran = e.jenis === 'fungsi' ? ' Pasang Edge Function oe-minerva (dokumentasi §25).' : e.jenis === 'token' ? ' Periksa Secret MINERVA_TOKEN di Supabase.' : '';
-      el('unduhHasil').innerHTML = '<div class="banner err">Unduh gagal: ' + esc(pesan(e)) + esc(saran) + '</div>';
-    } finally { S.sibuk = false; btn.disabled = false; }
+      el('unduhHasil').innerHTML = '<div class="banner err">' + (mode === 'unduh' ? 'Unduh' : 'View Excel') + ' gagal: ' + esc(pesan(e)) + esc(saran) + '</div>';
+      if (log.length) el('logUnduh').textContent = log.join('\n');
+    } finally { S.sibuk = false; kunciHalaman(false); btn.disabled = false; btn2.disabled = false; renderRingkas(); renderArsip(); }
   }
 
   /* ================================================================ RINGKASAN */
@@ -2987,16 +5384,28 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     it.push([nDra || nWm ? 'ok' : 'warn', 'DRA & WM', nDra || nWm ? 'DRA ' + nDra + '/' + JALAN.length + ' jalan · WM ' + nWm + '/' + SUMP.length + ' sump terisi.' : 'Kosong (opsional).']);
     el('cekList').innerHTML = it.map(function (x) { return '<div class="cek ' + x[0] + '"><span class="ik">' + (x[0] === 'ok' ? '✓' : x[0] === 'err' ? '!' : '•') + '</span><div><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></div></div>'; }).join('');
     el('unduhInfo').textContent = 'Data ' + tglPendek(mulai()) + ' s.d. ' + tglPendek(S.cutoff) + ' ' + S.bulan.slice(0, 4);
-    el('btnUnduh').disabled = S.tplAda === false || S.sibuk;
+    el('btnUnduh').disabled = el('btnLihat').disabled = S.tplAda === false || S.sibuk;
+    // WF YTD: bulan tertutup yang diambil dari sistem
+    var ytdB = bulanYtd(S.bulan);
+    if (ytdB.length && S.arsip) {
+      var ada = ytdB.filter(function (ym) { return S.arsip.some(function (r) { return r.bulan === ym; }); });
+      var siap = ytdB.filter(function (ym) { return S.arsip.some(function (r) { return r.bulan === ym && r.rk; }); });
+      var tanpa = ytdB.filter(function (ym) { return ada.indexOf(ym) < 0; });
+      var cek = document.createElement('div');
+      cek.className = 'cek ' + (tanpa.length ? 'warn' : 'ok');
+      cek.innerHTML = '<span class="ik">' + (tanpa.length ? '•' : '✓') + '</span><div><b>WF YTD</b><small>' + esc('Jan–Agu 2026 dari berkas QAQC & 1on1 (template). ' +
+        ytdB.map(function (ym) { return BLN[+ym.slice(5) - 1] + (siap.indexOf(ym) >= 0 ? ' ✓ ringkasan tersimpan' : ada.indexOf(ym) >= 0 ? ' · dihitung saat unduh' : ' · tidak ada isian'); }).join(' · ') + '.') + '</small></div>';
+      el('cekList').appendChild(cek);
+    }
   }
   function renderSemua() { renderRingkas(); renderPlan(); renderPpt(); renderQaqc(); renderLoader(); renderBiaya(); renderDrawm(); badge(); renderArsip(); }
 
   /* ================================================================ ARSIP BULAN */
   // yang tersimpan hanya isian (tabel oe_1on1); Excel bulan lalu disusun ulang saat diunduh
   async function muatArsip() {
-    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by&order=bulan.desc', { method: 'GET' }) || []; }
+    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by,rk:data->ringkasan->>dihitung&order=bulan.desc', { method: 'GET' }) || []; }
     catch (e) { S.arsip = null; S.arsipGalat = pesan(e); }
-    renderArsip();
+    renderArsip(); renderRingkas();
   }
   function renderArsip() {
     var t = el('tblArsip'); if (!t) return;
@@ -3005,26 +5414,58 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     var ini = hariIniWit().slice(0, 7);
     var rows = S.arsip.filter(function (r) { return r.bulan < ini; });
     if (!rows.length) { t.innerHTML = '<tbody><tr><td class="muted">Belum ada bulan lalu yang tersimpan. Isian bulan ini otomatis masuk arsip saat bulan berganti.</td></tr></tbody>'; return; }
-    t.innerHTML = '<thead><tr><th>Bulan</th><th>Isian terakhir diubah</th><th></th></tr></thead><tbody>' + rows.map(function (r) {
-      var aktif = r.bulan === S.bulan;
+    var mati = S.sibuk || S.tplAda === false ? ' disabled' : '';
+    t.innerHTML = '<thead><tr><th>Bulan</th><th>Isian terakhir diubah</th><th>YTD</th><th></th></tr></thead><tbody>' + rows.map(function (r) {
+      var aktif = r.bulan === S.bulan, pakaiYtd = r.bulan >= OE1.YTD.MULAI;
+      var ytd = !pakaiYtd ? '<span class="kecil muted">dari berkas (template)</span>' :
+        (r.rk ? '<span class="pil ok">✓ ' + esc(jamWit(r.rk)) + '</span>' : '<span class="kecil muted">dihitung saat unduh bulan berikutnya</span>') +
+        (S.admin ? ' <button class="btn kecil" data-ytd="' + esc(r.bulan) + '"' + mati + ' title="Hitung ulang ringkasan bulan ini (mis. setelah data Minerva dikoreksi)">Hitung ulang</button>' : '');
       return '<tr><td><b>' + esc(namaBulan(r.bulan)) + '</b>' + (aktif ? ' <span class="pil">sedang dibuka</span>' : '') + '</td><td class="kecil muted">' + esc(jamWit(r.updated_at)) + (r.updated_by ? ' · ' + esc(r.updated_by) : '') + '</td>' +
-        '<td style="text-align:right;white-space:nowrap">' + (aktif ? '' : '<button class="btn kecil" data-buka="' + esc(r.bulan) + '">Buka isian</button> ') +
-        '<button class="btn kecil primary" data-unduh="' + esc(r.bulan) + '"' + (S.sibuk || S.tplAda === false ? ' disabled' : '') + '>Unduh Excel 1–' + jumlahHari(r.bulan) + ' ' + BLN[+r.bulan.slice(5) - 1] + '</button></td></tr>';
+        '<td>' + ytd + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + (aktif ? '' : '<button class="btn kecil" data-buka="' + esc(r.bulan) + '"' + (S.sibuk ? ' disabled' : '') + '>Buka isian</button> ') +
+        '<button class="btn kecil" data-lihat="' + esc(r.bulan) + '"' + mati + '>Lihat</button> ' +
+        '<button class="btn kecil primary" data-unduh="' + esc(r.bulan) + '"' + mati + '>Unduh Excel 1–' + jumlahHari(r.bulan) + ' ' + BLN[+r.bulan.slice(5) - 1] + '</button></td></tr>';
     }).join('') + '</tbody>';
     t.querySelectorAll('button[data-buka]').forEach(function (b) { b.onclick = function () { bukaBulan(b.dataset.buka); }; });
     t.querySelectorAll('button[data-unduh]').forEach(function (b) { b.onclick = function () { unduhArsip(b.dataset.unduh); }; });
+    t.querySelectorAll('button[data-lihat]').forEach(function (b) { b.onclick = function () { unduhArsip(b.dataset.lihat, 'lihat'); }; });
+    t.querySelectorAll('button[data-ytd]').forEach(function (b) { b.onclick = function () { hitungUlangYtd(b.dataset.ytd); }; });
+  }
+  // admin: hitung ulang ringkasan WF YTD satu bulan (isian bulan itu + Minerva sebulan penuh), simpan
+  async function hitungUlangYtd(ym) {
+    if (S.sibuk || !S.admin) return; S.sibuk = true; kunciHalaman(true);
+    el('unduhProses').hidden = false; el('unduhHasil').hidden = true; el('btnUnduh').disabled = el('btnLihat').disabled = true; renderArsip();
+    pilihTab('ringkas'); el('unduhProses').scrollIntoView({ block: 'center' });
+    try {
+      if (S.kotor) await simpan();
+      var tpl = await ambilTemplate(), versi = OE1.versiTemplate(await OE1.unzip(tpl).text('xl/workbook.xml'));
+      if (versi < 6) throw new Error('Template di penyimpanan belum versi 6 (sheet WF YTD). Unggah template terbaru di tab Template.');
+      var rows = await rest('/rest/v1/oe_1on1?bulan=eq.' + ym + '&select=bulan,data,updated_at', { method: 'GET' });
+      var row = rows && rows[0]; if (!row) throw new Error('Isian ' + namaBulan(ym) + ' tidak ada');
+      var rk = await hitungRingkasan(tpl, ym, row.data, function (p, t) { progres(p, 'Ringkasan ' + namaBulan(ym) + ': ' + t); });
+      if (rk.gagalHari) throw new Error(rk.gagalHari + ' laporan Minerva gagal diambil; coba lagi');
+      rk.v = 1; rk.hash = await sidik(row.data); rk.tpl = versi; rk.dihitung = new Date().toISOString(); rk.sumber = 'Sistem';
+      await simpanRingkasan(ym, row.data, rk, row.updated_at);
+      progres(1, 'Ringkasan ' + namaBulan(ym) + ' tersimpan');
+      el('unduhHasil').hidden = false;
+      el('unduhHasil').innerHTML = '<div class="banner ok"><div>Ringkasan ' + esc(namaBulan(ym)) + ' untuk WF YTD tersimpan: EWH aktual ' + angka(rk.aktual.ewh, 1) + ' jam · produksi ' + angka(rk.aktual.produksi) + ' WMT · penjualan ' + angka(rk.aktual.penjualan) + ' WMT.</div></div>';
+      await muatArsip();
+    } catch (e) {
+      progres(0, ''); el('unduhHasil').hidden = false;
+      el('unduhHasil').innerHTML = '<div class="banner err">Hitung ulang ringkasan gagal: ' + esc(pesan(e)) + '</div>';
+    } finally { S.sibuk = false; kunciHalaman(false); el('btnUnduh').disabled = el('btnLihat').disabled = false; renderRingkas(); renderArsip(); }
   }
   async function bukaBulan(ym, cutoff) {
     if (S.kotor) await simpan();
     setBulan(ym, cutoff); await muat(); muatArsip();
   }
-  async function unduhArsip(ym) {
+  async function unduhArsip(ym, mode) {
     if (S.sibuk) return;
     var akhir = akhirBulan(ym);
     if (ym !== S.bulan || S.cutoff !== akhir) await bukaBulan(ym, akhir);
     el('cbPotong').checked = true;
     pilihTab('ringkas'); el('btnUnduh').scrollIntoView({ block: 'center' });
-    await unduh();
+    await (mode === 'lihat' ? lihat() : unduh());
   }
 
   /* ================================================================ AWAL */
@@ -3046,6 +5487,7 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
     el('inBulan').onchange = async function () { if (!el('inBulan').value) return; bukaBulan(el('inBulan').value); };
     el('inCutoff').onchange = function () { var v = el('inCutoff').value; if (v && v.slice(0, 7) === S.bulan) { S.cutoff = v; S.loaderAuto = null; renderSemua(); } else el('inCutoff').value = S.cutoff; };
     el('btnUnduh').onclick = unduh;
+    el('btnLihat').onclick = lihat;
     el('btnCekLoader').onclick = cekLoader;
     el('fileQaqc').onchange = function () { if (this.files[0]) prosesQaqc(this.files[0]); this.value = ''; };
     el('cbLgo').onchange = function () { S.data.qaqc.lgoKeWaste = this.checked; ubah(); renderQaqc(); };
