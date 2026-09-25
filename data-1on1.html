@@ -271,6 +271,14 @@
   button.d-chip{border:0;cursor:pointer;font-family:var(--font)}
   button.d-chip:hover{box-shadow:inset 0 0 0 1px currentColor}
 
+  /* lima kartu sebaris hanya bila cukup lebar (halaman di dalam bingkai shell ±270 px lebih sempit dari jendela);
+     di bawahnya tiga/dua kolom tanpa sel kosong: kartu terakhir MTD dan kartu kuota melebar */
+  .d-kpi5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px}
+  @media(max-width:1299px){.d-kpi5{grid-template-columns:repeat(3,minmax(0,1fr))}.d-kpi5>.d-kpi-akhir{grid-column:span 2}.d-kpi5>.d-kuota{grid-column:1/-1}}
+  @media(max-width:760px){.d-kpi5{grid-template-columns:repeat(2,minmax(0,1fr))}.d-kpi5>.d-kpi-akhir,.d-kpi5>.d-kuota,#d-ytd .d-kpi5>.d-kpi-jarak{grid-column:1/-1}}
+  @media(max-width:600px){.d-kpi5{grid-template-columns:1fr}.d-kpi5>.d-kpi{grid-column:auto!important}}
+  .d-nw{white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+  .d-kpi-p .d-nw + .d-nw{margin-left:6px}
   .d-kpi4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
   @media(max-width:1100px){.d-kpi4{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:600px){.d-kpi4{grid-template-columns:1fr}}
@@ -4658,7 +4666,8 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
    =========================================================================== */
 const DASH = (function () {
   'use strict';
-  const VERSI = 1;               // naikkan bila isi snapshot berubah: snapshot lama otomatis dihitung ulang
+  const VERSI = 2;               // naikkan bila isi snapshot berubah: snapshot lama otomatis dihitung ulang
+  const VERSI_MIN = 1;           // snapshot versi lama yang masih boleh ditampilkan selama versi baru dihitung
 
   // ================================================================== HITUNG
   // Semua angka rencana, EWH, PA/UA, waterfall, dan YTD dibaca dari workbook 1on1 yang disusun dan dihitung
@@ -4744,6 +4753,58 @@ const DASH = (function () {
       for (const d in out.status[k]) { const o = out.status[k][d]; for (const c in o) o[c] = bulat(o[c], 3); }
     }
     return out;
+  }
+
+  /**
+   * Jarak angkut dari laporan excavator Minerva, per hari shift: rata-rata tertimbang volume (≈ TMM, ton) untuk front ANTAM
+   * (truck 9RD), front PCM (DTR/DTH), dan barging (Activity BARGING). Hasil per hari [Σ jarak×volume, Σ volume berjarak,
+   * Σ volume seluruhnya]; km. Baris tanpa jarak (0/kosong) dan jarak di luar 50 m–10 km (salah catat GPS) tidak dihitung,
+   * tetapi volumenya tetap masuk kolom ketiga supaya cakupan data jarak terlihat.
+   */
+  const JARAK = { MIN: 0.05, MAKS: 10 };
+  function jarakMinerva(ex, hari) {
+    const H = (ex && ex.header) || [];
+    const iD = idx(H, 'Date'), iS = idx(H, 'Shift'), iJ = idx(H, 'StartHour'), iT = idx(H, 'DataType'), iA = idx(H, 'Activity'),
+      iF = idx(H, 'FleetTag'), iV = idx(H, 'Volume'), iX = idx(H, 'Distance');
+    const ada = new Set(hari), out = { A: {}, B: {}, G: {} };
+    if (iV < 0) return out;
+    for (const r of (ex && ex.rows) || []) {
+      if (r[iT] !== 'Volume Data') continue;
+      const v = +r[iV] || 0; if (!(v > 0)) continue;
+      const akt = r[iA], k = akt === 'MINING' ? kontraktor(r[iF]) : akt === 'BARGING' ? 'G' : null;
+      if (!k) continue;
+      const d = tanggalShift(r[iD], r[iS], r[iJ]); if (!d || !ada.has(d)) continue;
+      const x = iX >= 0 ? +r[iX] || 0 : 0, o = out[k][d] || (out[k][d] = [0, 0, 0]);
+      o[2] += v;
+      if (x >= JARAK.MIN && x <= JARAK.MAKS) { o[0] += x * v; o[1] += v; }
+    }
+    for (const k of ['A', 'B', 'G']) for (const d in out[k]) out[k][d] = out[k][d].map(n => bulat(n, 1));
+    return out;
+  }
+  // jumlah per front untuk sekumpulan hari: {A:[sd, sv, vt], B:[…], G:[…]}; isi yang bukan angka diabaikan (snapshot bisa ditulis semua pengguna)
+  const angkaJarak = v => (typeof v === 'number' && isFinite(v) && v >= 0 ? v : 0);
+  function jarakKosong() { return { A: [0, 0, 0], B: [0, 0, 0], G: [0, 0, 0] }; }
+  function jumlahJarak(harian, hari) {
+    const s = jarakKosong();
+    for (const k of ['A', 'B', 'G']) for (const d of hari) {
+      const o = harian && harian[k] && harian[k][d];
+      if (Array.isArray(o)) for (let j = 0; j < 3; j++) s[k][j] += angkaJarak(o[j]);
+    }
+    return s;
+  }
+  function tambahJarak(a, b) {
+    for (const k of ['A', 'B', 'G']) { const o = b && b[k]; if (Array.isArray(o)) for (let j = 0; j < 3; j++) a[k][j] += angkaJarak(o[j]); }
+    return a;
+  }
+  // jumlah satu bulan sah: tiga angka hingga ≥ 0 per front, volume berjarak ≤ volume ≤ 1e8, dan Σ jarak×volume di dalam
+  // jendela jarak (kelonggaran 30 menampung pembulatan 0,1 per hari). Angka buatan di snapshot tidak lolos.
+  function jarakBulanSah(b) {
+    return !!b && typeof b === 'object' && !Array.isArray(b) && ['A', 'B', 'G'].every(k => {
+      const o = b[k];
+      if (!Array.isArray(o) || o.length !== 3 || !o.every(v => typeof v === 'number' && isFinite(v) && v >= 0)) return false;
+      if (o[2] > 1e8 || o[1] > o[2] + 1) return false;
+      return o[0] <= JARAK.MAKS * o[1] + 30 && o[0] >= JARAK.MIN * o[1] - 30;
+    });
   }
 
   /**
@@ -4874,6 +4935,8 @@ const DASH = (function () {
     return {
       v: VERSI, bulan: o.bulan, cutoff: o.cutoff, hari: hariBulan(o.bulan), dibuat: o.dibuat, oleh: o.oleh || '',
       sidik: o.sidik || {}, wb: o.baca, mv: o.mv, sumber: o.sumber, loader: o.loader || {},
+      // jarak bulan-bulan tertutup tahun ini untuk kartu Jarak YTD: {tahun, bulan: {'YYYY-MM': {A,B,G}}, kurang: ['YYYY-MM']}
+      jarakYtd: o.jarakYtd || { tahun: +String(o.bulan).slice(0, 4), bulan: {}, kurang: [] },
       catatan: o.catatan || [], mvKosong: o.mvKosong || [], mvGagal: o.mvGagal || [],
     };
   }
@@ -4990,6 +5053,9 @@ const DASH = (function () {
         unit: Object.entries(unit).sort((p, q) => q[1] - p[1]),
       };
     }
+    // jarak angkut Minerva (snapshot versi 2): MTD dan kemarin per front; YTD dihitung di kartunya (jarakYtdDari)
+    const JH = M.mv && M.mv.jarak;
+    d.jarak = JH && typeof JH === 'object' ? { mtd: ringkasJarak(jumlahJarak(JH, M.hari.slice(0, iCut + 1))), kemarin: ringkasJarak(jumlahJarak(JH, [M.hari[iCut]])) } : null;
     // mingguan (kolom AK..AO sheet Prod): minggu ke-, rentang tanggal, rencana dipotong sampai cut-off
     const Mg = W.prod.minggu, noH = W.prod.mingguHari || [];
     d.minggu = (W.prod.mingguNo || []).map((no, j) => {
@@ -5087,7 +5153,7 @@ const DASH = (function () {
       if (i === 0) b.textContent = r.t;
       else {
         if (r.w) { const k = document.createElement('i'); k.style.background = r.w; if (r.garis) k.className = 'garis'; b.appendChild(k); }
-        const v = document.createElement('b'); v.textContent = r.v; b.appendChild(v);
+        if (r.v != null) { const v = document.createElement('b'); v.textContent = r.v; b.appendChild(v); }
         const l = document.createElement('span'); l.textContent = r.l; b.appendChild(l);
       }
       t.appendChild(b);
@@ -5107,6 +5173,32 @@ const DASH = (function () {
     root.addEventListener('focusin', e => { const m = e.target.closest && e.target.closest('[data-tt]'); if (m) { const r = m.getBoundingClientRect(); tampilTip(m.getAttribute('data-tt'), r.right, r.top); } });
     root.addEventListener('focusout', sembunyiTip);
     window.addEventListener('scroll', sembunyiTip, { passive: true });
+  }
+
+  // ---------------------------------------------------------------- jarak angkut: rata-rata tertimbang dari jumlah [Σ jarak×volume, Σ volume berjarak, Σ volume]
+  // angka di luar jendela jarak (mis. snapshot buatan) tampil '—', bukan angka raksasa
+  const rataJarak = s => { const v = s && s[1] > 0 ? s[0] / s[1] : null; return v != null && isFinite(v) && v >= JARAK.MIN - 0.01 && v <= JARAK.MAKS + 0.01 ? v : null; };
+  const cakupanJarak = s => { const v = s && s[2] > 0 ? s[1] / s[2] : null; return v != null && isFinite(v) && v >= 0 && v <= 1.01 ? Math.min(v, 1) : null; };
+  // pembanding: TMM tanpa jarak dihitung 0 km (seperti rumus Distance di sheet ACT Excel 1on1, yang membagi dengan seluruh volume)
+  const rataNol = s => { const v = s && s[2] > 0 ? s[0] / s[2] : null; return v != null && isFinite(v) && v >= 0 && v <= JARAK.MAKS + 0.01 ? v : null; };
+  const gabJarak = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  function ringkasJarak(S) {
+    const Mn = gabJarak(S.A, S.B);
+    return { A: rataJarak(S.A), B: rataJarak(S.B), M: rataJarak(Mn), G: rataJarak(S.G),
+      cak: { A: cakupanJarak(S.A), B: cakupanJarak(S.B), M: cakupanJarak(Mn), G: cakupanJarak(S.G) },
+      nol: { A: rataNol(S.A), B: rataNol(S.B), M: rataNol(Mn), G: rataNol(S.G) }, S };
+  }
+  // YTD = bulan tertutup tahun ini (M.jarakYtd.bulan, diisi halaman) + MTD; bulan yang belum ada = kurang
+  function jarakYtdDari(M, mtdS) {
+    const Y = M.jarakYtd || {}, th = M.bulan.slice(0, 4), tot = jarakKosong(), kurang = [], tanpaData = [];
+    for (let m = 1; m < +M.bulan.slice(5, 7); m++) {
+      const ym = th + '-' + String(m).padStart(2, '0'), b = Y.bulan && Y.bulan[ym];
+      if (!jarakBulanSah(b)) { kurang.push(ym); continue; }
+      tambahJarak(tot, b);
+      if (!(b.A[1] + b.B[1] + b.G[1] > 0)) tanpaData.push(ym);
+    }
+    tambahJarak(tot, mtdS);
+    return Object.assign(ringkasJarak(tot), { kurang, tanpaData });
   }
 
   // ---------------------------------------------------------------- primitif SVG
@@ -5451,23 +5543,24 @@ const DASH = (function () {
   // ---------------------------------------------------------------- MTD: kartu angka
   function kpiMtd(c) {
     const D = c.D, M = c.M, i = D.iCut, h = M.cutoff, m = D.mtd;
-    const ab = (a, b, d) => `<div class="d-kpi-p">${sw('A')}ANTAM ${escH(fmt(a, d))}<span class="d-sep"></span>${sw('B')}PCM ${escH(fmt(b, d))}</div>`;
+    const ab = (a, b, d) => `<div class="d-kpi-p"><span class="d-nw">${sw('A')}ANTAM ${escH(fmt(a, d))}</span><span class="d-nw">${sw('B')}PCM ${escH(fmt(b, d))}</span></div>`;
     const tile = (label, nilai, satuan, capai, rencana, rinci) => `<div class="d-kpi">
       <div class="d-kpi-l">${escH(label)}</div>
       <div class="d-kpi-v">${escH(fmt(nilai))}<small>${escH(satuan)}</small></div>
       <div class="d-kpi-s">${lencana(capai)}<span>rencana ${escH(fmt(rencana))}</span></div>${rinci}</div>`;
-    let s = '<div class="d-kpi4">';
+    let s = '<div class="d-kpi5">';
     s += tile('Ore', m.ore.T, 'WMT', bagiAman(m.ore.T, m.planOre.T), m.planOre.T, ab(m.ore.A, m.ore.B));
     s += tile('TMM', m.tmm.T, 'WMT', bagiAman(m.tmm.T, m.planTmm.T), m.planTmm.T, ab(m.tmm.A, m.tmm.B));
     s += `<div class="d-kpi"><div class="d-kpi-l">Stripping ratio</div>
       <div class="d-kpi-v">${escH(fmt(D.sr.akt.T, 2))}</div>
       <div class="d-kpi-s"><span>rencana ${escH(fmt(D.sr.plan.T, 2))}</span></div>${ab(D.sr.akt.A, D.sr.akt.B, 2)}</div>`;
+    s += `<div class="d-kpi d-kpi-jarak">${isiJarak('Jarak mining', D.jarak && D.jarak.mtd, D.jarak && D.jarak.kemarin, 'MTD')}</div>`;
     // kemarin
     const oreK = D.ore.T[i], tmmK = D.tmm.T[i], pO = D.planOre.T[i], pT = D.planTmm.T[i], src = D.sumber[h] || {};
     const shf = k => (M.mv && M.mv.shift && M.mv.shift[k] && M.mv.shift[k][h]) || { ds: 0, ns: 0 };
     const ds = shf('A').ds + shf('B').ds, ns = shf('A').ns + shf('B').ns;
     const semO = src.oA === 'minerva' || src.oB === 'minerva', semW = src.wA === 'minerva' || src.wB === 'minerva';
-    s += `<div class="d-kpi"><div class="d-kpi-l">Kemarin · ${escH(HARI[hariKe(h)] + ' ' + tglP(h))}</div>
+    s += `<div class="d-kpi d-kpi-akhir"><div class="d-kpi-l">Kemarin · ${escH(HARI[hariKe(h)] + ' ' + tglP(h))}</div>
       <div class="d-kpi-v">${escH(fmt(oreK))}<small>WMT ore</small></div>
       <div class="d-kpi-s">${lencana(bagiAman(oreK, pO))}<span>target ${escH(fmt(pO))}</span>${semO ? '<span class="d-sem">sementara</span>' : ''}</div>
       <div class="d-kpi-p">TMM ${escH(fmt(tmmK))} ${lencana(bagiAman(tmmK, pT))}${semW ? ' <span class="d-sem">sementara</span>' : ''}</div>
@@ -5573,6 +5666,13 @@ const DASH = (function () {
     s += baris('Ore', F.ore.mtd, 'WMT', F.ore.plan, f0, 1, F.ore.kemarin);
     s += baris('TMM', F.tmm.mtd, 'WMT', F.tmm.plan, f0, 1, F.tmm.kemarin);
     s += baris('Stripping ratio', F.sr.mtd, '', F.sr.plan, f2, 0);
+    if (D.jarak) {
+      const J = D.jarak, ck = J.mtd.cak[k];
+      const tip = daftarTip([{ t: 'Jarak angkut · ' + NAMA[k] }, { v: kmT(J.mtd[k]), l: 'MTD' + (ck != null ? ' · jarak tercatat ' + pct(ck) + ' TMM' : '') },
+        { v: kmT(J.kemarin[k]), l: 'kemarin' }, { v: kmT(J.mtd.nol[k]), l: 'MTD bila TMM tanpa jarak dihitung 0 km (mendekati Excel 1on1)' },
+        { l: 'rata-rata tertimbang TMM, laporan excavator Minerva' }]);
+      s += `<tr data-tt="${tip}"><td>Jarak angkut</td><td class="num"><b>${escH(kmJ(J.mtd[k]))}</b>${J.mtd[k] != null ? '<small>km</small>' : ''}</td><td class="num d-muted">—</td></tr>`;
+    }
     s += '</tbody><tbody class="pisah">';
     s += baris('PA', F.pa.mtd, '', D.planPa, p1, 1, F.pa.kemarin, 0.97);
     s += baris('UA', F.ua.mtd, '', D.planUa, p1, 1, F.ua.kemarin);
@@ -5615,8 +5715,41 @@ const DASH = (function () {
     const tile = (label, akt, plan) => `<div class="d-kpi"><div class="d-kpi-l">${escH(label)}</div>
       <div class="d-kpi-v">${escH(fmt(akt))}<small>WMT</small></div>
       <div class="d-kpi-s">${lencana(bagiAman(akt, plan))}<span>rencana ${escH(fmt(plan))}</span></div></div>`;
-    return '<div class="d-kpi4">' + tile('Ore', Y.ore.totAkt, Y.ore.totPlan) + tile('TMM', Y.tmm.totAkt, Y.tmm.totPlan) +
+    return '<div class="d-kpi5">' + tile('Ore', Y.ore.totAkt, Y.ore.totPlan) + tile('TMM', Y.tmm.totAkt, Y.tmm.totPlan) +
+      '<div class="d-kpi d-kpi-jarak" data-kartu="jarakYtd">' + isiJarakYtd(c) + '</div>' +
       '<div class="d-kpi d-kuota" data-kartu="kuota">' + isiKuota(c) + '</div></div>';
+  }
+  // kartu jarak: angka utama = jarak mining (ANTAM + PCM), tulisan kecil per front dan barging; rincian di tooltip
+  const kmJ = v => (v == null ? '—' : fmt(v, 2));
+  const kmT = v => (v == null ? '—' : fmt(v, 2) + ' km');
+  function isiJarak(label, J, K, periode, catatan) {
+    if (!J) return `<div class="d-kpi-l">${escH(label)}</div><div class="d-kpi-v">—</div><div class="d-kpi-p">${escH(catatan || 'dihitung ulang dengan versi baru')}</div>`;
+    const ck = (v, sat) => (v == null ? '' : ' · jarak tercatat ' + pct(v) + ' ' + (sat || 'TMM'));
+    const rows = [{ t: 'Jarak angkut ' + periode + ' · rata-rata tertimbang TMM' },
+      { v: kmT(J.M), l: 'Mining (ANTAM + PCM)' + ck(J.cak.M), w: WARNA.T },
+      { v: kmT(J.A), l: 'ANTAM' + ck(J.cak.A), w: WARNA.A }, { v: kmT(J.B), l: 'PCM' + ck(J.cak.B), w: WARNA.B },
+      { v: kmT(J.G), l: 'Barging' + ck(J.cak.G, 'volume barging') }];
+    if (K) rows.push({ v: kmT(K.M), l: 'kemarin (mining)' });
+    rows.push({ v: kmT(J.nol.M), l: 'mining bila TMM tanpa jarak dihitung 0 km (mendekati Excel 1on1)' });
+    rows.push({ l: 'Laporan excavator Minerva; jarak kosong atau di luar ' + fmt(JARAK.MIN * 1000) + ' m–' + fmt(JARAK.MAKS) + ' km tidak dihitung' });
+    return `<div data-tt="${daftarTip(rows)}"><div class="d-kpi-l">${escH(label)}</div>
+      <div class="d-kpi-v">${escH(kmJ(J.M))}${J.M != null ? '<small>km</small>' : ''}</div>
+      <div class="d-kpi-p"><span class="d-nw">${sw('A')}ANTAM ${escH(kmT(J.A))}</span><span class="d-nw">${sw('B')}PCM ${escH(kmT(J.B))}</span></div>
+      <div class="d-kpi-p"><span class="d-nw">Barging ${escH(kmT(J.G))}</span></div>${catatan ? `<div class="d-kpi-p"><span class="d-sem">${escH(catatan)}</span></div>` : ''}</div>`;
+  }
+  // 'Jan–Agu' untuk bulan berurutan, selain itu dipisah koma
+  function rentangBulan(daftar) {
+    const n = daftar.map(ym => +ym.slice(5, 7)), urut = n.every((v, i) => !i || v === n[i - 1] + 1);
+    return urut && n.length > 2 ? BLN[n[0] - 1] + '–' + BLN[n[n.length - 1] - 1] : n.map(v => BLN[v - 1]).join(', ');
+  }
+  function isiJarakYtd(c) {
+    const D = c.D, M = c.M;
+    if (!D.jarak) return isiJarak('Jarak mining', null);
+    const Y = jarakYtdDari(M, D.jarak.mtd.S), status = c.opsi.jarakStatus ? c.opsi.jarakStatus() : '';
+    // bulan tertutup yang belum ada: angka YTD tidak ditampilkan dulu supaya tidak menyesatkan
+    if (Y.kurang.length) return `<div class="d-kpi-l">Jarak mining</div><div class="d-kpi-v">—</div>` +
+      `<div class="d-kpi-p" data-jarak-proses>${escH(status || 'menunggu data Minerva ' + rentangBulan(Y.kurang))}</div>`;
+    return isiJarak('Jarak mining', Y, null, 'YTD', Y.tanpaData.length ? 'tanpa data Minerva ' + rentangBulan(Y.tanpaData) : '');
   }
   function isiKuota(c) {
     const K = c.D.kuota, th = c.D.ytd.tahun, admin = c.opsi.admin, ubah = c.st.kuotaUbah;
@@ -5701,7 +5834,9 @@ const DASH = (function () {
     'opex-pertama': grafOpex('pertama'), 'opex-terakhir': grafOpex('terakhir'), 'opex-cr': grafOpex('cr'),
   };
   // kartu yang digambar ulang saat sebuah pilihan berubah
-  const KARTU = { produksi: kartuProduksi, wfMtd: kartuWfMtd, pareto: kartuPareto, bulanan: kartuBulanan, wfYtd: kartuWfYtd, kuota: isiKuota };
+  const KARTU = { produksi: kartuProduksi, wfMtd: kartuWfMtd, pareto: kartuPareto, bulanan: kartuBulanan, wfYtd: kartuWfYtd, kuota: isiKuota, jarakYtd: isiJarakYtd };
+  // gambar ulang satu kartu (mis. Jarak YTD sesudah halaman selesai mengambil bulan tertutup)
+  function gambarUlangKartu(root, id) { const c = root && root._dc, el = c && root.querySelector(`[data-kartu="${id}"]`); if (el) isiKartu(el, c); }
   const PILIHAN_KARTU = { prod: 'produksi', wf: 'wfMtd', parK: 'pareto', parP: 'pareto', ytdJ: 'bulanan', wfY: 'wfYtd' };
 
   function gambarGrafik(el, c) {
@@ -5801,8 +5936,9 @@ const DASH = (function () {
     return c.D;
   }
 
-  return { VERSI, agregatMinerva, bacaWorkbook, aturanSumber, ewhRencana, susunModel, turunan, pareto, render,
-    hariBulan, jumlahHari, geser, parseAngka, OPEX, BASELINE_BAWAAN, namaBln };
+  return { VERSI, VERSI_MIN, agregatMinerva, bacaWorkbook, aturanSumber, ewhRencana, susunModel, turunan, pareto, render,
+    hariBulan, jumlahHari, geser, parseAngka, OPEX, BASELINE_BAWAAN, namaBln,
+    JARAK, jarakMinerva, jarakKosong, jumlahJarak, tambahJarak, jarakBulanSah, gambarUlangKartu };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
 </script>
@@ -5902,7 +6038,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     set: null, setDimuat: false, dToken: 0, dModel: null, dBasi: '', dHitung: false, dUlang: false, dTersimpan: null, dGalatSimpan: '', dGalat: '', dTabel: null,
     tplWaktu: null, tplJanji: null, ingat: null, mvSegar: false,
     // dipinjam: status bulan lain sedang dipakai denganBulan (ringkasan YTD); advAktif: panel Advanced Data; pagiBuka: isian ore QC dibuka manual
-    dipinjam: false, ubahTertunda: false, advAktif: 'rencana', pagiBuka: false };
+    dipinjam: false, ubahTertunda: false, advAktif: 'rencana', pagiBuka: false,
+    // jarak YTD: jumlah jarak per bulan tertutup (sesi ini), bulan yang gagal diambil, pengambil latar, teks status
+    jarakBulan: {}, jarakGagal: {}, jarakJalan: false, jarakStatus: '', jarakPerluSimpan: false };
 
   /* ---------- pil status ---------- */
   function pil(teks, jenis, judul) {
@@ -6590,22 +6728,25 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
 
   /* ================================================================ MINERVA */
-  async function ambilMinerva(jenis, q) {
+  // opsi.tanpaMemori: laporan tidak disimpan di S.mv dan tidak ikut "ambil ulang" (jarak YTD bulan tertutup)
+  async function ambilMinerva(jenis, q, opsi) {
+    opsi = opsi || {};
+    var ingat = !opsi.tanpaMemori, segar = S.mvSegar && !opsi.tanpaMemori;
     var kunci = jenis + '|' + (q.tanggal || q.dari + '_' + q.sampai);
     if (S.mv.has(kunci)) return S.mv.get(kunci);
     // laporan hari yang sudah lewat dua hari disimpan Edge Function di Storage (oe-1on1/minerva/<jenis>/<tanggal>.xlsx):
     // dibaca langsung, tanpa menunggu Minerva. S.mvSegar = unduh ulang dari Minerva (simpanan ikut diperbarui).
     var simpanan = (jenis === 'exca' || jenis === 'truck') && q.tanggal && q.tanggal <= geser(hariIniWit(), -2);
-    if (simpanan && !S.mvSegar && (await daftarSimpanan(jenis, q.tanggal.slice(0, 7))).has(q.tanggal)) {
+    if (simpanan && !segar && (await daftarSimpanan(jenis, q.tanggal.slice(0, 7))).has(q.tanggal)) {
       try {
         var rc = await fetch(SUPA.url + '/storage/v1/object/authenticated/' + BUCKET + '/minerva/' + jenis + '/' + q.tanggal + '.xlsx', { headers: hdr() });
         if (rc.ok) {
           var uc = new Uint8Array(await rc.arrayBuffer());
-          if (uc[0] === 0x50 && uc[1] === 0x4b) { var hc = await OE1.readReport(uc); S.mv.set(kunci, hc); return hc; }
+          if (uc[0] === 0x50 && uc[1] === 0x4b) { var hc = await OE1.readReport(uc); if (ingat) S.mv.set(kunci, hc); return hc; }
         }
       } catch (e) { if (e.jenis === 'sesi') throw e; }                     // simpanan tidak terbaca: ambil lewat Edge Function
     }
-    var url = FN_URL + '?jenis=' + jenis + Object.keys(q).map(function (k) { return '&' + k + '=' + q[k]; }).join('') + (simpanan && S.mvSegar ? '&segar=1' : '');
+    var url = FN_URL + '?jenis=' + jenis + Object.keys(q).map(function (k) { return '&' + k + '=' + q[k]; }).join('') + (simpanan && segar ? '&segar=1' : '');
     var r;
     try { r = await fetch(url, { headers: hdr() }); }
     catch (e) { throw galat('Edge Function oe-minerva tidak bisa dihubungi (' + e.message + ')', 'jaringan'); }
@@ -6614,12 +6755,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var ct = r.headers.get('content-type') || '';
     if (ct.indexOf('application/json') >= 0) {
       var j = await r.json();
-      if (j.status === 'kosong') { var h0 = { header: [], rows: [], kosong: true, pesan: j.message }; if (!q.tanggal || Date.now() >= lengkapPada(q.tanggal)) S.mv.set(kunci, h0); return h0; }
+      if (j.status === 'kosong') { var h0 = { header: [], rows: [], kosong: true, pesan: j.message }; if (ingat && (!q.tanggal || Date.now() >= lengkapPada(q.tanggal))) S.mv.set(kunci, h0); return h0; }
       throw galat(j.message || ('Minerva ' + r.status), j.status === 'ditolak' ? 'token' : 'server');
     }
     var u8 = new Uint8Array(await r.arrayBuffer());
     var hasil = await OE1.readReport(u8);
-    if (q.tanggal && Date.now() >= lengkapPada(q.tanggal)) S.mv.set(kunci, hasil);     // hari yang belum lengkap (shift malam belum tuntas) jangan disimpan
+    if (ingat && q.tanggal && Date.now() >= lengkapPada(q.tanggal)) S.mv.set(kunci, hasil);     // hari yang belum lengkap (shift malam belum tuntas) jangan disimpan
     return hasil;
   }
   // daftar laporan yang sudah disimpan untuk satu bulan: satu permintaan, lalu hanya berkas yang ada yang dibaca
@@ -7182,7 +7323,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     try {
       var r = await rest('/rest/v1/oe_dasbor?kunci=eq.' + encodeURIComponent('snap|' + ym) + '&select=data,updated_at,updated_by', { method: 'GET' });
       S.dTabel = true; return r && r[0] ? r[0] : null;
-    } catch (e) { if (e.jenis === 'sesi') throw e; if (tabelDasborBelumAda(e)) S.dTabel = false; return null; }
+    } catch (e) { if (e.jenis === 'sesi') throw e; if (tabelDasborBelumAda(e)) { S.dTabel = false; return null; } return undefined; }
   }
   async function simpanSnapshot(M) {
     await rest('/rest/v1/oe_dasbor?on_conflict=kunci', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -7200,12 +7341,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   // snapshot bisa ditulis semua pengguna login: bentuknya diperiksa sebelum dipakai (isi teks tetap di-escape saat tampil)
   function snapshotSah(M, ym) {
     var tgl = /^\d{4}-\d{2}-\d{2}$/, obj = function (x) { return !!x && typeof x === 'object' && !Array.isArray(x); };
-    if (!obj(M) || M.bulan !== ym || M.v !== DASH.VERSI || !tgl.test(M.cutoff || '') || M.cutoff.slice(0, 7) !== ym) return false;
+    if (!obj(M) || M.bulan !== ym || !(M.v >= DASH.VERSI_MIN && M.v <= DASH.VERSI) || !tgl.test(M.cutoff || '') || M.cutoff.slice(0, 7) !== ym) return false;
     if (!Array.isArray(M.hari) || M.hari.length !== jumlahHari(ym) || M.hari.some(function (x, i) { return x !== ym + '-' + pad(i + 1); })) return false;
     var W = M.wb;
     if (!obj(W) || !['prod', 'ewh', 'paua', 'plan', 'kode', 'wfMtd', 'wfYtd', 'ytd'].every(function (k) { return obj(W[k]); })) return false;
     if (!obj(W.prod.hari) || !obj(W.prod.mtd) || !obj(W.plan.target) || !Array.isArray(W.prod.mingguNo)) return false;
     if (!obj(M.mv) || !['jam', 'shift', 'mat', 'status', 'exca'].every(function (k) { return obj(M.mv[k]); }) || !obj(M.sumber)) return false;
+    if (M.v >= 2 && (!obj(M.mv.jarak) || !obj(M.jarakYtd) || !obj(M.jarakYtd.bulan))) return false;   // versi 2: jarak angkut
     return true;
   }
   // '' = snapshot masih berlaku; selain itu alasan perlu dihitung ulang
@@ -7229,7 +7371,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   function bulanBelumJalan() { return S.bulan > hariIniWit().slice(0, 7); }
   async function mulaiDasbor() {
     var tk = ++S.dToken, bulan = S.bulan;
-    S.dModel = null; S.dBasi = ''; S.dTersimpan = null; S.dGalatSimpan = ''; S.dGalat = ''; S.dOleh = '';
+    S.dModel = null; S.dBasi = ''; S.dTersimpan = null; S.dGalatSimpan = ''; S.dGalat = ''; S.dOleh = ''; S.jarakGagal = {};
     renderPagi(); tampilDasbor();
     if (bulanBelumJalan()) { cekIngat(); return; }
     try {
@@ -7261,7 +7403,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (S.sibuk) { if (S.dHitung) S.dUlang = true; return; }
     if (bulanBelumJalan()) return;
     var tk = S.dToken, dikunci = false, log = [];
-    S.sibuk = true; S.dHitung = true; S.dUlang = false; S.dGalat = '';
+    S.sibuk = true; S.dHitung = true; S.dUlang = false; S.dGalat = ''; S.jarakGagal = {};
     try {
       kunciDasbor(); renderStatusDasbor(); renderRingkas(); renderArsip();
       el('dProses').hidden = false; prosesDasbor(0.01, 'Menyiapkan…');
@@ -7287,6 +7429,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       S.loaderAuto = OE1.pilihLoader(ex, hari);
       var loader = {}; hari.forEach(function (d) { var L = loaderFinal(d); loader[d] = { antam: L.antam || '', bumd: L.bumd || '' }; });
       var mv = DASH.agregatMinerva(ex, hari, loader);
+      mv.jarak = DASH.jarakMinerva(ex, hari);                          // jarak angkut per hari (kartu Jarak mining, front)
+      var jarakYtd = await jarakYtdTersimpan(bulan), jarakTakTerbaca = !!jarakYtd.bacaGagal;   // bulan tertutup: dari simpanan; yang kurang diambil di latar
+      delete jarakYtd.bacaGagal;
       var at = DASH.aturanSumber(hari, S.data.qaqc, mv.mat, bargingHari);
       var data = dataGenerator(); data.penuh = false; data.act.qaqc = at.qa;
       data.minerva = { exca: ex, truck: { header: [], rows: [], downloadDate: [] }, barge: { header: [], rows: [] } }; data.catatan = [];
@@ -7297,8 +7442,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       var baca = DASH.bacaWorkbook(function (sh, r) { return wb.get(sh, r); }, bulan);
       var sidikD = { isian: isianPada, tpl: S.tplWaktu || null, ytd: await waktuYtd(bulan), lengkap: mulaiAmbil >= lengkapPada(cutoff) };
       var M = DASH.susunModel({ bulan: bulan, cutoff: cutoff, dibuat: new Date().toISOString(), oleh: emailLogin(), sidik: sidikD, baca: baca, mv: mv,
-        sumber: at.sumber, loader: loader, catatan: log, mvKosong: ex.kosong, mvGagal: ex.gagal.map(function (x) { return String(x).slice(0, 10); }) });
+        sumber: at.sumber, loader: loader, catatan: log, mvKosong: ex.kosong, mvGagal: ex.gagal.map(function (x) { return String(x).slice(0, 10); }), jarakYtd: jarakYtd });
+      var jarakTakAman = jarakTakTerbaca && cutoff === cutoffBawaan(bulan) && !(await gabungJarakTersimpan(M));   // bulan jarak yang tersimpan jangan hilang saat snapshot ditimpa
       if (tk !== S.dToken) return;                                // bulan diganti selama dihitung: hasil dibuang
+      if (cutoff === akhirBulan(bulan) && sidikD.lengkap && !ex.gagal.length) { var jb = jumlahBulanJarak(mv.jarak, bulan); if (DASH.jarakBulanSah(jb)) S.jarakBulan[bulan] = jb; }
       var ytdKurang = ytd && ytd.kurang ? ytd.kurang : [];
       if (ytdKurang.length) M.catatan.push('YTD belum lengkap: ' + ytdKurang.map(namaBulan).join(', '));
       S.dModel = M; S.dOleh = emailLogin();
@@ -7306,6 +7453,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       if (cutoff !== cutoffBawaan(bulan)) { S.dTersimpan = false; S.dGalatSimpan = 'lokal'; }
       else if (ex.gagal.length) { S.dTersimpan = false; S.dGalatSimpan = 'gagal'; }
       else if (ytdKurang.length) { S.dTersimpan = false; S.dGalatSimpan = 'YTD ' + ytdKurang.map(namaBulan).join(', ') + ' belum lengkap (laporan Minerva gagal atau bulan belum tertutup); hitung ulang nanti'; }
+      else if (jarakTakAman) { S.dTersimpan = false; S.dGalatSimpan = 'data jarak tersimpan belum terbaca; hitung ulang nanti'; }
       else if (S.dBasi) { S.dTersimpan = false; S.dGalatSimpan = ''; }
       else {
         try { await simpanSnapshot(M); S.dTersimpan = true; S.dGalatSimpan = ''; }
@@ -7319,9 +7467,172 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     } finally {
       if (dikunci) kunciHalaman(false);
       S.sibuk = false; S.dHitung = false; S.mvSegar = false;
+      if (S.jarakPerluSimpan && !S.jarakJalan) simpanJarakKeSnapshot();
       el('dProses').hidden = true;
       kunciDasbor(); renderPagi(); renderStatusDasbor(); renderRingkas(); renderArsip(); renderLoader();
       if (S.dUlang) { S.dUlang = false; hitungDasbor(); }
+    }
+  }
+
+  /* ---------- jarak angkut YTD: bulan tertutup tahun ini ---------- */
+  // Jarak per bulan = jumlah [Σ jarak×volume, Σ volume berjarak, Σ volume] dari laporan excavator Minerva (DASH.jarakMinerva).
+  // Diambil sekali per bulan lalu disimpan di snapshot (jarakYtd.bulan), jadi hitung berikutnya tidak mengambil ulang.
+  // S.jarakBulan = simpanan sesi. Hanya angka yang lolos DASH.jarakBulanSah yang dipakai (snapshot bisa ditulis semua pengguna login).
+  function bulanTertutup(bulan) { var out = [], th = bulan.slice(0, 4); for (var m = th + '-01'; m < bulan; m = bulanGeser(m, 1)) out.push(m); return out; }
+  function objBiasa(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+  function jeda() { return new Promise(function (r) { setTimeout(r, 0); }); }
+  function bulatJarak(j) { ['A', 'B', 'G'].forEach(function (k) { j[k] = j[k].map(function (v) { return Math.round(v * 10) / 10; }); }); return j; }
+  function jumlahBulanJarak(harian, ym) { return bulatJarak(DASH.jumlahJarak(harian, hariBulan(ym))); }
+  // urutan sumber: simpanan sesi -> snapshot bulan itu sendiri (sebulan penuh, lengkap) -> jarak YTD di snapshot lain tahun ini (bulan terbaru dulu).
+  // hasil.bacaGagal = simpanan di Supabase tidak terbaca: bulan yang kurang belum tentu kosong, jadi jangan ditimpa dan jangan diunduh ulang dulu
+  async function jarakYtdTersimpan(bulan) {
+    var th = bulan.slice(0, 4), daftar = bulanTertutup(bulan), hasil = { tahun: +th, bulan: {}, kurang: [] };
+    function pakai(m, b) { if (!hasil.bulan[m] && DASH.jarakBulanSah(b)) hasil.bulan[m] = b; }
+    daftar.forEach(function (m) { pakai(m, S.jarakBulan[m]); });
+    if (daftar.some(function (m) { return !hasil.bulan[m]; })) {
+      var rows = [];
+      try {
+        rows = await rest('/rest/v1/oe_dasbor?kunci=like.' + encodeURIComponent('snap|' + th + '-') + '*&order=kunci.desc' +
+          '&select=kunci,cutoff:data->>cutoff,lk:data->sidik->>lengkap,jy:data->jarakYtd,jr:data->mv->jarak', { method: 'GET' });
+        if (!Array.isArray(rows)) rows = [];
+      } catch (e) {
+        if (e.jenis === 'sesi') throw e;
+        rows = [];
+        if (!tabelDasborBelumAda(e)) hasil.bacaGagal = true;          // tabel belum dibuat = memang belum ada simpanan
+      }
+      daftar.forEach(function (m) {
+        if (hasil.bulan[m]) return;
+        var own = rows.filter(function (r) { return r && r.kunci === 'snap|' + m; })[0];
+        if (own && own.cutoff === akhirBulan(m) && String(own.lk) === 'true' && objBiasa(own.jr)) pakai(m, jumlahBulanJarak(own.jr, m));
+        for (var i = 0; i < rows.length && !hasil.bulan[m]; i++) {
+          var jy = rows[i] && rows[i].jy;
+          if (objBiasa(jy) && objBiasa(jy.bulan)) pakai(m, jy.bulan[m]);
+        }
+      });
+      // tidak terbaca: bulan yang sudah ada di model yang tampil tetap dipakai
+      var M0 = S.dModel;
+      if (hasil.bacaGagal && M0 && typeof M0.bulan === 'string' && M0.bulan.slice(0, 4) === th && objBiasa(M0.jarakYtd) && objBiasa(M0.jarakYtd.bulan))
+        daftar.forEach(function (m) { if (m < M0.bulan) pakai(m, M0.jarakYtd.bulan[m]); });
+    }
+    daftar.forEach(function (m) { if (hasil.bulan[m]) S.jarakBulan[m] = hasil.bulan[m]; else hasil.kurang.push(m); });
+    return hasil;
+  }
+  // hitung ulang saat simpanan jarak tidak terbaca: bulan yang ada di snapshot tersimpan bulan ini jangan sampai hilang saat ditimpa
+  // hasil false = snapshot tersimpan juga tidak terbaca, jadi tidak aman ditimpa
+  async function gabungJarakTersimpan(M) {
+    var snap = await ambilSnapshot(M.bulan), J = snap && snap.data && snap.data.jarakYtd, daftar = bulanTertutup(M.bulan);
+    if (snap === undefined) return false;
+    if (!objBiasa(J) || !objBiasa(J.bulan)) return true;
+    daftar.forEach(function (m) { if (!DASH.jarakBulanSah(M.jarakYtd.bulan[m]) && DASH.jarakBulanSah(J.bulan[m])) M.jarakYtd.bulan[m] = S.jarakBulan[m] = J.bulan[m]; });
+    M.jarakYtd.kurang = daftar.filter(function (m) { return !DASH.jarakBulanSah(M.jarakYtd.bulan[m]); });
+    return true;
+  }
+  // satu bulan dari laporan excavator Minerva, per hari, dua sekaligus, tanpa menumpuk laporan di memori.
+  // Galat fatal (sesi, Edge Function, token) menghentikan kedua pekerja dan dilempar sesudah keduanya berhenti.
+  async function jarakBulanMinerva(ym, prog) {
+    var hari = hariBulan(ym), i = 0, selesai = 0, jum = DASH.jarakKosong(), gagal = [], henti = null;
+    async function pekerja() {
+      try {
+        while (!henti && i < hari.length) {
+          var d = hari[i++];
+          try {
+            var h = await ambilMinerva('exca', { tanggal: d }, { tanpaMemori: true });
+            if (!h.kosong && h.rows.length) DASH.tambahJarak(jum, DASH.jumlahJarak(DASH.jarakMinerva(h, hari), hari));   // sama dengan MTD: baris masuk ke tanggal shift-nya
+          } catch (e) { if (e.jenis === 'sesi' || e.jenis === 'fungsi' || e.jenis === 'token') throw e; gagal.push(d); }
+          selesai++;
+          if (!henti) prog(selesai, hari.length);
+        }
+      } catch (e) { henti = henti || e; }
+    }
+    await Promise.all([pekerja(), pekerja()]);               // dua sekaligus: berjalan di latar, jangan membebani Minerva
+    if (henti) throw henti;
+    return { jum: bulatJarak(jum), gagal: gagal };
+  }
+  // bulan tertutup yang belum punya angka jarak di model (bulan yang gagal diambil pada kunjungan ini dilewati)
+  // (bulan yang shift malam hari terakhirnya belum selesai, sebelum 07.00 WIT tanggal 1, belum diambil)
+  function bulanJarakPerlu(M) {
+    if (!M || M.v !== DASH.VERSI || typeof M.bulan !== 'string') return [];
+    var B = objBiasa(M.jarakYtd) && objBiasa(M.jarakYtd.bulan) ? M.jarakYtd.bulan : {};
+    return bulanTertutup(M.bulan).filter(function (m) { return !DASH.jarakBulanSah(B[m]) && !S.jarakGagal[m] && Date.now() >= lengkapPada(akhirBulan(m)); });
+  }
+  // pasang bulan dari simpanan sesi ke model; hasil = jumlah bulan yang baru terpasang
+  function terapkanJarak(M) {
+    if (!M || M.v !== DASH.VERSI || typeof M.bulan !== 'string') return 0;
+    if (!objBiasa(M.jarakYtd)) M.jarakYtd = { tahun: +M.bulan.slice(0, 4), bulan: {}, kurang: [] };
+    if (!objBiasa(M.jarakYtd.bulan)) M.jarakYtd.bulan = {};
+    var B = M.jarakYtd.bulan, daftar = bulanTertutup(M.bulan), n = 0;
+    daftar.forEach(function (m) { if (!DASH.jarakBulanSah(B[m]) && DASH.jarakBulanSah(S.jarakBulan[m])) { B[m] = S.jarakBulan[m]; n++; } });
+    M.jarakYtd.kurang = daftar.filter(function (m) { return !DASH.jarakBulanSah(B[m]); });
+    if (n) S.jarakPerluSimpan = true;
+    return n;
+  }
+  function tulisStatusJarak() {
+    var t = document.querySelector('#dIsi [data-jarak-proses]'); if (t && S.jarakStatus) t.textContent = S.jarakStatus;
+  }
+  // tulis hanya bila snapshot belum berubah sejak dibaca (updated_at sama, diisi server); false = sudah ditulis pihak lain
+  async function tulisSnapshotBila(D, waktu) {
+    if (!waktu) return false;
+    var r = await rest('/rest/v1/oe_dasbor?kunci=eq.' + encodeURIComponent('snap|' + D.bulan) + '&updated_at=eq.' + encodeURIComponent(waktu) + '&select=kunci',
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ data: D }) });
+    return Array.isArray(r) && r.length > 0;
+  }
+  // bulan dari simpanan sesi diisikan ke snapshot bulan yang tampil (baca-ubah-tulis bersyarat; hanya bulan yang belum ada
+  // di sana, isi lain snapshot tidak disentuh). Snapshot yang ditulis tab/pengguna lain di antaranya dibaca ulang sekali.
+  async function simpanJarakKeSnapshot() {
+    var M = S.dModel;
+    if (!S.jarakPerluSimpan || !M || M.v !== DASH.VERSI || S.dHitung || S.dTabel === false) return;
+    try {
+      for (var coba = 0; coba < 2; coba++) {
+        var snap = await ambilSnapshot(M.bulan), D0 = snap && snap.data;
+        if (!D0 || !snapshotSah(D0, M.bulan) || D0.v !== DASH.VERSI) return;   // belum ada snapshot versi ini / tidak terbaca: ikut tersimpan saat hitung berikutnya
+        var J = D0.jarakYtd, daftar = bulanTertutup(M.bulan), baru = 0;
+        daftar.forEach(function (m) { if (!DASH.jarakBulanSah(J.bulan[m]) && DASH.jarakBulanSah(S.jarakBulan[m])) { J.bulan[m] = S.jarakBulan[m]; baru++; } });
+        if (!baru) { S.jarakPerluSimpan = false; return; }
+        J.kurang = daftar.filter(function (m) { return !DASH.jarakBulanSah(J.bulan[m]); });
+        if (S.dHitung || S.dModel !== M) return;                  // dihitung ulang selagi membaca: dicoba lagi nanti
+        if (await tulisSnapshotBila(D0, snap.updated_at)) { S.jarakPerluSimpan = false; return; }
+      }
+    } catch (e) { if (window.console) console.warn('jarak YTD belum tersimpan', e); }
+  }
+  // pengambil latar (dashboard sudah tampil): bulan tertutup yang kurang dipasang dari simpanan sesi, dicari sekali di Supabase,
+  // lalu diunduh dari Minerva satu per satu (tiap bulan paling banyak sekali per putaran). Kartu Jarak YTD digambar ulang di akhir.
+  async function mulaiJarakYtd() {
+    if (S.jarakJalan || S.jarakGagal._galat || S.jarakGagal._baca || !bulanJarakPerlu(S.dModel).length) return;
+    S.jarakJalan = true; S.jarakStatus = '';
+    if (el('dIsi')._dc) DASH.gambarUlangKartu(el('dIsi'), 'jarakYtd');
+    var dicoba = {}, dicari = false, Makhir = S.dModel;
+    try {
+      for (var putar = 0; putar < 60; putar++) {
+        await jeda();
+        var M = Makhir = S.dModel, perlu = bulanJarakPerlu(M);
+        if (!perlu.length) break;
+        if (terapkanJarak(M)) { await simpanJarakKeSnapshot(); continue; }
+        if (!dicari) {                                            // pengguna lain mungkin sudah mengambilnya
+          dicari = true;
+          if ((await jarakYtdTersimpan(M.bulan)).bacaGagal) { S.jarakGagal._baca = true; break; }
+          continue;
+        }
+        var m = perlu.filter(function (x) { return !dicoba[x]; })[0];
+        if (!m) break;
+        dicoba[m] = true;
+        var nama = BULAN_PJG[+m.slice(5) - 1];
+        S.jarakStatus = 'Mengambil data Minerva ' + nama + '…'; tulisStatusJarak();
+        var r = await jarakBulanMinerva(m, function (a, b) { S.jarakStatus = 'Mengambil data Minerva ' + nama + ' · ' + a + '/' + b; tulisStatusJarak(); });
+        if (r.gagal.length || !DASH.jarakBulanSah(r.jum)) S.jarakGagal[m] = true;
+        else S.jarakBulan[m] = r.jum;
+      }
+    } catch (e) { S.jarakGagal._galat = pesan(e); }
+    finally {
+      try { terapkanJarak(S.dModel); await simpanJarakKeSnapshot(); } catch (e) { if (window.console) console.warn(e); }
+      var M1 = S.dModel, B1 = M1 && objBiasa(M1.jarakYtd) && objBiasa(M1.jarakYtd.bulan) ? M1.jarakYtd.bulan : {};
+      var sisa = M1 && M1.v === DASH.VERSI ? bulanTertutup(M1.bulan).filter(function (x) { return !DASH.jarakBulanSah(B1[x]); }) : [];
+      S.jarakStatus = !sisa.length ? '' :
+        S.jarakGagal._galat ? 'Data jarak Minerva gagal diambil: ' + S.jarakGagal._galat :
+        S.jarakGagal._baca ? 'Data jarak tersimpan belum terbaca; dicoba lagi saat dashboard dibuka atau dihitung ulang' :
+        'Laporan Minerva ' + sisa.map(function (x) { return BLN[+x.slice(5) - 1]; }).join(', ') + ' belum lengkap terambil; dicoba lagi saat dashboard dibuka atau dihitung ulang';
+      S.jarakJalan = false;
+      if (el('dIsi')._dc) DASH.gambarUlangKartu(el('dIsi'), 'jarakYtd');
+      if (S.dModel !== Makhir) mulaiJarakYtd();                   // model berganti di tengah jalan: periksa lagi
     }
   }
 
@@ -7361,7 +7672,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       if (el('btnDMulai')) el('btnDMulai').onclick = function () { hitungDasbor(); };
       return;
     }
-    try { DASH.render(root, S.dModel, { set: S.set || {}, admin: S.admin, onKuota: simpanKuota }); }
+    try { DASH.render(root, S.dModel, { set: S.set || {}, admin: S.admin, onKuota: simpanKuota, jarakStatus: function () { return S.jarakStatus; } }); mulaiJarakYtd(); }
     catch (e) { root.innerHTML = '<div class="banner err"><div>Dashboard tidak bisa digambar: ' + esc(e.message) + '</div></div>'; if (window.console) console.error(e); }
   }
 
