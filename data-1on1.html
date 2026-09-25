@@ -1220,7 +1220,7 @@ const OE1 = (function () {
     return out;
   }
   const WM_JUMLAH_SUMP = 20;            // sheet WM template v2 = 20 sump modul Water & Road
-  const TEMPLATE_VERSI = 6;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
+  const TEMPLATE_VERSI = 7;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
   const TEMPLATE_VERSI_MIN = 2;         // di bawah ini tata letak sel isian berbeda: menyusun Excel ditolak
   const SHEETS = { PLAN: 'PLAN', ACT: 'ACT', COST: 'COST', PORT: 'PORT', DRA: 'DRA', WM: 'WM', WFW: 'WF WEEKLY',
     EXCA: 'Minerva Exca', TRUCK: 'Minerva Trucks', BARGE: 'Minerva Barges' };
@@ -1296,7 +1296,9 @@ const OE1 = (function () {
     const versi = versiTemplate(await z.text('xl/workbook.xml'));
     if (versi < TEMPLATE_VERSI_MIN) throw new Error(`Template di penyimpanan masih versi ${versi || 1}, butuh versi ${TEMPLATE_VERSI} (sheet WM 20 sump Water & Road). ` +
       'Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Data → Advanced Data → Template.');
-    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi ${TEMPLATE_VERSI} menambah sheet WF YTD (waterfall year-to-date dengan data Januari-Agustus 2026)` + (versi < 5 ? ', menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel' : '') + '. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Data → Advanced Data → Template.');
+    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi terbaru (${TEMPLATE_VERSI}) ` + ['menghitung jarak angkut hanya dari baris Minerva berjarak sah (di atas 0 dan di bawah 5 km) dan tanpa hari/minggu yang tidak berjarak',
+      versi < 6 ? 'menambah sheet WF YTD (waterfall year-to-date dengan data Januari-Agustus 2026)' : '',
+      versi < 5 ? 'menyusun total COST seperti slide (USD/WMT, plan MTD), menghitung barging lagi, waterfall shipment memakai jam kerja barging, dan tidak memunculkan dialog perbaikan Excel' : ''].filter(Boolean).join('; ') + '. Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Data → Advanced Data → Template.');
     const path = n => { const s = sheets.find(x => x.name === n); if (!s) throw new Error('Sheet tidak ada di template: ' + n); return s.path; };
     const rels = async p => { const rp = p.replace(/worksheets\/(sheet\d+\.xml)$/, 'worksheets/_rels/$1.rels'); return (await z.text(rp)) || ''; };
     const tablePath = async p => { const r = await rels(p); const m = /Target="\.\.\/tables\/(table\d+\.xml)"/.exec(r); return m ? 'xl/tables/' + m[1] : null; };
@@ -4340,7 +4342,7 @@ const OCR1 = (function () {
   }
   const AHD = [2, 7, 12, 17, 25];
   const keMeter = x => (x == null ? null : Math.abs(x) < 20 ? x * 1000 : x);
-  const JARAK_WAJAR = [50, 10000];                // meter; di luar ini sel jarak yang masuk Excel dijadikan merah
+  const JARAK_WAJAR = [50, 5000];                 // meter; di luar ini sel jarak yang masuk Excel dijadikan merah (jarak sah di bawah 5 km)
   const NAMA = { mining: 'Mining Plan', reserves: 'Total Reserves' };
   // jenis = 'reserves' | 'mining' | 'auto'. Bila baris gambar cukup untuk kedua tata letak, keduanya dibaca dan
   // dibandingkan lewat cek silang; tabel Reserves yang diunggah lewat tombol Mining Plan (atau sebaliknya) dialihkan.
@@ -4666,7 +4668,7 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
    =========================================================================== */
 const DASH = (function () {
   'use strict';
-  const VERSI = 2;               // naikkan bila isi snapshot berubah: snapshot lama otomatis dihitung ulang
+  const VERSI = 3;               // naikkan bila isi snapshot berubah: snapshot lama otomatis dihitung ulang
   const VERSI_MIN = 1;           // snapshot versi lama yang masih boleh ditampilkan selama versi baru dihitung
 
   // ================================================================== HITUNG
@@ -4756,54 +4758,121 @@ const DASH = (function () {
   }
 
   /**
-   * Jarak angkut dari laporan excavator Minerva, per hari shift: rata-rata tertimbang volume (≈ TMM, ton) untuk front ANTAM
-   * (truck 9RD), front PCM (DTR/DTH), dan barging (Activity BARGING). Hasil per hari [Σ jarak×volume, Σ volume berjarak,
-   * Σ volume seluruhnya]; km. Baris tanpa jarak (0/kosong) dan jarak di luar 50 m–10 km (salah catat GPS) tidak dihitung,
-   * tetapi volumenya tetap masuk kolom ketiga supaya cakupan data jarak terlihat.
+   * Jarak angkut cara Excel 1on1 (template versi 7), per hari shift:
+   *  - ANTAM / BUMD (ACT baris 54/55 dan 128/129): Σ jarak×volume ÷ Σ volume baris excavator utama hari itu (loader, ACT
+   *    baris 6/79), material ORE atau WASTE (SEARCH, tanpa beda huruf besar/kecil), hanya baris dengan jarak sah
+   *    0 < jarak < 5 km;
+   *  - barging (ACT 141 + 146 = Prod baris 130): Activity BARGING dengan loading point *ETO* dan *EFO*, kedua jarak dijumlah;
+   *  - lalu ditimbang tonase hari itu (Prod: ore/waste WMT per front, total barging WMT); hari tanpa jarak sah tidak ikut
+   *    pembagi (Prod AI versi 7). Bulan tertutup tanpa tonase QAQC (bobotHari kosong) memakai volume Minerva front itu.
+   * Hasil per hari [Σ jarak×tonase, Σ tonase berjarak, Σ tonase] (km, WMT) untuk A (ANTAM), B (PCM), G (barging), dan
+   * rinciannya AO/AW/BO/BW (ore/waste).
    */
-  const JARAK = { MIN: 0.05, MAKS: 10 };
-  function jarakMinerva(ex, hari) {
+  const JARAK = { MIN: 0, MAKS: 5 };                 // km; sah bila MIN < jarak < MAKS
+  const ATURAN_JARAK = 2;                            // penanda jarakYtd: 1 = putaran pertama (semua exca, 50 m–10 km), 2 = cara Excel
+  const jarakSah = x => x > JARAK.MIN && x < JARAK.MAKS;
+  const KUNCI_JARAK = ['A', 'B', 'G', 'AO', 'AW', 'BO', 'BW'];
+  const tigaJarak = (x, t) => { t = +t > 0 ? +t : 0; return [x > 0 ? x * t : 0, x > 0 ? t : 0, t]; };
+  const gabungTiga = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  function jarakExcel(ex, hari, loaderHari, bobotHari) {
     const H = (ex && ex.header) || [];
     const iD = idx(H, 'Date'), iS = idx(H, 'Shift'), iJ = idx(H, 'StartHour'), iT = idx(H, 'DataType'), iA = idx(H, 'Activity'),
-      iF = idx(H, 'FleetTag'), iV = idx(H, 'Volume'), iX = idx(H, 'Distance');
-    const ada = new Set(hari), out = { A: {}, B: {}, G: {} };
+      iF = idx(H, 'FleetTag'), iV = idx(H, 'Volume'), iX = idx(H, 'Distance'), iE = idx(H, 'Equipment'), iM = idx(H, 'MaterialType'),
+      iL = idx(H, 'Loading Point');
+    const out = {}; KUNCI_JARAK.forEach(k => { out[k] = {}; });
     if (iV < 0) return out;
+    const besar = v => (v == null ? '' : String(v)).toUpperCase();
+    const ada = new Set(hari), L = {}, hr = {};
+    for (const d of hari) { const l = (loaderHari && loaderHari(d)) || {}; L[d] = { A: besar(l.antam), B: besar(l.bumd) }; }
+    const baru = () => ({ AO: [0, 0], AW: [0, 0], BO: [0, 0], BW: [0, 0], GE: [0, 0], GF: [0, 0], t: { AO: 0, AW: 0, BO: 0, BW: 0, G: 0 } });
+    const tambah = (o, x, v) => { o[0] += x * v; o[1] += v; };
     for (const r of (ex && ex.rows) || []) {
-      if (r[iT] !== 'Volume Data') continue;
-      const v = +r[iV] || 0; if (!(v > 0)) continue;
-      const akt = r[iA], k = akt === 'MINING' ? kontraktor(r[iF]) : akt === 'BARGING' ? 'G' : null;
-      if (!k) continue;
       const d = tanggalShift(r[iD], r[iS], r[iJ]); if (!d || !ada.has(d)) continue;
-      const x = iX >= 0 ? +r[iX] || 0 : 0, o = out[k][d] || (out[k][d] = [0, 0, 0]);
-      o[2] += v;
-      if (x >= JARAK.MIN && x <= JARAK.MAKS) { o[0] += x * v; o[1] += v; }
+      const v = +r[iV] || 0; if (!v) continue;
+      const g = hr[d] || (hr[d] = baru());
+      const mat = iM >= 0 ? besar(r[iM]) : '', ore = mat.indexOf('ORE') >= 0, wst = mat.indexOf('WASTE') >= 0;
+      const x = iX >= 0 ? +r[iX] || 0 : 0;
+      if (jarakSah(x)) {
+        const eq = iE >= 0 ? besar(r[iE]) : '';
+        if (eq && eq === L[d].A) { if (ore) tambah(g.AO, x, v); if (wst) tambah(g.AW, x, v); }
+        if (eq && eq === L[d].B) { if (ore) tambah(g.BO, x, v); if (wst) tambah(g.BW, x, v); }
+        if (besar(r[iA]) === 'BARGING') {
+          const lp = iL >= 0 ? besar(r[iL]) : '';
+          if (lp.indexOf('ETO') >= 0) tambah(g.GE, x, v);
+          if (lp.indexOf('EFO') >= 0) tambah(g.GF, x, v);
+        }
+      }
+      // bobot pengganti bulan tertutup (belum ada tonase QAQC): volume Minerva front itu, LGO ke waste seperti QAQC
+      if (!bobotHari && r[iT] === 'Volume Data' && v > 0) {
+        if (r[iA] === 'MINING') { const k = kontraktor(r[iF]); if (k) g.t[k + (kelasMaterial(r[iM]) === 'ore' ? 'O' : 'W')] += v; }
+        else if (r[iA] === 'BARGING') g.t.G += v;
+      }
     }
-    for (const k of ['A', 'B', 'G']) for (const d in out[k]) out[k][d] = out[k][d].map(n => bulat(n, 1));
+    const rata = o => (o && o[1] ? o[0] / o[1] : 0);                 // IFERROR(…/…, 0)
+    for (const d of hari) {
+      const g = hr[d], b = bobotHari ? bobotHari(d) : g && g.t;
+      if (!b) continue;
+      const r = { AO: tigaJarak(rata(g && g.AO), b.AO), AW: tigaJarak(rata(g && g.AW), b.AW),
+        BO: tigaJarak(rata(g && g.BO), b.BO), BW: tigaJarak(rata(g && g.BW), b.BW),
+        G: tigaJarak(rata(g && g.GE) + rata(g && g.GF), b.G) };
+      r.A = gabungTiga(r.AO, r.AW); r.B = gabungTiga(r.BO, r.BW);
+      for (const k of KUNCI_JARAK) if (r[k][2] > 0) out[k][d] = r[k].map(n => bulat(n, 3));
+    }
     return out;
   }
-  // jumlah per front untuk sekumpulan hari: {A:[sd, sv, vt], B:[…], G:[…]}; isi yang bukan angka diabaikan (snapshot bisa ditulis semua pengguna)
+  // bobot tonase harian jarakExcel dari workbook bulan itu: Prod ore/waste WMT per front, total barging WMT (Prod 128)
+  function bobotJarak(W, bulan) {
+    const P = (W && W.prod && W.prod.hari) || {}, J = (W && W.jarak) || {};
+    const ambil = (a, i) => (Array.isArray(a) && typeof a[i] === 'number' && isFinite(a[i]) && a[i] > 0 ? a[i] : 0);
+    return d => {
+      if (String(d).slice(0, 7) !== bulan) return null;
+      const i = +String(d).slice(8) - 1;
+      return { AO: ambil(P.aktO && P.aktO.A, i), AW: ambil(P.aktW && P.aktW.A, i), BO: ambil(P.aktO && P.aktO.B, i),
+        BW: ambil(P.aktW && P.aktW.B, i), G: ambil(J.barge, i) };
+    };
+  }
+  // rencana jarak per hari dari workbook: Prod Plan Distance ORE/WST (ANTAM 55/54, BUMD 98/97; meter, dari Mining Plan)
+  // ditimbang tonase rencana ore/waste; hari tanpa jarak rencana tidak ikut pembagi (sama dengan Prod AI versi 7)
+  function jarakRencana(W, hari, bulan) {
+    const P = (W && W.prod && W.prod.hari) || {}, R = (W && W.jarak && W.jarak.rencana) || {};
+    const ambil = (a, i) => (Array.isArray(a) && typeof a[i] === 'number' && isFinite(a[i]) && a[i] > 0 ? a[i] : 0);
+    const out = { A: {}, B: {}, AO: {}, AW: {}, BO: {}, BW: {} };
+    for (const d of hari) {
+      if (String(d).slice(0, 7) !== bulan) continue;
+      const i = +String(d).slice(8) - 1;
+      const r = { AO: tigaJarak(ambil(R.A && R.A.O, i) / 1000, ambil(P.planO && P.planO.A, i)),
+        AW: tigaJarak(ambil(R.A && R.A.W, i) / 1000, ambil(P.planW && P.planW.A, i)),
+        BO: tigaJarak(ambil(R.B && R.B.O, i) / 1000, ambil(P.planO && P.planO.B, i)),
+        BW: tigaJarak(ambil(R.B && R.B.W, i) / 1000, ambil(P.planW && P.planW.B, i)) };
+      r.A = gabungTiga(r.AO, r.AW); r.B = gabungTiga(r.BO, r.BW);
+      for (const k of Object.keys(out)) if (r[k][2] > 0) out[k][d] = r[k];
+    }
+    return out;
+  }
+  // jumlah untuk sekumpulan hari: {A:[sd, sv, vt], …}; isi yang bukan angka diabaikan (snapshot bisa ditulis semua pengguna)
   const angkaJarak = v => (typeof v === 'number' && isFinite(v) && v >= 0 ? v : 0);
-  function jarakKosong() { return { A: [0, 0, 0], B: [0, 0, 0], G: [0, 0, 0] }; }
-  function jumlahJarak(harian, hari) {
-    const s = jarakKosong();
-    for (const k of ['A', 'B', 'G']) for (const d of hari) {
+  function jarakKosong(kunci) { const o = {}; (kunci || ['A', 'B', 'G']).forEach(k => { o[k] = [0, 0, 0]; }); return o; }
+  function jumlahJarak(harian, hari, kunci) {
+    kunci = kunci || ['A', 'B', 'G'];
+    const s = jarakKosong(kunci);
+    for (const k of kunci) for (const d of hari) {
       const o = harian && harian[k] && harian[k][d];
       if (Array.isArray(o)) for (let j = 0; j < 3; j++) s[k][j] += angkaJarak(o[j]);
     }
     return s;
   }
   function tambahJarak(a, b) {
-    for (const k of ['A', 'B', 'G']) { const o = b && b[k]; if (Array.isArray(o)) for (let j = 0; j < 3; j++) a[k][j] += angkaJarak(o[j]); }
+    for (const k of Object.keys(a)) { const o = b && b[k]; if (Array.isArray(o)) for (let j = 0; j < 3; j++) a[k][j] += angkaJarak(o[j]); }
     return a;
   }
-  // jumlah satu bulan sah: tiga angka hingga ≥ 0 per front, volume berjarak ≤ volume ≤ 1e8, dan Σ jarak×volume di dalam
-  // jendela jarak (kelonggaran 30 menampung pembulatan 0,1 per hari). Angka buatan di snapshot tidak lolos.
+  // jumlah satu bulan sah: tiga angka hingga ≥ 0 per front, tonase berjarak ≤ tonase ≤ 1e8, dan Σ jarak×tonase di dalam
+  // batas jarak (barging = ETO + EFO, jadi dua kali; kelonggaran 30 untuk pembulatan). Angka buatan di snapshot tidak lolos.
   function jarakBulanSah(b) {
     return !!b && typeof b === 'object' && !Array.isArray(b) && ['A', 'B', 'G'].every(k => {
       const o = b[k];
       if (!Array.isArray(o) || o.length !== 3 || !o.every(v => typeof v === 'number' && isFinite(v) && v >= 0)) return false;
       if (o[2] > 1e8 || o[1] > o[2] + 1) return false;
-      return o[0] <= JARAK.MAKS * o[1] + 30 && o[0] >= JARAK.MIN * o[1] - 30;
+      return o[0] <= (k === 'G' ? 2 : 1) * JARAK.MAKS * o[1] + 30;
     });
   }
 
@@ -4879,7 +4948,9 @@ const DASH = (function () {
     ytd.total = {};
     for (const [k, r] of Object.entries(YR)) ytd.total[k] = num(get('WF YTD', 'P' + r));
     ytd.ada = ytd.total.planO != null || ytd.total.aktO != null;
-    return { prod, ewh, paua, plan, kode, wfMtd, wfYtd, ytd };
+    // jarak angkut: total barging WMT (bobot) dan Plan Distance ORE/WST per front (meter, dari Mining Plan)
+    const jarak = { barge: hari('Prod', 128), rencana: { A: { O: hari('Prod', 55), W: hari('Prod', 54) }, B: { O: hari('Prod', 98), W: hari('Prod', 97) } } };
+    return { prod, ewh, paua, plan, kode, wfMtd, wfYtd, ytd, jarak };
   }
 
   /**
@@ -4936,7 +5007,7 @@ const DASH = (function () {
       v: VERSI, bulan: o.bulan, cutoff: o.cutoff, hari: hariBulan(o.bulan), dibuat: o.dibuat, oleh: o.oleh || '',
       sidik: o.sidik || {}, wb: o.baca, mv: o.mv, sumber: o.sumber, loader: o.loader || {},
       // jarak bulan-bulan tertutup tahun ini untuk kartu Jarak YTD: {tahun, bulan: {'YYYY-MM': {A,B,G}}, kurang: ['YYYY-MM']}
-      jarakYtd: o.jarakYtd || { tahun: +String(o.bulan).slice(0, 4), bulan: {}, kurang: [] },
+      jarakYtd: o.jarakYtd || { aturan: ATURAN_JARAK, tahun: +String(o.bulan).slice(0, 4), bulan: {}, kurang: [] },
       catatan: o.catatan || [], mvKosong: o.mvKosong || [], mvGagal: o.mvGagal || [],
     };
   }
@@ -5053,9 +5124,14 @@ const DASH = (function () {
         unit: Object.entries(unit).sort((p, q) => q[1] - p[1]),
       };
     }
-    // jarak angkut Minerva (snapshot versi 2): MTD dan kemarin per front; YTD dihitung di kartunya (jarakYtdDari)
-    const JH = M.mv && M.mv.jarak;
-    d.jarak = JH && typeof JH === 'object' ? { mtd: ringkasJarak(jumlahJarak(JH, M.hari.slice(0, iCut + 1))), kemarin: ringkasJarak(jumlahJarak(JH, [M.hari[iCut]])) } : null;
+    // jarak angkut cara Excel 1on1 (snapshot versi 3): MTD, kemarin, dan rencana s.d. cut-off per front; YTD di kartunya
+    // (jarakYtdDari). Snapshot versi lama memakai cara lain: tidak ditampilkan sampai dihitung ulang.
+    const JH = M.v >= 3 && M.mv && M.mv.jarak;
+    if (JH && typeof JH === 'object' && !Array.isArray(JH)) {
+      const hc = M.hari.slice(0, iCut + 1);
+      d.jarak = { mtd: ringkasJarak(jumlahJarak(JH, hc, KUNCI_JARAK)), kemarin: ringkasJarak(jumlahJarak(JH, [M.hari[iCut]], KUNCI_JARAK)),
+        rencana: ringkasJarak(jumlahJarak(jarakRencana(M.wb, hc, M.bulan), hc, ['A', 'B', 'AO', 'AW', 'BO', 'BW'])) };
+    } else d.jarak = null;
     // mingguan (kolom AK..AO sheet Prod): minggu ke-, rentang tanggal, rencana dipotong sampai cut-off
     const Mg = W.prod.minggu, noH = W.prod.mingguHari || [];
     d.minggu = (W.prod.mingguNo || []).map((no, j) => {
@@ -5176,17 +5252,15 @@ const DASH = (function () {
   }
 
   // ---------------------------------------------------------------- jarak angkut: rata-rata tertimbang dari jumlah [Σ jarak×volume, Σ volume berjarak, Σ volume]
-  // angka di luar jendela jarak (mis. snapshot buatan) tampil '—', bukan angka raksasa
-  const rataJarak = s => { const v = s && s[1] > 0 ? s[0] / s[1] : null; return v != null && isFinite(v) && v >= JARAK.MIN - 0.01 && v <= JARAK.MAKS + 0.01 ? v : null; };
+  // angka di luar batas jarak (mis. snapshot buatan) tampil '—', bukan angka raksasa; barging = ETO + EFO, jadi dua kali batas
+  const rataJarak = s => { const v = s && s[1] > 0 ? s[0] / s[1] : null; return v != null && isFinite(v) && v > 0 && v <= 2 * JARAK.MAKS + 0.01 ? v : null; };
   const cakupanJarak = s => { const v = s && s[2] > 0 ? s[1] / s[2] : null; return v != null && isFinite(v) && v >= 0 && v <= 1.01 ? Math.min(v, 1) : null; };
-  // pembanding: TMM tanpa jarak dihitung 0 km (seperti rumus Distance di sheet ACT Excel 1on1, yang membagi dengan seluruh volume)
-  const rataNol = s => { const v = s && s[2] > 0 ? s[0] / s[2] : null; return v != null && isFinite(v) && v >= 0 && v <= JARAK.MAKS + 0.01 ? v : null; };
-  const gabJarak = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  // M = mining (ANTAM + PCM digabung sebelum dibagi); kunci yang tidak ada dianggap nol
   function ringkasJarak(S) {
-    const Mn = gabJarak(S.A, S.B);
-    return { A: rataJarak(S.A), B: rataJarak(S.B), M: rataJarak(Mn), G: rataJarak(S.G),
-      cak: { A: cakupanJarak(S.A), B: cakupanJarak(S.B), M: cakupanJarak(Mn), G: cakupanJarak(S.G) },
-      nol: { A: rataNol(S.A), B: rataNol(S.B), M: rataNol(Mn), G: rataNol(S.G) }, S };
+    const nol = [0, 0, 0], g = k => (S && Array.isArray(S[k]) ? S[k] : nol), Mn = gabungTiga(g('A'), g('B'));
+    const r = { M: rataJarak(Mn), cak: { M: cakupanJarak(Mn) }, S };
+    for (const k of KUNCI_JARAK) { r[k] = rataJarak(g(k)); r.cak[k] = cakupanJarak(g(k)); }
+    return r;
   }
   // YTD = bulan tertutup tahun ini (M.jarakYtd.bulan, diisi halaman) + MTD; bulan yang belum ada = kurang
   function jarakYtdDari(M, mtdS) {
@@ -5554,7 +5628,7 @@ const DASH = (function () {
     s += `<div class="d-kpi"><div class="d-kpi-l">Stripping ratio</div>
       <div class="d-kpi-v">${escH(fmt(D.sr.akt.T, 2))}</div>
       <div class="d-kpi-s"><span>rencana ${escH(fmt(D.sr.plan.T, 2))}</span></div>${ab(D.sr.akt.A, D.sr.akt.B, 2)}</div>`;
-    s += `<div class="d-kpi d-kpi-jarak">${isiJarak('Jarak mining', D.jarak && D.jarak.mtd, D.jarak && D.jarak.kemarin, 'MTD')}</div>`;
+    s += `<div class="d-kpi d-kpi-jarak">${isiJarak('Jarak mining', D.jarak && D.jarak.mtd, { periode: 'MTD', kemarin: D.jarak && D.jarak.kemarin, rencana: D.jarak && D.jarak.rencana })}</div>`;
     // kemarin
     const oreK = D.ore.T[i], tmmK = D.tmm.T[i], pO = D.planOre.T[i], pT = D.planTmm.T[i], src = D.sumber[h] || {};
     const shf = k => (M.mv && M.mv.shift && M.mv.shift[k] && M.mv.shift[k][h]) || { ds: 0, ns: 0 };
@@ -5667,11 +5741,13 @@ const DASH = (function () {
     s += baris('TMM', F.tmm.mtd, 'WMT', F.tmm.plan, f0, 1, F.tmm.kemarin);
     s += baris('Stripping ratio', F.sr.mtd, '', F.sr.plan, f2, 0);
     if (D.jarak) {
-      const J = D.jarak, ck = J.mtd.cak[k];
-      const tip = daftarTip([{ t: 'Jarak angkut · ' + NAMA[k] }, { v: kmT(J.mtd[k]), l: 'MTD' + (ck != null ? ' · jarak tercatat ' + pct(ck) + ' TMM' : '') },
-        { v: kmT(J.kemarin[k]), l: 'kemarin' }, { v: kmT(J.mtd.nol[k]), l: 'MTD bila TMM tanpa jarak dihitung 0 km (mendekati Excel 1on1)' },
-        { l: 'rata-rata tertimbang TMM, laporan excavator Minerva' }]);
-      s += `<tr data-tt="${tip}"><td>Jarak angkut</td><td class="num"><b>${escH(kmJ(J.mtd[k]))}</b>${J.mtd[k] != null ? '<small>km</small>' : ''}</td><td class="num d-muted">—</td></tr>`;
+      const J = D.jarak, R = J.rencana || {}, ck = J.mtd.cak[k];
+      const tip = daftarTip([{ t: 'Jarak angkut · ' + NAMA[k] + ' · cara Excel 1on1' },
+        { v: kmT(J.mtd[k]), l: 'MTD' + (ck != null ? ' · tonase dengan jarak ' + pct(ck) : '') },
+        { v: kmT(J.mtd[k + 'O']), l: 'ore MTD' }, { v: kmT(J.mtd[k + 'W']), l: 'waste MTD' },
+        { v: kmT(R[k]), l: 'rencana MTD (ore ' + kmT(R[k + 'O']) + ' · waste ' + kmT(R[k + 'W']) + ')' },
+        { v: kmT(J.kemarin[k]), l: 'kemarin' }, { l: CATATAN_JARAK }]);
+      s += `<tr data-tt="${tip}"><td>Jarak angkut</td><td class="num"><b>${escH(kmJ(J.mtd[k]))}</b>${J.mtd[k] != null ? '<small>km</small>' : ''}</td><td class="num d-muted">${escH(kmJ(R[k]))}</td></tr>`;
     }
     s += '</tbody><tbody class="pisah">';
     s += baris('PA', F.pa.mtd, '', D.planPa, p1, 1, F.pa.kemarin, 0.97);
@@ -5722,20 +5798,26 @@ const DASH = (function () {
   // kartu jarak: angka utama = jarak mining (ANTAM + PCM), tulisan kecil per front dan barging; rincian di tooltip
   const kmJ = v => (v == null ? '—' : fmt(v, 2));
   const kmT = v => (v == null ? '—' : fmt(v, 2) + ' km');
-  function isiJarak(label, J, K, periode, catatan) {
-    if (!J) return `<div class="d-kpi-l">${escH(label)}</div><div class="d-kpi-v">—</div><div class="d-kpi-p">${escH(catatan || 'dihitung ulang dengan versi baru')}</div>`;
-    const ck = (v, sat) => (v == null ? '' : ' · jarak tercatat ' + pct(v) + ' ' + (sat || 'TMM'));
-    const rows = [{ t: 'Jarak angkut ' + periode + ' · rata-rata tertimbang TMM' },
+  const CATATAN_JARAK = 'Cara Excel 1on1: excavator utama tiap hari, ore dan waste ditimbang tonase harian; baris Minerva tanpa jarak atau ≥ ' + fmt(JARAK.MAKS) + ' km tidak dihitung';
+  // o: {periode, kemarin, rencana, catatan}
+  function isiJarak(label, J, o) {
+    o = o || {};
+    if (!J) return `<div class="d-kpi-l">${escH(label)}</div><div class="d-kpi-v">—</div><div class="d-kpi-p">${escH(o.catatan || 'dihitung ulang dengan versi baru')}</div>`;
+    const ck = v => (v == null ? '' : ' · tonase dengan jarak ' + pct(v));
+    const rinci = k => (J[k + 'O'] != null || J[k + 'W'] != null ? ' (ore ' + kmT(J[k + 'O']) + ' · waste ' + kmT(J[k + 'W']) + ')' : '');
+    const R = o.rencana, K = o.kemarin;
+    const rows = [{ t: 'Jarak angkut ' + (o.periode || '') + ' · cara Excel 1on1' },
       { v: kmT(J.M), l: 'Mining (ANTAM + PCM)' + ck(J.cak.M), w: WARNA.T },
-      { v: kmT(J.A), l: 'ANTAM' + ck(J.cak.A), w: WARNA.A }, { v: kmT(J.B), l: 'PCM' + ck(J.cak.B), w: WARNA.B },
-      { v: kmT(J.G), l: 'Barging' + ck(J.cak.G, 'volume barging') }];
+      { v: kmT(J.A), l: 'ANTAM' + rinci('A'), w: WARNA.A }, { v: kmT(J.B), l: 'PCM' + rinci('B'), w: WARNA.B },
+      { v: kmT(J.G), l: 'Barging (ETO + EFO)' + ck(J.cak.G) }];
+    if (R && R.M != null) rows.push({ v: kmT(R.M), l: 'rencana mining MTD (ANTAM ' + kmT(R.A) + ' · PCM ' + kmT(R.B) + ')' });
     if (K) rows.push({ v: kmT(K.M), l: 'kemarin (mining)' });
-    rows.push({ v: kmT(J.nol.M), l: 'mining bila TMM tanpa jarak dihitung 0 km (mendekati Excel 1on1)' });
-    rows.push({ l: 'Laporan excavator Minerva; jarak kosong atau di luar ' + fmt(JARAK.MIN * 1000) + ' m–' + fmt(JARAK.MAKS) + ' km tidak dihitung' });
+    rows.push({ l: CATATAN_JARAK });
     return `<div data-tt="${daftarTip(rows)}"><div class="d-kpi-l">${escH(label)}</div>
       <div class="d-kpi-v">${escH(kmJ(J.M))}${J.M != null ? '<small>km</small>' : ''}</div>
       <div class="d-kpi-p"><span class="d-nw">${sw('A')}ANTAM ${escH(kmT(J.A))}</span><span class="d-nw">${sw('B')}PCM ${escH(kmT(J.B))}</span></div>
-      <div class="d-kpi-p"><span class="d-nw">Barging ${escH(kmT(J.G))}</span></div>${catatan ? `<div class="d-kpi-p"><span class="d-sem">${escH(catatan)}</span></div>` : ''}</div>`;
+      <div class="d-kpi-p"><span class="d-nw">Barging ${escH(kmT(J.G))}</span>${R && R.M != null ? `<span class="d-nw">rencana ${escH(kmT(R.M))}</span>` : ''}</div>` +
+      `${o.catatan ? `<div class="d-kpi-p"><span class="d-sem">${escH(o.catatan)}</span></div>` : ''}</div>`;
   }
   // 'Jan–Agu' untuk bulan berurutan, selain itu dipisah koma
   function rentangBulan(daftar) {
@@ -5744,12 +5826,12 @@ const DASH = (function () {
   }
   function isiJarakYtd(c) {
     const D = c.D, M = c.M;
-    if (!D.jarak) return isiJarak('Jarak mining', null);
+    if (!D.jarak) return isiJarak('Jarak mining', null, {});
     const Y = jarakYtdDari(M, D.jarak.mtd.S), status = c.opsi.jarakStatus ? c.opsi.jarakStatus() : '';
     // bulan tertutup yang belum ada: angka YTD tidak ditampilkan dulu supaya tidak menyesatkan
     if (Y.kurang.length) return `<div class="d-kpi-l">Jarak mining</div><div class="d-kpi-v">—</div>` +
       `<div class="d-kpi-p" data-jarak-proses>${escH(status || 'menunggu data Minerva ' + rentangBulan(Y.kurang))}</div>`;
-    return isiJarak('Jarak mining', Y, null, 'YTD', Y.tanpaData.length ? 'tanpa data Minerva ' + rentangBulan(Y.tanpaData) : '');
+    return isiJarak('Jarak mining', Y, { periode: 'YTD', catatan: Y.tanpaData.length ? 'tanpa data Minerva ' + rentangBulan(Y.tanpaData) : '' });
   }
   function isiKuota(c) {
     const K = c.D.kuota, th = c.D.ytd.tahun, admin = c.opsi.admin, ubah = c.st.kuotaUbah;
@@ -5938,7 +6020,7 @@ const DASH = (function () {
 
   return { VERSI, VERSI_MIN, agregatMinerva, bacaWorkbook, aturanSumber, ewhRencana, susunModel, turunan, pareto, render,
     hariBulan, jumlahHari, geser, parseAngka, OPEX, BASELINE_BAWAAN, namaBln,
-    JARAK, jarakMinerva, jarakKosong, jumlahJarak, tambahJarak, jarakBulanSah, gambarUlangKartu };
+    JARAK, ATURAN_JARAK, KUNCI_JARAK, jarakExcel, bobotJarak, jarakRencana, jarakKosong, jumlahJarak, tambahJarak, jarakBulanSah, gambarUlangKartu };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
 </script>
@@ -7347,6 +7429,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (!obj(W) || !['prod', 'ewh', 'paua', 'plan', 'kode', 'wfMtd', 'wfYtd', 'ytd'].every(function (k) { return obj(W[k]); })) return false;
     if (!obj(W.prod.hari) || !obj(W.prod.mtd) || !obj(W.plan.target) || !Array.isArray(W.prod.mingguNo)) return false;
     if (!obj(M.mv) || !['jam', 'shift', 'mat', 'status', 'exca'].every(function (k) { return obj(M.mv[k]); }) || !obj(M.sumber)) return false;
+    if (M.v >= 3 && (!obj(M.jarakYtd) || M.jarakYtd.aturan !== DASH.ATURAN_JARAK)) return false;
     if (M.v >= 2 && (!obj(M.mv.jarak) || !obj(M.jarakYtd) || !obj(M.jarakYtd.bulan))) return false;   // versi 2: jarak angkut
     return true;
   }
@@ -7429,7 +7512,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       S.loaderAuto = OE1.pilihLoader(ex, hari);
       var loader = {}; hari.forEach(function (d) { var L = loaderFinal(d); loader[d] = { antam: L.antam || '', bumd: L.bumd || '' }; });
       var mv = DASH.agregatMinerva(ex, hari, loader);
-      mv.jarak = DASH.jarakMinerva(ex, hari);                          // jarak angkut per hari (kartu Jarak mining, front)
       var jarakYtd = await jarakYtdTersimpan(bulan), jarakTakTerbaca = !!jarakYtd.bacaGagal;   // bulan tertutup: dari simpanan; yang kurang diambil di latar
       delete jarakYtd.bacaGagal;
       var at = DASH.aturanSumber(hari, S.data.qaqc, mv.mat, bargingHari);
@@ -7440,6 +7522,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       var s = await OE1.susunWorkbook(tpl, data);
       var wb = await OECalc.load(OE1.bagianWorkbook(s));
       var baca = DASH.bacaWorkbook(function (sh, r) { return wb.get(sh, r); }, bulan);
+      mv.jarak = DASH.jarakExcel(ex, hari, function (d) { return loader[d]; }, DASH.bobotJarak(baca, bulan));   // kartu Jarak mining & front
       var sidikD = { isian: isianPada, tpl: S.tplWaktu || null, ytd: await waktuYtd(bulan), lengkap: mulaiAmbil >= lengkapPada(cutoff) };
       var M = DASH.susunModel({ bulan: bulan, cutoff: cutoff, dibuat: new Date().toISOString(), oleh: emailLogin(), sidik: sidikD, baca: baca, mv: mv,
         sumber: at.sumber, loader: loader, catatan: log, mvKosong: ex.kosong, mvGagal: ex.gagal.map(function (x) { return String(x).slice(0, 10); }), jarakYtd: jarakYtd });
@@ -7475,7 +7558,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
 
   /* ---------- jarak angkut YTD: bulan tertutup tahun ini ---------- */
-  // Jarak per bulan = jumlah [Σ jarak×volume, Σ volume berjarak, Σ volume] dari laporan excavator Minerva (DASH.jarakMinerva).
+  // Jarak per bulan = jumlah [Σ jarak×tonase, Σ tonase berjarak, Σ tonase] per front, cara Excel 1on1 (DASH.jarakExcel).
   // Diambil sekali per bulan lalu disimpan di snapshot (jarakYtd.bulan), jadi hitung berikutnya tidak mengambil ulang.
   // S.jarakBulan = simpanan sesi. Hanya angka yang lolos DASH.jarakBulanSah yang dipakai (snapshot bisa ditulis semua pengguna login).
   function bulanTertutup(bulan) { var out = [], th = bulan.slice(0, 4); for (var m = th + '-01'; m < bulan; m = bulanGeser(m, 1)) out.push(m); return out; }
@@ -7483,17 +7566,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   function jeda() { return new Promise(function (r) { setTimeout(r, 0); }); }
   function bulatJarak(j) { ['A', 'B', 'G'].forEach(function (k) { j[k] = j[k].map(function (v) { return Math.round(v * 10) / 10; }); }); return j; }
   function jumlahBulanJarak(harian, ym) { return bulatJarak(DASH.jumlahJarak(harian, hariBulan(ym))); }
-  // urutan sumber: simpanan sesi -> snapshot bulan itu sendiri (sebulan penuh, lengkap) -> jarak YTD di snapshot lain tahun ini (bulan terbaru dulu).
+  // urutan sumber: simpanan sesi -> snapshot bulan itu sendiri (versi 3, sebulan penuh, lengkap) -> jarak YTD cara yang sama
+  // (aturan DASH.ATURAN_JARAK) di snapshot lain tahun ini (bulan terbaru dulu). Simpanan cara lama diabaikan.
   // hasil.bacaGagal = simpanan di Supabase tidak terbaca: bulan yang kurang belum tentu kosong, jadi jangan ditimpa dan jangan diunduh ulang dulu
   async function jarakYtdTersimpan(bulan) {
-    var th = bulan.slice(0, 4), daftar = bulanTertutup(bulan), hasil = { tahun: +th, bulan: {}, kurang: [] };
+    var th = bulan.slice(0, 4), daftar = bulanTertutup(bulan), hasil = { aturan: DASH.ATURAN_JARAK, tahun: +th, bulan: {}, kurang: [] };
     function pakai(m, b) { if (!hasil.bulan[m] && DASH.jarakBulanSah(b)) hasil.bulan[m] = b; }
     daftar.forEach(function (m) { pakai(m, S.jarakBulan[m]); });
     if (daftar.some(function (m) { return !hasil.bulan[m]; })) {
       var rows = [];
       try {
         rows = await rest('/rest/v1/oe_dasbor?kunci=like.' + encodeURIComponent('snap|' + th + '-') + '*&order=kunci.desc' +
-          '&select=kunci,cutoff:data->>cutoff,lk:data->sidik->>lengkap,jy:data->jarakYtd,jr:data->mv->jarak', { method: 'GET' });
+          '&select=kunci,v:data->>v,cutoff:data->>cutoff,lk:data->sidik->>lengkap,jy:data->jarakYtd,jr:data->mv->jarak', { method: 'GET' });
         if (!Array.isArray(rows)) rows = [];
       } catch (e) {
         if (e.jenis === 'sesi') throw e;
@@ -7503,15 +7587,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       daftar.forEach(function (m) {
         if (hasil.bulan[m]) return;
         var own = rows.filter(function (r) { return r && r.kunci === 'snap|' + m; })[0];
-        if (own && own.cutoff === akhirBulan(m) && String(own.lk) === 'true' && objBiasa(own.jr)) pakai(m, jumlahBulanJarak(own.jr, m));
+        if (own && +own.v >= DASH.VERSI && own.cutoff === akhirBulan(m) && String(own.lk) === 'true' && objBiasa(own.jr)) pakai(m, jumlahBulanJarak(own.jr, m));
         for (var i = 0; i < rows.length && !hasil.bulan[m]; i++) {
           var jy = rows[i] && rows[i].jy;
-          if (objBiasa(jy) && objBiasa(jy.bulan)) pakai(m, jy.bulan[m]);
+          if (objBiasa(jy) && jy.aturan === DASH.ATURAN_JARAK && objBiasa(jy.bulan)) pakai(m, jy.bulan[m]);
         }
       });
       // tidak terbaca: bulan yang sudah ada di model yang tampil tetap dipakai
       var M0 = S.dModel;
-      if (hasil.bacaGagal && M0 && typeof M0.bulan === 'string' && M0.bulan.slice(0, 4) === th && objBiasa(M0.jarakYtd) && objBiasa(M0.jarakYtd.bulan))
+      if (hasil.bacaGagal && M0 && M0.v === DASH.VERSI && typeof M0.bulan === 'string' && M0.bulan.slice(0, 4) === th && objBiasa(M0.jarakYtd) &&
+        M0.jarakYtd.aturan === DASH.ATURAN_JARAK && objBiasa(M0.jarakYtd.bulan))
         daftar.forEach(function (m) { if (m < M0.bulan) pakai(m, M0.jarakYtd.bulan[m]); });
     }
     daftar.forEach(function (m) { if (hasil.bulan[m]) S.jarakBulan[m] = hasil.bulan[m]; else hasil.kurang.push(m); });
@@ -7522,12 +7607,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   async function gabungJarakTersimpan(M) {
     var snap = await ambilSnapshot(M.bulan), J = snap && snap.data && snap.data.jarakYtd, daftar = bulanTertutup(M.bulan);
     if (snap === undefined) return false;
-    if (!objBiasa(J) || !objBiasa(J.bulan)) return true;
+    if (!objBiasa(J) || J.aturan !== DASH.ATURAN_JARAK || !objBiasa(J.bulan)) return true;
     daftar.forEach(function (m) { if (!DASH.jarakBulanSah(M.jarakYtd.bulan[m]) && DASH.jarakBulanSah(J.bulan[m])) M.jarakYtd.bulan[m] = S.jarakBulan[m] = J.bulan[m]; });
     M.jarakYtd.kurang = daftar.filter(function (m) { return !DASH.jarakBulanSah(M.jarakYtd.bulan[m]); });
     return true;
   }
-  // satu bulan dari laporan excavator Minerva, per hari, dua sekaligus, tanpa menumpuk laporan di memori.
+  // satu bulan dari laporan excavator Minerva (cara Excel, lihat DASH.jarakExcel), per hari, dua sekaligus, tanpa menumpuk laporan di memori.
   // Galat fatal (sesi, Edge Function, token) menghentikan kedua pekerja dan dilempar sesudah keduanya berhenti.
   async function jarakBulanMinerva(ym, prog) {
     var hari = hariBulan(ym), i = 0, selesai = 0, jum = DASH.jarakKosong(), gagal = [], henti = null;
@@ -7537,7 +7622,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
           var d = hari[i++];
           try {
             var h = await ambilMinerva('exca', { tanggal: d }, { tanpaMemori: true });
-            if (!h.kosong && h.rows.length) DASH.tambahJarak(jum, DASH.jumlahJarak(DASH.jarakMinerva(h, hari), hari));   // sama dengan MTD: baris masuk ke tanggal shift-nya
+            if (!h.kosong && h.rows.length) {
+              // cara Excel: excavator utama pilihan otomatis hari itu (belum ada isian loader), bobot = volume Minerva front itu
+              var pl = (OE1.pilihLoader(h, [d]) || {})[d] || {};
+              DASH.tambahJarak(jum, DASH.jumlahJarak(DASH.jarakExcel(h, hari, function (x) { return x === d ? pl : null; }, null), hari));
+            }
           } catch (e) { if (e.jenis === 'sesi' || e.jenis === 'fungsi' || e.jenis === 'token') throw e; gagal.push(d); }
           selesai++;
           if (!henti) prog(selesai, hari.length);
@@ -7558,7 +7647,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   // pasang bulan dari simpanan sesi ke model; hasil = jumlah bulan yang baru terpasang
   function terapkanJarak(M) {
     if (!M || M.v !== DASH.VERSI || typeof M.bulan !== 'string') return 0;
-    if (!objBiasa(M.jarakYtd)) M.jarakYtd = { tahun: +M.bulan.slice(0, 4), bulan: {}, kurang: [] };
+    if (!objBiasa(M.jarakYtd)) M.jarakYtd = { aturan: DASH.ATURAN_JARAK, tahun: +M.bulan.slice(0, 4), bulan: {}, kurang: [] };
     if (!objBiasa(M.jarakYtd.bulan)) M.jarakYtd.bulan = {};
     var B = M.jarakYtd.bulan, daftar = bulanTertutup(M.bulan), n = 0;
     daftar.forEach(function (m) { if (!DASH.jarakBulanSah(B[m]) && DASH.jarakBulanSah(S.jarakBulan[m])) { B[m] = S.jarakBulan[m]; n++; } });
@@ -7584,7 +7673,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     try {
       for (var coba = 0; coba < 2; coba++) {
         var snap = await ambilSnapshot(M.bulan), D0 = snap && snap.data;
-        if (!D0 || !snapshotSah(D0, M.bulan) || D0.v !== DASH.VERSI) return;   // belum ada snapshot versi ini / tidak terbaca: ikut tersimpan saat hitung berikutnya
+        if (!D0 || !snapshotSah(D0, M.bulan) || D0.v !== DASH.VERSI || D0.jarakYtd.aturan !== DASH.ATURAN_JARAK) return;   // belum ada snapshot versi ini / tidak terbaca: ikut tersimpan saat hitung berikutnya
         var J = D0.jarakYtd, daftar = bulanTertutup(M.bulan), baru = 0;
         daftar.forEach(function (m) { if (!DASH.jarakBulanSah(J.bulan[m]) && DASH.jarakBulanSah(S.jarakBulan[m])) { J.bulan[m] = S.jarakBulan[m]; baru++; } });
         if (!baru) { S.jarakPerluSimpan = false; return; }
