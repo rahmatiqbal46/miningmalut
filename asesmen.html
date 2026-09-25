@@ -223,6 +223,63 @@ details.all summary{padding:10px 14px;font-weight:650;cursor:pointer}
 .qf button{border:0;padding:0;width:64px;height:48px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,.06)}
 .qf img{width:100%;height:100%;object-fit:cover;display:block}
 
+/* Hero: temuan NO-GO menurut risiko IBPR */
+.hero{background:var(--surface);border-radius:var(--r-panel);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.hero .hh{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:14px 16px 12px;background:linear-gradient(180deg,#f6faf9,var(--surface));border-bottom:1px solid var(--border-soft);flex-wrap:wrap}
+.hero h2{font-size:var(--f-t2);line-height:22px;margin:0 0 3px;letter-spacing:-.2px}
+.hero .hh p{margin:0;font-size:var(--f-callout);color:var(--text-muted)}
+.hero .hset{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hero .kosong{padding:16px;color:var(--good);font-weight:600}
+.hero .catat{padding:10px 16px;border-top:1px solid var(--border-soft);font-size:var(--f-callout);color:var(--text-muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rk{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:var(--f-callout);font-weight:650}
+.rk i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.rk.high{background:#f3d5d1;color:#7a160f}.rk.moderate_high{background:var(--bad-soft);color:var(--bad)}
+.rk.moderate{background:var(--warn-soft);color:var(--warn)}
+.rk.low_moderate{background:#e2eddc;color:#4a6b21}.rk.low{background:var(--good-soft);color:var(--good)}
+.rk.kosong{background:var(--netral);color:var(--text-muted)}
+.hlist{list-style:none;margin:0;padding:0}
+.hrow{display:grid;grid-template-columns:62px minmax(0,1fr) auto 16px;gap:12px;align-items:center;padding:11px 16px;cursor:pointer;border-top:1px solid var(--border-soft);width:100%;border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;font:inherit;color:inherit}
+.hlist>li:first-child .hrow{border-top:0}
+.hrow:hover{background:var(--surface-2)}
+.hrow[aria-expanded="true"]{background:var(--surface-2)}
+.hrow .chev{color:var(--text-muted);transition:transform .15s}
+.hrow[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.hrow.selesai .rbox{filter:saturate(.25);opacity:.8}
+.rbox{border-radius:10px;padding:7px 4px;text-align:center;line-height:1.05}
+.rbox b{display:block;font-size:19px;font-weight:700}
+.rbox small{display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-top:2px;opacity:.9}
+.rbox.high{background:#7a160f;color:#fff}.rbox.moderate_high{background:var(--bad);color:#fff}
+.rbox.moderate{background:var(--amber);color:#3a2100}
+.rbox.low_moderate{background:#7d9e4f;color:#fff}.rbox.low{background:var(--good);color:#fff}
+.rbox.kosong{background:var(--netral);color:var(--text-muted)}
+.hmain b{display:block;font-size:var(--f-t3);font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hmain small{display:block;color:var(--text-muted);font-size:var(--f-callout);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hn{text-align:right;white-space:nowrap}
+.hn b{font-size:var(--f-t2);font-weight:700;color:var(--bad)}
+.hn.lunas b{color:var(--good)}
+.hn small{display:block;font-size:var(--f-sub);color:var(--text-muted)}
+.hdet{padding:0 16px 14px;background:var(--surface-2);border-top:1px solid var(--border-soft)}
+.tem{background:var(--surface);border-radius:var(--r-inner);padding:10px 12px;margin-top:10px;box-shadow:0 0 0 1px var(--border-soft)}
+.tem .tt{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.tem .tt b{font-weight:650}
+.tem .tt .sub{color:var(--text-muted);font-size:var(--f-callout)}
+.tem .tk{margin-top:5px}
+.tem .aksi{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.tem.ok{background:var(--good-soft);box-shadow:0 0 0 1px #c7e3d4}
+.tem .sel{font-size:var(--f-callout);color:var(--good);font-weight:600}
+.rchip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 7px;font-size:var(--f-sub);font-weight:700;letter-spacing:.2px}
+.rchip.high{background:#7a160f;color:#fff}.rchip.moderate_high{background:var(--bad);color:#fff}
+.rchip.moderate{background:var(--amber);color:#3a2100}
+.rchip.low_moderate{background:#7d9e4f;color:#fff}.rchip.low{background:var(--good);color:#fff}
+.rchip.kosong{background:var(--netral);color:var(--text-muted)}
+@media (max-width:560px){
+  .hrow{grid-template-columns:52px minmax(0,1fr) auto 14px;gap:9px;padding:10px 12px}
+  .hmain b,.hmain small{white-space:normal}
+  .hn small{display:none}
+  .hero .hh{padding:12px 12px 10px}
+  .hdet{padding:0 12px 12px}
+  .rbox b{font-size:17px}
+}
 @media (max-width:1000px){.cstat{grid-template-columns:1fr}.ingat{grid-template-columns:1fr}.ingat .ic{display:none}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr 1fr}.kgrid{grid-template-columns:1fr}.knav{position:static;display:flex;overflow-x:auto}.knav button{white-space:nowrap}}
 @media (max-width:560px){.wrap{padding:0 16px 40px}.bar{margin:0 -16px 12px;padding:12px 16px 0}.fgrid{grid-template-columns:1fr}.info{grid-template-columns:1fr 1fr}.tile .n{font-size:32px;line-height:36px}.qrow{grid-template-columns:24px minmax(0,1fr)}.qrow>:nth-child(n+3){grid-column:2}.fm .row2{grid-template-columns:1fr}}
 @media (prefers-reduced-transparency:reduce){.kaca{backdrop-filter:none;-webkit-backdrop-filter:none}.bar{background:var(--bg)}}
@@ -382,7 +439,8 @@ var IC={
  dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>',
  cetak:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 9V3.5h10V9M7 17H4.5V9.5h15V17H17M7 14h10v6.5H7z"/></svg>',
  awan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 10H7z"/><path d="M12 16v-5.5m0 0-2.5 2.5M12 10.5l2.5 2.5"/></svg>',
- folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 7.5V18a1.5 1.5 0 0 0 1.5 1.5h14a1.5 1.5 0 0 0 1.5-1.5V9a1.5 1.5 0 0 0-1.5-1.5h-7L10 5H5a1.5 1.5 0 0 0-1.5 1.5z"/></svg>'
+ folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 7.5V18a1.5 1.5 0 0 0 1.5 1.5h14a1.5 1.5 0 0 0 1.5-1.5V9a1.5 1.5 0 0 0-1.5-1.5h-7L10 5H5a1.5 1.5 0 0 0-1.5 1.5z"/></svg>',
+ chev:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>'
 };
 
 /* ---------- util ---------- */
@@ -395,7 +453,8 @@ function geser(ymd,n){ var p=ymd.split('-').map(Number); var d=new Date(Date.UTC
 function jam(v){ var ms=Date.parse(v); if(isNaN(ms)) return '—'; var t=wit(ms); return p2(t.h)+'.'+p2(t.mi); }
 function tglPendek(iso){ var a=String(iso).slice(0,10).split('-'); return (+a[2])+' '+BLN[+a[1]-1]; }
 function tglPanjang(iso){ var a=String(iso).slice(0,10).split('-'); var d=new Date(Date.UTC(+a[0],+a[1]-1,+a[2])); return HARI[d.getUTCDay()]+', '+(+a[2])+' '+BLN[+a[1]-1]+' '+a[0]; }
-function lalu(v){ var m=Math.max(0,Math.round((Date.now()-Date.parse(v))/60000)); if(m<1) return 'baru saja'; if(m<60) return m+' mnt lalu'; var h=Math.floor(m/60); return h+' j '+(m%60)+' mnt lalu'; }
+function lalu(v){ var m=Math.max(0,Math.round((Date.now()-Date.parse(v))/60000)); if(m<1) return 'baru saja'; if(m<60) return m+' mnt lalu';
+  var h=Math.floor(m/60); if(h<24) return h+' j '+(m%60)+' mnt lalu'; var d=Math.round(h/24); return d===1?'kemarin':d+' hari lalu'; }
 function pill(st){ return st==='go'?'<span class="pill go">GO</span>':st==='nogo'?'<span class="pill nogo">NO-GO</span>':'<span class="pill wait">Menunggu</span>'; }
 function toast(msg,merah){ var t=document.createElement('div'); t.className='toast'+(merah?' merah':''); t.setAttribute('role','status'); t.innerHTML=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); },4200); }
 function token(){ try{ var a=JSON.parse(localStorage.getItem(AUTH_KEY)||'null'); if(a&&a.access_token&&(!a.expires_at||a.expires_at*1000>Date.now())) return a.access_token; }catch(e){} return null; }
@@ -419,6 +478,7 @@ function terlihat(){ if(document.visibilityState==='hidden') return false; try{ 
 
 /* ---------- state ---------- */
 var S={tab:'ringkas',periode:'hari',data:null,versi:null,saya:null,galat:'',cad:null,cadWaktu:0,
+  tem:{},temSelesai:false,temFoto:{},
   dl:{dari:geser(hariIni(),-6),sampai:hariIni(),alat:[],kep:'semua',hitung:null,sibuk:false},
   k:{bagian:'q',data:null,cari:'',peran:'semua'}};
 
@@ -448,7 +508,7 @@ async function muat(paksa){
 function renderRingkas(){
   var D=S.data; if(!D){ el('isi').innerHTML='<div class="empty">Memuat…</div>'; return; }
   var tot=D.total||0, t1=tot||1;
-  var s=kartuPengingat()+'<div class="tiles">';
+  var s=kartuPengingat()+heroTemuan()+'<div class="tiles">';
   var w=D.menunggu;
   s+='<button class="tile wait" data-lompat="p-wait"><span class="lab"><span class="pill wait">Menunggu persetujuan</span></span><span class="n">'+w.length+'</span><span class="s">'+(w.length?'terlama '+lalu(w[0].dikirim)+' · saat ini':'tidak ada antrean · saat ini')+'</span></button>';
   s+='<button class="tile nogo" data-lompat="p-nogo"><span class="lab"><span class="pill nogo">Pekerjaan tidak dilanjutkan</span></span><span class="n">'+D.nogo+'</span><span class="s">'+D.unit_dihentikan+' unit dihentikan</span></button>';
@@ -479,6 +539,75 @@ function renderRingkas(){
   el('isi').innerHTML=s;
   if(!L.hitung) hitungUnduh();
 }
+/* ---------- Hero: temuan NO-GO menurut risiko IBPR ----------
+   Satu baris per bahaya (pertanyaan), diurutkan nilai risiko IBPR.
+   Dibuka → daftar temuannya, tiap temuan bisa ditandai sudah ditindaklanjuti. */
+var RIS={high:'High',moderate_high:'Moderate to High',moderate:'Moderate',low_moderate:'Low to Moderate',low:'Low'};
+var RIS_PENDEK={high:'High',moderate_high:'Mod–High',moderate:'Moderate',low_moderate:'Low–Mod',low:'Low'};
+function risKelas(t){ return t||'kosong'; }
+function risNama(t){ return RIS[t]||'Belum dinilai'; }
+function risKode(x){ return (x&&x.k&&x.s)?'ABCDE'.charAt(x.k-1)+x.s:''; }
+function rbox(x){ return '<span class="rbox '+risKelas(x.tingkat)+'"><b>'+(x.nilai==null?'–':x.nilai)+'</b><small>'+(x.tingkat?(RIS_PENDEK[x.tingkat]||''):'belum')+'</small></span>'; }
+function rchip(x){ var k=risKode(x); return '<span class="rchip '+risKelas(x.tingkat)+'">'+(k?k+' · ':'')+(x.tingkat?risNama(x.tingkat):'Belum dinilai')+(x.nilai!=null?' '+x.nilai:'')+'</span>'; }
+function periodeTeks(){ return {shift:'shift ini',hari:'hari ini','7':'7 hari terakhir','30':'30 hari terakhir'}[S.periode]||''; }
+function fotoTemuan(t){ var a=[]; (t.daftar||[]).forEach(function(d){ (d.foto||[]).forEach(function(f){ a.push(f); }); }); return a; }
+function temuanSatu(t,d){
+  var ok=!!d.selesai, kunci=d.form_id+'|'+t.id;
+  var s='<div class="tem'+(ok?' ok':'')+'"><div class="tt"><b>'+esc(d.unit)+'</b><span class="sub">'+esc(d.alat)+' · '+esc(d.lokasi)+' · '+tglPendek(d.tanggal)+' S'+d.shift+' · '+jam(d.diisi)+' WIT</span></div>';
+  s+='<div class="tk">'+(d.ket?esc(d.ket):'<span class="muted">Tanpa keterangan.</span>')+'</div>';
+  s+='<div class="tt" style="margin-top:4px"><span class="sub">'+esc(d.nama)+' · NPP '+esc(d.npp)+' · NO-GO oleh '+esc(d.keputusan_nama||'—')+' '+jam(d.keputusan_waktu)+' WIT</span></div>';
+  if((d.foto||[]).length) s+='<div class="qf">'+d.foto.map(function(p){ return tombolFoto(p,'Foto temuan '+esc(d.unit)); }).join('')+'</div>';
+  s+='<div class="aksi">';
+  if(ok) s+='<span class="sel">Selesai '+tglPendek(d.selesai.waktu)+' '+jam(d.selesai.waktu)+' · '+esc(d.selesai.oleh)+'</span>'+
+    (d.selesai.catatan?'<span class="muted">— '+esc(d.selesai.catatan)+'</span>':'')+'<button class="mini" data-tbatal="'+kunci+'">Batalkan</button>';
+  else s+='<button class="btn" data-tsel="'+kunci+'">Tandai selesai</button>';
+  s+='<button class="btn2" data-det="'+d.form_id+'">Buka form '+esc(d.no)+'</button></div></div>';
+  return s;
+}
+function heroTemuan(){
+  var D=S.data; if(!D) return '';
+  var list=D.temuan||[], nBuka=0, nSel=0, hitung={};
+  list.forEach(function(t){ nBuka+=t.buka; nSel+=(t.n-t.buka); if(t.buka) hitung[risKelas(t.tingkat)]=(hitung[risKelas(t.tingkat)]||0)+t.buka; });
+  var tampil=list.filter(function(t){ return S.temSelesai || t.buka>0; });
+  var s='<section class="hero" id="hero"><div class="hh"><div><h2>Temuan NO-GO menurut risiko</h2>'+
+    '<p>Diurutkan dari nilai risiko IBPR tertinggi · '+periodeTeks()+' · <b>'+angka(nBuka)+'</b> temuan belum ditindaklanjuti'+(nSel?' · '+angka(nSel)+' selesai':'')+'</p></div><div class="hset">';
+  ['high','moderate_high','moderate','low_moderate','low','kosong'].forEach(function(k){ if(hitung[k]) s+='<span class="rk '+k+'"><i></i>'+hitung[k]+' '+risNama(k==='kosong'?null:k)+'</span>'; });
+  if(nSel) s+='<button class="mini" data-tem-selesai="1">'+(S.temSelesai?'Sembunyikan yang selesai':'Tampilkan yang selesai ('+angka(nSel)+')')+'</button>';
+  s+='</div></div>';
+  if(!tampil.length) s+='<div class="kosong">'+(list.length?'Semua temuan pada periode ini sudah ditindaklanjuti.':'Tidak ada temuan NO-GO pada periode ini.')+'</div>';
+  else{
+    s+='<ul class="hlist">';
+    tampil.forEach(function(t){
+      var buka=S.tem[t.id], unit=(t.unit||[]).slice(0,4).join(', ')+((t.unit||[]).length>4?' +'+((t.unit||[]).length-4):'');
+      s+='<li><button class="hrow'+(t.buka?'':' selesai')+'" data-tem="'+t.id+'" aria-expanded="'+(buka?'true':'false')+'">'+rbox(t)+
+        '<span class="hmain"><b>'+esc(t.bahaya||t.ringkas)+'</b><small>'+esc(t.ringkas)+(t.ibpr?' · '+esc(t.ibpr):'')+
+        (t.k&&t.s?' · '+risKode(t)+' '+risNama(t.tingkat)+' — '+KEMUNGKINAN[t.k-1][3]+' × '+KEPARAHAN[t.s-1][3]:' · risiko belum dinilai')+'</small>'+
+        '<small>'+esc(unit)+' · '+angka(t.n)+' temuan · terakhir '+lalu(t.terakhir)+'</small></span>'+
+        '<span class="hn'+(t.buka?'':' lunas')+'"><b>'+(t.buka||'✓')+'</b><small>'+(t.buka?'belum ditangani':'selesai')+'</small></span>'+
+        '<span class="chev">'+IC.chev+'</span></button>';
+      if(buka){ s+='<div class="hdet">'+(t.daftar||[]).filter(function(d){ return S.temSelesai||!d.selesai; }).map(function(d){ return temuanSatu(t,d); }).join('')+'</div>'; }
+      s+='</li>';
+    });
+    s+='</ul>';
+  }
+  if(S.saya&&S.saya.admin&&D.risiko_belum) s+='<div class="catat"><span><b>'+D.risiko_belum+' pertanyaan</b> belum punya nilai risiko IBPR, jadi temuannya belum bisa diurutkan.</span><button class="mini" data-ke-risiko="1">Isi di Kelola → Pertanyaan</button></div>';
+  return s+'</section>';
+}
+function segarHero(){ var h=el('hero'); if(!h) return; h.outerHTML=heroTemuan(); }
+async function bukaTemuan(id){
+  id=+id; S.tem[id]=!S.tem[id]; segarHero();
+  if(!S.tem[id]) return;
+  var t=(S.data.temuan||[]).filter(function(x){return x.id===id;})[0]; if(!t) return;
+  var perlu=fotoTemuan(t).filter(function(p){ return !urlKecil(p); });
+  if(perlu.length){ try{ await siapkanKecil(perlu); }catch(e){} segarHero(); }
+}
+function tandaiTemuan(kunci){
+  var a=kunci.split('|'), form=a[0], q=+a[1];
+  formModal('Tandai temuan selesai',
+    '<label for="ft-c">Tindak lanjut yang sudah dilakukan (opsional)</label><textarea id="ft-c" placeholder="Contoh: bohlam rotary lamp diganti di workshop, unit sudah dicek ulang."></textarea>'+
+    '<div class="hint">Tercatat atas nama email Anda beserta jamnya. Temuan hilang dari daftar di atas, tetapi form dan arsipnya tidak berubah.</div>',
+    async function(){ await rpc('gng_tindak_catat',{p_form:form,p_pertanyaan:q,p_catatan:el('ft-c').value}); S.versi=null; await muat(true); return 'Temuan ditandai selesai.'; });
+}
 function infoUnduh(){ var h=S.dl.hitung; if(!h) return 'Menghitung…'; return '<b>'+h.total.toLocaleString('id-ID')+' form</b> cocok · '+h.go+' GO, '+h.nogo+' NO-GO · lembar Rekap, Jawaban, Evidence, dan Keterangan'; }
 var jedaHitung=null;
 function hitungUnduh(){ clearTimeout(jedaHitung); jedaHitung=setTimeout(async function(){ var L=S.dl; try{ L.hitung=await rpc('gng_ekspor_hitung',{p_dari:L.dari,p_sampai:L.sampai,p_alat:L.alat,p_keputusan:L.kep}); }catch(e){ L.hitung={total:0,go:0,nogo:0}; } var i=el('dl-info'); if(i) i.innerHTML=infoUnduh(); var b=el('dl-go'); if(b) b.disabled=!L.hitung.total||L.sibuk; },250); }
@@ -489,19 +618,34 @@ function lembarExcel(semua,info,fotoTeks){
   semua.forEach(function(f){
     rek.push({no:f.no,tanggal:f.tanggal,shift:f.shift,diisi:jam(f.diisi),npp:f.npp,nama:f.nama,alat:f.alat,unit:f.unit,unit_m:f.unit_manual?'Ya':'',lokasi:f.lokasi,lok_m:f.lokasi_manual?'Ya':'',
       n:f.pertanyaan.length,tidak:f.jumlah_tidak,kendala:f.kendala||'',keputusan:f.status==='go'?'GO':f.status==='nogo'?'NO-GO':'MENUNGGU',oleh:f.keputusan_nama||'',jam_k:f.keputusan_waktu?jam(f.keputusan_waktu):'',
-      menit:f.keputusan_waktu?Math.max(0,Math.round((Date.parse(f.keputusan_waktu)-Date.parse(f.dikirim))/60000)):'',catatan:f.catatan||''});
+      menit:f.keputusan_waktu?Math.max(0,Math.round((Date.parse(f.keputusan_waktu)-Date.parse(f.dikirim))/60000)):'',catatan:f.catatan||'',
+      risiko:(function(){ var b=null; Object.keys(f.risiko||{}).forEach(function(k){ var r=f.risiko[k]; if(r&&r.nilai!=null&&(!b||r.nilai>b.nilai)) b=r; });
+        return b?(risKode(b)+' '+risNama(b.tingkat)+' '+b.nilai):''; })()});
     f.pertanyaan.forEach(function(q){ var j=f.jawaban[q.id], e=f.evidence[q.id]||{}, fl=e.foto||[]; nFoto+=fl.length;
       jaw.push({no:f.no,tanggal:f.tanggal,shift:f.shift,unit:f.unit,nama:f.nama,qno:q.no,bagian:q.bagian,teks:q.teks,jawab:j==='Y'?'YA':j==='T'?'TIDAK':'—',nf:fl.length});
-      if(fl.length||e.ket) evi.push({no:f.no,tanggal:f.tanggal,shift:f.shift,unit:f.unit,nama:f.nama,qno:q.no,teks:q.teks,jawab:j==='Y'?'YA':j==='T'?'TIDAK':'—',ket:e.ket||'',n:fl.length,foto:fotoTeks(f,q,j,fl),keputusan:f.status==='go'?'GO':f.status==='nogo'?'NO-GO':'MENUNGGU',catatan:f.catatan||''}); });
+      var r=(f.risiko||{})[q.id]||{}, tk=(f.tindak||{})[q.id];
+      if(fl.length||e.ket) evi.push({no:f.no,tanggal:f.tanggal,shift:f.shift,unit:f.unit,nama:f.nama,qno:q.no,teks:q.teks,jawab:j==='Y'?'YA':j==='T'?'TIDAK':'—',ket:e.ket||'',n:fl.length,foto:fotoTeks(f,q,j,fl),
+        bahaya:j==='T'?(r.bahaya||''):'', ibpr:j==='T'?(r.ibpr||''):'',
+        k:j==='T'&&r.k!=null?(KEMUNGKINAN[r.k-1]||['','',''])[2]:'', s:j==='T'&&r.s!=null?(KEPARAHAN[r.s-1]||['','',''])[2]:'',
+        kode:j==='T'?risKode(r):'', nilai:j==='T'&&r.nilai!=null?r.nilai:'', tingkat:j==='T'&&r.tingkat?risNama(r.tingkat):'',
+        tindak:tk?(tglPendek(tk.waktu)+' '+jam(tk.waktu)+' · '+tk.oleh):'', tindak_catatan:tk&&tk.catatan?tk.catatan:'',
+        keputusan:f.status==='go'?'GO':f.status==='nogo'?'NO-GO':'MENUNGGU',catatan:f.catatan||''}); });
   });
   var ket=info.concat([['',''],['Sumber','Form Cek Aman Sebelum Bekerja (F-09.283.020.R0) yang diisi operator di aplikasi Cek Aman dan diputuskan pengawas.'],
     ['Tanggal & shift','Tanggal shift: shift 2 yang lewat tengah malam tercatat di tanggal mulai shift. Form yang diisi sampai 60 menit sebelum pergantian (06.30 / 18.30 WIT) dihitung ke shift berikutnya.'],
     ['Pertanyaan','Lembar Jawaban memakai teks pertanyaan persis seperti yang dijawab operator saat itu.'],
-    ['Diputuskan (menit)','Selisih jam form diterima server dan jam pengawas memutuskan.']]).map(function(r){return {butir:r[0],isi:r[1]};});
+    ['Diputuskan (menit)','Selisih jam form diterima server dan jam pengawas memutuskan.'],
+    ['Risiko (IBPR)','Diambil dari matriks IBPR Biro Mining (FM-ASR-OHS-014): kemungkinan A–E × keparahan Minor–Catastrophic, dibaca sebagai peringkat 1–25 — bukan perkalian. Tingkat: Low 1–5, Low to Moderate 6–11, Moderate 12–15, Moderate to High 16–19, High 20–25. Dipakai nilai awal (sebelum pengendalian), karena jawaban TIDAK berarti pengendaliannya belum ada. Diisi admin di Kelola → Pertanyaan; yang tercatat di sini adalah nilai saat form diisi.'],
+    ['Tindak lanjut','Temuan NO-GO yang sudah ditandai selesai oleh pengguna Mining di dashboard, beserta jam dan emailnya.']]).map(function(r){return {butir:r[0],isi:r[1]};});
   return {jumlah:{form:rek.length,foto:nFoto,tidak:semua.reduce(function(a,f){return a+f.jumlah_tidak;},0)},lembar:[
-    {nama:'Rekap',kolom:[{judul:'No. form',kunci:'no',lebar:18},{judul:'Tanggal',kunci:'tanggal',tipe:'tanggal',lebar:11},{judul:'Shift',kunci:'shift',tipe:'angka',lebar:6},{judul:'Jam isi',kunci:'diisi',lebar:8},{judul:'NPP',kunci:'npp',lebar:9},{judul:'Operator',kunci:'nama',lebar:24},{judul:'Jenis alat',kunci:'alat',lebar:12},{judul:'Unit',kunci:'unit',lebar:12},{judul:'Unit manual',kunci:'unit_m',lebar:8},{judul:'Lokasi',kunci:'lokasi',lebar:20},{judul:'Lokasi manual',kunci:'lok_m',lebar:8},{judul:'Pertanyaan',kunci:'n',tipe:'angka',lebar:9},{judul:'Jawaban TIDAK',kunci:'tidak',tipe:'angka',lebar:9},{judul:'Kendala',kunci:'kendala',lebar:40},{judul:'Keputusan',kunci:'keputusan',lebar:10},{judul:'Pengawas',kunci:'oleh',lebar:22},{judul:'Jam keputusan',kunci:'jam_k',lebar:9},{judul:'Diputuskan (menit)',kunci:'menit',tipe:'angka',lebar:10},{judul:'Catatan pengawas',kunci:'catatan',lebar:48}],baris:rek},
+    {nama:'Rekap',kolom:[{judul:'No. form',kunci:'no',lebar:18},{judul:'Tanggal',kunci:'tanggal',tipe:'tanggal',lebar:11},{judul:'Shift',kunci:'shift',tipe:'angka',lebar:6},{judul:'Jam isi',kunci:'diisi',lebar:8},{judul:'NPP',kunci:'npp',lebar:9},{judul:'Operator',kunci:'nama',lebar:24},{judul:'Jenis alat',kunci:'alat',lebar:12},{judul:'Unit',kunci:'unit',lebar:12},{judul:'Unit manual',kunci:'unit_m',lebar:8},{judul:'Lokasi',kunci:'lokasi',lebar:20},{judul:'Lokasi manual',kunci:'lok_m',lebar:8},{judul:'Pertanyaan',kunci:'n',tipe:'angka',lebar:9},{judul:'Jawaban TIDAK',kunci:'tidak',tipe:'angka',lebar:9},{judul:'Kendala',kunci:'kendala',lebar:40},{judul:'Keputusan',kunci:'keputusan',lebar:10},{judul:'Pengawas',kunci:'oleh',lebar:22},{judul:'Jam keputusan',kunci:'jam_k',lebar:9},{judul:'Diputuskan (menit)',kunci:'menit',tipe:'angka',lebar:10},{judul:'Risiko tertinggi (IBPR)',kunci:'risiko',lebar:16},{judul:'Catatan pengawas',kunci:'catatan',lebar:48}],baris:rek},
     {nama:'Jawaban',kolom:[{judul:'No. form',kunci:'no',lebar:18},{judul:'Tanggal',kunci:'tanggal',tipe:'tanggal',lebar:11},{judul:'Shift',kunci:'shift',tipe:'angka',lebar:6},{judul:'Unit',kunci:'unit',lebar:12},{judul:'Operator',kunci:'nama',lebar:22},{judul:'No.',kunci:'qno',tipe:'angka',lebar:5},{judul:'Bagian',kunci:'bagian',lebar:7},{judul:'Pertanyaan',kunci:'teks',lebar:80},{judul:'Jawaban',kunci:'jawab',lebar:9},{judul:'Jumlah foto',kunci:'nf',tipe:'angka',lebar:8}],baris:jaw},
-    {nama:'Evidence',kolom:[{judul:'No. form',kunci:'no',lebar:18},{judul:'Tanggal',kunci:'tanggal',tipe:'tanggal',lebar:11},{judul:'Shift',kunci:'shift',tipe:'angka',lebar:6},{judul:'Unit',kunci:'unit',lebar:12},{judul:'Operator',kunci:'nama',lebar:22},{judul:'No.',kunci:'qno',tipe:'angka',lebar:5},{judul:'Pertanyaan',kunci:'teks',lebar:60},{judul:'Jawaban',kunci:'jawab',lebar:9},{judul:'Keterangan operator',kunci:'ket',lebar:40},{judul:'Jumlah foto',kunci:'n',tipe:'angka',lebar:8},{judul:'Foto',kunci:'foto',lebar:70},{judul:'Keputusan',kunci:'keputusan',lebar:10},{judul:'Catatan pengawas',kunci:'catatan',lebar:40}],baris:evi},
+    {nama:'Evidence',kolom:[{judul:'No. form',kunci:'no',lebar:18},{judul:'Tanggal',kunci:'tanggal',tipe:'tanggal',lebar:11},{judul:'Shift',kunci:'shift',tipe:'angka',lebar:6},{judul:'Unit',kunci:'unit',lebar:12},{judul:'Operator',kunci:'nama',lebar:22},{judul:'No.',kunci:'qno',tipe:'angka',lebar:5},{judul:'Pertanyaan',kunci:'teks',lebar:60},{judul:'Jawaban',kunci:'jawab',lebar:9},{judul:'Keterangan operator',kunci:'ket',lebar:40},{judul:'Jumlah foto',kunci:'n',tipe:'angka',lebar:8},{judul:'Foto',kunci:'foto',lebar:70},
+      {judul:'Bahaya (IBPR)',kunci:'bahaya',lebar:34},{judul:'Acuan IBPR',kunci:'ibpr',lebar:12},
+      {judul:'Kemungkinan',kunci:'k',lebar:10},{judul:'Keparahan',kunci:'s',lebar:12},{judul:'Kode risiko',kunci:'kode',lebar:9},
+      {judul:'Nilai risiko',kunci:'nilai',tipe:'angka',lebar:9},{judul:'Tingkat risiko',kunci:'tingkat',lebar:12},
+      {judul:'Tindak lanjut',kunci:'tindak',lebar:32},{judul:'Catatan tindak lanjut',kunci:'tindak_catatan',lebar:40},
+      {judul:'Keputusan',kunci:'keputusan',lebar:10},{judul:'Catatan pengawas',kunci:'catatan',lebar:40}],baris:evi},
     {nama:'Keterangan',kolom:[{judul:'Butir',kunci:'butir',tipe:'tebal',lebar:22},{judul:'Isi',kunci:'isi',lebar:110}],baris:ket,tanpaFilter:true}
   ]};
 }
@@ -546,8 +690,22 @@ function renderDetail(){
   var s='<div class="ov" data-tutup="1"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="mh"><div>'+pill(f.status)+'<h3 id="mt">'+esc(f.nama)+' · '+esc(f.unit)+'</h3><small>'+esc(f.no)+' · '+tglPanjang(f.tanggal)+' · Shift '+f.shift+' · diisi '+jam(f.diisi)+' WIT</small></div><button class="xbtn" data-tutup="1" aria-label="Tutup">×</button></div><div class="mb">';
   s+='<div class="info"><div><small>Operator</small><b>'+esc(f.nama)+'</b></div><div><small>NPP</small><b>'+esc(f.npp)+'</b></div><div><small>Jenis alat · unit</small><b>'+esc(f.alat)+' · '+esc(f.unit)+'</b>'+(f.unit_manual?' <span class="tag o">manual</span>':'')+'</div><div><small>Lokasi / front</small><b>'+esc(f.lokasi)+'</b>'+(f.lokasi_manual?' <span class="tag o">manual</span>':'')+'</div><div><small>Pengawas</small><b>'+(f.keputusan_nama?esc(f.keputusan_nama):'—')+'</b></div><div><small>Diputuskan</small><b>'+(f.keputusan_waktu?jam(f.keputusan_waktu)+' WIT ('+Math.max(0,Math.round((Date.parse(f.keputusan_waktu)-Date.parse(f.dikirim))/60000))+' mnt)':'Menunggu')+'</b></div></div>';
   if(f.foto_dihapus) s+=catatanDipindah(f);
-  if(t.length){ s+='<h4>Jawaban TIDAK ('+t.length+')</h4>'; t.forEach(function(q){ var e=f.evidence[q.id]||{ket:'-',foto:[]}; s+='<div class="mev"><div class="qq">'+q.no+'. '+esc(q.teks)+'</div><div>'+esc(e.ket)+'</div>'+(f.foto_dihapus?'':'<div class="fotos">'+(e.foto||[]).map(function(p){ return tombolFoto(p,'Foto evidence no. '+q.no); }).join('')+'</div>')+'</div>'; }); }
-  if(f.status!=='wait') s+='<h4>Keputusan pengawas</h4><div class="mdec '+f.status+'"><small>'+(f.status==='go'?'GO · catatan':'NO-GO · yang harus diperbaiki dulu')+'</small>'+(f.catatan?esc(f.catatan):'Tanpa catatan.')+'</div>';
+  if(t.length){ s+='<h4>Jawaban TIDAK ('+t.length+')</h4>'; t.forEach(function(q){ var e=f.evidence[q.id]||{ket:'-',foto:[]};
+    var r=(f.risiko||{})[q.id]||{}, tk=(f.tindak||{})[q.id];
+    s+='<div class="mev"><div class="qq">'+q.no+'. '+esc(q.teks)+'</div>'+
+      '<div class="tt" style="margin:4px 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+rchip(r)+
+      (r.bahaya?'<span class="muted">'+esc(r.bahaya)+(r.ibpr?' · '+esc(r.ibpr):'')+(r.k&&r.s?' · '+KEMUNGKINAN[r.k-1][1]+' × '+KEPARAHAN[r.s-1][1]:'')+'</span>':'<span class="muted">Bahaya belum dipetakan ke IBPR</span>')+'</div>'+
+      '<div>'+esc(e.ket)+'</div>'+(f.foto_dihapus?'':'<div class="fotos">'+(e.foto||[]).map(function(p){ return tombolFoto(p,'Foto evidence no. '+q.no); }).join('')+'</div>')+
+      (f.status==='nogo'?'<div class="aksi" style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'+
+        (tk?'<span class="sel" style="color:var(--good);font-weight:600;font-size:var(--f-callout)">Ditindaklanjuti '+tglPendek(tk.waktu)+' '+jam(tk.waktu)+' · '+esc(tk.oleh)+'</span>'+
+            (tk.catatan?'<span class="muted">— '+esc(tk.catatan)+'</span>':'')+'<button class="mini" data-tbatal="'+f.id+'|'+q.id+'">Batalkan</button>'
+          :'<button class="mini" data-tsel="'+f.id+'|'+q.id+'">Tandai selesai</button>')+'</div>':'')+
+      '</div>'; }); }
+  if(f.status!=='wait'){ var tk0=(f.tindak||{})['0'];
+    s+='<h4>Keputusan pengawas</h4><div class="mdec '+f.status+'"><small>'+(f.status==='go'?'GO · catatan':'NO-GO · yang harus diperbaiki dulu')+'</small>'+(f.catatan?esc(f.catatan):'Tanpa catatan.')+
+      (f.status==='nogo'&&!t.length?'<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'+
+        (tk0?'<span style="color:var(--good);font-weight:600;font-size:var(--f-callout)">Ditindaklanjuti '+tglPendek(tk0.waktu)+' '+jam(tk0.waktu)+' · '+esc(tk0.oleh)+'</span><button class="mini" data-tbatal="'+f.id+'|0">Batalkan</button>'
+          :'<button class="mini" data-tsel="'+f.id+'|0">Tandai selesai</button>')+'</div>':'')+'</div>'; }
   s+='<details class="all" open><summary>Semua jawaban dan foto ('+f.pertanyaan.length+' pertanyaan)</summary>';
   f.pertanyaan.forEach(function(q){ var j=f.jawaban[q.id], fl=((f.evidence[q.id]||{}).foto||[]);
     s+='<div class="ans"><span class="nomor">'+q.no+'</span><span class="tx">'+esc(q.teks)+(fl.length&&j!=='T'&&!f.foto_dihapus?'<span class="qf">'+fl.map(function(p){ return tombolFoto(p,'Foto no. '+q.no); }).join('')+'</span>':'')+'</span>'+(j==='Y'?'<span class="pill go">YA</span>':'<span class="pill nogo">TIDAK</span>')+'</div>'; });
@@ -590,11 +748,18 @@ function renderKelola(){
   s+='</div><div class="kpane">'+({q:kQ,akun:kAkun,unit:kUnit,lok:kLok,admin:kAdmin,cadangan:kCadangan}[K.bagian])()+'</div></div>';
   el('isi').innerHTML=s;
 }
+/* Risiko IBPR pertanyaan. Matriks peringkat 1–25 dari dokumen IBPR Biro Mining;
+   harus sama dengan gng_nilai_risiko() dan gng_tingkat_risiko() di SQL. */
+var MATRIKS=[[1,5,10,15,20],[2,6,11,16,21],[3,8,13,18,23],[4,9,14,19,24],[7,12,17,22,25]];
+function nilaiRisiko(k,p){ k=+k||null; p=+p||null; return (k>=1&&k<=5&&p>=1&&p<=5)?MATRIKS[k-1][p-1]:null; }
+function tingkatRisiko(n){ return n==null?null:n>=20?'high':n>=16?'moderate_high':n>=12?'moderate':n>=6?'low_moderate':'low'; }
+function risikoQ(q){ var n=nilaiRisiko(q.kemungkinan,q.keparahan); return {k:q.kemungkinan,s:q.keparahan,nilai:n,tingkat:tingkatRisiko(n)}; }
+function tagRisiko(q){ var r=risikoQ(q); return (r.nilai==null?'<span class="tag o">Risiko belum dinilai</span>':rchip(r))+' '; }
 function tagAlat(q){ return (q.alat&&q.alat.length?q.alat.map(function(a){return '<span class="tag a">'+esc(a)+'</span>';}).join(''):'<span class="tag">Semua alat</span>')+(q.shift?'<span class="tag a">Shift '+q.shift+' saja</span>':''); }
 function kQ(){
-  var D=S.k.data, s='<div class="khead"><div><h2>Pertanyaan form</h2><p>Perubahan berlaku untuk form berikutnya. Form yang sudah diisi menyimpan pertanyaan persis seperti saat diisi, jadi arsip tidak ikut berubah. Nomor di HP operator dihitung ulang menurut alat dan shift.</p></div><div class="kact"><button class="btn" data-kq="baru">Tambah pertanyaan</button></div></div>';
+  var D=S.k.data, s='<div class="khead"><div><h2>Pertanyaan form</h2><p>Perubahan berlaku untuk form berikutnya. Form yang sudah diisi menyimpan pertanyaan persis seperti saat diisi, jadi arsip tidak ikut berubah. Nomor di HP operator dihitung ulang menurut alat dan shift.</p></div><div class="kact"><button class="btn2" data-kq="risiko">Tempel risiko IBPR</button><button class="btn" data-kq="baru">Tambah pertanyaan</button></div></div>';
   ['A','B','C','D','E'].forEach(function(sk){ var qq=D.pertanyaan.filter(function(q){return q.bagian===sk;}); s+='<div class="qsec"><h3>'+sk+'. '+SEKSI[sk]+'</h3>';
-    qq.forEach(function(q,i){ s+='<div class="qrow'+(q.aktif?'':' off')+'"><span class="no">'+q.id+'</span><div><div>'+esc(q.teks)+'</div><div class="tags">'+tagAlat(q)+(q.wajib_foto===false?'<span class="tag o">Foto tidak wajib</span>':'')+'<span class="tag">'+esc(q.ringkas)+'</span></div></div><span class="geser"><button data-kg="'+q.id+'|-1" aria-label="Naikkan" '+(i?'':'disabled')+'>▲</button><button data-kg="'+q.id+'|1" aria-label="Turunkan" '+(i<qq.length-1?'':'disabled')+'>▼</button></span><button class="tgl" data-kq="tgl|'+q.id+'" aria-pressed="'+q.aktif+'"><i></i>'+(q.aktif?'Aktif':'Nonaktif')+'</button><button class="mini" data-kq="ubah|'+q.id+'">Ubah</button></div>'; });
+    qq.forEach(function(q,i){ s+='<div class="qrow'+(q.aktif?'':' off')+'"><span class="no">'+q.id+'</span><div><div>'+esc(q.teks)+'</div><div class="tags">'+tagRisiko(q)+tagAlat(q)+(q.wajib_foto===false?'<span class="tag o">Foto tidak wajib</span>':'')+'<span class="tag">'+esc(q.ringkas)+'</span></div></div><span class="geser"><button data-kg="'+q.id+'|-1" aria-label="Naikkan" '+(i?'':'disabled')+'>▲</button><button data-kg="'+q.id+'|1" aria-label="Turunkan" '+(i<qq.length-1?'':'disabled')+'>▼</button></span><button class="tgl" data-kq="tgl|'+q.id+'" aria-pressed="'+q.aktif+'"><i></i>'+(q.aktif?'Aktif':'Nonaktif')+'</button><button class="mini" data-kq="ubah|'+q.id+'">Ubah</button></div>'; });
     s+='</div>'; });
   return s;
 }
@@ -638,22 +803,55 @@ function kAdmin(){
 function formModal(judul,isi,simpan){
   el('ov').innerHTML='<div class="ov"><div class="modal kecil" role="dialog" aria-modal="true" aria-labelledby="fmt"><div class="mh"><h3 id="fmt" style="margin:0">'+judul+'</h3><button class="xbtn" data-tutup="1" aria-label="Tutup">×</button></div><div class="mb fm">'+isi+'<div class="err" id="f-err" role="alert"></div></div><div class="mf"><button class="btn2" data-tutup="1">Batal</button><button class="btn" id="f-simpan">Simpan</button></div></div></div>';
   var f=el('ov').querySelector('input:not([disabled]),textarea'); if(f) f.focus();
-  el('f-simpan').onclick=async function(){ var b=this; b.disabled=true; try{ var pesan=await simpan(); el('ov').innerHTML=''; if(pesan) toast(pesan); await muatKelola(); }catch(e){ el('f-err').textContent=e.message; b.disabled=false; } };
+  el('f-simpan').onclick=async function(){ var b=this; b.disabled=true; try{ var pesan=await simpan(); el('ov').innerHTML=''; if(pesan) toast(pesan); if(S.tab==='kelola') await muatKelola(); }catch(e){ el('f-err').textContent=e.message; b.disabled=false; } };
 }
+/* Skala persis seperti dokumen IBPR Biro Mining (FM-ASR-OHS-014). [nilai, label penuh, label pendek] */
+var KEMUNGKINAN=[[1,'A · Sangat jarang terjadi (Rare)','A','sangat jarang'],[2,'B · Jarang terjadi (Unlikely)','B','jarang'],
+  [3,'C · Bisa terjadi (Possible)','C','bisa terjadi'],[4,'D · Sangat mungkin terjadi (Likely)','D','sangat mungkin'],
+  [5,'E · Hampir pasti terjadi (Almost Certain)','E','hampir pasti']];
+var KEPARAHAN=[[1,'1 · Minor','Minor','Minor'],[2,'2 · Medium','Medium','Medium'],[3,'3 · Serious','Serious','Serious'],
+  [4,'4 · Major','Major','Major'],[5,'5 · Catastrophic','Catastrophic','Catastrophic']];
+function pilihNilai(id,lab,daftar,nilai){ return '<div><label for="'+id+'">'+lab+'</label><select class="inp" id="'+id+'"><option value="">Belum dinilai</option>'+
+  daftar.map(function(o){ return '<option value="'+o[0]+'"'+(+nilai===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></div>'; }
 function editQ(q){
   var alat=S.k.data.alat; q=q||{id:null,bagian:'A',teks:'',ringkas:'',alat:null,shift:null,aktif:true,wajib_foto:true};
   var isi='<label for="fq-t">Pertanyaan (seperti dibaca operator)</label><textarea id="fq-t">'+esc(q.teks)+'</textarea><label for="fq-r">Ringkasan singkat (untuk dashboard dan Excel)</label><input class="inp" id="fq-r" value="'+esc(q.ringkas)+'">';
   isi+='<div class="row2"><div><label for="fq-b">Bagian</label><select class="inp" id="fq-b">'+Object.keys(SEKSI).map(function(k){return '<option value="'+k+'"'+(q.bagian===k?' selected':'')+'>'+k+'. '+SEKSI[k]+'</option>';}).join('')+'</select></div><div><label for="fq-s">Berlaku di shift</label><select class="inp" id="fq-s"><option value="">Semua shift</option><option value="1"'+(q.shift===1?' selected':'')+'>Shift 1 saja</option><option value="2"'+(q.shift===2?' selected':'')+'>Shift 2 saja</option></select></div></div>';
   isi+='<label>Berlaku untuk alat</label><div class="chips" id="fq-a"><button type="button" data-a="*" aria-pressed="'+!(q.alat&&q.alat.length)+'">Semua alat</button>'+alat.map(function(a){return '<button type="button" data-a="'+esc(a)+'" aria-pressed="'+!!(q.alat&&q.alat.indexOf(a)>=0)+'">'+esc(a)+'</button>';}).join('')+'</div><div class="hint">Alat yang tidak dipilih tidak melihat pertanyaan ini (sama dengan tanda strip di form kertas).</div>';
+  isi+='<label for="fq-bh">Bahaya menurut IBPR</label><input class="inp" id="fq-bh" maxlength="200" placeholder="Contoh: Unit tidak layak operasi" value="'+esc(q.bahaya||'')+'">';
+  isi+='<div class="row2" style="margin-top:8px"><div><label for="fq-ib">Acuan IBPR (opsional)</label><input class="inp" id="fq-ib" maxlength="60" placeholder="Contoh: IBPR-08" value="'+esc(q.ibpr||'')+'"></div><div><label>Nilai risiko</label><div id="fq-nr" style="padding-top:5px">'+tagRisiko(q)+'</div></div></div>';
+  isi+='<div class="row2">'+pilihNilai('fq-km','Kemungkinan',KEMUNGKINAN,q.kemungkinan)+pilihNilai('fq-kp','Keparahan',KEPARAHAN,q.keparahan)+'</div>';
+  isi+='<div class="hint">Nilai risiko dibaca dari matriks IBPR Biro Mining (bukan perkalian): peringkat 1–25. Low 1–5 · Low to Moderate 6–11 · Moderate 12–15 · Moderate to High 16–19 · High 20–25. Pakai <b>nilai awal</b> (sebelum pengendalian), karena jawaban TIDAK berarti pengendaliannya belum ada.</div>';
   isi+='<label for="fq-f">Foto saat dijawab YA</label><select class="inp" id="fq-f"><option value="1"'+(q.wajib_foto!==false?' selected':'')+'>Wajib (operator harus mengambil foto)</option><option value="0"'+(q.wajib_foto===false?' selected':'')+'>Tidak wajib (boleh tanpa foto)</option></select><div class="hint">Jawaban TIDAK selalu wajib foto dan keterangan.</div>';
   formModal(q.id?'Ubah pertanyaan '+q.id:'Tambah pertanyaan',isi,async function(){
     var a=[].slice.call(document.querySelectorAll('#fq-a [data-a]')).filter(function(b){return b.dataset.a!=='*'&&b.getAttribute('aria-pressed')==='true';}).map(function(b){return b.dataset.a;});
-    await rpc('gng_simpan_pertanyaan',{p:{id:q.id,bagian:el('fq-b').value,teks:el('fq-t').value,ringkas:el('fq-r').value,alat:a,shift:el('fq-s').value||null,aktif:q.aktif,wajib_foto:el('fq-f').value==='1'}});
+    await rpc('gng_simpan_pertanyaan',{p:{id:q.id,bagian:el('fq-b').value,teks:el('fq-t').value,ringkas:el('fq-r').value,alat:a,shift:el('fq-s').value||null,aktif:q.aktif,wajib_foto:el('fq-f').value==='1',
+      bahaya:el('fq-bh').value,ibpr:el('fq-ib').value,kemungkinan:el('fq-km').value||null,keparahan:el('fq-kp').value||null}});
     return q.id?'Pertanyaan diubah. Arsip lama tidak berubah.':'Pertanyaan ditambahkan.';
   });
+  function segarNilai(){ el('fq-nr').innerHTML=tagRisiko({kemungkinan:el('fq-km').value,keparahan:el('fq-kp').value}); }
+  el('fq-km').addEventListener('change',segarNilai); el('fq-kp').addEventListener('change',segarNilai);
   el('fq-a').addEventListener('click',function(e){ var b=e.target.closest('[data-a]'); if(!b) return; var all=this.querySelectorAll('[data-a]');
     if(b.dataset.a==='*'){ [].forEach.call(all,function(x){x.setAttribute('aria-pressed',String(x===b));}); return; }
     b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true')); var ada=[].some.call(all,function(x){return x.dataset.a!=='*'&&x.getAttribute('aria-pressed')==='true';}); all[0].setAttribute('aria-pressed',String(!ada)); });
+}
+/* Tempel nilai risiko IBPR untuk banyak pertanyaan sekaligus: No. · Bahaya · Acuan · Kemungkinan · Keparahan. */
+function imporRisiko(){
+  var isi='<p class="muted" style="margin:0 0 6px">Salin dari Excel IBPR lalu tempel lima kolom berurutan: <b>No. pertanyaan · Bahaya · Acuan IBPR · Kemungkinan · Keparahan</b>. Kemungkinan boleh huruf <b>A–E</b> atau angka 1–5 (A=1 … E=5); keparahan angka <b>1–5</b> (1 Minor … 5 Catastrophic). Nomor pertanyaan ada di kolom kiri daftar ini. Kolom yang dikosongkan tidak mengubah isi yang sudah ada.</p>'+
+    '<textarea id="fr-t" style="min-height:190px;font-family:ui-monospace,Menlo,Consolas,monospace" placeholder="8&#9;Rem, klakson, atau lampu tidak berfungsi&#9;IBPR-32&#9;C&#9;5"></textarea><div class="hint" id="fr-i">Belum ada baris.</div>';
+  function baca(){ var out=[], salah=[];
+    bacaTempel(el('fr-t').value).forEach(function(c,i){ var id=(c[0]||'').replace(/[^0-9]/g,'');
+      if(/^no\b|pertanyaan/i.test(c[0]||'')) return;
+      if(!id){ salah.push('baris '+(i+1)+': nomor pertanyaan kosong'); return; }
+      var kt=(c[3]||'').trim().toUpperCase(), k=/^[A-E]$/.test(kt)?String('ABCDE'.indexOf(kt)+1):kt.replace(/[^1-5]/g,'');
+      var p=(c[4]||'').replace(/[^1-5]/g,'');
+      out.push({id:+id,bahaya:c[1]||'',ibpr:c[2]||'',kemungkinan:k||null,keparahan:p||null}); });
+    return {out:out,salah:salah}; }
+  formModal('Tempel risiko IBPR',isi,async function(){ var r=baca(); if(!r.out.length) throw new Error(r.salah.length?r.salah[0]:'Tempel dulu datanya.');
+    var h=await rpc('gng_impor_risiko',{p:r.out}); S.versi=null;
+    return h.diubah+' pertanyaan diperbarui'+(h.dilewati?', '+h.dilewati+' baris dilewati':'')+'.'; });
+  el('fr-t').addEventListener('input',function(){ var r=baca(); var lengkap=r.out.filter(function(x){return x.kemungkinan&&x.keparahan;}).length;
+    el('fr-i').innerHTML=(r.out.length||r.salah.length)?'<b>'+r.out.length+'</b> baris terbaca · <b>'+lengkap+'</b> dengan nilai risiko lengkap'+(r.salah.length?' · <b>'+r.salah.length+'</b> dilewati ('+esc(r.salah[0])+')':''):'Belum ada baris.'; });
 }
 function editAkun(a){
   var baru=!a; a=a||{npp:'',nama:'',peran:'operator',jabatan:'',aktif:true};
@@ -933,6 +1131,13 @@ el('isi').addEventListener('click',function(e){
   var t=e.target, b;
   if((b=t.closest('[data-det]'))) return bukaDetail(b.dataset.det);
   if(t.closest('[data-ke-cadangan]')){ S.k.bagian='cadangan'; gantiTab('kelola'); window.scrollTo(0,0); return; }
+  if(t.closest('[data-ke-risiko]')){ S.k.bagian='q'; gantiTab('kelola'); window.scrollTo(0,0); return; }
+  if((b=t.closest('[data-tem]'))) return bukaTemuan(b.dataset.tem);
+  if(t.closest('[data-tem-selesai]')){ S.temSelesai=!S.temSelesai; segarHero(); return; }
+  if((b=t.closest('[data-tsel]'))) return tandaiTemuan(b.dataset.tsel);
+  if((b=t.closest('[data-tbatal]'))){ var kb=b.dataset.tbatal.split('|');
+    if(!confirm('Batalkan tanda selesai? Temuan ini muncul lagi di daftar.')) return;
+    return rpc('gng_tindak_batal',{p_form:kb[0],p_pertanyaan:+kb[1]}).then(function(){ S.versi=null; return muat(true); }).catch(function(e){ toast(esc(e.message),true); }); }
   if((b=t.closest('[data-cad]'))){ var ca=b.dataset.cad;
     if(ca==='folder') return pilihFolder(false); if(ca==='folder-lama') return pilihFolder(true); if(ca==='zip') return mulaiCadangan('zip');
     if(ca==='selesai') return tandaiSelesai(); if(ca==='hapus') return hapusSaja();
@@ -950,6 +1155,7 @@ el('isi').addEventListener('click',function(e){
   if((b=t.closest('[data-kp]'))){ K.peran=b.dataset.kp; renderKelola(); return; }
   if((b=t.closest('[data-kg]'))){ var g=b.dataset.kg.split('|'); return ubahCepat('gng_geser_pertanyaan',{p_id:+g[0],p_arah:+g[1]}); }
   if((b=t.closest('[data-kq]'))){ var q=b.dataset.kq.split('|'); if(q[0]==='baru') return editQ(null); var qq=K.data.pertanyaan.filter(function(z){return z.id===+q[1];})[0];
+    if(q[0]==='risiko') return imporRisiko();
     if(q[0]==='tgl') return ubahCepat('gng_simpan_pertanyaan',{p:Object.assign({},qq,{aktif:!qq.aktif})},qq.aktif?'Pertanyaan dinonaktifkan untuk form berikutnya.':'Pertanyaan diaktifkan.'); return editQ(qq); }
   if((b=t.closest('[data-ka]'))){ var a=b.dataset.ka.split('|'); if(a[0]==='baru') return editAkun(null); if(a[0]==='impor') return imporAkun(); var ak=K.data.akun.filter(function(z){return z.npp===a[1];})[0];
     if(a[0]==='tgl') return ubahCepat('gng_simpan_akun',{p:{npp:ak.npp,nama:ak.nama,peran:ak.peran,aktif:!ak.aktif},p_baru:false},ak.aktif?'Akun '+esc(ak.nama)+' dinonaktifkan dan dikeluarkan dari HP-nya.':'Akun diaktifkan.');
@@ -969,6 +1175,10 @@ el('isi').addEventListener('change',function(e){ var L=S.dl; if(e.target.id==='d
 el('ov').addEventListener('click',function(e){
   var bt=e.target.closest('button'); if(e.target.classList.contains('ov')&&e.target.dataset.tutup||(bt&&bt.dataset.tutup)){ el('ov').innerHTML=''; return; }
   if(e.target.closest('#m-cetak')) return cetak();
+  var tb=e.target.closest('[data-tsel]'); if(tb){ el('ov').innerHTML=''; return tandaiTemuan(tb.dataset.tsel); }
+  var tx=e.target.closest('[data-tbatal]'); if(tx){ var k=tx.dataset.tbatal.split('|');
+    if(!confirm('Batalkan tanda selesai? Temuan ini muncul lagi di dashboard.')) return;
+    return rpc('gng_tindak_batal',{p_form:k[0],p_pertanyaan:+k[1]}).then(function(){ el('ov').innerHTML=''; S.versi=null; return muat(true); }).catch(function(er){ toast(esc(er.message),true); }); }
   var lb=e.target.closest('[data-lb]'); if(lb){ var p=lb.dataset.lb, u=FOTO[p]?FOTO[p].url:urlKecil(p); if(!u) return; var w=document.createElement('div'); w.className='lightbox'; w.innerHTML='<img alt="Foto evidence" src="'+esc(u)+'">'; w.onclick=function(){ w.remove(); }; document.body.appendChild(w);
     if(!FOTO[p]) tandaiFoto([p]).then(function(){ var im=w.querySelector('img'); if(im&&FOTO[p]) im.src=FOTO[p].url; }); }
 });
