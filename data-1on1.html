@@ -584,6 +584,7 @@
             <span class="kecil muted" id="qaqcInfo"></span>
           </div>
           <details class="lk-rinci" id="rinciQaqc"><summary>Tabel QAQC harian</summary>
+            <p class="kecil muted" style="margin:6px 0">Semua kolom (ore, waste, LGO rampstock ANTAM dan BUMD, serta barging BUMD) wajib diisi tiap hari s.d. tanggal data; bila tidak ada, isi <b>0</b>. Sel kuning = belum diisi.</p>
             <label class="kecil lk-opsi"><input type="checkbox" id="cbLgo" checked> LGO Rampstock dihitung sebagai waste (TMM = TMM QAQC)</label>
             <div class="table-wrap" style="max-height:560px"><table id="tblQaqc"></table></div></details>
         </section>
@@ -6876,6 +6877,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var x = S.data.qaqc.hari[d];
     return !!x && ['antamOre', 'antamWaste', 'antamLgoRs', 'bumdOre', 'bumdWaste', 'bumdLgoRs'].some(function (k) { return typeof x[k] === 'number' && isFinite(x[k]); });
   }
+  // syarat unduh (permintaan Iqbal 26 Sep 2026): SEMUA kolom tabel QAQC wajib berangka tiap hari s.d. tanggal data —
+  // ore, waste, LGO rampstock ANTAM dan BUMD, serta barging BUMD. Tidak ada = isi 0.
+  // Barging dianggap terisi bila ada isian manual ATAU angka dari berkas QAQC.
+  var WAJIB_QAQC = ['antamOre', 'antamWaste', 'antamLgoRs', 'bumdOre', 'bumdWaste', 'bumdLgoRs', 'barging'];
+  function qaqcKurang(d) {
+    var x = S.data.qaqc.hari[d] || {}, bm = bargingManual()[d];
+    return WAJIB_QAQC.filter(function (k) {
+      var v = k === 'barging' && bm != null ? bm : x[k];
+      return !(typeof v === 'number' && isFinite(v));
+    });
+  }
+  function qaqcLengkap(d) { return !qaqcKurang(d).length; }
   // label bulan di berkas QAQC menyebut bulan/tahun lain -> teks label (untuk peringatan); cocok atau tidak terbaca -> ''
   var NAMA_BLN = [['januari', 'january', 'jan'], ['februari', 'february', 'feb'], ['maret', 'march', 'mar'], ['april', 'apr'], ['mei', 'may'], ['juni', 'june', 'jun'],
     ['juli', 'july', 'jul'], ['agustus', 'august', 'agu', 'aug', 'agt'], ['september', 'sept', 'sep'], ['oktober', 'october', 'okt', 'oct'], ['november', 'nov'], ['desember', 'december', 'des', 'dec']];
@@ -6943,7 +6956,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       h += '<tr data-d="' + d + '"' + (lewat ? ' class="lewat"' : '') + '><td>' + HARI[hariKe(d)] + ' ' + tglPendek(d) + '</td>';
       KOL_QAQC.forEach(function (k) {
         var man = k[0] === 'barging' && BM[d] != null, v = man ? BM[d] : x[k[0]]; if (!lewat && v) sum[k[0]] = (sum[k[0]] || 0) + v;
-        h += '<td class="num"><input class="num" data-k="' + k[0] + '" value="' + (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ',')) + '"' +
+        var perlu = !lewat && WAJIB_QAQC.indexOf(k[0]) >= 0 && !(typeof v === 'number' && isFinite(v));
+        h += '<td class="num' + (perlu ? ' perlu' : '') + '"' + (perlu ? ' title="Wajib diisi; isi 0 bila tidak ada"' : '') + '><input class="num" data-k="' + k[0] + '" value="' + (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ',')) + '"' +
           (man ? ' style="background:#fff8d6" title="Isian manual"' : '') + (S.admin ? '' : ' disabled') + '></td>'; });
       var w = (x.antamWaste || 0) + (Q.lgoKeWaste !== false ? (x.antamLgoRs || 0) : 0);
       var om = OM[d], adaOm = om && (om.antam != null || om.bumd != null);
@@ -7792,8 +7806,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var hq = hariBulan(S.bulan).filter(function (d) { return d <= S.cutoff; });
     r.rencana = T.produksi > 0 && T.tmm > 0 ? { ok: true, pil: 'Terisi', teks: 'Ore ' + angka(T.produksi) + ' · TMM ' + angka(T.tmm) + ' WMT' } :
       { ok: false, pil: 'Belum diisi', teks: 'Target ore dan TMM belum diisi' };
-    var kq = hq.filter(function (d) { return !qaqcAda(d); });
-    r.qaqc = kq.length ? { ok: false, pil: kq.length + ' hari belum ada', teks: 'Belum ada: ' + ringkasTgl(kq) } :
+    var kq = hq.filter(function (d) { return !qaqcLengkap(d); });
+    var kqKosong = kq.filter(function (d) { return !qaqcAda(d); }), kqSebagian = kq.filter(qaqcAda);
+    var namaKol = function (a) { return a.map(function (k) { return KOL_QAQC.filter(function (c) { return c[0] === k; })[0][1]; }).join(', '); };
+    var kolKurang = WAJIB_QAQC.filter(function (k) { return kqSebagian.some(function (d) { return qaqcKurang(d).indexOf(k) >= 0; }); });
+    r.qaqc = kq.length ? { ok: false, pil: kq.length + ' hari belum lengkap',
+        teks: [kqKosong.length ? 'Belum ada: ' + ringkasTgl(kqKosong) : '', kqSebagian.length ? namaKol(kolKurang) + ' belum diisi: ' + ringkasTgl(kqSebagian) : ''].filter(Boolean).join(' · ') +
+          ' (isi 0 bila tidak ada)' } :
       { ok: true, pil: 'Lengkap s.d. ' + tglPendek(S.cutoff), teks: rentangTgl(mulai(), S.cutoff, true) + ' lengkap' };
     r.loader = LC && LC.sampai >= S.cutoff ? { ok: true, pil: 'Dicek s.d. ' + tglPendek(LC.sampai), teks: 'Dicek s.d. ' + tglPendek(LC.sampai) + (LC.oleh ? ' · ' + LC.oleh.split('@')[0] : ''),
       judul: LC.oleh ? 'Ditandai ' + LC.oleh + (LC.waktu ? ' · ' + jamWit(LC.waktu) : '') : '' } :
@@ -7817,6 +7836,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (!S.admin || !lk.classList.contains('belum')) return;
     var i = lk.querySelector('td.perlu input:not([disabled])') ||
       (id === 'lkRencana' ? Array.prototype.filter.call(lk.querySelectorAll('input.num:not([disabled])'), function (x) { return !x.value; })[0] : null);
+    if (i) { var det = i.closest('details'); if (det && !det.open) det.open = true; }   // tabel QAQC ada di dalam <details>
     if (i) setTimeout(function () { i.focus({ preventScroll: true }); }, 400);
   }
   function renderRingkas() {
