@@ -17,7 +17,8 @@ stable
 as $$
   select lower(coalesce(auth.jwt() ->> 'email', '')) in (
     'rahmat.iqbal@antam.com',
-    'dani.suryawan@antam.com'
+    'dani.suryawan@antam.com',
+    'v_raihan.nashwan@antam.com'
   );
 $$;
 
