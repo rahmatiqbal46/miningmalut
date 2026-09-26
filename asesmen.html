@@ -743,7 +743,7 @@ function renderKelola(){
   var K=S.k, D=K.data; if(!D){ el('isi').innerHTML='<div class="empty">Memuat…</div>'; muatKelola(); return; }
   var mU=D.manual.filter(function(m){return m.jenis==='unit';}).length, mL=D.manual.filter(function(m){return m.jenis==='lokasi';}).length;
   var s='<div class="kgrid"><div class="knav" role="group" aria-label="Bagian Kelola">';
-  [['q','Pertanyaan',D.pertanyaan.filter(function(q){return q.aktif;}).length],['akun','Akun operator & pengawas',D.akun.length],['unit','Unit',mU?mU+' baru':D.unit.length,mU],['lok','Lokasi / front',mL?mL+' baru':D.lokasi.length,mL],['admin','Admin modul ini',D.admin.length],['cadangan','Cadangan',S.cad?(S.cad.drive&&S.cad.drive.aktif?'otomatis':(S.cad.terakhir?S.cad.hari+' hari':'belum')):'',(function(){ var L=levelCadangan(); return L&&L.lv; })()]].forEach(function(k){
+  [['q','Pertanyaan',D.pertanyaan.filter(function(q){return q.aktif;}).length],['akun','Akun operator & pengawas',D.akun.length],['unit','Unit',mU?mU+' baru':D.unit.length,mU],['lok','Lokasi / front',mL?mL+' baru':D.lokasi.length,mL],['admin','Admin',D.admin.length],['cadangan','Cadangan',S.cad?(S.cad.drive&&S.cad.drive.aktif?'otomatis':(S.cad.terakhir?S.cad.hari+' hari':'belum')):'',(function(){ var L=levelCadangan(); return L&&L.lv; })()]].forEach(function(k){
     s+='<button data-kn="'+k[0]+'" aria-pressed="'+(K.bagian===k[0])+'">'+k[1]+'<span class="c'+(k[3]?' hot':'')+'">'+k[2]+'</span></button>'; });
   s+='</div><div class="kpane">'+({q:kQ,akun:kAkun,unit:kUnit,lok:kLok,admin:kAdmin,cadangan:kCadangan}[K.bagian])()+'</div></div>';
   el('isi').innerHTML=s;
@@ -793,11 +793,13 @@ function kLok(){
   return s+'</tbody></table></div>';
 }
 function kAdmin(){
+  /* Sejak 26 September 2026 admin satu daftar untuk seluruh MiningMalut (tabel
+     app_admin). Menambah dan menghapus admin dilakukan di Mining Bureau → Kelola
+     Admin; di sini hanya ditampilkan. */
   var D=S.k.data, me=(S.saya&&S.saya.email)||'';
-  var s='<div class="khead"><div><h2>Admin modul ini</h2><p>Admin bisa membuka tab Kelola. Daftar ini khusus Asesmen Go/No-Go dan tidak mengubah admin modul lain.</p><p style="margin-top:8px"><b>Menambah admin baru:</b> (1) buat akunnya dulu di Supabase → Authentication → Users → <i>Add user</i> → <i>Create new user</i>, isi email dan kata sandi, centang <i>Auto Confirm User</i>; (2) tambahkan email yang sama di bawah ini. Tanpa langkah 1 orang itu tidak bisa masuk MiningMalut.</p></div></div>';
-  s+='<div class="khead" style="padding-top:0"><div class="kact"><input class="inp search" id="k-admin" placeholder="nama@antam.com" type="email"><button class="btn" data-kad="tambah">Tambah admin</button></div></div>';
-  s+='<div class="tbl"><table><thead><tr><th>Email</th><th>Ditambahkan oleh</th><th></th></tr></thead><tbody>';
-  D.admin.forEach(function(a){ s+='<tr><td><b>'+esc(a.email)+'</b>'+(a.email===me?' <span class="tag a">Anda</span>':'')+'</td><td class="muted">'+esc(a.ditambah_oleh||'')+'</td><td><div class="act">'+(a.email===me?'':'<button class="mini m" data-kad="hapus|'+esc(a.email)+'">Hapus</button>')+'</div></td></tr>'; });
+  var s='<div class="khead"><div><h2>Admin</h2><p>Admin MiningMalut kini satu daftar untuk semua modul, termasuk Asesmen Go/No-Go. Menambah atau menghapus admin dilakukan di <b>Mining Bureau → Kelola Admin</b>.</p></div><div class="kact"><button class="btn" data-kad="buka">Buka Kelola Admin</button></div></div>';
+  s+='<div class="tbl"><table><thead><tr><th>Email</th><th>Ditambahkan oleh</th></tr></thead><tbody>';
+  D.admin.forEach(function(a){ s+='<tr><td><b>'+esc(a.email)+'</b>'+(a.email===me?' <span class="tag a">Anda</span>':'')+'</td><td class="muted">'+esc(a.ditambah_oleh||'')+'</td></tr>'; });
   return s+'</tbody></table></div>';
 }
 function formModal(judul,isi,simpan){
@@ -1167,8 +1169,7 @@ el('isi').addEventListener('click',function(e){
     if(l[0]==='rtup') return rpc('gng_tarik_rtup').then(function(r){ toast(r.baru?r.baru+' lokasi baru dari peta RTUP.':'Semua stasiun peta RTUP sudah ada di daftar.'); muatKelola(); }).catch(function(e){ toast(esc(e.message),true); });
     var lk=K.data.lokasi[+l[1]]; if(l[0]==='tgl') return ubahCepat('gng_simpan_lokasi',{p:{nama:lk.nama,aktif:!lk.aktif},p_nama_lama:lk.nama}); return editLok(lk); }
   if((b=t.closest('[data-km]'))){ var m=b.dataset.km.split('|'); return manualAksi(+m[1],m[0]); }
-  if((b=t.closest('[data-kad]'))){ var d=b.dataset.kad.split('|'); if(d[0]==='tambah') return ubahCepat('gng_simpan_admin',{p_email:el('k-admin').value,p_aksi:'tambah'},'Admin ditambahkan.');
-    if(!confirm('Hapus '+d[1]+' dari admin Asesmen Go/No-Go?')) return; return ubahCepat('gng_simpan_admin',{p_email:d[1],p_aksi:'hapus'},'Admin dihapus.'); }
+  if((b=t.closest('[data-kad]'))){ try{ if(parent&&parent!==window&&parent.showPage){ parent.showPage('admin'); return; } }catch(e){} location.href='admin.html'; return; }
 });
 el('isi').addEventListener('input',function(e){ if(e.target.id==='k-cari'){ S.k.cari=e.target.value; var pos=e.target.selectionStart; renderKelola(); var i=el('k-cari'); i.focus(); i.setSelectionRange(pos,pos); } });
 el('isi').addEventListener('change',function(e){ var L=S.dl; if(e.target.id==='dl-dari'||e.target.id==='dl-sampai'){ L[e.target.id==='dl-dari'?'dari':'sampai']=e.target.value; L.hitung=null; hitungUnduh(); var i=el('dl-info'); if(i) i.innerHTML=infoUnduh(); } });

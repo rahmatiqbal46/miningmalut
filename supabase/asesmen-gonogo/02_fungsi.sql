@@ -44,9 +44,10 @@ returns text language sql stable as $$
   select lower(coalesce(auth.jwt() ->> 'email', ''))
 $$;
 
+-- Admin = satu daftar untuk seluruh MiningMalut (app_admin, Kelola Admin).
 create or replace function public.gng_is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (select 1 from gng_admin where email = gng_email() and gng_email() <> '')
+  select public.op_is_admin()
 $$;
 
 create or replace function public.gng__wajib_mining()
@@ -62,7 +63,7 @@ returns void language plpgsql stable security definer set search_path = public a
 begin
   perform gng__wajib_mining();
   if not gng_is_admin() then
-    raise exception 'Hanya admin Asesmen Go/No-Go yang boleh mengubah ini.';
+    raise exception 'Hanya admin yang boleh mengubah ini.';
   end if;
 end $$;
 
@@ -806,18 +807,13 @@ begin
   end if;
 end $$;
 
+-- Diarahkan ke fungsi Kelola Admin (supabase/admin/01_admin_terpadu.sql),
+-- supaya penambahan dan penghapusan tercatat di riwayat yang sama.
 create or replace function public.gng_simpan_admin(p_email text, p_aksi text)
-returns void
-language plpgsql security definer set search_path = public as $$
-declare v text := lower(trim(coalesce(p_email, '')));
+returns void language plpgsql security definer set search_path = '' as $$
 begin
-  perform gng__wajib_admin();
-  if v !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'Alamat email tidak sah.'; end if;
-  if p_aksi = 'tambah' then
-    insert into gng_admin (email, ditambah_oleh) values (v, gng_email()) on conflict do nothing;
-  elsif p_aksi = 'hapus' then
-    if v = gng_email() then raise exception 'Tidak bisa menghapus diri sendiri. Minta admin lain.'; end if;
-    delete from gng_admin where email = v;
+  if p_aksi = 'tambah' then perform public.admin_tambah(p_email, true);
+  elsif p_aksi = 'hapus' then perform public.admin_hapus(p_email);
   else raise exception 'Aksi tidak sah.';
   end if;
 end $$;

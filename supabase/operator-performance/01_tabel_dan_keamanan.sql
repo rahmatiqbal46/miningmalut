@@ -7,20 +7,11 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- Daftar admin. SAMA dengan ADMINS di index.html.
--- Kalau daftar di index.html berubah, ubah juga di sini.
+-- Daftar admin: public.op_is_admin() kini didefinisikan di
+-- supabase/admin/01_admin_terpadu.sql dan membaca tabel app_admin, yang
+-- dikelola dari Mining Bureau → Kelola Admin. Jalankan berkas itu lebih dulu.
+-- Jangan definisikan ulang fungsi itu di sini dengan daftar email tertulis.
 -- ---------------------------------------------------------------------
-create or replace function public.op_is_admin()
-returns boolean
-language sql
-stable
-as $$
-  select lower(coalesce(auth.jwt() ->> 'email', '')) in (
-    'rahmat.iqbal@antam.com',
-    'dani.suryawan@antam.com',
-    'v_raihan.nashwan@antam.com'
-  );
-$$;
 
 -- ---------------------------------------------------------------------
 -- Operator. Satu baris per orang, dikunci badge.

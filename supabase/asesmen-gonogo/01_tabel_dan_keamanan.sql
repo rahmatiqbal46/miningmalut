@@ -10,7 +10,7 @@
 --   * Semua akses lewat fungsi (02_fungsi.sql) yang memeriksa siapa pemanggilnya:
 --       - operator / pengawas  → token sesi NPP (bukan akun Supabase)
 --       - Mining               → login Supabase biasa (authenticated)
---       - Admin                → login Supabase + email ada di gng_admin
+--       - Admin                → login Supabase + email ada di app_admin (Kelola Admin)
 --   * Operator dan pengawas SENGAJA tidak dibuatkan akun Supabase. Kalau dibuat,
 --     mereka ikut mendapat hak baca/tulis tabel lain (dashboard, op_*) yang
 --     terbuka untuk semua pengguna authenticated.
@@ -101,12 +101,9 @@ create table if not exists public.gng_manual (
 );
 create unique index if not exists gng_manual_unik on public.gng_manual (jenis, lower(teks));
 
--- Admin modul ini (akun Supabase). Satu tempat, dikelola dari tab Kelola.
-create table if not exists public.gng_admin (
-  email        text primary key,
-  ditambah     timestamptz not null default now(),
-  ditambah_oleh text
-);
+-- Admin: sejak 26 September 2026 gng_admin bukan tabel lagi, melainkan VIEW di
+-- atas public.app_admin (satu daftar admin untuk seluruh MiningMalut, dikelola
+-- dari Mining Bureau → Kelola Admin). Dibuat oleh supabase/admin/01_admin_terpadu.sql.
 
 -- ---------------------------------------------------------------------------
 -- Form. id dibuat HP operator, jadi kiriman ulang saat sinyal putus-sambung
@@ -156,7 +153,6 @@ alter table public.gng_pertanyaan enable row level security;
 alter table public.gng_unit       enable row level security;
 alter table public.gng_lokasi     enable row level security;
 alter table public.gng_manual     enable row level security;
-alter table public.gng_admin      enable row level security;
 alter table public.gng_form       enable row level security;
 alter table public.gng_nomor      enable row level security;
 

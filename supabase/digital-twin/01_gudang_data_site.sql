@@ -12,9 +12,8 @@
 --   - Tabel site_* tertutup untuk akses langsung (RLS tanpa policy). Semua baca
 --     dan tulis lewat fungsi di bawah.
 --   - Menulis (terbit, pulihkan, unggah berkas) hanya untuk admin, dan dijaga di
---     server: email di token login harus lolos op_is_admin() ATAU tercatat di
---     gng_admin (Kelola → Admin di Asesmen Go/No-Go). Menambah admin cukup dari
---     layar itu.
+--     server: email di token login harus lolos op_is_admin(), yaitu tercatat di
+--     tabel app_admin (Mining Bureau → Kelola Admin).
 --   - Membaca untuk semua akun yang login.
 --   - Satu-satunya yang boleh dibaca tanpa login adalah site_jalan_worker():
 --     geometri jalan ringkas + batas kecepatan untuk Worker. Isinya sama dengan
@@ -30,36 +29,12 @@
 -- ---------------------------------------------------------------------------
 -- Admin data site
 -- ---------------------------------------------------------------------------
+-- Sejak 26 September 2026 admin hanya satu daftar (tabel app_admin,
+-- supabase/admin/01_admin_terpadu.sql). Fungsi ini dipertahankan karena
+-- dipanggil halaman dan policy di bawah.
 create or replace function public.site_is_admin()
-returns boolean
-language plpgsql
-stable
-security definer
-set search_path = public
-as $$
-declare
-  e   text := lower(coalesce(auth.jwt() ->> 'email', ''));
-  ada boolean := false;
-begin
-  if e = '' then
-    return false;
-  end if;
-  -- Lima daftar admin lama (§22.10) lewat fungsi yang sudah ada.
-  if to_regprocedure('public.op_is_admin()') is not null then
-    execute 'select public.op_is_admin()' into ada;
-    if ada then
-      return true;
-    end if;
-  end if;
-  -- Admin yang ditambahkan lewat Kelola → Admin di Asesmen Go/No-Go.
-  if to_regclass('public.gng_admin') is not null then
-    execute 'select exists (select 1 from public.gng_admin where lower(email) = $1)' into ada using e;
-    if ada then
-      return true;
-    end if;
-  end if;
-  return false;
-end;
+returns boolean language sql stable security definer set search_path = '' as $$
+  select public.op_is_admin()
 $$;
 
 -- ---------------------------------------------------------------------------

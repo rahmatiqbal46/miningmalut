@@ -26,7 +26,7 @@ Tidak ada rahasia di folder ini. Edge Function memakai `SUPABASE_URL` dan
 | Operator | NPP saja | Tidak | `cek-aman.html`: Beranda, Isi Form |
 | Pengawas | NPP + PIN (awal = NPP; bisa diganti sendiri, admin bisa mengatur ulang) | Tidak | `cek-aman.html`: Beranda, Persetujuan |
 | Mining | email + sandi (seperti sekarang) | Ya | `asesmen.html`: dashboard, arsip, unduh |
-| Admin | email + sandi, email ada di `gng_admin` | Ya | + tab Kelola |
+| Admin | email + sandi, email ada di `app_admin` (Mining Bureau → Kelola Admin, lihat `supabase/admin/`) | Ya | + tab Kelola |
 
 Operator dan pengawas sengaja **tidak** dibuatkan akun Supabase: tabel modul lain
 (`dashboard`, `op_*`) terbuka untuk semua pengguna `authenticated`.

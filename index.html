@@ -129,6 +129,8 @@ body{
   border-radius:8px;cursor:pointer;position:relative;
   transition:background .14s,color .14s;
 }
+/* Daun khusus admin (Kelola Admin) disembunyikan dengan atribut hidden. */
+.leaf[hidden]{display:none}
 .item:hover,.leaf:hover,.ghead:hover{background:#ffffff0d;color:#eaf5f4}
 /* Seleksi memakai pil terisi, bukan garis tepi berwarna. */
 .item.active,.leaf.active{
@@ -490,7 +492,7 @@ iframe.page.show{display:block}
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M3 12h3M18 12h3M8 12l3 2 4-6"/></svg>ROC<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="sub"><button class="leaf" data-page="amora">AMORA</button><button class="leaf" data-page="speed">Speed Watcher</button><button class="leaf" data-page="dispatch">Dispatch Monitoring</button></div></div>
    <div class="grp"><button class="ghead"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M8 2v4M16 2v4M3.5 9h17"/></svg>Mining Bureau<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="sub"><button class="leaf" data-page="jadwal">Jadwal Mining Bureau</button><button class="leaf" data-page="asesmen">Asesmen Go/No-Go</button></div></div>
+    <div class="sub"><button class="leaf" data-page="jadwal">Jadwal Mining Bureau</button><button class="leaf" data-page="asesmen">Asesmen Go/No-Go</button><button class="leaf" data-page="admin" hidden>Kelola Admin</button></div></div>
   </nav>
   <div class="side-credit"><span>FullStack Vibe Developer<b>Rahmat Iqbal</b></span><span>Speed Watcher contributor<b>Ariqsyah Rahman</b></span><span>Dispatch Monitoring contributor<b>Randy Caesario Simangunsong</b></span></div>
   <div class="setwrap">
@@ -529,6 +531,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_amora" title="AMORA"></iframe>
    <iframe class="page" id="if_jadwal" title="Jadwal Mining Bureau"></iframe>
    <iframe class="page" id="if_asesmen" title="Asesmen Go/No-Go"></iframe>
+   <iframe class="page" id="if_admin" title="Kelola Admin"></iframe>
    <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
    <iframe class="page" id="if_operator" title="Operator Performance"></iframe>
    <iframe class="page" id="if_oe1on1" title="Dashboard Produksi" allow="fullscreen" allowfullscreen></iframe>
@@ -558,12 +561,27 @@ iframe.page.show{display:block}
 
 <script>
 const CFG={url:'https://qblivboqavhlugydhmjr.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE'};
-const AUTHKEY='pakal_auth', ADMINS=['rahmat.iqbal@antam.com','dani.suryawan@antam.com','v_raihan.nashwan@antam.com'];
+const AUTHKEY='pakal_auth';
+/* Status admin dibaca dari server (fungsi op_is_admin → tabel app_admin), bukan
+   daftar tertulis. Daftarnya dikelola di Mining Bureau → Kelola Admin. */
+let ADMIN_SAYA=false;
 function authBase(){return CFG.url.replace(/\/+$/,'')+'/auth/v1';}
 let AUTH=null; try{AUTH=JSON.parse(localStorage.getItem(AUTHKEY)||'null');}catch(e){}
 function authValid(){return !!(AUTH&&AUTH.access_token&&AUTH.expires_at&&AUTH.expires_at*1000>Date.now()+15000);}
 function email(){return (AUTH&&AUTH.user&&AUTH.user.email)||'';}
-function isAdmin(){return ADMINS.indexOf(email())>=0;}
+function isAdmin(){return ADMIN_SAYA===true;}
+function judulAkun(){var sb=document.getElementById('setbtn');if(sb)sb.title='Keluar · masuk sebagai '+(email()||'—')+' ('+(isAdmin()?'Admin':'Viewer')+')';}
+async function cekAdmin(){
+  let a=false;
+  try{
+    const r=await fetch(CFG.url.replace(/\/+$/,'')+'/rest/v1/rpc/op_is_admin',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+AUTH.access_token,'Content-Type':'application/json'},body:'{}'});
+    a=r.ok&&(await r.json())===true;
+  }catch(e){a=false;}
+  ADMIN_SAYA=a;
+  document.querySelectorAll('#nav .leaf[data-page="admin"]').forEach(b=>{b.hidden=!a;});
+  judulAkun();
+  return a;
+}
 async function doLogin(em,pw){
   const r=await fetch(authBase()+'/token?grant_type=password',{method:'POST',headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
   const j=await r.json().catch(()=>({}));
@@ -582,6 +600,7 @@ const PAGES={
  amora:{iframe:'if_amora',url:'amora.html'},
  jadwal:{iframe:'if_jadwal',url:'jadwal.html'},
  asesmen:{iframe:'if_asesmen',url:'asesmen.html'},
+ admin:{iframe:'if_admin',url:'admin.html'},
  dispatch:{iframe:'if_dispatch',url:'dispatch-monitoring.html'},
  operator:{iframe:'if_operator',url:'operator-performance.html'},
  oe1on1:{iframe:'if_oe1on1',url:'data-1on1.html'}
@@ -685,8 +704,7 @@ function showApp(){
  var av=document.getElementById('sideAva');
  if(av)av.textContent=fullName().split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
  /* Identitas yang dulu tampil di popover Setting kini cukup di tooltip tombol Keluar. */
- var sb=document.getElementById('setbtn');
- if(sb)sb.title='Keluar · masuk sebagai '+(email()||'—')+' ('+(isAdmin()?'Admin':'Viewer')+')';
+ judulAkun(); cekAdmin();
  tickJam(); buildBento(); showPage('home'); fetchHomeStats(); if(homeTimer)clearInterval(homeTimer); homeTimer=setInterval(fetchHomeStats,60000);
 }
 document.getElementById('btnLogin').onclick=async()=>{

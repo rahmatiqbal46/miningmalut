@@ -11,7 +11,7 @@ Isinya:
   `site_terbit`, `site_pulihkan`, `site_hapus_berkas`, dan pemeriksa `site__cek_jalan_worker`;
 - bucket privat `site-data` beserta policy Storage (baca: semua yang login; tulis: admin).
 
-Admin data site = `op_is_admin()` atau email di tabel `gng_admin`. Tidak ada daftar admin baru.
+Admin data site = `op_is_admin()` = email di tabel `app_admin` (Mining Bureau → Kelola Admin, lihat `supabase/admin/`).
 
 Cek sesudah dijalankan:
 

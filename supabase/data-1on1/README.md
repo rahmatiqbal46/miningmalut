@@ -26,7 +26,7 @@ Pembaruan putaran 7 (26 September 2026): langkah 3, unggah template versi 9 (lan
 Sebelum `03_tandai_loader.sql` dijalankan halaman tetap jalan: admin menandai dengan cara lama, pengguna lain belum
 mendapat tombol "Tandai sudah dicek".
 
-Butuh `public.op_is_admin()` dari Operator Performance dan Secret `MINERVA_TOKEN` yang sudah ada.
+Butuh `public.op_is_admin()` dari `supabase/admin/01_admin_terpadu.sql` dan Secret `MINERVA_TOKEN` yang sudah ada.
 Tidak ada rahasia di folder ini. Angka kuota dan rencana tidak ditulis di repo; diisi admin di halaman.
 
 Folder `minerva/` di bucket `oe-1on1` hanya simpanan laporan Minerva: boleh dihapus kapan saja,

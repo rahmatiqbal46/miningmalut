@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kelola Admin · MiningMalut</title>
+<style>
+/* =============================================================================
+   Kelola Admin (Mining Bureau) — satu daftar admin untuk seluruh MiningMalut.
+   Data: tabel app_admin lewat fungsi SQL admin_daftar / admin_tambah /
+   admin_hapus (supabase/admin/01_admin_terpadu.sql), dengan sesi login shell
+   (localStorage pakal_auth). Server yang memutuskan siapa admin; halaman ini
+   hanya menampilkan.
+   Lapisan tampilan dalam bahasa desain Apple (dokumentasi §23), sama dengan
+   asesmen.html: terang, isi solid, kaca hanya pada bilah atas dan toast.
+   ============================================================================= */
+:root{
+  --t900:#001f1f;--t800:#00302f;--t700:#003c3c;--t600:#0a5a56;
+  --amber:#ea9000;--amber-dk:#996000;
+  --bg:#eef3f2;--surface:#fff;--surface-2:#f4f8f7;--border:#d9e3e2;--border-soft:#e7eeed;
+  --text:#0b1c1c;--text-muted:#47595a;
+  --good:#0f6b46;--warn:#8a5600;--bad:#a01c14;--good-soft:#e4f2ea;--warn-soft:#fbeed6;--bad-soft:#fbe6e4;--netral:#eaf0ed;
+  --isi:#0000000d;
+  --shadow:0 1px 2px rgba(0,48,47,.07),0 0 0 1px rgba(0,60,60,.07);
+  --f-large:26px;--f-t2:17px;--f-t3:15px;--f-body:13px;--f-callout:12px;--f-sub:11px;
+  --r-panel:14px;--r-inner:10px;--h-kontrol:28px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:var(--font);font-size:var(--f-body);line-height:1.4;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px 48px}
+.kaca{backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7)}
+.bar{position:sticky;top:0;z-index:10;margin:0 -20px 16px;padding:14px 20px 12px;background:rgba(238,243,242,.78);box-shadow:inset 0 -1px 0 rgba(0,60,60,.10)}
+.dh{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.dh small{font-size:var(--f-callout);color:var(--text-muted)}
+.dh h1{font-size:var(--f-large);line-height:32px;margin:2px 0}
+.dh p{margin:0;color:var(--text-muted);font-size:var(--f-callout);max-width:620px}
+.pita{font-size:var(--f-callout);color:var(--text-muted)}
+
+.panel{background:var(--surface);border-radius:var(--r-panel);box-shadow:var(--shadow);margin-bottom:16px}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 16px 12px;flex-wrap:wrap}
+.ph h2{font-size:var(--f-t2);line-height:22px;margin:0 0 4px}
+.ph p{margin:0;color:var(--text-muted);max-width:620px}
+.n{font-size:var(--f-callout);font-weight:650;color:var(--text-muted);background:var(--netral);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+
+.tambah{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px}
+.inp{flex:1 1 260px;min-width:0;border:0;border-radius:7px;background:var(--isi);box-shadow:inset 0 0 0 1px var(--border);padding:0 10px;height:var(--h-kontrol);font-size:var(--f-body)}
+.inp:focus{outline:none;box-shadow:inset 0 0 0 1px var(--t600),0 0 0 3px rgba(10,90,86,.14)}
+.btn{border:0;border-radius:999px;height:var(--h-kontrol);padding:0 14px;background:var(--t700);color:#fff;font-weight:650;font-size:var(--f-body);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn[disabled],.btn2[disabled],.mini[disabled]{opacity:.45;cursor:not-allowed}
+.btn2{border:0;border-radius:999px;height:var(--h-kontrol);padding:0 14px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);font-weight:600;font-size:var(--f-body);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:var(--t700)}
+.mini{border:0;background:rgba(0,60,60,.07);color:var(--t700);border-radius:999px;height:24px;padding:0 10px;font-size:var(--f-callout);font-weight:650;white-space:nowrap}
+.mini.m{background:var(--bad-soft);color:var(--bad)}
+
+.konfirm{margin:0 16px 16px;padding:12px 14px;border-radius:var(--r-inner);background:var(--warn-soft);color:#4d3000;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.konfirm p{margin:0;max-width:560px}
+.konfirm .aksi{display:flex;gap:8px}
+.err{color:var(--bad);font-size:var(--f-callout);padding:0 16px 12px}
+.err:empty{display:none}
+
+/* Daftar tersisip: satu wadah, baris dipisah garis rambut */
+.daftar{list-style:none;margin:0;padding:0 16px 8px}
+.daftar li{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 72px;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--border-soft)}
+.daftar li:first-child{border-top:0}
+.em{font-weight:650;overflow-wrap:anywhere}
+.sub{font-size:var(--f-callout);color:var(--text-muted);margin-top:2px}
+.tag{font-size:var(--f-sub);font-weight:650;border-radius:999px;padding:1px 8px;background:var(--netral);color:var(--text-muted);white-space:nowrap;display:inline-block;vertical-align:1px}
+.tag.a{background:#e3eeee;color:var(--t600)}
+.tag.ok{background:var(--good-soft);color:var(--good)}
+.tag.o{background:var(--warn-soft);color:var(--warn)}
+.act{text-align:right}
+.log{list-style:none;margin:0;padding:0 16px 12px}
+.log li{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--border-soft);font-size:var(--f-callout)}
+.log li:first-child{border-top:0}
+.log time{color:var(--text-muted);white-space:nowrap;min-width:128px}
+.log .ak{font-weight:650}
+.log .ak.ak-tambah{color:var(--good)}.log .ak.ak-hapus{color:var(--bad)}
+.lagi{padding:0 16px 14px}
+.catat{padding:12px 16px 16px;color:var(--text-muted);font-size:var(--f-callout);border-top:1px solid var(--border-soft)}
+.catat ol{margin:6px 0 0;padding-left:18px}
+.catat li{margin:2px 0}
+.banner{background:var(--surface);border-radius:var(--r-panel);box-shadow:var(--shadow);padding:22px 18px;color:var(--text-muted)}
+.banner b{color:var(--text)}
+.empty{padding:22px 16px;color:var(--text-muted);text-align:center}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;padding:10px 16px;border-radius:999px;color:#fff;font-weight:600;
+  background:linear-gradient(176deg,rgba(10,51,46,.86),rgba(6,33,29,.92));
+  box-shadow:0 12px 32px rgba(3,20,17,.28),inset 0 1px 1px rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.12);max-width:calc(100% - 32px)}
+
+@media (max-width:640px){
+  .wrap{padding:0 16px 40px}.bar{margin:0 -16px 14px;padding:12px 16px 10px}
+  .daftar li{grid-template-columns:minmax(0,1fr) 72px}
+  .daftar li .st{grid-column:1/-1;grid-row:2}
+  .log li{flex-direction:column;gap:2px}.log time{min-width:0}
+}
+@media (prefers-reduced-transparency:reduce){.kaca{backdrop-filter:none;-webkit-backdrop-filter:none}.bar{background:var(--bg)}.toast{background:var(--t800)}}
+@media (prefers-contrast:more){.tag,.mini{box-shadow:inset 0 0 0 1px currentColor}.panel{box-shadow:0 0 0 1px var(--text-muted)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar kaca">
+    <div class="dh">
+      <div>
+        <small>Mining Bureau</small>
+        <h1>Kelola Admin</h1>
+        <p>Satu daftar admin untuk seluruh MiningMalut: Operator Performance, Dashboard Produksi, Digital Twin, Asesmen Go/No-Go, dan tombol admin lainnya.</p>
+      </div>
+      <span class="pita" id="pita" aria-live="polite"></span>
+    </div>
+  </div>
+  <main id="isi"><div class="empty">Memuat…</div></main>
+</div>
+<div id="toast" class="toast kaca" role="status" hidden></div>
+
+<script>
+var SUPA={url:'https://qblivboqavhlugydhmjr.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE'};
+var AUTH_KEY='pakal_auth';
+var S={data:null, tunda:null, sibuk:false, logSemua:false, galat:''};
+
+function el(id){ return document.getElementById(id); }
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function token(){ try{ var a=JSON.parse(localStorage.getItem(AUTH_KEY)||'null'); if(a&&a.access_token&&(!a.expires_at||a.expires_at*1000>Date.now())) return a.access_token; }catch(e){} return null; }
+function galat(m,j){ var e=new Error(m); e.jenis=j; return e; }
+async function rpc(fn,args){
+  var tk=token(); if(!tk) throw galat('Sesi login berakhir. Keluar lalu masuk lagi.','sesi');
+  var r=await fetch(SUPA.url+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:SUPA.key,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(args||{})});
+  var t=await r.text(); var j=null; try{ j=t?JSON.parse(t):null; }catch(e){}
+  if(r.status===401) throw galat('Sesi login berakhir. Keluar lalu masuk lagi.','sesi');
+  if(r.status===404) throw galat('Fungsi '+fn+' belum dipasang di Supabase. Jalankan supabase/admin/01_admin_terpadu.sql di SQL Editor.','pasang');
+  if(!r.ok) throw galat((j&&j.message)||('Server menjawab '+r.status),'server');
+  return j;
+}
+function tgl(v,jam){
+  if(!v) return ''; var d=new Date(v); if(isNaN(d)) return '';
+  var o={day:'numeric',month:'short',year:'numeric'}; if(jam){ o.hour='2-digit'; o.minute='2-digit'; }
+  return d.toLocaleString('id-ID',o);
+}
+var tTimer=null;
+function toast(m){ var t=el('toast'); t.textContent=m; t.hidden=false; clearTimeout(tTimer); tTimer=setTimeout(function(){ t.hidden=true; },3200); }
+
+async function muat(){
+  try{
+    S.data=await rpc('admin_daftar'); S.galat='';
+    el('pita').textContent='Diperbarui '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    render();
+  }catch(e){
+    S.data=null;
+    var pesan=e.jenis==='sesi'?'<b>Sesi login berakhir.</b> Keluar lalu masuk lagi.'
+      : /Hanya admin/.test(e.message)?'<b>Halaman ini khusus admin.</b> Minta salah satu admin MiningMalut untuk menambahkan email Anda di sini.'
+      : esc(e.message);
+    el('isi').innerHTML='<div class="banner" role="alert">'+pesan+'</div>';
+  }
+}
+
+function statusAkun(a){
+  if(!a.punya_akun) return '<span class="tag o">Belum punya akun</span><div class="sub">Belum bisa masuk MiningMalut</div>';
+  if(!a.terkonfirmasi) return '<span class="tag o">Akun belum dikonfirmasi</span>';
+  return '<span class="tag ok">Punya akun</span><div class="sub">'+(a.login_terakhir?'Login terakhir '+esc(tgl(a.login_terakhir,true)):'Belum pernah login')+'</div>';
+}
+function kataAksi(k){ return {tambah:'ditambahkan',hapus:'dihapus',awal:'daftar awal'}[k]||k; }
+
+function render(){
+  var D=S.data; if(!D) return;
+  var me=D.saya, s='';
+  /* Tambah */
+  s+='<section class="panel" aria-labelledby="h-tambah"><div class="ph"><div><h2 id="h-tambah">Tambah admin</h2><p>Admin bisa membuka semua tombol dan tab khusus admin, termasuk halaman ini. Berlaku saat orang itu memuat ulang MiningMalut.</p></div></div>';
+  s+='<form class="tambah" id="fTambah" autocomplete="off"><input class="inp" id="inEmail" type="email" inputmode="email" placeholder="nama@antam.com" aria-label="Email admin baru" value="'+esc(S.tunda?S.tunda:'')+'"'+(S.sibuk?' disabled':'')+'><button class="btn" type="submit"'+(S.sibuk?' disabled':'')+'>Tambah admin</button></form>';
+  if(S.tunda) s+='<div class="konfirm" role="alertdialog" aria-labelledby="kTeks"><p id="kTeks"><b>'+esc(S.tunda)+'</b> belum punya akun MiningMalut, jadi belum bisa masuk. Akun dibuat di Supabase → Authentication → Users. Tetap jadikan admin sekarang?</p><div class="aksi"><button class="btn2" type="button" data-a="batal">Batal</button><button class="btn" type="button" data-a="paksa"'+(S.sibuk?' disabled':'')+'>Tetap tambahkan</button></div></div>';
+  s+='<div class="err" id="err" role="alert">'+esc(S.galat)+'</div></section>';
+
+  /* Daftar */
+  s+='<section class="panel" aria-labelledby="h-daftar"><div class="ph"><div><h2 id="h-daftar">Admin saat ini<span class="n">'+D.admin.length+'</span></h2><p>Anda tidak bisa menghapus diri sendiri, jadi daftar ini tidak pernah kosong.</p></div></div><ul class="daftar">';
+  D.admin.forEach(function(a){
+    var saya=a.email===me;
+    s+='<li><div><div class="em">'+esc(a.email)+(saya?' <span class="tag a">Anda</span>':'')+'</div><div class="sub">Ditambahkan '+esc(tgl(a.ditambah))+(a.ditambah_oleh?' oleh '+esc(a.ditambah_oleh):'')+'</div></div>'+
+       '<div class="st">'+statusAkun(a)+'</div>'+
+       '<div class="act">'+(saya?'':'<button class="mini m" type="button" data-hapus="'+esc(a.email)+'"'+(S.sibuk?' disabled':'')+' aria-label="Hapus '+esc(a.email)+' dari admin">Hapus</button>')+'</div></li>';
+  });
+  s+='</ul><div class="catat"><b>Menambah orang yang belum punya akun:</b><ol><li>Supabase → Authentication → Users → <i>Add user</i> → <i>Create new user</i>, isi email dan kata sandi, centang <i>Auto Confirm User</i>.</li><li>Tambahkan email yang sama di atas.</li></ol></div></section>';
+
+  /* Riwayat */
+  var log=D.log||[], tampil=S.logSemua?log:log.slice(0,8);
+  s+='<section class="panel" aria-labelledby="h-log"><div class="ph"><div><h2 id="h-log">Riwayat perubahan</h2><p>Siapa menambah atau menghapus admin, dan kapan.</p></div></div>';
+  if(!log.length) s+='<div class="empty">Belum ada perubahan.</div>';
+  else{
+    s+='<ul class="log">';
+    tampil.forEach(function(l){ s+='<li><time datetime="'+esc(l.waktu)+'">'+esc(tgl(l.waktu,true))+'</time><span><b>'+esc(l.email)+'</b> <span class="ak ak-'+esc(l.aksi)+'">'+esc(kataAksi(l.aksi))+'</span>'+(l.aksi==='awal'?'':' oleh '+esc(l.oleh))+'</span></li>'; });
+    s+='</ul>';
+    if(log.length>8) s+='<div class="lagi"><button class="btn2" type="button" data-a="log">'+(S.logSemua?'Tampilkan lebih sedikit':'Tampilkan semua ('+log.length+')')+'</button></div>';
+  }
+  s+='</section>';
+  el('isi').innerHTML=s;
+}
+
+async function tambah(email,paksa){
+  S.sibuk=true; S.galat=''; render();
+  try{
+    var r=await rpc('admin_tambah',{p_email:email,p_paksa:!!paksa});
+    if(r&&r.perlu_konfirmasi){ S.tunda=r.email; S.sibuk=false; render(); var b=document.querySelector('[data-a="paksa"]'); if(b) b.focus(); return; }
+    S.tunda=null; S.sibuk=false;
+    toast((r&&r.email||email)+' kini admin.');
+    await muat();
+    var i=el('inEmail'); if(i){ i.value=''; i.focus(); }
+  }catch(e){ S.sibuk=false; S.galat=e.message; render(); var i2=el('inEmail'); if(i2){ i2.value=email; i2.focus(); } }
+}
+async function hapus(email){
+  if(!confirm('Hapus '+email+' dari admin MiningMalut?\n\nIa tetap bisa masuk, tetapi tidak lagi melihat tombol dan tab khusus admin.')) return;
+  S.sibuk=true; S.galat=''; render();
+  try{ await rpc('admin_hapus',{p_email:email}); S.sibuk=false; toast(email+' bukan admin lagi.'); await muat(); }
+  catch(e){ S.sibuk=false; S.galat=e.message; render(); }
+}
+
+el('isi').addEventListener('submit',function(e){
+  if(e.target.id!=='fTambah') return; e.preventDefault();
+  var v=(el('inEmail').value||'').trim(); if(!v){ S.galat='Isi alamat email.'; render(); el('inEmail').focus(); return; }
+  S.tunda=null; tambah(v,false);
+});
+el('isi').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b||b.disabled) return;
+  if(b.dataset.hapus) return hapus(b.dataset.hapus);
+  var a=b.dataset.a;
+  if(a==='paksa') return tambah(S.tunda,true);
+  if(a==='batal'){ S.tunda=null; render(); var i=el('inEmail'); if(i) i.focus(); return; }
+  if(a==='log'){ S.logSemua=!S.logSemua; render(); }
+});
+/* Segarkan saat bingkai kembali terlihat (dibuka lagi dari sidebar). */
+function terlihat(){ if(document.visibilityState==='hidden') return false; try{ var f=window.frameElement; return !f||f.getClientRects().length>0; }catch(e){ return true; } }
+document.addEventListener('visibilitychange',function(){ if(terlihat()&&!S.sibuk&&!S.tunda) muat(); });
+/* document.hidden tidak berubah saat bingkai disembunyikan shell (§10.9), jadi
+   diperiksa tiap menit lewat frameElement. */
+setInterval(function(){ if(terlihat()&&!S.sibuk&&!S.tunda&&S.data) muat(); },60000);
+muat();
+</script>
+</body>
+</html>

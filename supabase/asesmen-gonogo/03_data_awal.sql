@@ -12,8 +12,8 @@
 -- Tidak diimpor: 7895 NIRWAN ASKARI (tercantum di Pengawas Planning, bukan operator)
 -- =============================================================================
 
--- Admin modul (akun Supabase)
-insert into public.gng_admin (email, ditambah_oleh) values ('rahmat.iqbal@antam.com','data awal'), ('dani.suryawan@antam.com','data awal') on conflict do nothing;
+-- Admin: tidak diisi di sini lagi. Daftar admin ada di public.app_admin
+-- (supabase/admin/01_admin_terpadu.sql), dikelola dari Mining Bureau → Kelola Admin.
 
 -- Pertanyaan F-09.283.020.R0
 insert into public.gng_pertanyaan (id, bagian, urut, teks, ringkas, alat, shift, diubah_oleh) values (1, 'A', 1, 'Saya sehat, cukup tidur, dan tidak mengantuk. Fit declaration sudah saya isi.', 'Kondisi fisik operator, fit declaration', null, null, 'data awal') on conflict (id) do nothing;

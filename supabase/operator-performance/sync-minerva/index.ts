@@ -16,13 +16,14 @@
 //
 // Siapa yang boleh memanggil:
 //   - penjadwal, dengan header x-sync-secret = SYNC_SECRET
-//   - admin yang login (untuk tombol "Sinkron sekarang" di halaman admin)
+//   - admin yang login (untuk tombol "Sinkron sekarang" di halaman admin);
+//     admin = email yang tercatat di tabel app_admin
 // =====================================================================
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx@0.18.5";
 
-const ADMINS = ["rahmat.iqbal@antam.com", "dani.suryawan@antam.com", "v_raihan.nashwan@antam.com"]; // sama dengan index.html
+// Admin dibaca dari tabel app_admin (Mining Bureau → Kelola Admin), bukan daftar tertulis.
 
 const HOST = "https://pakal-micro-production.minervasuite.app";
 const BASE = `${HOST}/pakal/pmt/api/v1/operator-scorecard`;
@@ -268,7 +269,10 @@ Deno.serve(async (req) => {
     if (jwt) {
       const { data } = await sb.auth.getUser(jwt);
       const email = (data?.user?.email ?? "").toLowerCase();
-      if (ADMINS.includes(email)) source = `admin:${email}`;
+      if (email) {
+        const { data: adm, error } = await sb.from("app_admin").select("email").eq("email", email).maybeSingle();
+        if (!error && adm) source = `admin:${email}`;
+      }
     }
   }
   if (!source) return jawab({ status: "gagal", message: "tidak berwenang" }, 401);
