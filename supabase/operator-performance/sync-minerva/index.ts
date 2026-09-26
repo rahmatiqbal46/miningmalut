@@ -22,7 +22,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx@0.18.5";
 
-const ADMINS = ["rahmat.iqbal@antam.com", "dani.suryawan@antam.com"]; // sama dengan index.html
+const ADMINS = ["rahmat.iqbal@antam.com", "dani.suryawan@antam.com", "v_raihan.nashwan@antam.com"]; // sama dengan index.html
 
 const HOST = "https://pakal-micro-production.minervasuite.app";
 const BASE = `${HOST}/pakal/pmt/api/v1/operator-scorecard`;
