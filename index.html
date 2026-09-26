@@ -558,7 +558,7 @@ iframe.page.show{display:block}
 
 <script>
 const CFG={url:'https://qblivboqavhlugydhmjr.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE'};
-const AUTHKEY='pakal_auth', ADMINS=['rahmat.iqbal@antam.com','dani.suryawan@antam.com'];
+const AUTHKEY='pakal_auth', ADMINS=['rahmat.iqbal@antam.com','dani.suryawan@antam.com','v_raihan.nashwan@antam.com'];
 function authBase(){return CFG.url.replace(/\/+$/,'')+'/auth/v1';}
 let AUTH=null; try{AUTH=JSON.parse(localStorage.getItem(AUTHKEY)||'null');}catch(e){}
 function authValid(){return !!(AUTH&&AUTH.access_token&&AUTH.expires_at&&AUTH.expires_at*1000>Date.now()+15000);}
