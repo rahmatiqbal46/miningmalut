@@ -430,14 +430,35 @@ button.kl-baris:hover{background:var(--isi)}
 .proses{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink2)}
 .proses .progres{flex:1;height:4px;border-radius:2px;background:var(--isi);overflow:hidden}
 .proses .progres span{display:block;height:4px;background:var(--accent);width:0}
+/* Kelola data › Unduh data */
+.unduh-kepala{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.unduh-kepala h3{flex:1 1 auto}
+.unduh-kepala select.inp{width:auto;max-width:100%;flex:0 1 auto}
+.unduh-format{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px}
+.unduh-format button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:74px;padding:9px 10px;border:0;border-radius:var(--r-dalam);background:var(--isi);color:var(--ink);text-align:left;cursor:pointer}
+.unduh-format button:hover{background:var(--isi2)}
+.unduh-format button:disabled{cursor:progress}
+.unduh-format .fm{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.unduh-format .ext{font-size:10.5px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;background:var(--surface3);color:var(--accentInk)}
+.unduh-format .ds{font-size:11px;line-height:14px;color:var(--ink2)}
+.unduh-format .st{font-size:11px;line-height:14px;color:var(--ink2)}
+.unduh-format .st:empty{display:none}
+.unduh-format .st.ok{color:#9ff0c8} .unduh-format .st.gagal{color:#ffb3a6} .unduh-format .st.proses{color:var(--accentInk)}
+.unduh-aplikasi{display:flex;flex-direction:column;gap:8px}
+.unduh-aplikasi div{display:flex;flex-direction:column;gap:1px;font-size:12px}
+.unduh-aplikasi span{font-size:11.5px;line-height:15px;color:var(--ink2)}
+.unduh-catatan{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:6px;font-size:11.5px;line-height:16px;color:var(--ink2)}
+#kelola .kartu.k.sorot{box-shadow:var(--sh),0 0 0 2px var(--accentInk);transition:box-shadow .3s}
 @media (max-width:1180px){
-  #kelola{grid-template-columns:200px minmax(0,1fr);grid-template-rows:56px auto auto;overflow:auto}
+  #kelola{grid-template-columns:200px minmax(0,1fr);grid-template-rows:56px max-content max-content;overflow:auto}
   #kelola .k-samping{grid-column:2;overflow:visible}
   #kelola .k-utama{overflow:visible}
 }
 @media (max-width:760px){
-  #kelola{grid-template-columns:minmax(0,1fr);padding:8px;gap:8px}
+  #kelola{grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(4,max-content);padding:8px;gap:8px}
+  #kelola .k-atas{flex-wrap:wrap;padding:8px 12px;row-gap:6px}
   #kelola .k-nav{flex-direction:row;overflow-x:auto}
+  #kelola .k-nav > div{display:none}
   #kelola .k-nav button{flex-shrink:0}
   #kelola .k-nav button span{display:none}
   #kelola .k-samping{grid-column:1}
@@ -450,9 +471,9 @@ button.kl-baris:hover{background:var(--isi)}
 <!--
   MiningMalut · Digital Twin Pulau Pakal (pengganti RTUP) · 23 September 2026
   Berkas ini adalah sumbernya: sunting langsung di sini (dokumentasi §26).
-  Sebelas blok skrip, masing-masing berawal komentar /* ===== Nama ===== */:
+  Dua belas blok skrip, masing-masing berawal komentar /* ===== Nama ===== */:
   three r128 + OrbitControls · GudangSite · ModelUnit · MesinTwin · sump awal W&R ·
-  data dunia · HitungTwin · Aplikasi (TwinApp) · OlahCitra · EditorPeta · KelolaData.
+  data dunia · HitungTwin · Aplikasi (TwinApp) · OlahCitra · EditorPeta · UnduhData · KelolaData.
   GudangSite sama persis dengan salinan di speed-watcher.html, amora.html, dan
   minedev.html; ubah keempatnya bersamaan. Periksa sintaks tiap blok dengan
   new Function() di Node sebelum diunggah.
@@ -4288,6 +4309,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
      - topo      : titik survei → TIN Delaunay → grid 3 m bingkai site
      - banding   : galian/timbunan antara dua grid
      - jejak     : kepadatan jejak GPS di luar jalan (saran jalan baru)
+     - kontur    : garis kontur dari grid topo untuk unduhan DXF (Kelola data › Unduh data)
    Delaunay: pindahan algoritma Delaunator v4 (Mapbox, lisensi ISC).
    ============================================================================= */
 (function (global) {
@@ -5138,7 +5160,99 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       return { hasil: { nx: NX, ny: NY, sel: SEL, kepadatan: jejakSel, calon: calon, koridor: koridor.slice(0, 30), segmen: lintas }, transfer: [jejakSel.buffer, calon.buffer] };
     }
 
-    var tugas = { catchment: catchment, bacaTopo: bacaTopo, topo: topo, banding: banding, jejak: jejak, Delaunator: Delaunator };
+    /* ============================================================ kontur (Kelola data › Unduh data) */
+    /* Garis kontur dari grid topo untuk DXF. Marching squares dalam sentimeter bulat (topo DTG1
+       memang 0,01 m), jadi tinggi yang tepat sama dengan level tidak membuat penggal ganda; sel
+       berpelana diputus dengan rata-rata keempat sudutnya. Penggal dirangkai lewat nomor sisi grid
+       (2·k = sisi mendatar dari simpul k, 2·k+1 = sisi tegak), bukan lewat koordinat, jadi
+       sambungannya pasti. Sel yang salah satu sudutnya kosong dilewati: garis berhenti di tepi
+       data. Level 0 m ke bawah tidak dibuat (garis pantai/tepi data, sama dengan lapisan Kontur).
+       d = {z, nx, ny, dx, interval (m), mayor (tiap n interval), toleransi (m), minPanjang (m)}
+       → {garis:[{z, mayor, tutup, xy:[x,y,…] meter lokal}], level, penggal} */
+    function kontur(d, lapor) {
+      var Z = d.z, NX = d.nx, NY = d.ny, DX = d.dx, I = Math.max(1, Math.round((d.interval || 1) * 100)), MAY = d.mayor || 5;
+      var tol = d.toleransi == null ? 0.2 : d.toleransi, minP = d.minPanjang == null ? 2 * DX : d.minPanjang, n = NX * NY;
+      var zc = new Int32Array(n), ada = new Uint8Array(n);
+      for (var k = 0; k < n; k++) { var v = Z[k]; if (v === v) { zc[k] = Math.round(v * 100); ada[k] = 1; } }
+      var seg = new Map(), penggal = 0;
+      function tambah(m, a, b) { var s = seg.get(m); if (!s) { s = []; seg.set(m, s); } s.push(a, b); penggal++; }
+      for (var j = 0; j < NY - 1; j++) {
+        if (lapor && (j & 127) === 0) lapor('Menghitung garis kontur', Math.round(j / NY * 60));
+        for (var i = 0; i < NX - 1; i++) {
+          var k0 = j * NX + i, k1 = k0 + 1, k3 = k0 + NX, k2 = k3 + 1;
+          if (!ada[k0] || !ada[k1] || !ada[k2] || !ada[k3]) continue;
+          var a = zc[k0], b = zc[k1], c = zc[k2], e = zc[k3];
+          var lo = Math.min(a, b, c, e), hi = Math.max(a, b, c, e);
+          if (lo === hi) continue;
+          var m0 = Math.max(1, Math.ceil(lo / I)), m1 = Math.ceil(hi / I) - 1;   // level L = m·I dengan lo ≤ L < hi
+          if (m1 < m0) continue;
+          var eB = 2 * k0, eR = 2 * k1 + 1, eT = 2 * k3, eL = 2 * k0 + 1;
+          for (var m = m0; m <= m1; m++) {
+            var L = m * I, idx = (a > L ? 1 : 0) | (b > L ? 2 : 0) | (c > L ? 4 : 0) | (e > L ? 8 : 0);
+            switch (idx) {
+              case 1: case 14: tambah(m, eL, eB); break;
+              case 2: case 13: tambah(m, eB, eR); break;
+              case 3: case 12: tambah(m, eL, eR); break;
+              case 4: case 11: tambah(m, eR, eT); break;
+              case 6: case 9: tambah(m, eB, eT); break;
+              case 7: case 8: tambah(m, eT, eL); break;
+              case 5: if (a + b + c + e > 4 * L) { tambah(m, eB, eR); tambah(m, eT, eL); } else { tambah(m, eL, eB); tambah(m, eR, eT); } break;
+              case 10: if (a + b + c + e > 4 * L) { tambah(m, eL, eB); tambah(m, eR, eT); } else { tambah(m, eB, eR); tambah(m, eT, eL); } break;
+            }
+          }
+        }
+      }
+      // titik potong level L pada sebuah sisi grid, meter lokal
+      function titikSisi(id, L, out) {
+        var q = id >> 1, ii = q % NX, jj = (q / NX) | 0, za = zc[q], zb, t;
+        if (id & 1) { zb = zc[q + NX]; t = (L - za) / (zb - za); out.push(ii * DX, (jj + t) * DX); }
+        else { zb = zc[q + 1]; t = (L - za) / (zb - za); out.push((ii + t) * DX, jj * DX); }
+      }
+      var garis = [], level = Array.from(seg.keys()).sort(function (x, y) { return x - y; });
+      level.forEach(function (m, mi) {
+        if (lapor && (mi & 15) === 0) lapor('Merangkai garis kontur', 60 + Math.round(mi / level.length * 39));
+        var s = seg.get(m), ns = s.length >> 1, L = m * I, peta = new Map(), pakai = new Uint8Array(ns);
+        for (var q = 0; q < ns; q++) for (var u = 0; u < 2; u++) {
+          var ek = s[2 * q + u], x = peta.get(ek);
+          if (x === undefined) peta.set(ek, q); else if (typeof x === 'number') peta.set(ek, [x, q]); else x.push(q);
+        }
+        function lain(ek, q0) {
+          var x = peta.get(ek); if (x === undefined) return -1;
+          if (typeof x === 'number') return x !== q0 && !pakai[x] ? x : -1;
+          for (var r = 0; r < x.length; r++) if (x[r] !== q0 && !pakai[x[r]]) return x[r];
+          return -1;
+        }
+        function jalan(dari, q0, kumpul, berhenti) {
+          var cur = dari, sq = q0;
+          for (;;) {
+            var nq = lain(cur, sq); if (nq < 0) return cur;
+            pakai[nq] = 1;
+            var nx2 = s[2 * nq] === cur ? s[2 * nq + 1] : s[2 * nq];
+            if (nx2 === berhenti) return nx2;
+            kumpul.push(nx2); cur = nx2; sq = nq;
+          }
+        }
+        for (q = 0; q < ns; q++) {
+          if (pakai[q]) continue;
+          pakai[q] = 1;
+          var awal = s[2 * q], maju = [s[2 * q + 1]], mundur = [];
+          var ujung = jalan(maju[0], q, maju, awal), tutup = ujung === awal && maju.length >= 2;
+          if (!tutup) jalan(awal, q, mundur, -1);
+          var urut = mundur.reverse(); urut.push(awal); for (var r = 0; r < maju.length; r++) urut.push(maju[r]);
+          var xy = []; for (r = 0; r < urut.length; r++) titikSisi(urut[r], L, xy);
+          if (tutup) xy.push(xy[0], xy[1]);
+          var pj = 0; for (r = 2; r < xy.length; r += 2) pj += Math.hypot(xy[r] - xy[r - 2], xy[r + 1] - xy[r - 1]);
+          if (pj < minP) continue;
+          xy = dp(xy, tol);
+          if (tutup) { xy.length -= 2; if (xy.length < 6) continue; }
+          for (r = 0; r < xy.length; r++) xy[r] = Math.round(xy[r] * 100) / 100;
+          garis.push({ z: L / 100, mayor: m % MAY === 0, tutup: tutup, xy: xy });
+        }
+      });
+      return { hasil: { garis: garis, level: level.length, penggal: penggal } };
+    }
+
+    var tugas = { catchment: catchment, bacaTopo: bacaTopo, topo: topo, banding: banding, jejak: jejak, kontur: kontur, Delaunator: Delaunator };
     if (self && self.__DI_WORKER) {
       self.onmessage = function (e) {
         var m = e.data || {};
@@ -7847,10 +7961,894 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
+<script>/* ===== UnduhData ===== */
+/* =============================================================================
+   UnduhData — berkas unduhan data site untuk aplikasi lain (20 Oktober 2026)
+
+   Dipakai Kelola data › Unduh data. Semua berkas dibuat di peramban dari data
+   gudang yang sudah terbaca; tidak ada yang dikirim ke server dan tidak ada
+   pustaka luar (aturan satu berkas tanpa CDN).
+     - Excel .xlsx            ZIP + XML, sama dengan penulis Excel Speed Watcher
+     - AutoCAD .dxf R12       POLYLINE 3D, POINT, TEXT; teks ANSI 1252
+     - Surpac .str teks       urutan Y, X, Z seperti Surpac; deskripsi tanpa koma
+     - Google Earth .kml/.kmz lintang-bujur WGS 84; citra dipotong 512 px
+     - Shapefile .zip         .shp .shx .dbf .prj .cpg; titik, garis, poligon 2D
+     - GeoTIFF .tif           Deflate; citra RGBA 8-bit, topo Float32 (-9999 = kosong)
+     - CSV titik              E, N, Z dengan titik desimal
+   Koordinat UTM Zona 52N, WGS 84 (EPSG:32652), kecuali KML/KMZ.
+   Bagian yang memakai kanvas (citra) hanya jalan di peramban; selebihnya juga
+   jalan di Node untuk uji.
+   ============================================================================= */
+(function (global) {
+  'use strict';
+  function G() { return global.GudangSite; }
+
+  /* ------------------------------------------------------------------ teks & angka */
+  var ENC = new TextEncoder();
+  function utf8(s) { return ENC.encode(String(s)); }
+  var CP1252 = { 8364: 128, 8218: 130, 402: 131, 8222: 132, 8230: 133, 8224: 134, 8225: 135, 710: 136, 8240: 137, 352: 138, 8249: 139, 338: 140, 381: 142,
+    8216: 145, 8217: 146, 8220: 147, 8221: 148, 8226: 149, 8211: 150, 8212: 151, 732: 152, 8482: 153, 353: 154, 8250: 155, 339: 156, 382: 158, 376: 159 };
+  /* Teks → byte Windows-1252 (DXF R12 dan Surpac). Huruf di luar 1252 menjadi '?'. */
+  function ansi(s) {
+    s = String(s);
+    if (!/[^\x00-\x7f]/.test(s)) return ENC.encode(s);
+    var out = new Uint8Array(s.length), k = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c < 128 || (c >= 160 && c <= 255)) out[k++] = c;
+      else if (CP1252[c]) out[k++] = CP1252[c];
+      else { if (c >= 0xD800 && c <= 0xDBFF) i++; out[k++] = 63; }
+    }
+    return out.subarray(0, k);
+  }
+  /* Angka dengan titik desimal tetap, tanpa "-0.000". */
+  function n(v, d) {
+    var x = Number(v); if (!isFinite(x)) x = 0;
+    var s = x.toFixed(d);
+    return /^-0(\.0*)?$/.test(s) ? s.slice(1) : s;
+  }
+  function lv(c) { return c.labelVersi || ('v' + c.versi); }
+  function bersih(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim(); }
+
+  /* Penulis teks besar: potongan ±64 KB supaya tidak membangun satu string raksasa. */
+  function Penulis() { this.bagian = []; this.buf = []; this.n = 0; }
+  Penulis.prototype.tulis = function (s) { this.buf.push(s); this.n += s.length; if (this.n > 65536) this.potong(); };
+  Penulis.prototype.potong = function () { if (this.buf.length) { this.bagian.push(this.buf.join('')); this.buf = []; this.n = 0; } };
+  Penulis.prototype.hasil = function () { this.potong(); return this.bagian; };
+  function blobTeks(bagian, sandi, tipe) {
+    return new Blob(bagian.map(function (s) { return sandi === 'ansi' ? ansi(s) : utf8(s); }), { type: tipe || 'text/plain' });
+  }
+  var BOM = new Uint8Array([0xEF, 0xBB, 0xBF]);
+
+  /* ------------------------------------------------------------------ geometri */
+  function panjangGaris(pts) { var L = 0; for (var k = 1; k < pts.length; k++) L += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); return L; }
+  function luasCincin(rg) { var a = 0; for (var q = 0, r = rg.length - 1; q < rg.length; r = q++) a += (rg[r][0] + rg[q][0]) * (rg[r][1] - rg[q][1]); return a / 2; }   // + = searah jarum jam
+  function tutupCincin(rg) {
+    var o = rg.map(function (p) { return [p[0], p[1]]; });
+    if (o.length && (o[0][0] !== o[o.length - 1][0] || o[0][1] !== o[o.length - 1][1])) o.push([o[0][0], o[0][1]]);
+    return o;
+  }
+  /* Tinggi topo (bilinear) di E, N; NaN bila di luar atau kosong. */
+  function zTopo(t, E, N) {
+    if (!t || !t.z) return NaN;
+    var fx = (E - t.e0) / t.dx, fy = (N - t.n0) / t.dx;
+    if (!(fx >= 0 && fy >= 0 && fx <= t.nx - 1 && fy <= t.ny - 1)) return NaN;
+    var i = Math.min(t.nx - 2, Math.floor(fx)), j = Math.min(t.ny - 2, Math.floor(fy)), tx = fx - i, ty = fy - j, k = j * t.nx + i;
+    var a = t.z[k], b = t.z[k + 1], c = t.z[k + t.nx], d = t.z[k + t.nx + 1];
+    if (a !== a || b !== b || c !== c || d !== d) return t.z[Math.round(fy) * t.nx + Math.round(fx)];
+    return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
+  }
+  function zAtau(t, E, N, z) { if (z != null && isFinite(z)) return Number(z); var v = zTopo(t, E, N); return v === v ? v : 0; }
+  function ll(E, N) { return G().utmKeLL(E, N); }
+  function sederhanakan(pts, tol) { return G().sederhanakan(pts, tol); }
+
+  /* ------------------------------------------------------------------ ZIP */
+  var CRC = (function () { var t = new Uint32Array(256); for (var i = 0; i < 256; i++) { var c = i; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[i] = c >>> 0; } return t; })();
+  function crc32(u8) { var c = 0xFFFFFFFF; for (var i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  async function alirkan(u8, aliran) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(aliran)).arrayBuffer()); }
+  async function deflateRaw(u8) {
+    if (typeof CompressionStream === 'undefined') return null;
+    try { var o = await alirkan(u8, new CompressionStream('deflate-raw')); return o.length < u8.length ? o : null; } catch (e) { return null; }
+  }
+  async function keBytes(isi) {
+    if (isi instanceof Uint8Array) return isi;
+    if (typeof Blob !== 'undefined' && isi instanceof Blob) return new Uint8Array(await isi.arrayBuffer());
+    if (Array.isArray(isi)) return new Uint8Array(await blobTeks(isi, 'utf8').arrayBuffer());
+    return utf8(isi);
+  }
+  /* berkas: [{nama, isi: Uint8Array | Blob | string | [string], simpan: true = tanpa kompresi}] → Blob ZIP.
+     Deflate bila peramban punya CompressionStream, store bila tidak; berkas JPEG/PNG/WebP disimpan apa adanya. */
+  async function zip(berkas, tipe) {
+    var bagian = [], pusat = [], off = 0, d = new Date();
+    var jam = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    var tgl = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    for (var i = 0; i < berkas.length; i++) {
+      var f = berkas[i], nama = utf8(f.nama), bendera = /[^\x00-\x7f]/.test(f.nama) ? 0x0800 : 0;
+      var mentah = await keBytes(f.isi), crc = crc32(mentah), padat = f.simpan ? null : await deflateRaw(mentah);
+      var isi = padat || mentah, metode = padat ? 8 : 0;
+      var L = new DataView(new ArrayBuffer(30));
+      L.setUint32(0, 0x04034b50, true); L.setUint16(4, 20, true); L.setUint16(6, bendera, true); L.setUint16(8, metode, true);
+      L.setUint16(10, jam, true); L.setUint16(12, tgl, true); L.setUint32(14, crc, true); L.setUint32(18, isi.length, true);
+      L.setUint32(22, mentah.length, true); L.setUint16(26, nama.length, true);
+      bagian.push(new Uint8Array(L.buffer), nama, isi);
+      var C = new DataView(new ArrayBuffer(46));
+      C.setUint32(0, 0x02014b50, true); C.setUint16(4, 20, true); C.setUint16(6, 20, true); C.setUint16(8, bendera, true); C.setUint16(10, metode, true);
+      C.setUint16(12, jam, true); C.setUint16(14, tgl, true); C.setUint32(16, crc, true); C.setUint32(20, isi.length, true);
+      C.setUint32(24, mentah.length, true); C.setUint16(28, nama.length, true); C.setUint32(42, off, true);
+      pusat.push(new Uint8Array(C.buffer), nama);
+      off += 30 + nama.length + isi.length;
+    }
+    var ukuran = 0; pusat.forEach(function (x) { ukuran += x.length; });
+    var E = new DataView(new ArrayBuffer(22));
+    E.setUint32(0, 0x06054b50, true); E.setUint16(8, berkas.length, true); E.setUint16(10, berkas.length, true);
+    E.setUint32(12, ukuran, true); E.setUint32(16, off, true);
+    return new Blob(bagian.concat(pusat, [new Uint8Array(E.buffer)]), { type: tipe || 'application/zip' });
+  }
+
+  /* ------------------------------------------------------------------ Excel .xlsx */
+  function xmlAman(x) {
+    return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/g, '');
+  }
+  function hurufKolom(i) { var s = ''; i += 1; while (i > 0) { var r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; }
+  function serialTanggal(iso) {
+    var p = String(iso || '').slice(0, 10).split('-').map(Number);
+    if (p.length !== 3 || p.some(isNaN)) return null;
+    return Math.round((Date.UTC(p[0], p[1] - 1, p[2]) - Date.UTC(1899, 11, 30)) / 86400000);
+  }
+  // gaya sel: 0 biasa, 1 judul kolom, 2 tanggal, 3 "0", 4 "0.0", 5 "0.00", 6 "0.000", 7 "0.000000"
+  var GAYA_DES = { 0: 3, 1: 4, 2: 5, 3: 6, 6: 7 };
+  var GAYA = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<numFmts count="5"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/><numFmt numFmtId="165" formatCode="0.0"/>' +
+    '<numFmt numFmtId="166" formatCode="0.00"/><numFmt numFmtId="167" formatCode="0.000"/><numFmt numFmtId="168" formatCode="0.000000"/></numFmts>' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF003C3C"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="167" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="168" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  /* kolom: [{judul, kunci, tipe:'teks'|'angka'|'tanggal', des, lebar}] */
+  function lembarXml(kolom, baris) {
+    var w = new Penulis();
+    w.tulis('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>' +
+      kolom.map(function (c, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + (c.lebar || 14) + '" customWidth="1"/>'; }).join('') + '</cols><sheetData>');
+    w.tulis('<row r="1">' + kolom.map(function (c, i) { return '<c r="' + hurufKolom(i) + '1" s="1" t="inlineStr"><is><t xml:space="preserve">' + xmlAman(c.judul) + '</t></is></c>'; }).join('') + '</row>');
+    var huruf = kolom.map(function (c, i) { return hurufKolom(i); });
+    for (var ri = 0; ri < baris.length; ri++) {
+      var r = baris[ri], nr = ri + 2, sel = '';
+      for (var ci = 0; ci < kolom.length; ci++) {
+        var c = kolom[ci], v = r[c.kunci];
+        if (v === null || v === undefined || v === '') continue;
+        var ref = huruf[ci] + nr;
+        if (c.tipe === 'angka') {
+          var x = Number(v); if (!isFinite(x)) continue;
+          if (c.des != null) x = Number(x.toFixed(c.des));
+          sel += '<c r="' + ref + '"' + (c.des != null && GAYA_DES[c.des] ? ' s="' + GAYA_DES[c.des] + '"' : '') + '><v>' + x + '</v></c>';
+        } else if (c.tipe === 'tanggal' && serialTanggal(v) != null) {
+          sel += '<c r="' + ref + '" s="2"><v>' + serialTanggal(v) + '</v></c>';
+        } else sel += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlAman(String(v).slice(0, 32767)) + '</t></is></c>';   // batas sel Excel
+      }
+      w.tulis('<row r="' + nr + '">' + sel + '</row>');
+    }
+    w.tulis('</sheetData><autoFilter ref="A1:' + hurufKolom(kolom.length - 1) + (baris.length + 1) + '"/></worksheet>');
+    return w.hasil();
+  }
+  async function xlsx(lembar) {
+    var nama = {}, daftar = lembar.map(function (l, i) {
+      var nm = String(l.nama || ('Lembar ' + (i + 1))).replace(/[\[\]:*?\/\\]/g, ' ').slice(0, 31), k = nm, u = 2;
+      while (nama[k.toLowerCase()]) k = nm.slice(0, 28) + ' ' + u++;
+      nama[k.toLowerCase()] = 1; return k;
+    });
+    var x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    var berkas = [
+      { nama: '[Content_Types].xml', isi: x + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        lembar.map(function (_, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join('') + '</Types>' },
+      { nama: '_rels/.rels', isi: x + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { nama: 'xl/workbook.xml', isi: x + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+        daftar.map(function (nm, i) { return '<sheet name="' + xmlAman(nm) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join('') + '</sheets></workbook>' },
+      { nama: 'xl/_rels/workbook.xml.rels', isi: x + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        lembar.map(function (_, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join('') +
+        '<Relationship Id="rId' + (lembar.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { nama: 'xl/styles.xml', isi: GAYA }
+    ];
+    lembar.forEach(function (l, i) { berkas.push({ nama: 'xl/worksheets/sheet' + (i + 1) + '.xml', isi: lembarXml(l.kolom, l.baris) }); });
+    return zip(berkas, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }
+  function kol(judul, kunci, tipe, des, lebar) { return { judul: judul, kunci: kunci, tipe: tipe || 'teks', des: des, lebar: lebar }; }
+  var KOLOM_INFO = [kol('Keterangan', 'k', 'teks', null, 34), kol('Nilai', 'v', 'teks', null, 70)];
+  function barisInfo(c, tambahan) {
+    var b = [['Data', c.namaJenis], ['Versi', lv(c) + (c.aktif ? ' (aktif)' : '')], ['Judul', c.judul], ['Tanggal data', c.tanggal || '—'],
+      ['Diterbitkan', [String(c.oleh || '').split('@')[0], c.pada].filter(Boolean).join(' · ') || '—']];
+    (tambahan || []).forEach(function (x) { if (x && x[1] != null && x[1] !== '') b.push(x); });
+    b.push(['Sistem koordinat', 'UTM Zona 52N, WGS 84 (EPSG:32652); Easting dan Northing dalam meter']);
+    b.push(['Diunduh', (c.waktuUnduh || '') + (c.pengunduh ? ' · ' + c.pengunduh : '')]);
+    b.push(['Dibuat oleh', 'MiningMalut Digital Twin · Kelola data › Unduh data']);
+    return b.map(function (x) { return { k: x[0], v: x[1] }; });
+  }
+
+  /* ------------------------------------------------------------------ AutoCAD DXF R12 */
+  function namaLayer(s) { return String(s || '0').toUpperCase().replace(/[^A-Z0-9_$-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 31) || '0'; }
+  function teksDXF(s) { return bersih(s).replace(/%%/g, '% %'); }
+  function DXF() { this.lap = []; this.peta = {}; this.w = new Penulis(); this.bb = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]; }
+  DXF.prototype.layer = function (nama, warna) {
+    var k = namaLayer(nama);
+    if (!this.peta[k]) { this.peta[k] = { nama: k, warna: warna || 7 }; this.lap.push(this.peta[k]); }
+    return k;
+  };
+  DXF.prototype.luas = function (x, y, z) {
+    var b = this.bb; if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (z < b[2]) b[2] = z; if (x > b[3]) b[3] = x; if (y > b[4]) b[4] = y; if (z > b[5]) b[5] = z;
+  };
+  /* pts: [[x, y, z], …]. Selalu POLYLINE 3D supaya Z terbaca di AutoCAD, Surpac, dan GIS. */
+  DXF.prototype.garis = function (layer, pts, tutup) {
+    if (!pts || pts.length < 2) return;
+    var L = this.layer(layer), w = this.w;
+    w.tulis('0\r\nPOLYLINE\r\n8\r\n' + L + '\r\n66\r\n1\r\n10\r\n0.0\r\n20\r\n0.0\r\n30\r\n0.0\r\n70\r\n' + (tutup ? 9 : 8) + '\r\n');
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i], z = p[2] == null ? 0 : p[2]; this.luas(p[0], p[1], z);
+      w.tulis('0\r\nVERTEX\r\n8\r\n' + L + '\r\n10\r\n' + n(p[0], 3) + '\r\n20\r\n' + n(p[1], 3) + '\r\n30\r\n' + n(z, 3) + '\r\n70\r\n32\r\n');
+    }
+    w.tulis('0\r\nSEQEND\r\n8\r\n' + L + '\r\n');
+  };
+  DXF.prototype.titik = function (layer, x, y, z) {
+    var L = this.layer(layer); this.luas(x, y, z || 0);
+    this.w.tulis('0\r\nPOINT\r\n8\r\n' + L + '\r\n10\r\n' + n(x, 3) + '\r\n20\r\n' + n(y, 3) + '\r\n30\r\n' + n(z || 0, 3) + '\r\n');
+  };
+  /* Teks di tengah titik (72 = 1). sudut dalam derajat, berlawanan jarum jam dari timur. */
+  DXF.prototype.teks = function (layer, x, y, z, tinggi, isi, sudut) {
+    var t = teksDXF(isi); if (!t) return;
+    var L = this.layer(layer); this.luas(x, y, z || 0);
+    var xs = n(x, 3), ys = n(y, 3), zs = n(z || 0, 3);
+    this.w.tulis('0\r\nTEXT\r\n8\r\n' + L + '\r\n10\r\n' + xs + '\r\n20\r\n' + ys + '\r\n30\r\n' + zs + '\r\n40\r\n' + n(tinggi, 2) + '\r\n1\r\n' + t + '\r\n' +
+      (sudut ? '50\r\n' + n(sudut, 3) + '\r\n' : '') + '72\r\n1\r\n11\r\n' + xs + '\r\n21\r\n' + ys + '\r\n31\r\n' + zs + '\r\n');
+  };
+  DXF.prototype.hasil = function () {
+    var b = this.bb; if (!isFinite(b[0])) b = [0, 0, 0, 0, 0, 0];
+    var k = [], tbl = function (s) { k.push(s); };
+    // tanpa komentar 999 di awal: beberapa pembaca (mis. LibreOffice) mengenali DXF dari "0 / SECTION" di baris pertama
+    tbl('0\r\nSECTION\r\n2\r\nHEADER\r\n9\r\n$ACADVER\r\n1\r\nAC1009\r\n9\r\n$DWGCODEPAGE\r\n3\r\nANSI_1252\r\n9\r\n$INSBASE\r\n10\r\n0.0\r\n20\r\n0.0\r\n30\r\n0.0\r\n');
+    tbl('9\r\n$EXTMIN\r\n10\r\n' + n(b[0], 3) + '\r\n20\r\n' + n(b[1], 3) + '\r\n30\r\n' + n(b[2], 3) + '\r\n9\r\n$EXTMAX\r\n10\r\n' + n(b[3], 3) + '\r\n20\r\n' + n(b[4], 3) + '\r\n30\r\n' + n(b[5], 3) + '\r\n');
+    tbl('9\r\n$LIMMIN\r\n10\r\n' + n(b[0], 3) + '\r\n20\r\n' + n(b[1], 3) + '\r\n9\r\n$LIMMAX\r\n10\r\n' + n(b[3], 3) + '\r\n20\r\n' + n(b[4], 3) + '\r\n0\r\nENDSEC\r\n');
+    tbl('0\r\nSECTION\r\n2\r\nTABLES\r\n');
+    tbl('0\r\nTABLE\r\n2\r\nLTYPE\r\n70\r\n1\r\n0\r\nLTYPE\r\n2\r\nCONTINUOUS\r\n70\r\n0\r\n3\r\nSolid line\r\n72\r\n65\r\n73\r\n0\r\n40\r\n0.0\r\n0\r\nENDTAB\r\n');
+    var lap = [{ nama: '0', warna: 7 }].concat(this.lap.filter(function (l) { return l.nama !== '0'; }));
+    tbl('0\r\nTABLE\r\n2\r\nLAYER\r\n70\r\n' + lap.length + '\r\n');
+    lap.forEach(function (l) { tbl('0\r\nLAYER\r\n2\r\n' + l.nama + '\r\n70\r\n0\r\n62\r\n' + l.warna + '\r\n6\r\nCONTINUOUS\r\n'); });
+    tbl('0\r\nENDTAB\r\n');
+    tbl('0\r\nTABLE\r\n2\r\nSTYLE\r\n70\r\n1\r\n0\r\nSTYLE\r\n2\r\nSTANDARD\r\n70\r\n0\r\n40\r\n0.0\r\n41\r\n1.0\r\n50\r\n0.0\r\n71\r\n0\r\n42\r\n2.5\r\n3\r\ntxt\r\n4\r\n\r\n0\r\nENDTAB\r\n');
+    tbl('0\r\nTABLE\r\n2\r\nAPPID\r\n70\r\n1\r\n0\r\nAPPID\r\n2\r\nACAD\r\n70\r\n0\r\n0\r\nENDTAB\r\n0\r\nENDSEC\r\n');
+    tbl('0\r\nSECTION\r\n2\r\nBLOCKS\r\n0\r\nENDSEC\r\n0\r\nSECTION\r\n2\r\nENTITIES\r\n');
+    var akhir = '0\r\nENDSEC\r\n0\r\nEOF\r\n';
+    return blobTeks(k.concat(this.w.hasil(), [akhir]), 'ansi', 'application/dxf');
+  };
+
+  /* ------------------------------------------------------------------ Surpac .str (teks) */
+  var BULAN_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function tglSurpac(ymd) {
+    var p = String(ymd || '').slice(0, 10).split('-').map(Number);
+    if (p.length !== 3 || p.some(isNaN)) { var d = new Date(); p = [d.getFullYear(), d.getMonth() + 1, d.getDate()]; }
+    return ('0' + p[2]).slice(-2) + '-' + BULAN_EN[p[1] - 1] + '-' + String(p[0]).slice(-2);
+  }
+  function deskSurpac(s) { return bersih(s).replace(/,/g, ';'); }
+  var NOL_SURPAC = '0, 0.000, 0.000, 0.000,\r\n';
+  /* o: {lokasi, tanggal, tujuan, memo, segmen:[{s, titik:[[E, N, Z]], d:[deskripsi…]}]}
+     Urutan Surpac: nomor string, Y (Northing), X (Easting), Z, D1, D2, … Tiap segmen ditutup baris nol. */
+  function strSurpac(o) {
+    var w = new Penulis();
+    w.tulis([deskSurpac(o.lokasi || 'pakal'), tglSurpac(o.tanggal), deskSurpac(o.tujuan || ''), deskSurpac(o.memo || '')].join(',') + '\r\n');
+    w.tulis('0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000\r\n');
+    (o.segmen || []).forEach(function (sg) {
+      if (!sg.titik || !sg.titik.length) return;
+      var s = Math.max(1, Math.min(32000, Math.round(sg.s) || 1)), d = (sg.d || []).map(deskSurpac);
+      while (d.length && d[d.length - 1] === '') d.pop();
+      var ekor = d.length ? ', ' + d.join(', ') : '';
+      for (var i = 0; i < sg.titik.length; i++) { var p = sg.titik[i]; w.tulis(s + ', ' + n(p[1], 3) + ', ' + n(p[0], 3) + ', ' + n(p[2], 3) + ekor + '\r\n'); }
+      w.tulis(NOL_SURPAC);
+    });
+    w.tulis('0, 0.000, 0.000, 0.000, END\r\n');
+    return blobTeks(w.hasil(), 'ansi', 'text/plain');
+  }
+
+  /* ------------------------------------------------------------------ Google Earth KML */
+  function warnaKML(hex, alfa) {
+    var h = String(hex || '#ffffff').replace('#', ''); if (h.length === 3) h = h.replace(/./g, '$&$&');
+    var a = ('0' + Math.round((alfa == null ? 1 : alfa) * 255).toString(16)).slice(-2);
+    return (a + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2)).toLowerCase();
+  }
+  function llKML(p) { var q = ll(p[0], p[1]); return n(q.lon, 7) + ',' + n(q.lat, 7); }
+  function koordKML(pts) { return pts.map(llKML).join(' '); }
+  /* o: {nama, ket, gaya:{id:{garis, lebar, isi, isiAlfa, ikon, skala}}, folder:[{nama, fitur:[{nama, gaya, ket, data:[[k, v]], garis:[[pts]] | poligon:[[ring]] | titik:[E, N]}]}]} */
+  function kml(o) {
+    var w = new Penulis();
+    w.tulis('<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>' + xmlAman(o.nama) + '</name>\n<open>1</open>\n');
+    if (o.ket) w.tulis('<description>' + xmlAman(o.ket) + '</description>\n');
+    Object.keys(o.gaya || {}).forEach(function (id) {
+      var g = o.gaya[id], s = '<Style id="' + id + '">';
+      if (g.ikon) s += '<IconStyle><color>' + warnaKML(g.ikon, 1) + '</color><scale>' + (g.skala || 0.9) + '</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle><LabelStyle><scale>0.8</scale></LabelStyle>';
+      if (g.garis) s += '<LineStyle><color>' + warnaKML(g.garis, 1) + '</color><width>' + (g.lebar || 2) + '</width></LineStyle>';
+      s += '<PolyStyle><color>' + warnaKML(g.isi || g.garis || '#ffffff', g.isi ? (g.isiAlfa == null ? 0.35 : g.isiAlfa) : 0) + '</color>' + (g.isi ? '' : '<fill>0</fill>') + '</PolyStyle>';
+      w.tulis(s + '</Style>\n');
+    });
+    (o.folder || []).forEach(function (f) {
+      var ada = (f.fitur || []).filter(function (p) { return p.titik || (p.garis || []).some(function (g) { return g.length >= 2; }) || (p.poligon || []).some(function (rg) { return rg.length >= 3; }); });
+      if (!ada.length) return;
+      f = { nama: f.nama, fitur: ada };
+      w.tulis('<Folder><name>' + xmlAman(f.nama) + '</name>\n');
+      f.fitur.forEach(function (p) {
+        var geo = [];
+        (p.garis || []).forEach(function (g) { if (g.length >= 2) geo.push('<LineString><tessellate>1</tessellate><coordinates>' + koordKML(g) + '</coordinates></LineString>'); });
+        (p.poligon || []).forEach(function (rg) { if (rg.length >= 3) geo.push('<Polygon><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>' + koordKML(tutupCincin(rg)) + '</coordinates></LinearRing></outerBoundaryIs></Polygon>'); });
+        if (p.titik) geo.push('<Point><coordinates>' + llKML(p.titik) + '</coordinates></Point>');
+        if (!geo.length) return;
+        var s = '<Placemark><name>' + xmlAman(p.nama) + '</name>' + (p.gaya ? '<styleUrl>#' + p.gaya + '</styleUrl>' : '');
+        if (p.ket) s += '<description>' + xmlAman(p.ket) + '</description>';
+        if (p.data && p.data.length) s += '<ExtendedData>' + p.data.filter(function (d) { return d[1] != null && d[1] !== ''; }).map(function (d) { return '<Data name="' + xmlAman(d[0]) + '"><value>' + xmlAman(d[1]) + '</value></Data>'; }).join('') + '</ExtendedData>';
+        w.tulis(s + (geo.length > 1 ? '<MultiGeometry>' + geo.join('') + '</MultiGeometry>' : geo[0]) + '</Placemark>\n');
+      });
+      w.tulis('</Folder>\n');
+    });
+    w.tulis('</Document>\n</kml>\n');
+    return w.hasil();
+  }
+
+  /* ------------------------------------------------------------------ Shapefile */
+  var PRJ_ESRI = 'PROJCS["WGS_1984_UTM_Zone_52N",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],' +
+    'PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],' +
+    'PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",129.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]';
+  var WKT_EPSG = 'PROJCS["WGS 84 / UTM zone 52N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],' +
+    'AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],' +
+    'PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",129],PARAMETER["scale_factor",0.9996],' +
+    'PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","32652"]]';
+  /* tipe: 1 titik, 3 garis, 5 poligon. fitur: [{titik:[x, y]} | {bagian:[[[x, y], …], …]}, atribut] berurutan dengan baris.
+     kolom: [{nama ≤ 10 huruf, tipe 'C'|'N', lebar, des, kunci}]. Cincin poligon dibuat searah jarum jam dan tertutup. */
+  function shapefile(tipe, fitur, kolom, baris) {
+    var rek = [], bb = [Infinity, Infinity, -Infinity, -Infinity];
+    function luasBB(x, y) { if (x < bb[0]) bb[0] = x; if (y < bb[1]) bb[1] = y; if (x > bb[2]) bb[2] = x; if (y > bb[3]) bb[3] = y; }
+    fitur.forEach(function (f) {
+      var dv, isi;
+      if (tipe === 1) {
+        isi = new ArrayBuffer(20); dv = new DataView(isi);
+        dv.setInt32(0, 1, true); dv.setFloat64(4, f.titik[0], true); dv.setFloat64(12, f.titik[1], true); luasBB(f.titik[0], f.titik[1]);
+      } else {
+        var bagian = (f.bagian || []).filter(function (p) { return p.length >= (tipe === 5 ? 3 : 2); }).map(function (p) {
+          if (tipe !== 5) return p;
+          var r = tutupCincin(p); if (luasCincin(r) < 0) r.reverse(); return r;     // luasCincin + = searah jarum jam
+        });
+        var np = 0, fb = [Infinity, Infinity, -Infinity, -Infinity];
+        bagian.forEach(function (p) { np += p.length; p.forEach(function (q) { if (q[0] < fb[0]) fb[0] = q[0]; if (q[1] < fb[1]) fb[1] = q[1]; if (q[0] > fb[2]) fb[2] = q[0]; if (q[1] > fb[3]) fb[3] = q[1]; luasBB(q[0], q[1]); }); });
+        isi = new ArrayBuffer(44 + 4 * bagian.length + 16 * np); dv = new DataView(isi);
+        dv.setInt32(0, tipe, true); for (var i = 0; i < 4; i++) dv.setFloat64(4 + 8 * i, fb[i], true);
+        dv.setInt32(36, bagian.length, true); dv.setInt32(40, np, true);
+        var o = 44, idx = 0;
+        bagian.forEach(function (p) { dv.setInt32(o, idx, true); o += 4; idx += p.length; });
+        bagian.forEach(function (p) { p.forEach(function (q) { dv.setFloat64(o, q[0], true); dv.setFloat64(o + 8, q[1], true); o += 16; }); });
+      }
+      rek.push(new Uint8Array(isi));
+    });
+    if (!isFinite(bb[0])) bb = [0, 0, 0, 0];
+    function kepala(panjangByte) {
+      var dv = new DataView(new ArrayBuffer(100));
+      dv.setInt32(0, 9994, false); dv.setInt32(24, panjangByte / 2, false); dv.setInt32(28, 1000, true); dv.setInt32(32, tipe, true);
+      for (var i = 0; i < 4; i++) dv.setFloat64(36 + 8 * i, bb[i], true);
+      return new Uint8Array(dv.buffer);
+    }
+    var total = 100; rek.forEach(function (r) { total += 8 + r.length; });
+    var shp = new Uint8Array(total), shx = new Uint8Array(100 + 8 * rek.length), dS = new DataView(shp.buffer), dX = new DataView(shx.buffer);
+    shp.set(kepala(total), 0); shx.set(kepala(shx.length), 0);
+    var off = 100;
+    rek.forEach(function (r, i) {
+      dS.setInt32(off, i + 1, false); dS.setInt32(off + 4, r.length / 2, false); shp.set(r, off + 8);
+      dX.setInt32(100 + 8 * i, off / 2, false); dX.setInt32(104 + 8 * i, r.length / 2, false);
+      off += 8 + r.length;
+    });
+    return { shp: shp, shx: shx, dbf: dbf(kolom, baris) };
+  }
+  function potongUtf8(s, maks) {
+    var b = utf8(s); if (b.length <= maks) return b;
+    var k = maks; while (k > 0 && (b[k] & 0xC0) === 0x80) k--;
+    return b.subarray(0, k);
+  }
+  function dbf(kolom, baris) {
+    var kk = kolom.map(function (c) {
+      var lebar = c.lebar;
+      if (c.tipe === 'C') { lebar = 1; baris.forEach(function (r) { lebar = Math.max(lebar, utf8(bersih(r[c.kunci])).length); }); lebar = Math.min(254, lebar); }
+      return { nama: c.nama.slice(0, 10).toUpperCase(), tipe: c.tipe, lebar: lebar, des: c.tipe === 'N' ? (c.des || 0) : 0, kunci: c.kunci };
+    });
+    var panjangRek = 1; kk.forEach(function (c) { panjangRek += c.lebar; });
+    var panjangKepala = 32 + 32 * kk.length + 1, out = new Uint8Array(panjangKepala + panjangRek * baris.length + 1), dv = new DataView(out.buffer), d = new Date();
+    out[0] = 3; out[1] = d.getFullYear() - 1900; out[2] = d.getMonth() + 1; out[3] = d.getDate();
+    dv.setUint32(4, baris.length, true); dv.setUint16(8, panjangKepala, true); dv.setUint16(10, panjangRek, true);
+    kk.forEach(function (c, i) {
+      var o = 32 + 32 * i;
+      for (var k = 0; k < c.nama.length; k++) out[o + k] = c.nama.charCodeAt(k) & 0x7F;
+      out[o + 11] = c.tipe.charCodeAt(0); out[o + 16] = c.lebar; out[o + 17] = c.des;
+    });
+    out[panjangKepala - 1] = 0x0D;
+    var p = panjangKepala;
+    baris.forEach(function (r) {
+      out.fill(0x20, p, p + panjangRek); p += 1;
+      kk.forEach(function (c) {
+        var v = r[c.kunci], b;
+        if (c.tipe === 'N') {
+          if (v != null && v !== '' && isFinite(Number(v))) { var s = n(v, c.des); if (s.length > c.lebar) s = n(v, 0); b = utf8(s.length > c.lebar ? '' : s); out.set(b, p + c.lebar - b.length); }
+        } else { b = potongUtf8(bersih(v), c.lebar); out.set(b, p); }
+        p += c.lebar;
+      });
+    });
+    out[out.length - 1] = 0x1A;
+    return out;
+  }
+  function berkasShp(nama, s) {
+    return [{ nama: nama + '.shp', isi: s.shp }, { nama: nama + '.shx', isi: s.shx }, { nama: nama + '.dbf', isi: s.dbf },
+      { nama: nama + '.prj', isi: PRJ_ESRI }, { nama: nama + '.cpg', isi: 'UTF-8' }];
+  }
+
+  /* ------------------------------------------------------------------ GeoTIFF */
+  /* o: {lebar, tinggi, spp, bps (8|32), format (1 bilangan bulat | 3 pecahan), baris(y) → Uint8Array baris
+     (utara dulu, little-endian), prediktor (1|2), x0, y0 (sudut kiri atas), px, py, alfa, nodata, judul}.
+     Tiap strip ±1 MB dimampatkan Deflate (zlib) sendiri-sendiri. */
+  async function geotiff(o, lapor) {
+    var W = o.lebar, H = o.tinggi, spp = o.spp, bpp = spp * o.bps / 8, rb = W * bpp;
+    var rps = Math.max(1, Math.min(H, Math.floor(1048576 / rb))), ns = Math.ceil(H / rps);
+    var mampat = typeof CompressionStream !== 'undefined', bagian = [null], off = 8, ofs = [], jml = [];
+    for (var s = 0; s < ns; s++) {
+      var y0 = s * rps, y1 = Math.min(H, y0 + rps), raw = new Uint8Array((y1 - y0) * rb);
+      for (var y = y0; y < y1; y++) {
+        var r = o.baris(y);
+        if (o.prediktor === 2) { r = r.slice(); for (var i = r.length - 1; i >= spp; i--) r[i] = (r[i] - r[i - spp]) & 255; }
+        raw.set(r, (y - y0) * rb);
+      }
+      var isi = mampat ? await alirkan(raw, new CompressionStream('deflate')) : raw;
+      ofs.push(off); jml.push(isi.length); bagian.push(isi); off += isi.length;
+      if (off & 1) { bagian.push(new Uint8Array(1)); off++; }
+      if (lapor) lapor((s + 1) / ns);
+    }
+    // IFD
+    var tag = [];
+    function t(id, tipe, nilai) { tag.push({ id: id, tipe: tipe, nilai: nilai }); }
+    var ascii = function (s) { var a = []; for (var i = 0; i < s.length; i++) a.push(s.charCodeAt(i) & 0x7F); a.push(0); return a; };
+    t(256, 4, [W]); t(257, 4, [H]); t(258, 3, Array(spp).fill(o.bps)); t(259, 3, [mampat ? 8 : 1]); t(262, 3, [spp >= 3 ? 2 : 1]);
+    if (o.judul) t(270, 2, ascii(o.judul));
+    t(273, 4, ofs); t(277, 3, [spp]); t(278, 4, [rps]); t(279, 4, jml); t(284, 3, [1]); t(305, 2, ascii('MiningMalut Digital Twin'));
+    if (o.prediktor === 2) t(317, 3, [2]);
+    if (o.alfa) t(338, 3, [2]);
+    t(339, 3, Array(spp).fill(o.format || 1));
+    t(33550, 12, [o.px, o.py, 0]); t(33922, 12, [0, 0, 0, o.x0, o.y0, 0]);
+    var cit = 'WGS 84 / UTM zone 52N|';
+    t(34735, 3, [1, 1, 0, 5, 1024, 0, 1, 1, 1025, 0, 1, 1, 1026, 34737, cit.length, 0, 3072, 0, 1, 32652, 3076, 0, 1, 9001]);
+    t(34737, 2, ascii(cit));
+    if (o.nodata != null) t(42113, 2, ascii(String(o.nodata)));
+    var UK = { 2: 1, 3: 2, 4: 4, 12: 8 }, ifdOff = off, ifdLen = 2 + 12 * tag.length + 4, luar = ifdOff + ifdLen, ekstra = [];
+    var ifd = new DataView(new ArrayBuffer(ifdLen)); ifd.setUint16(0, tag.length, true);
+    tag.forEach(function (x, i) {
+      var ub = UK[x.tipe] * x.nilai.length, buf = new DataView(new ArrayBuffer(Math.max(4, ub)));
+      x.nilai.forEach(function (v, k) {
+        if (x.tipe === 2) buf.setUint8(k, v); else if (x.tipe === 3) buf.setUint16(2 * k, v, true);
+        else if (x.tipe === 4) buf.setUint32(4 * k, v, true); else buf.setFloat64(8 * k, v, true);
+      });
+      var e = 2 + 12 * i; ifd.setUint16(e, x.id, true); ifd.setUint16(e + 2, x.tipe, true); ifd.setUint32(e + 4, x.nilai.length, true);
+      if (ub <= 4) { for (var k = 0; k < 4; k++) ifd.setUint8(e + 8 + k, buf.getUint8(k)); }
+      else { ifd.setUint32(e + 8, luar, true); var u = new Uint8Array(buf.buffer); ekstra.push(u); luar += u.length; if (luar & 1) { ekstra.push(new Uint8Array(1)); luar++; } }
+    });
+    var kepala = new DataView(new ArrayBuffer(8)); kepala.setUint8(0, 0x49); kepala.setUint8(1, 0x49); kepala.setUint16(2, 42, true); kepala.setUint32(4, ifdOff, true);
+    bagian[0] = new Uint8Array(kepala.buffer);
+    return new Blob(bagian.concat([new Uint8Array(ifd.buffer)], ekstra), { type: 'image/tiff' });
+  }
+
+  /* ------------------------------------------------------------------ baca saya */
+  function bacaSaya(c, isi) {
+    return ['MiningMalut Digital Twin · ' + c.namaJenis + ' ' + lv(c) + (c.judul ? ' · ' + c.judul : ''),
+      'Tanggal data: ' + (c.tanggal || '-') + ' · diunduh ' + (c.waktuUnduh || '') + (c.pengunduh ? ' oleh ' + c.pengunduh : ''),
+      'Sistem koordinat: UTM Zona 52N, WGS 84 (EPSG:32652), meter.', ''].concat(isi).join('\r\n') + '\r\n';
+  }
+
+  /* ================================================================== JALAN */
+  function ruasJalan(d) { return ((d && d.ruas) || []).filter(function (r) { return r && Array.isArray(r.bagian); }); }
+  function warnaBatasHex(b) { return global.MesinTwin ? MesinTwin.warnaBatas(b) : '#7fd1c7'; }
+  function aciBatas(b) { b = Number(b); return !(b > 0) ? 7 : b <= 15 ? 1 : b <= 20 ? 30 : b <= 25 ? 40 : b <= 30 ? 2 : b <= 35 ? 4 : 5; }
+  function teksArah(a) { return a === 'satu' ? 'Satu arah' : 'Dua arah'; }
+  function titikJalan(bg, t) { return bg.map(function (p) { return [p[0], p[1], zAtau(t, p[0], p[1], p[2])]; }); }
+  /* Titik tengah (menurut panjang) dan arah sebuah garis, untuk label. */
+  function tengahGaris(pts) {
+    var L = panjangGaris(pts), sisa = L / 2;
+    for (var k = 1; k < pts.length; k++) {
+      var a = pts[k - 1], b = pts[k], s = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (s >= sisa && s > 0) { var f = sisa / s, sd = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI; if (sd > 90) sd -= 180; if (sd <= -90) sd += 180;
+        return { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, z: (a[2] || 0) + ((b[2] || 0) - (a[2] || 0)) * f, sudut: sd }; }
+      sisa -= s;
+    }
+    var p = pts[0]; return { x: p[0], y: p[1], z: p[2] || 0, sudut: 0 };
+  }
+  async function jalan(format, d, c) {
+    var ruas = ruasJalan(d), t = c.topo, nm = c.namaDasar;
+    if (format === 'xlsx') {
+      var br = [], tk = [], total = 0;
+      ruas.forEach(function (r, i) {
+        var simpul = 0, L = 0;
+        r.bagian.forEach(function (bg, bi) {
+          simpul += bg.length; L += panjangGaris(bg);
+          bg.forEach(function (p, pi) { var q = ll(p[0], p[1]); tk.push({ ruas: r.nama, id: r.id, bagian: bi + 1, urut: pi + 1, e: p[0], n: p[1], z: zAtau(t, p[0], p[1], p[2]), lat: q.lat, lon: q.lon }); });
+        });
+        total += L;
+        br.push({ no: i + 1, id: r.id, nama: r.nama, batas: r.batas, lebar: r.lebar, arah: teksArah(r.arah), catatan: r.catatan, bagian: r.bagian.length, simpul: simpul, panjang: L });
+      });
+      return { nama: nm + '.xlsx', blob: await xlsx([
+        { nama: 'Ruas', kolom: [kol('No', 'no', 'angka', 0, 6), kol('ID', 'id', 'teks', null, 18), kol('Nama ruas', 'nama', 'teks', null, 22), kol('Batas (km/jam)', 'batas', 'angka', 0, 14),
+          kol('Lebar (m)', 'lebar', 'angka', 1, 11), kol('Arah', 'arah', 'teks', null, 11), kol('Catatan', 'catatan', 'teks', null, 30), kol('Bagian', 'bagian', 'angka', 0, 9),
+          kol('Simpul', 'simpul', 'angka', 0, 9), kol('Panjang (m)', 'panjang', 'angka', 1, 13)], baris: br },
+        { nama: 'Koordinat', kolom: [kol('Nama ruas', 'ruas', 'teks', null, 22), kol('ID ruas', 'id', 'teks', null, 18), kol('Bagian', 'bagian', 'angka', 0, 9), kol('Urutan', 'urut', 'angka', 0, 9),
+          kol('Easting (m)', 'e', 'angka', 3, 15), kol('Northing (m)', 'n', 'angka', 3, 15), kol('Elevasi (m)', 'z', 'angka', 2, 12), kol('Lintang', 'lat', 'angka', 6, 13), kol('Bujur', 'lon', 'angka', 6, 13)], baris: tk },
+        { nama: 'Info', kolom: KOLOM_INFO, baris: barisInfo(c, [['Jumlah ruas', String(ruas.length)], ['Panjang total (km)', n(total / 1000, 2)],
+          ['Batas di luar ruas (km/jam)', d.batas_luar != null ? String(d.batas_luar) : ''], ['Toleransi dari sumbu (m)', d.toleransi_m != null ? String(d.toleransi_m) : ''], ['Sumber', d.sumber]]) }]) };
+    }
+    if (format === 'dxf') {
+      var x = new DXF();
+      x.layer('JALAN_NAMA', 7);
+      ruas.forEach(function (r) {
+        var L = 'JALAN_' + (Number(r.batas) > 0 ? Number(r.batas) + 'KMJ' : 'TANPA_BATAS'), terpanjang = null, Lmaks = -1;
+        x.layer(L, aciBatas(r.batas));
+        r.bagian.forEach(function (bg) { if (bg.length < 2) return; var p = titikJalan(bg, t); x.garis(L, p, false); var pj = panjangGaris(p); if (pj > Lmaks) { Lmaks = pj; terpanjang = p; } });
+        if (terpanjang) { var m = tengahGaris(terpanjang); x.teks('JALAN_NAMA', m.x, m.y, m.z, 4, r.nama + (Number(r.batas) > 0 ? ' (' + r.batas + ' km/jam)' : ''), m.sudut); }
+      });
+      return { nama: nm + '.dxf', blob: x.hasil() };
+    }
+    if (format === 'str') {
+      var sg = [];
+      ruas.forEach(function (r, i) { r.bagian.forEach(function (bg) { if (bg.length >= 2) sg.push({ s: i + 1, titik: titikJalan(bg, t), d: [r.nama, r.batas, r.lebar == null ? '' : r.lebar] }); }); });
+      return { nama: nm + '.str', blob: strSurpac({ lokasi: 'pakal_jalan', tanggal: c.tanggal, tujuan: 'jalan ' + lv(c), memo: 'MiningMalut; D1 nama ruas; D2 batas km/jam; D3 lebar m', segmen: sg }) };
+    }
+    if (format === 'kml') {
+      var gaya = {}, folder = {};
+      ruas.forEach(function (r) {
+        var b = Number(r.batas) > 0 ? Number(r.batas) : 0, id = 'b' + b;
+        if (!gaya[id]) gaya[id] = { garis: warnaBatasHex(b || null), lebar: 4 };
+        var f = folder[b] || (folder[b] = { nama: b ? b + ' km/jam' : 'Tanpa batas', urut: b, fitur: [] });
+        var L = 0; r.bagian.forEach(function (bg) { L += panjangGaris(bg); });
+        f.fitur.push({ nama: r.nama, gaya: id, ket: 'Batas ' + (b ? b + ' km/jam' : '-') + ' · ' + teksArah(r.arah) + (r.lebar ? ' · lebar ' + r.lebar + ' m' : '') + ' · ' + n(L, 0) + ' m' + (r.catatan ? ' · ' + bersih(r.catatan) : ''),
+          data: [['id', r.id], ['batas_kmj', b || ''], ['lebar_m', r.lebar], ['arah', teksArah(r.arah)], ['panjang_m', n(L, 1)], ['catatan', r.catatan]], garis: r.bagian.filter(function (bg) { return bg.length >= 2; }) });
+      });
+      var fs = Object.keys(folder).map(function (k) { return folder[k]; }).sort(function (a, b) { return a.urut - b.urut; });
+      return { nama: nm + '.kml', blob: blobTeks(kml({ nama: 'Jalan Pulau Pakal · ' + lv(c), ket: (c.judul || '') + ' · batas di luar ruas ' + (d.batas_luar != null ? d.batas_luar : '-') + ' km/jam · MiningMalut Digital Twin', gaya: gaya, folder: fs }), 'utf8', 'application/vnd.google-earth.kml+xml') };
+    }
+    if (format === 'shp') {
+      var fitur = [], baris = [];
+      ruas.forEach(function (r) {
+        var bg = r.bagian.filter(function (b) { return b.length >= 2; }); if (!bg.length) return;
+        var L = 0; bg.forEach(function (b) { L += panjangGaris(b); });
+        fitur.push({ bagian: bg }); baris.push({ id: r.id, nama: r.nama, batas: r.batas, lebar: r.lebar, arah: r.arah === 'satu' ? 'satu' : 'dua', catatan: r.catatan, panjang: L });
+      });
+      var s = shapefile(3, fitur, [{ nama: 'ID', tipe: 'C', kunci: 'id' }, { nama: 'NAMA', tipe: 'C', kunci: 'nama' }, { nama: 'BATAS_KMJ', tipe: 'N', lebar: 4, kunci: 'batas' },
+        { nama: 'LEBAR_M', tipe: 'N', lebar: 7, des: 1, kunci: 'lebar' }, { nama: 'ARAH', tipe: 'C', kunci: 'arah' }, { nama: 'CATATAN', tipe: 'C', kunci: 'catatan' },
+        { nama: 'PANJANG_M', tipe: 'N', lebar: 10, des: 1, kunci: 'panjang' }], baris);
+      return { nama: nm + '_shapefile.zip', blob: await zip(berkasShp('jalan_pakal', s).concat([{ nama: 'baca-saya.txt', isi: bacaSaya(c, [
+        'jalan_pakal.shp: satu garis per ruas (ruas berbagian menjadi garis multi-bagian).',
+        'Atribut: ID, NAMA, BATAS_KMJ (batas kecepatan km/jam), LEBAR_M, ARAH (dua/satu), CATATAN, PANJANG_M.',
+        'Buka di QGIS/ArcGIS/Global Mapper: ekstrak semua berkas ke satu folder lalu buka jalan_pakal.shp.']) }])) };
+    }
+    if (format === 'asli') return { nama: nm + '_asli.json', blob: new Blob([JSON.stringify(d, null, 1)], { type: 'application/json' }) };
+    throw new Error('Format jalan tidak dikenal: ' + format);
+  }
+
+  /* ================================================================== AREA KERJA */
+  var AREA_ACI = { eto: 30, front: 30, efo: 4, jetty: 4, stockpile: 42, dump: 33, workshop: 5, lain: 8 };
+  function namaJenisArea(j) { return (global.MesinTwin && MesinTwin.AREA_JENIS && MesinTwin.AREA_JENIS[j]) || j || ''; }
+  function warnaArea(j) { return (global.MesinTwin && MesinTwin.AREA_WARNA && MesinTwin.AREA_WARNA[j]) || '#9fb3b0'; }
+  async function area(format, d, c) {
+    var A = ((d && d.area) || []).filter(function (a) { return a && isFinite(a.E) && isFinite(a.N); }), t = c.topo, nm = c.namaDasar;
+    if (format === 'xlsx') {
+      return { nama: nm + '.xlsx', blob: await xlsx([
+        { nama: 'Area kerja', kolom: [kol('No', 'no', 'angka', 0, 6), kol('ID', 'id', 'teks', null, 10), kol('Nama', 'nama', 'teks', null, 24), kol('Kode jenis', 'jenis', 'teks', null, 11), kol('Jenis', 'jn', 'teks', null, 16),
+          kol('Easting (m)', 'e', 'angka', 1, 13), kol('Northing (m)', 'n', 'angka', 1, 13), kol('Elevasi topo aktif (m)', 'z', 'angka', 2, 20), kol('Lintang', 'lat', 'angka', 6, 12), kol('Bujur', 'lon', 'angka', 6, 12)],
+          baris: A.map(function (a, i) { var q = ll(a.E, a.N), z = zTopo(t, a.E, a.N); return { no: i + 1, id: a.id, nama: a.nama, jenis: a.jenis, jn: namaJenisArea(a.jenis), e: a.E, n: a.N, z: z === z ? z : null, lat: q.lat, lon: q.lon }; }) },
+        { nama: 'Info', kolom: KOLOM_INFO, baris: barisInfo(c, [['Jumlah area', String(A.length)], ['Elevasi', 'diambil dari topo aktif' + (t && t.judul ? ' (' + t.judul + ')' : '') + '; area kerja sendiri hanya menyimpan E, N']]) }]) };
+    }
+    if (format === 'dxf') {
+      var x = new DXF();
+      A.forEach(function (a) { var L = 'AREA_' + (a.jenis || 'LAIN'), z = zAtau(t, a.E, a.N, null); x.layer(L, AREA_ACI[a.jenis] || 7); x.titik(L, a.E, a.N, z); x.teks(L, a.E, a.N + 9, z, 6, a.nama, 0); });
+      return { nama: nm + '.dxf', blob: x.hasil() };
+    }
+    if (format === 'str') {
+      return { nama: nm + '.str', blob: strSurpac({ lokasi: 'pakal_area', tanggal: c.tanggal, tujuan: 'area kerja ' + lv(c), memo: 'MiningMalut; satu titik per area; D1 nama; D2 jenis; Z dari topo aktif',
+        segmen: A.map(function (a) { return { s: 1, titik: [[a.E, a.N, zAtau(t, a.E, a.N, null)]], d: [a.nama, a.jenis, a.id] }; }) }) };
+    }
+    if (format === 'kml') {
+      var gaya = {}; A.forEach(function (a) { var id = 'a_' + String(a.jenis || 'lain').replace(/[^a-z0-9]/gi, ''); if (!gaya[id]) gaya[id] = { ikon: warnaArea(a.jenis), skala: 1 }; });
+      return { nama: nm + '.kml', blob: blobTeks(kml({ nama: 'Area kerja Pulau Pakal · ' + lv(c), ket: (c.judul || '') + ' · MiningMalut Digital Twin', gaya: gaya,
+        folder: [{ nama: 'Area kerja', fitur: A.map(function (a) { return { nama: a.nama, gaya: 'a_' + String(a.jenis || 'lain').replace(/[^a-z0-9]/gi, ''), ket: namaJenisArea(a.jenis), data: [['id', a.id], ['jenis', namaJenisArea(a.jenis)], ['easting', n(a.E, 1)], ['northing', n(a.N, 1)]], titik: [a.E, a.N] }; }) }] }), 'utf8', 'application/vnd.google-earth.kml+xml') };
+    }
+    if (format === 'shp') {
+      var s = shapefile(1, A.map(function (a) { return { titik: [a.E, a.N] }; }),
+        [{ nama: 'ID', tipe: 'C', kunci: 'id' }, { nama: 'NAMA', tipe: 'C', kunci: 'nama' }, { nama: 'JENIS', tipe: 'C', kunci: 'jenis' }, { nama: 'KET_JENIS', tipe: 'C', kunci: 'jn' }],
+        A.map(function (a) { return { id: a.id, nama: a.nama, jenis: a.jenis, jn: namaJenisArea(a.jenis) }; }));
+      return { nama: nm + '_shapefile.zip', blob: await zip(berkasShp('area_kerja_pakal', s).concat([{ nama: 'baca-saya.txt', isi: bacaSaya(c, ['area_kerja_pakal.shp: satu titik per area kerja. Atribut: ID, NAMA, JENIS (kode), KET_JENIS.']) }])) };
+    }
+    if (format === 'asli') return { nama: nm + '_asli.json', blob: new Blob([JSON.stringify(d, null, 1)], { type: 'application/json' }) };
+    throw new Error('Format area tidak dikenal: ' + format);
+  }
+
+  /* ================================================================== AIR & SUMP */
+  var LABEL_STATUS = { berm: 'Ada berm', parit: 'Ada parit', temuan: 'Temuan limpasan', abaikan: 'Diabaikan', baru: 'Perlu dikonfirmasi', bocor: 'Masih keluar' };
+  var ACI_STATUS = { temuan: 1, berm: 3, parit: 3, abaikan: 8 };
+  var WARNA_STATUS = { temuan: '#ff6e57', berm: '#3ecf8e', parit: '#3ecf8e', abaikan: '#9fb3b0' };
+  function namaParitJalan(p) { return 'Parit ' + p.sisi + ' ' + p.nama; }
+  async function air(format, d, c) {
+    var t = c.topo, nm = c.namaDasar;
+    var sump = (d.sump || []).map(function (s) { return Object.assign({}, s, { cincin: (s.cincin || []).filter(function (r) { return r && r.length >= 3; }) }); });
+    var berm = (d.berm || []).filter(function (b) { return b.garis && b.garis.length >= 2; }), parit = (d.parit || []).filter(function (b) { return b.garis && b.garis.length >= 2; });
+    var lp = (d.limpasan || []).filter(function (l) { return isFinite(l.E) && isFinite(l.N); });
+    // parit pinggir jalan: dihitung dari jalan aktif dan pilihan kiri/kanan per ruas (sama dengan hitungan catchment)
+    var pj = [];
+    if (t && c.jalan && global.TwinApp && TwinApp.paritJalan) {
+      TwinApp.paritJalan(c.jalan, d.parit_jalan || {}, t).forEach(function (p) {
+        var g = []; for (var k = 0; k + 1 < p.garis.length; k += 2) g.push([p.garis[k] + t.e0, p.garis[k + 1] + t.n0]);
+        if (g.length >= 2) pj.push({ ruas: p.ruas, nama: p.nama, sisi: p.sisi, garis: g });
+      });
+    }
+    function z3(pts) { return pts.map(function (p) { return [p[0], p[1], zAtau(t, p[0], p[1], null)]; }); }
+    var ketZ = 'Z diambil dari topo aktif' + (t && t.judul ? ' (' + t.judul + ')' : '');
+    if (format === 'xlsx') {
+      var bs = [], ks = [], bg = [], kg = [], bl = [], bp = [];
+      sump.forEach(function (s, i) {
+        var luas = 0, kel = 0, cx = 0, cy = 0, m = 0;
+        s.cincin.forEach(function (r, ri) {
+          luas += Math.abs(luasCincin(r)); kel += panjangGaris(tutupCincin(r));
+          r.forEach(function (p, pi) { cx += p[0]; cy += p[1]; m++; ks.push({ sump: s.nama, id: s.id, kolam: ri + 1, urut: pi + 1, e: p[0], n: p[1] }); });
+        });
+        bs.push({ no: i + 1, id: s.id, nama: s.nama, kolam: s.cincin.length, luas: luas, keliling: kel, e: m ? cx / m : null, n: m ? cy / m : null, catatan: s.catatan });
+      });
+      [['Berm', berm], ['Parit', parit]].forEach(function (x) {
+        x[1].forEach(function (b) { bg.push({ jenis: x[0], id: b.id, nama: b.nama, panjang: panjangGaris(b.garis), sumber: b.sumber, catatan: b.catatan, simpul: b.garis.length });
+          b.garis.forEach(function (p, pi) { kg.push({ jenis: x[0], nama: b.nama, id: b.id, urut: pi + 1, e: p[0], n: p[1] }); }); });
+      });
+      lp.forEach(function (l, i) { bl.push({ no: i + 1, id: l.id, e: l.E, n: l.N, status: l.status, ket: LABEL_STATUS[l.status] || l.status, hulu: l.hulu_ha, catatan: l.catatan, oleh: String(l.oleh || '').split('@')[0], pada: l.pada ? String(l.pada).slice(0, 16).replace('T', ' ') + ' UTC' : '' }); });
+      var pjSetel = d.parit_jalan || {}, namaRuas = {};
+      ((c.jalan && c.jalan.ruas) || []).forEach(function (r) { namaRuas[r.id] = r.nama; });
+      Object.keys(pjSetel).forEach(function (k) { var s = pjSetel[k] || {}; if (s.kiri || s.kanan) bp.push({ id: k, nama: namaRuas[k] || '', kiri: s.kiri ? 'ya' : '', kanan: s.kanan ? 'ya' : '', jarak: Number(s.jarak) > 0 ? Number(s.jarak) : null }); });
+      var ck = d.cekungan || {};
+      return { nama: nm + '.xlsx', blob: await xlsx([
+        { nama: 'Sump', kolom: [kol('No', 'no', 'angka', 0, 6), kol('Nomor sump', 'id', 'angka', 0, 11), kol('Nama', 'nama', 'teks', null, 20), kol('Kolam', 'kolam', 'angka', 0, 8),
+          kol('Luas (m²)', 'luas', 'angka', 0, 12), kol('Keliling (m)', 'keliling', 'angka', 0, 12), kol('Pusat E (m)', 'e', 'angka', 1, 13), kol('Pusat N (m)', 'n', 'angka', 1, 13), kol('Catatan', 'catatan', 'teks', null, 30)], baris: bs },
+        { nama: 'Koordinat sump', kolom: [kol('Sump', 'sump', 'teks', null, 20), kol('Nomor sump', 'id', 'angka', 0, 11), kol('Kolam', 'kolam', 'angka', 0, 8), kol('Urutan', 'urut', 'angka', 0, 8), kol('Easting (m)', 'e', 'angka', 2, 14), kol('Northing (m)', 'n', 'angka', 2, 14)], baris: ks },
+        { nama: 'Berm & parit', kolom: [kol('Jenis', 'jenis', 'teks', null, 8), kol('ID', 'id', 'teks', null, 14), kol('Nama', 'nama', 'teks', null, 18), kol('Panjang (m)', 'panjang', 'angka', 1, 12),
+          kol('Simpul', 'simpul', 'angka', 0, 8), kol('Sumber', 'sumber', 'teks', null, 11), kol('Catatan', 'catatan', 'teks', null, 34)], baris: bg },
+        { nama: 'Koordinat berm & parit', kolom: [kol('Jenis', 'jenis', 'teks', null, 8), kol('Nama', 'nama', 'teks', null, 18), kol('ID', 'id', 'teks', null, 14), kol('Urutan', 'urut', 'angka', 0, 8), kol('Easting (m)', 'e', 'angka', 2, 14), kol('Northing (m)', 'n', 'angka', 2, 14)], baris: kg },
+        { nama: 'Titik limpasan', kolom: [kol('No', 'no', 'angka', 0, 6), kol('ID', 'id', 'teks', null, 14), kol('Easting (m)', 'e', 'angka', 2, 13), kol('Northing (m)', 'n', 'angka', 2, 13), kol('Status', 'status', 'teks', null, 9),
+          kol('Keputusan admin', 'ket', 'teks', null, 18), kol('Daerah hulu (ha)', 'hulu', 'angka', 2, 15), kol('Catatan', 'catatan', 'teks', null, 30), kol('Diputuskan oleh', 'oleh', 'teks', null, 16), kol('Pada', 'pada', 'teks', null, 20)], baris: bl },
+        { nama: 'Parit pinggir jalan', kolom: [kol('ID ruas', 'id', 'teks', null, 18), kol('Nama ruas', 'nama', 'teks', null, 20), kol('Kiri', 'kiri', 'teks', null, 7), kol('Kanan', 'kanan', 'teks', null, 7), kol('Jarak dari sumbu (m)', 'jarak', 'angka', 1, 18)], baris: bp },
+        { nama: 'Info', kolom: KOLOM_INFO, baris: barisInfo(c, [['Sump', String(sump.length)], ['Berm', String(berm.length)], ['Parit', String(parit.length)], ['Keputusan titik limpasan', String(lp.length)],
+          ['Sump alami otomatis', ck.aktif === false ? 'mati' : 'dalam ≥ ' + (ck.dalam || 1) + ' m dan luas ≥ ' + (ck.luas || 200) + ' m²'], ['Ambang titik limpasan (ha)', d.ambang_limpasan_ha != null ? String(d.ambang_limpasan_ha) : ''],
+          ['Kiri/kanan parit jalan', 'menurut arah ruas digambar'], ['Sumber', d.sumber]]) }]) };
+    }
+    if (format === 'dxf') {
+      var x = new DXF(); x.layer('SUMP', 5); x.layer('SUMP_NAMA', 5);
+      sump.forEach(function (s) {
+        var besar = null, lb = -1;
+        s.cincin.forEach(function (r) { var p = z3(r); x.garis('SUMP', p, true); var a = Math.abs(luasCincin(r)); if (a > lb) { lb = a; besar = r; } });
+        if (besar) { var cx = 0, cy = 0; besar.forEach(function (p) { cx += p[0]; cy += p[1]; }); cx /= besar.length; cy /= besar.length; x.teks('SUMP_NAMA', cx, cy, zAtau(t, cx, cy, null), 4, 'Sump ' + s.nama, 0); }
+      });
+      if (berm.length) x.layer('BERM', 32); berm.forEach(function (b) { x.garis('BERM', z3(b.garis), false); });
+      if (parit.length) x.layer('PARIT', 150); parit.forEach(function (b) { x.garis('PARIT', z3(b.garis), false); });
+      if (pj.length) x.layer('PARIT_JALAN', 151); pj.forEach(function (p) { x.garis('PARIT_JALAN', z3(p.garis), false); });
+      lp.forEach(function (l) { var L = 'LIMPASAN_' + String(l.status || 'LAIN').toUpperCase(), z = zAtau(t, l.E, l.N, null); x.layer(L, ACI_STATUS[l.status] || 6); x.titik(L, l.E, l.N, z); x.teks(L, l.E, l.N + 5, z, 2.5, LABEL_STATUS[l.status] || l.status, 0); });
+      return { nama: nm + '.dxf', blob: x.hasil() };
+    }
+    if (format === 'str') {
+      var sg = [];
+      sump.forEach(function (s) { s.cincin.forEach(function (r) { var p = z3(tutupCincin(r)); sg.push({ s: 1, titik: p, d: ['sump ' + s.nama, s.id] }); }); });
+      berm.forEach(function (b) { sg.push({ s: 2, titik: z3(b.garis), d: [b.nama, 'berm'] }); });
+      parit.forEach(function (b) { sg.push({ s: 3, titik: z3(b.garis), d: [b.nama, 'parit'] }); });
+      pj.forEach(function (p) { sg.push({ s: 4, titik: z3(p.garis), d: [namaParitJalan(p), 'parit jalan'] }); });
+      lp.forEach(function (l) { sg.push({ s: 5, titik: [[l.E, l.N, zAtau(t, l.E, l.N, null)]], d: [LABEL_STATUS[l.status] || l.status, l.id] }); });
+      return { nama: nm + '.str', blob: strSurpac({ lokasi: 'pakal_air', tanggal: c.tanggal, tujuan: 'air dan sump ' + lv(c), memo: 'MiningMalut; string 1 sump; 2 berm; 3 parit; 4 parit jalan; 5 titik limpasan; Z dari topo aktif', segmen: sg }) };
+    }
+    if (format === 'kml') {
+      var gaya = { sump: { garis: '#5fb8ff', lebar: 2, isi: '#5fb8ff', isiAlfa: 0.4 }, berm: { garis: '#c79a5b', lebar: 3 }, parit: { garis: '#7fd4ff', lebar: 3 }, pj: { garis: '#7fd4ff', lebar: 2 } };
+      Object.keys(WARNA_STATUS).forEach(function (k) { gaya['l_' + k] = { ikon: WARNA_STATUS[k], skala: 0.9 }; });
+      return { nama: nm + '.kml', blob: blobTeks(kml({ nama: 'Air & sump Pulau Pakal · ' + lv(c), ket: (c.judul || '') + ' · MiningMalut Digital Twin', gaya: gaya, folder: [
+        { nama: 'Sump', fitur: sump.map(function (s) { var a = 0; s.cincin.forEach(function (r) { a += Math.abs(luasCincin(r)); }); return { nama: 'Sump ' + s.nama, gaya: 'sump', ket: 'Nomor ' + s.id + ' · ' + n(a, 0) + ' m²' + (s.catatan ? ' · ' + bersih(s.catatan) : ''), data: [['nomor', s.id], ['luas_m2', n(a, 0)], ['kolam', s.cincin.length]], poligon: s.cincin }; }) },
+        { nama: 'Berm', fitur: berm.map(function (b) { return { nama: b.nama, gaya: 'berm', ket: n(panjangGaris(b.garis), 0) + ' m' + (b.catatan ? ' · ' + bersih(b.catatan) : ''), garis: [b.garis] }; }) },
+        { nama: 'Parit', fitur: parit.map(function (b) { return { nama: b.nama, gaya: 'parit', ket: n(panjangGaris(b.garis), 0) + ' m' + (b.catatan ? ' · ' + bersih(b.catatan) : ''), garis: [b.garis] }; }) },
+        { nama: 'Parit pinggir jalan', fitur: pj.map(function (p) { return { nama: namaParitJalan(p), gaya: 'pj', garis: [p.garis] }; }) },
+        { nama: 'Titik limpasan', fitur: lp.map(function (l) { return { nama: LABEL_STATUS[l.status] || l.status, gaya: WARNA_STATUS[l.status] ? 'l_' + l.status : null, ket: (l.hulu_ha != null ? 'Daerah hulu ' + n(l.hulu_ha, 2) + ' ha' : '') + (l.catatan ? ' · ' + bersih(l.catatan) : ''), data: [['id', l.id], ['status', l.status]], titik: [l.E, l.N] }; }) }
+      ] }), 'utf8', 'application/vnd.google-earth.kml+xml') };
+    }
+    if (format === 'shp') {
+      var isi = [], ket = [];
+      if (sump.length) {
+        var s1 = shapefile(5, sump.map(function (s) { return { bagian: s.cincin }; }), [{ nama: 'NOMOR', tipe: 'N', lebar: 6, kunci: 'id' }, { nama: 'NAMA', tipe: 'C', kunci: 'nama' }, { nama: 'LUAS_M2', tipe: 'N', lebar: 12, des: 1, kunci: 'luas' }, { nama: 'CATATAN', tipe: 'C', kunci: 'catatan' }],
+          sump.map(function (s) { var a = 0; s.cincin.forEach(function (r) { a += Math.abs(luasCincin(r)); }); return { id: s.id, nama: s.nama, luas: a, catatan: s.catatan }; }));
+        isi = isi.concat(berkasShp('sump', s1)); ket.push('sump.shp: poligon sump (satu sump bisa beberapa kolam). Atribut NOMOR (nomor SF Water & Road), NAMA, LUAS_M2, CATATAN.');
+      }
+      [['berm', berm, 'Berm (tanggul penahan air)'], ['parit', parit, 'Parit (saluran penangkap air)']].forEach(function (x) {
+        if (!x[1].length) return;
+        var s2 = shapefile(3, x[1].map(function (b) { return { bagian: [b.garis] }; }), [{ nama: 'ID', tipe: 'C', kunci: 'id' }, { nama: 'NAMA', tipe: 'C', kunci: 'nama' }, { nama: 'SUMBER', tipe: 'C', kunci: 'sumber' }, { nama: 'CATATAN', tipe: 'C', kunci: 'catatan' }, { nama: 'PANJANG_M', tipe: 'N', lebar: 10, des: 1, kunci: 'panjang' }],
+          x[1].map(function (b) { return { id: b.id, nama: b.nama, sumber: b.sumber, catatan: b.catatan, panjang: panjangGaris(b.garis) }; }));
+        isi = isi.concat(berkasShp(x[0], s2)); ket.push(x[0] + '.shp: ' + x[2] + '.');
+      });
+      if (pj.length) {
+        var s3 = shapefile(3, pj.map(function (p) { return { bagian: [p.garis] }; }), [{ nama: 'RUAS_ID', tipe: 'C', kunci: 'ruas' }, { nama: 'RUAS', tipe: 'C', kunci: 'nama' }, { nama: 'SISI', tipe: 'C', kunci: 'sisi' }], pj);
+        isi = isi.concat(berkasShp('parit_jalan', s3)); ket.push('parit_jalan.shp: parit pinggir jalan yang dipilih admin, digambar sejajar sumbu ruas aktif.');
+      }
+      if (lp.length) {
+        var s4 = shapefile(1, lp.map(function (l) { return { titik: [l.E, l.N] }; }), [{ nama: 'ID', tipe: 'C', kunci: 'id' }, { nama: 'STATUS', tipe: 'C', kunci: 'status' }, { nama: 'KEPUTUSAN', tipe: 'C', kunci: 'ket' }, { nama: 'HULU_HA', tipe: 'N', lebar: 9, des: 2, kunci: 'hulu' }, { nama: 'CATATAN', tipe: 'C', kunci: 'catatan' }],
+          lp.map(function (l) { return { id: l.id, status: l.status, ket: LABEL_STATUS[l.status] || l.status, hulu: l.hulu_ha, catatan: l.catatan }; }));
+        isi = isi.concat(berkasShp('titik_limpasan', s4)); ket.push('titik_limpasan.shp: keputusan admin atas titik air keluar dari bukaan.');
+      }
+      if (!isi.length) throw new Error('Tidak ada sump, berm, parit, atau titik limpasan di versi ini.');
+      return { nama: nm + '_shapefile.zip', blob: await zip(isi.concat([{ nama: 'baca-saya.txt', isi: bacaSaya(c, ket) }])) };
+    }
+    if (format === 'asli') return { nama: nm + '_asli.json', blob: new Blob([JSON.stringify(c.asli || d, null, 1)], { type: 'application/json' }) };
+    throw new Error('Format air tidak dikenal: ' + format);
+  }
+
+  /* ================================================================== MODEL UNIT */
+  async function armada(format, d, c) {
+    var nm = c.namaDasar, kat = (d && d.katalog) || {};
+    if (format === 'xlsx') {
+      var unit = Object.keys((d && d.unit) || {}).sort().map(function (k) { var u = d.unit[k] || {}; return { nama: k, model: u.model, nm: (kat[u.model] || {}).nama || '', jenis: (kat[u.model] || {}).jenis || '', sumber: u.sumber }; });
+      return { nama: nm + '.xlsx', blob: await xlsx([
+        { nama: 'Unit', kolom: [kol('Nama unit', 'nama', 'teks', null, 14), kol('Kode model', 'model', 'teks', null, 15), kol('Model', 'nm', 'teks', null, 22), kol('Jenis', 'jenis', 'teks', null, 8), kol('Sumber', 'sumber', 'teks', null, 26)], baris: unit },
+        { nama: 'Katalog model', kolom: [kol('Kode model', 'k', 'teks', null, 15), kol('Nama', 'nama', 'teks', null, 22), kol('Jenis', 'jenis', 'teks', null, 8), kol('Warna', 'warna', 'teks', null, 10)],
+          baris: Object.keys(kat).map(function (k) { return { k: k, nama: kat[k].nama, jenis: kat[k].jenis, warna: kat[k].warna }; }) },
+        { nama: 'Aturan awalan', kolom: [kol('Awalan nama unit', 'awalan', 'teks', null, 18), kol('Kode model', 'model', 'teks', null, 15), kol('Model', 'nm', 'teks', null, 22)],
+          baris: ((d && d.aturan) || []).map(function (a) { return { awalan: a.awalan, model: a.model, nm: (kat[a.model] || {}).nama || '' }; }) },
+        { nama: 'Info', kolom: KOLOM_INFO, baris: barisInfo(c, [['Jumlah unit', String(unit.length)], ['Model excavator bawaan', d && d.bawaan_exca ? d.bawaan_exca + ' (' + ((kat[d.bawaan_exca] || {}).nama || '') + ')' : ''],
+          ['Aturan', 'model per unit menang atas aturan awalan; nama unit dinormalkan (huruf besar, tanpa EX_/DT_/DZ_ dan tanda baca)']]) }]) };
+    }
+    if (format === 'asli') return { nama: nm + '_asli.json', blob: new Blob([JSON.stringify(d, null, 1)], { type: 'application/json' }) };
+    throw new Error('Format model unit tidak dikenal: ' + format);
+  }
+
+  /* ================================================================== TOPO */
+  async function topo(format, t, c) {
+    var nm = c.namaDasar, NX = t.nx, NY = t.ny, DX = t.dx, Z = t.z, lapor = c.lapor || function () {};
+    if (format === 'tif') {
+      var buf = new Float32Array(NX), bait = new Uint8Array(buf.buffer);
+      var blob = await geotiff({ lebar: NX, tinggi: NY, spp: 1, bps: 32, format: 3, prediktor: 1, nodata: -9999,
+        x0: t.e0 - DX / 2, y0: t.n0 + (NY - 1) * DX + DX / 2, px: DX, py: DX, judul: 'Topo Pulau Pakal ' + lv(c) + ' ' + (c.tanggal || '') + ' grid ' + DX + ' m',
+        baris: function (y) { var j = NY - 1 - y, o = j * NX; for (var i = 0; i < NX; i++) { var v = Z[o + i]; buf[i] = v === v ? v : -9999; } return bait.slice(); } }, function (f) { lapor(f * 100); });
+      return { nama: nm + '_dem.tif', blob: blob };
+    }
+    if (format === 'csv' || format === 'str') {
+      var w = new Penulis();
+      if (format === 'csv') w.tulis('E,N,Z\r\n');
+      else {
+        w.tulis([deskSurpac('pakal_topo'), tglSurpac(c.tanggal), deskSurpac('topo ' + lv(c) + ' grid ' + DX + ' m'), deskSurpac('MiningMalut; titik grid; segmen per baris grid')].join(',') + '\r\n');
+        w.tulis('0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000\r\n');
+      }
+      for (var j = 0; j < NY; j++) {
+        var o2 = j * NX, N = n(t.n0 + j * DX, 2), dalam = false;
+        for (var i = 0; i < NX; i++) {
+          var v = Z[o2 + i];
+          if (v !== v) { if (dalam && format === 'str') w.tulis(NOL_SURPAC); dalam = false; continue; }
+          var E = n(t.e0 + i * DX, 2);
+          if (format === 'csv') w.tulis(E + ',' + N + ',' + n(v, 2) + '\r\n');
+          else w.tulis('1, ' + N + ', ' + E + ', ' + n(v, 2) + '\r\n');
+          dalam = true;
+        }
+        if (dalam && format === 'str') w.tulis(NOL_SURPAC);
+        if ((j & 63) === 0) { lapor(j / NY * 100); await jeda(); }
+      }
+      if (format === 'str') w.tulis('0, 0.000, 0.000, 0.000, END\r\n');
+      return { nama: nm + (format === 'csv' ? '_titik.csv' : '_titik.str'), blob: blobTeks(w.hasil(), 'ansi', format === 'csv' ? 'text/csv' : 'text/plain') };
+    }
+    if (format === 'kontur') {
+      var I = Number(c.interval) || 1, mayor = 5;
+      lapor(2, 'Menghitung garis kontur');
+      var z = new Float32Array(Z);
+      var hasil = await global.HitungTwin.jalankan('kontur', { z: z, nx: NX, ny: NY, dx: DX, interval: I, mayor: mayor, toleransi: 0.2, minPanjang: 2 * DX },
+        { transfer: [z.buffer], progres: function (teks, p) { lapor(p * 0.85, teks); } });
+      lapor(88, 'Menulis DXF');
+      var x = new DXF(), LM = 'KONTUR_MAYOR_' + n(I * mayor, I * mayor % 1 ? 1 : 0).replace('.', '_') + 'M', Lm = 'KONTUR_' + n(I, I % 1 ? 1 : 0).replace('.', '_') + 'M';
+      x.layer(LM, 7); x.layer(Lm, 8);
+      hasil.garis.forEach(function (g) {
+        var pts = []; for (var k = 0; k + 1 < g.xy.length; k += 2) pts.push([t.e0 + g.xy[k], t.n0 + g.xy[k + 1], g.z]);
+        x.garis(g.mayor ? LM : Lm, pts, g.tutup);
+      });
+      return { nama: nm + '_kontur-' + n(I, I % 1 ? 1 : 0).replace('.', ',') + 'm.dxf', blob: x.hasil(), ket: hasil.garis.length + ' garis' };
+    }
+    throw new Error('Format topo tidak dikenal: ' + format);
+  }
+  function jeda() { return new Promise(function (ok) { setTimeout(ok, 0); }); }
+
+  /* ================================================================== CITRA (butuh kanvas) */
+  /* Piksel RGBA utuh dari citra → {lebar, tinggi, data}. */
+  function pikselCitra(bitmap) {
+    var kv = document.createElement('canvas'); kv.width = bitmap.width; kv.height = bitmap.height;
+    var g = kv.getContext('2d', { willReadFrequently: true }); g.drawImage(bitmap, 0, 0);
+    return { kanvas: kv, lebar: kv.width, tinggi: kv.height, data: g.getImageData(0, 0, kv.width, kv.height).data };
+  }
+  function kanvasKeBlob(kv, tipe, mutu) { return new Promise(function (ok, gagal) { kv.toBlob(function (b) { b ? ok(b) : gagal(new Error('Gambar tidak bisa disandikan')); }, tipe, mutu); }); }
+  /* Ukuran piksel di tanah: px dari pengolahan bila ada (pusat piksel x di e_min + (x + ½)·px), selain itu
+     direntang ke bingkai — sama dengan cara semua modul menampilkannya. */
+  function geoCitra(meta, W, H) {
+    var px = Number(meta.px) > 0 ? Number(meta.px) : (meta.e_max - meta.e_min) / W;
+    var py = Number(meta.px) > 0 ? Number(meta.px) : (meta.n_max - meta.n_min) / H;
+    return { x0: Number(meta.e_min), y0: Number(meta.n_max), px: px, py: py };
+  }
+  function worldFile(g) { return [n(g.px, 10), '0.0000000000', '0.0000000000', n(-g.py, 10), n(g.x0 + g.px / 2, 4), n(g.y0 - g.py / 2, 4)].join('\r\n') + '\r\n'; }
+  async function citra(format, cit, c) {
+    var nm = c.namaDasar, lapor = c.lapor || function () {}, meta = cit.meta || {};
+    if (format === 'asli') return { nama: nm + '_asli.' + ((cit.blob && /png/.test(cit.blob.type)) ? 'png' : (cit.blob && /jpe?g/.test(cit.blob.type)) ? 'jpg' : 'webp'), blob: cit.blob };
+    if (!(meta.e_max > meta.e_min && meta.n_max > meta.n_min)) throw new Error('Bingkai citra tidak tercatat di gudang; posisi tidak bisa dibuat.');
+    var bmp = cit.bitmap || await createImageBitmap(cit.blob);
+    if (format === 'tif') {
+      lapor(3, 'Membaca piksel citra');
+      var P = pikselCitra(bmp), W = P.lebar, H = P.tinggi, rb = W * 4, g = geoCitra(meta, W, H);
+      var blob = await geotiff({ lebar: W, tinggi: H, spp: 4, bps: 8, format: 1, prediktor: 2, alfa: true, x0: g.x0, y0: g.y0, px: g.px, py: g.py,
+        judul: 'Citra Pulau Pakal ' + lv(c) + ' ' + (c.tanggal || ''), baris: function (y) { return new Uint8Array(P.data.buffer, P.data.byteOffset + y * rb, rb); } },
+        function (f) { lapor(5 + f * 95, 'Menyusun GeoTIFF'); });
+      return { nama: nm + '.tif', blob: blob };
+    }
+    if (format === 'jpg') {
+      lapor(10, 'Menyandikan JPG');
+      var kv = document.createElement('canvas'); kv.width = bmp.width; kv.height = bmp.height;
+      var gx = kv.getContext('2d'); gx.fillStyle = '#ffffff'; gx.fillRect(0, 0, kv.width, kv.height); gx.drawImage(bmp, 0, 0);
+      var jpg = await kanvasKeBlob(kv, 'image/jpeg', 0.9), geo = geoCitra(meta, kv.width, kv.height);
+      lapor(80, 'Menyusun ZIP');
+      return { nama: nm + '_jpg-worldfile.zip', blob: await zip([{ nama: nm + '.jpg', isi: jpg, simpan: true }, { nama: nm + '.jgw', isi: worldFile(geo) }, { nama: nm + '.prj', isi: PRJ_ESRI },
+        { nama: nm + '.jpg.aux.xml', isi: '<PAMDataset>\n  <SRS>' + xmlAman(WKT_EPSG) + '</SRS>\n</PAMDataset>\n' },
+        { nama: 'baca-saya.txt', isi: bacaSaya(c, [nm + '.jpg: citra ' + kv.width + ' x ' + kv.height + ' piksel, ' + n(geo.px, 3) + ' m per piksel. Bagian tanpa citra berwarna putih.',
+          nm + '.jgw: world file (posisi dan ukuran piksel). Simpan di folder yang sama dengan .jpg, nama dasarnya jangan diubah.',
+          nm + '.prj dan .jpg.aux.xml: sistem koordinat untuk QGIS/ArcGIS/Global Mapper.',
+          'AutoCAD Map 3D / Civil 3D: MAPIINSERT lalu pilih .jpg (world file terbaca otomatis). AutoCAD biasa: IMAGEATTACH, sisipkan di ' + n(geo.x0, 3) + ', ' + n(geo.y0 - geo.py * kv.height, 3) + ' dengan skala ' + n(geo.px * kv.width, 3) + ' (lebar dalam meter).',
+          'Surpac: buka .jpg sebagai gambar latar; world file .jgw dipakai untuk posisinya.']) }]) };
+    }
+    if (format === 'kmz') {
+      var T = 512, W2 = bmp.width, H2 = bmp.height, gc = geoCitra(meta, W2, H2), P2 = pikselCitra(bmp), ov = [], files = [], nT = Math.ceil(W2 / T) * Math.ceil(H2 / T), k = 0;
+      var tk = document.createElement('canvas'), gt = tk.getContext('2d');
+      for (var ty = 0; ty < H2; ty += T) for (var tx = 0; tx < W2; tx += T) {
+        var w = Math.min(T, W2 - tx), h = Math.min(T, H2 - ty), isi = 0, kosong = 0;
+        for (var yy = ty; yy < ty + h; yy++) for (var xx = tx; xx < tx + w; xx++) { if (P2.data[(yy * W2 + xx) * 4 + 3] > 0) isi++; else kosong++; }
+        k++; lapor(k / nT * 90, 'Memotong citra untuk Google Earth');
+        if (!isi) continue;
+        tk.width = w; tk.height = h; gt.clearRect(0, 0, w, h); gt.drawImage(bmp, tx, ty, w, h, 0, 0, w, h);
+        var penuh = !kosong, blob2 = await kanvasKeBlob(tk, penuh ? 'image/jpeg' : 'image/png', penuh ? 0.9 : undefined), nmT = 'files/c_' + (ty / T) + '_' + (tx / T) + (penuh ? '.jpg' : '.png');
+        files.push({ nama: nmT, isi: blob2, simpan: true });
+        // sudut tile di UTM → lintang-bujur; putaran = kebalikan arah utara grid terhadap utara sebenarnya
+        var e0 = gc.x0 + tx * gc.px, e1 = gc.x0 + (tx + w) * gc.px, n1 = gc.y0 - ty * gc.py, n0 = gc.y0 - (ty + h) * gc.py;
+        var kiriAtas = ll(e0, n1), kananAtas = ll(e1, n1), kiriBawah = ll(e0, n0), kananBawah = ll(e1, n0), pusat = ll((e0 + e1) / 2, (n0 + n1) / 2), atas = ll((e0 + e1) / 2, (n0 + n1) / 2 + 100);
+        var azimut = Math.atan2((atas.lon - pusat.lon) * Math.cos(pusat.lat * Math.PI / 180), atas.lat - pusat.lat) * 180 / Math.PI;
+        ov.push('<GroundOverlay><name>' + nmT.slice(6) + '</name><drawOrder>1</drawOrder><Icon><href>' + nmT + '</href></Icon><LatLonBox>' +
+          '<north>' + n((kiriAtas.lat + kananAtas.lat) / 2, 8) + '</north><south>' + n((kiriBawah.lat + kananBawah.lat) / 2, 8) + '</south>' +
+          '<east>' + n((kananAtas.lon + kananBawah.lon) / 2, 8) + '</east><west>' + n((kiriAtas.lon + kiriBawah.lon) / 2, 8) + '</west>' +
+          '<rotation>' + n(-azimut, 5) + '</rotation></LatLonBox></GroundOverlay>\n');
+      }
+      var doc = '<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>' + xmlAman('Citra Pulau Pakal · ' + lv(c) + (c.judul ? ' · ' + c.judul : '')) + '</name>\n' +
+        '<description>' + xmlAman('MiningMalut Digital Twin · ' + W2 + ' x ' + H2 + ' piksel, ' + n(gc.px, 2) + ' m/piksel · dipotong ' + T + ' px; bagian tanpa citra tidak disertakan') + '</description>\n' +
+        '<Folder><name>Citra</name>\n' + ov.join('') + '</Folder>\n</Document>\n</kml>\n';
+      lapor(94, 'Menyusun KMZ');
+      return { nama: nm + '.kmz', blob: await zip([{ nama: 'doc.kml', isi: doc }].concat(files), 'application/vnd.google-earth.kmz'), ket: files.length + ' potongan' };
+    }
+    throw new Error('Format citra tidak dikenal: ' + format);
+  }
+
+  global.UnduhData = {
+    jalan: jalan, area: area, air: air, armada: armada, topo: topo, citra: citra,
+    // penulis dasar (juga dipakai uji)
+    zip: zip, xlsx: xlsx, DXF: DXF, strSurpac: strSurpac, kml: kml, shapefile: shapefile, geotiff: geotiff, ansi: ansi, crc32: crc32,
+    worldFile: worldFile, geoCitra: geoCitra, zTopo: zTopo, PRJ_ESRI: PRJ_ESRI, WKT_EPSG: WKT_EPSG
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>/* ===== KelolaData ===== */
 /* =============================================================================
    KelolaData — Kelola data site (khusus admin) di dalam Digital Twin.
-   Topo · Citra · Jalan & batas kecepatan · Area kerja · Air & sump · Model unit · Riwayat.
+   Topo · Citra · Jalan & batas kecepatan · Area kerja · Air & sump · Model unit · Unduh data · Riwayat.
    Semua tulis lewat fungsi SECURITY DEFINER di Supabase (site_terbit, dst.)
    dan bucket privat site-data; hak admin diperiksa di server, bukan di sini.
    ============================================================================= */
@@ -7981,10 +8979,11 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
   var root = null, nav = null, utama = null, samping = null, aktif = null, bersih = [];
   var BAGIAN = [
     { k: 'topo', t: 'Topo' }, { k: 'citra', t: 'Citra' }, { k: 'jalan', t: 'Jalan & batas kecepatan' },
-    { k: 'area', t: 'Area kerja' }, { k: 'air', t: 'Air & sump' }, { k: 'armada', t: 'Model unit' }, { k: 'riwayat', t: 'Riwayat & penyimpanan' }
+    { k: 'area', t: 'Area kerja' }, { k: 'air', t: 'Air & sump' }, { k: 'armada', t: 'Model unit' }, { k: 'unduh', t: 'Unduh data' }, { k: 'riwayat', t: 'Riwayat & penyimpanan' }
   ];
   function subNav(k) {
     var J = (S().manifest && S().manifest.jenis) || {};
+    if (k === 'unduh') return 'Excel · AutoCAD · Surpac · GIS';
     if (k === 'riwayat') return S().manifest && S().manifest.sumber === 'server' ? 'Gudang aktif' : 'Gudang belum aktif';
     var e = J[k]; if (!e) return k === 'air' ? 'Sump awal W&R · belum terbit' : 'Belum ada';
     return 'v' + e.versi + ' · ' + (e.tanggal ? tglPendek(e.tanggal) : e.judul);
@@ -8016,7 +9015,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
   function pilih(k, opsi) {
     bersihkan();
     aktif = k; isiNav(); kosongkan(utama); kosongkan(samping);
-    ({ topo: bagianTopo, citra: bagianCitra, jalan: bagianJalan, area: bagianArea, air: bagianAir, armada: bagianArmada, riwayat: bagianRiwayat })[k](opsi || {});
+    ({ topo: bagianTopo, citra: bagianCitra, jalan: bagianJalan, area: bagianArea, air: bagianAir, armada: bagianArmada, unduh: bagianUnduh, riwayat: bagianRiwayat })[k](opsi || {});
   }
   function buka(k, opsi) {
     if (!S().admin) { toast('Kelola data hanya untuk admin.'); return; }
@@ -8060,10 +9059,13 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     (ringkas ? vs.slice(0, 6) : vs).forEach(function (v) {
       var akt = v.versi === r.aktif, sb = v.berkas && (v.berkas.grid || v.berkas.gambar) && String(v.berkas.grid || v.berkas.gambar).indexOf('sb:') === 0;
       var aksi = [];
-      if (akt) aksi.push(h('span', { class: 'chip chip-baik', text: 'Aktif' }));
+      var unduh = v.berkas_dihapus && (jenis === 'topo' || jenis === 'citra') ? null : h('button', { type: 'button', class: 'btn btn-kecil', text: 'Unduh',
+        title: 'Unduh versi ini untuk Excel, AutoCAD, Surpac, Google Earth, atau GIS', onclick: function () { pilih('unduh', { jenis: jenis, versi: v.versi }); } });
+      if (akt) { aksi.push(h('span', { class: 'chip chip-baik', text: 'Aktif' })); if (unduh) aksi.push(unduh); }
       else if (v.berkas_dihapus) aksi.push(h('span', { class: 'chip', text: 'Berkas dihapus' }));
       else {
         aksi.push(h('button', { type: 'button', class: 'btn btn-kecil', text: 'Pulihkan', onclick: function () { pulihkan(jenis, v, r.aktif); } }));
+        if (unduh) aksi.push(unduh);
         if (!ringkas && sb && (jenis === 'topo' || jenis === 'citra')) aksi.push(h('button', { type: 'button', class: 'btn btn-kecil btn-bahaya', text: 'Hapus berkas', onclick: function () { hapusBerkasVersi(jenis, v); } }));
       }
       wadah.appendChild(h('div', { style: 'display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)' },
@@ -9773,6 +10775,250 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       toast('Gudang data site sudah disemai. Semua modul kini membaca dari gudang.', 6000);
       pilih('riwayat');
     } catch (e) { kosongkan(pr).appendChild(h('div', { class: 'cek' }, cek('no', 'Semai gagal', e.message))); }
+  }
+
+  /* ================================================================== UNDUH DATA (20 Oktober 2026)
+     Semua jenis data site, versi mana pun yang berkasnya masih ada, dalam format aplikasi lain
+     (Excel, AutoCAD, Surpac, Google Earth, GIS) atau persis seperti di gudang. Berkas dibuat di
+     perangkat ini oleh UnduhData; tidak ada yang berubah di server. Dibuka juga dari tombol Unduh
+     di setiap baris riwayat versi. */
+  var UN = null;   // {versi:{jenis:[…]}, pilih:{jenis:versi}, status:{'jenis:versi:format':{t, k}}, sedang:{}, interval, memo:{}}
+  var JENIS_UNDUH = [
+    { k: 'jalan', t: 'Jalan & batas kecepatan', nama: 'Jalan', f: ['xlsx', 'dxf', 'str', 'kml', 'shp', 'asli'] },
+    { k: 'citra', t: 'Citra', nama: 'Citra', f: ['tif', 'jpg', 'kmz', 'asli'] },
+    { k: 'topo', t: 'Topo', nama: 'Topo', f: ['kontur', 'tif', 'csv', 'str', 'asli'] },
+    { k: 'area', t: 'Area kerja', nama: 'AreaKerja', f: ['xlsx', 'dxf', 'str', 'kml', 'shp', 'asli'] },
+    { k: 'air', t: 'Air & sump', nama: 'AirSump', f: ['xlsx', 'dxf', 'str', 'kml', 'shp', 'asli'] },
+    { k: 'armada', t: 'Model unit', nama: 'ModelUnit', f: ['xlsx', 'asli'] }
+  ];
+  var FMT_UNDUH = {
+    xlsx: ['Excel', '.xlsx'], dxf: ['AutoCAD', '.dxf'], str: ['Surpac', '.str'], kml: ['Google Earth', '.kml'], shp: ['Shapefile', '.zip'],
+    asli: ['Data asli', '.json'], tif: ['GeoTIFF', '.tif'], jpg: ['JPG + world file', '.zip'], kmz: ['Google Earth', '.kmz'],
+    kontur: ['Kontur AutoCAD', '.dxf'], csv: ['Titik X, Y, Z', '.csv']
+  };
+  var KET_UNDUH = {
+    'jalan:xlsx': 'Daftar ruas (batas, lebar, arah, panjang) dan koordinat tiap simpul',
+    'jalan:dxf': 'Juga Civil 3D dan Minescape. Garis 3D, layer per batas, nama ruas',
+    'jalan:str': 'Satu string per ruas; D1 nama ruas, D2 batas km/jam',
+    'jalan:kml': 'Garis berwarna menurut batas kecepatan',
+    'jalan:shp': 'QGIS · ArcGIS · Global Mapper. Garis dengan atribut ruas',
+    'jalan:asli': 'JSON persis seperti di gudang, untuk cadangan',
+    'citra:tif': 'QGIS · ArcGIS · Global Mapper. RGBA, bagian tanpa citra transparan',
+    'citra:jpg': 'AutoCAD · Surpac. JPG, .jgw, dan .prj dalam satu ZIP',
+    'citra:kmz': 'Dipotong 512 px; bagian tanpa citra tidak ikut',
+    'citra:asli': 'WebP persis seperti di gudang (tanpa posisi)',
+    'topo:tif': 'DEM Float32 untuk QGIS · ArcGIS · Global Mapper',
+    'topo:csv': 'Titik grid 3 m: E, N, Z. Bisa diunggah lagi di Kelola data › Topo',
+    'topo:str': 'Titik grid 3 m sebagai string, siap dibuat DTM',
+    'topo:asli': 'DTG1 persis seperti di gudang (format MiningMalut)',
+    'area:xlsx': 'Nama, jenis, koordinat, dan elevasi tiap area',
+    'area:dxf': 'Titik dan nama area, layer per jenis',
+    'area:str': 'Satu titik per area; D1 nama, D2 jenis',
+    'area:kml': 'Penanda berwarna per jenis area',
+    'area:shp': 'QGIS · ArcGIS · Global Mapper. Titik dengan atribut',
+    'area:asli': 'JSON persis seperti di gudang',
+    'air:xlsx': 'Sump dan luasnya, berm, parit, titik limpasan, parit pinggir jalan',
+    'air:dxf': 'Sump, berm, parit, parit jalan, dan titik limpasan per layer',
+    'air:str': 'String 1 sump, 2 berm, 3 parit, 4 parit jalan, 5 limpasan',
+    'air:kml': 'Sump, berm, parit, dan titik limpasan',
+    'air:shp': 'QGIS · ArcGIS. Satu shapefile per jenis dalam ZIP',
+    'air:asli': 'JSON persis seperti di gudang',
+    'armada:xlsx': 'Unit dan modelnya, katalog model, aturan awalan',
+    'armada:asli': 'JSON persis seperti di gudang'
+  };
+  var INTERVAL_KONTUR = [1, 2, 5, 10];
+  function mulaiUN() { UN = UN || { versi: {}, pilih: {}, status: {}, sedang: {}, interval: 2, memo: {} }; return UN; }
+
+  function bagianUnduh(opsi) {
+    opsi = opsi || {}; mulaiUN();
+    UN.pilih = {};                    // tiap kali dibuka: versi aktif, kecuali datang dari tombol Unduh di riwayat
+    if (opsi.jenis && opsi.versi != null) UN.pilih[opsi.jenis] = Number(opsi.versi);
+    bersih.push(function () { UN.memo = {}; });
+    utama.appendChild(kartu('Unduh data site', h('div', { class: 'ket', text: 'Pilih versi, lalu format sesuai aplikasi yang Anda pakai. Bawaannya versi aktif, yang dipakai semua modul; versi lama di riwayat juga bisa diunduh selama berkasnya belum dihapus. Berkas dibuat di perangkat ini dan tidak mengubah apa pun di server.' })));
+    var sasaran = null, tunggu = [];
+    JENIS_UNDUH.forEach(function (j) {
+      var k = kartuUnduh(j); utama.appendChild(k);
+      if (!sasaran) tunggu.push(k.siap);
+      if (opsi.jenis === j.k) sasaran = k;
+    });
+    // kartu di atasnya baru setinggi aslinya sesudah daftar versinya termuat; gulir sesudah itu
+    if (sasaran) Promise.all(tunggu).then(function () {
+      if (!sasaran.isConnected) return;
+      sasaran.scrollIntoView({ block: 'start', behavior: 'smooth' }); sasaran.classList.add('sorot');
+      setTimeout(function () { sasaran.classList.remove('sorot'); }, 1800);
+    });
+    // samping
+    var daftar = h('div', { class: 'unduh-aplikasi' });
+    [['Excel', '.xlsx: tabel ruas, area, sump, unit, dan koordinatnya'],
+     ['AutoCAD · Civil 3D', '.dxf untuk garis dan titik; kontur topo .dxf; citra JPG + world file'],
+     ['Surpac', '.str untuk jalan, area, air & sump, dan titik topo; kontur .dxf juga terbaca'],
+     ['Google Earth', '.kml untuk garis dan titik; citra .kmz'],
+     ['QGIS · ArcGIS · Global Mapper', 'Shapefile (.zip) untuk garis dan titik; GeoTIFF untuk citra dan topo'],
+     ['MiningMalut', 'Data asli: cadangan persis seperti di gudang; titik topo .csv bisa diunggah lagi']].forEach(function (x) {
+      daftar.appendChild(h('div', null, h('b', { text: x[0] }), h('span', { text: x[1] })));
+    });
+    samping.appendChild(kartu('Format untuk aplikasi Anda', daftar));
+    samping.appendChild(kartu('Yang perlu diketahui', h('ul', { class: 'unduh-catatan' },
+      h('li', { text: 'Koordinat UTM Zona 52N, WGS 84 (EPSG:32652) dalam meter, sama dengan Surpac dan AMORA. KML/KMZ memakai lintang-bujur karena begitu aturan Google Earth.' }),
+      h('li', { text: 'Citra yang tersimpan adalah hasil olahan: 4096 piksel melebar bingkai site (±0,89 m per piksel). Resolusi asli berkas yang dulu diunggah tidak disimpan.' }),
+      h('li', { text: 'Topo tersimpan sebagai grid 3 m, bukan titik survei asli. Kontur dan titik dihitung dari grid itu.' }),
+      h('li', { text: 'Elevasi area kerja, sump, berm, dan parit di berkas Surpac dan AutoCAD diambil dari topo aktif, karena data itu hanya menyimpan E dan N.' }),
+      h('li', { text: 'GeoTIFF citra paling besar (puluhan MB) dan butuh beberapa detik. Kontur 1 m juga besar; mulai dari 2 m bila hanya untuk gambar.' }))));
+  }
+
+  function kartuUnduh(j) {
+    var sel = h('select', { class: 'inp', 'aria-label': 'Versi ' + j.t, disabled: true }, h('option', { text: 'Memuat versi…' }));
+    var info = h('div', { class: 'ket', text: '' }), grid = h('div', { class: 'unduh-format' }), tambahan = h('div');
+    var k = h('section', { class: 'kartu k', id: 'unduh-' + j.k }, h('div', { class: 'unduh-kepala' }, h('h3', { text: j.t }), sel), info, tambahan, grid);
+    var ctx = { j: j, sel: sel, info: info, grid: grid, tambahan: tambahan };
+    sel.addEventListener('change', function () { UN.pilih[j.k] = Number(sel.value); isiKartuUnduh(ctx); });
+    k.siap = daftarVersiUnduh(j.k).then(function (vs) {
+      UN.versi[j.k] = vs;
+      kosongkan(sel);
+      if (!vs.length) { sel.appendChild(h('option', { text: 'Belum ada versi' })); info.textContent = 'Belum ada data ' + j.t.toLowerCase() + ' di gudang.'; return; }
+      vs.forEach(function (v) {
+        var teks = (v.sumber === 'bawaan' ? 'Bawaan' : 'v' + v.versi) + ' · ' + (v.judul || '—') + (v.aktif ? ' · aktif' : '') + (berkasHilang(j.k, v) ? ' · berkas dihapus' : '');
+        sel.appendChild(h('option', { value: String(v.versi), text: teks, disabled: berkasHilang(j.k, v) }));
+      });
+      var mau = UN.pilih[j.k], ada = vs.filter(function (v) { return v.versi === mau && !berkasHilang(j.k, v); })[0];
+      if (!ada) { ada = vs.filter(function (v) { return v.aktif; })[0] || vs.filter(function (v) { return !berkasHilang(j.k, v); })[0] || vs[0]; UN.pilih[j.k] = ada.versi; }
+      sel.value = String(ada.versi); sel.disabled = vs.length < 2;
+      isiKartuUnduh(ctx);
+    }).catch(function (e) { kosongkan(sel).appendChild(h('option', { text: 'Gagal memuat' })); info.textContent = 'Daftar versi tidak terbaca: ' + e.message; });
+    return k;
+  }
+  function berkasHilang(jenis, v) { return !!(v.berkas_dihapus && (jenis === 'topo' || jenis === 'citra')); }
+  function versiTerpilih(jenis) { var vs = (UN.versi[jenis] || []); return vs.filter(function (v) { return v.versi === UN.pilih[jenis]; })[0] || null; }
+
+  /* Daftar versi satu jenis, terbaru di atas. Gudang aktif → riwayat server; belum disemai atau
+     tidak terjangkau → data awal repo; air yang belum pernah terbit → sump awal Water & Road. */
+  async function daftarVersiUnduh(jenis) {
+    var m = S().manifest, out = [];
+    if (m && m.sumber === 'server') {
+      try {
+        var r = await G.riwayat(jenis);
+        (r.versi || []).forEach(function (v) { out.push(Object.assign({}, v, { sumber: 'server', aktif: v.versi === r.aktif })); });
+      } catch (e) { /* jatuh ke data awal */ }
+    }
+    if (!out.length) {
+      try {
+        var aw = await G.manifestAwal(), e = aw.lengkap && aw.lengkap.jenis && aw.lengkap.jenis[jenis];
+        var aktifAwal = !(m && m.sumber === 'server' && m.jenis && m.jenis[jenis] && !m.jenis[jenis].dariAwal);
+        if (e) e.versi.slice().sort(function (a, b) { return b.versi - a.versi; }).forEach(function (v) { out.push(Object.assign({}, v, { sumber: 'awal', aktif: aktifAwal && v.versi === e.aktif, dibuat_oleh: 'data awal repo' })); });
+      } catch (e2) { /* tidak ada data awal */ }
+    }
+    if (!out.length && jenis === 'air') out.push({ versi: 0, judul: 'Sump awal Water & Road', tanggal: null, meta: { sump: ((window.AIR_PAKAL && AIR_PAKAL.sump) || []).length }, berkas: {}, sumber: 'bawaan', aktif: true });
+    return out;
+  }
+
+  function ringkasVersi(jenis, v) {
+    var mt = v.meta || {}, b = [];
+    if (jenis === 'jalan') { if (mt.ruas != null) b.push(mt.ruas + ' ruas'); if (mt.bagian != null) b.push(mt.bagian + ' bagian'); if (mt.panjang_km != null) b.push(angka(mt.panjang_km, 1) + ' km'); }
+    if (jenis === 'citra') { if (mt.lebar) b.push(mt.lebar + ' × ' + mt.tinggi + ' px'); var px = Number(mt.px) || (mt.e_max - mt.e_min) / mt.lebar; if (px > 0) b.push('±' + angka(px, 2) + ' m/piksel'); if (mt.cakupan != null) b.push('liputan ' + angka(mt.cakupan * 100, 0) + ' % bingkai'); }
+    if (jenis === 'topo') { if (mt.nx) b.push('grid ' + angka(mt.dx || 3) + ' m · ' + mt.nx + ' × ' + mt.ny); if (mt.sumber) b.push(mt.sumber); }
+    if (jenis === 'area' && mt.area != null) b.push(mt.area + ' area');
+    if (jenis === 'air') { if (mt.sump != null) b.push(mt.sump + ' sump'); if (mt.berm) b.push(mt.berm + ' berm'); if (mt.parit) b.push(mt.parit + ' parit'); if (mt.keputusan) b.push(mt.keputusan + ' keputusan limpasan'); }
+    if (jenis === 'armada' && mt.unit != null) b.push(mt.unit + ' unit');
+    if (v.tanggal) b.push('tanggal ' + tglPendek(v.tanggal));
+    if (v.sumber === 'server') b.push('terbit ' + String(v.dibuat_oleh || '').split('@')[0] + ' · ' + waktuTeks(v.dibuat_pada));
+    else if (v.sumber === 'awal') b.push('data awal repo');
+    else b.push('belum pernah diterbitkan; dipakai sampai data air & sump pertama terbit');
+    return b.join(' · ');
+  }
+
+  function isiKartuUnduh(ctx) {
+    var j = ctx.j, v = versiTerpilih(j.k);
+    kosongkan(ctx.grid); kosongkan(ctx.tambahan);
+    if (!v) return;
+    ctx.info.textContent = ringkasVersi(j.k, v);
+    j.f.forEach(function (f) {
+      var ext = f === 'asli' ? (j.k === 'topo' ? '.dtg' : j.k === 'citra' ? '.webp' : '.json') : FMT_UNDUH[f][1];
+      var ket = KET_UNDUH[j.k + ':' + f] || '';
+      if (f === 'kontur') ket = 'Garis kontur 3D tiap ' + UN.interval + ' m, mayor tiap ' + (UN.interval * 5) + ' m. Terbaca juga di Surpac dan Civil 3D';
+      if (j.k === 'air' && v.sumber === 'bawaan' && f === 'asli') ket = 'Sump awal Water & Road seperti tertanam di halaman';
+      var kunci = j.k + ':' + v.sumber + ':' + v.versi + ':' + f + (f === 'kontur' ? ':' + UN.interval : ''), st = UN.status[kunci];
+      var stEl = h('span', { class: 'st' + (st ? ' ' + st.k : ''), text: st ? st.t : '' });
+      var b = h('button', { type: 'button', 'data-format': f, 'data-kunci': kunci, disabled: !!UN.sedang[kunci], 'aria-label': 'Unduh ' + j.t + ' ' + (v.sumber === 'bawaan' ? 'bawaan' : 'v' + v.versi) + ' sebagai ' + FMT_UNDUH[f][0] + ' ' + ext },
+        h('span', { class: 'fm' }, h('span', { text: FMT_UNDUH[f][0] }), h('span', { class: 'ext', text: ext })), h('span', { class: 'ds', text: ket }), stEl);
+      b.addEventListener('click', function () { unduhFormat(ctx, v, f, kunci); });
+      ctx.grid.appendChild(b);
+    });
+    if (j.k === 'topo') {
+      var seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Interval kontur', style: 'width:220px' });
+      INTERVAL_KONTUR.forEach(function (x) { seg.appendChild(h('button', { type: 'button', 'aria-pressed': String(UN.interval === x), text: x + ' m', onclick: function () { UN.interval = x; isiKartuUnduh(ctx); } })); });
+      ctx.tambahan.appendChild(h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap' }, h('span', { class: 'ket', text: 'Interval kontur untuk Kontur AutoCAD' }), seg));
+    }
+  }
+  function aturStatus(ctx, kunci, teks, kelas) {
+    UN.status[kunci] = { t: teks, k: kelas || '' };
+    var b = ctx.grid.querySelector('button[data-kunci="' + kunci + '"]'), st = b && b.querySelector('.st');
+    if (st) { st.textContent = teks; st.className = 'st' + (kelas ? ' ' + kelas : ''); }
+  }
+
+  function samaDenganAktif(jenis, v) {
+    var m = S().manifest, e = m && m.jenis && m.jenis[jenis];
+    if (!e || e.versi !== v.versi || v.sumber === 'bawaan') return false;
+    return (m.sumber === 'server' && !e.dariAwal) === (v.sumber === 'server');
+  }
+  /* Isi satu versi. Versi aktif memakai yang sudah termuat di peta; versi lain dari Cache Storage
+     atau gudang (GudangSite), lalu diingat selama bagian ini terbuka. */
+  function dataVersiUnduh(jenis, v) {
+    var kunci = jenis + ':' + v.sumber + ':' + v.versi;
+    if (UN.memo[kunci]) return UN.memo[kunci];
+    var p = (async function () {
+      if (jenis === 'topo') {
+        if (samaDenganAktif('topo', v) && S().site.topo) return S().site.topo;
+        var t = await G.bacaDTG(await G.ambilBerkas(v.berkas.grid));
+        t.judul = v.judul; t.tanggal = v.tanggal; t.versi = v.versi; return t;
+      }
+      if (jenis === 'citra') {
+        var akt = samaDenganAktif('citra', v) && S().site.citra;
+        return { blob: await G.ambilBerkas(v.berkas.gambar), bitmap: akt ? S().site.citra.bitmap : null, meta: v.meta || {} };
+      }
+      if (v.sumber === 'bawaan') return null;
+      return await G.ambilData(jenis, { versi: v.versi, berkas: v.berkas || {} });
+    })();
+    UN.memo[kunci] = p; p.catch(function () { delete UN.memo[kunci]; });
+    return p;
+  }
+  function ukuranBerkas(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' MB'; }
+  function simpanUnduhan(blob, nama) {
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = nama; a.rel = 'noopener'; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+  }
+  async function unduhFormat(ctx, v, f, kunci) {
+    if (UN.sedang[kunci]) return;
+    var j = ctx.j, tombol = ctx.grid.querySelector('button[data-kunci="' + kunci + '"]');
+    UN.sedang[kunci] = true; if (tombol) tombol.disabled = true;
+    aturStatus(ctx, kunci, 'Menyiapkan…', 'proses');
+    // nama berkas memakai tanggal data; bila tidak ada, tanggal terbit; data awal repo tanpa tanggal tidak diberi tanggal
+    var tgl = v.tanggal ? String(v.tanggal).slice(0, 10) : v.dibuat_pada ? new Date(Date.parse(v.dibuat_pada) + WIT).toISOString().slice(0, 10) : '';
+    var c = {
+      namaJenis: j.t, versi: v.versi, labelVersi: v.sumber === 'bawaan' ? 'sump awal W&R' : null, aktif: !!v.aktif, judul: v.judul || '',
+      tanggal: v.tanggal ? String(v.tanggal).slice(0, 10) : '', oleh: v.dibuat_oleh || '', pada: v.dibuat_pada ? waktuTeks(v.dibuat_pada) : '',
+      waktuUnduh: waktuTeks(new Date().toISOString()), pengunduh: String(S().email || '').split('@')[0],
+      topo: S().site.topo, jalan: S().site.jalan, interval: UN.interval,
+      namaDasar: 'Pakal_' + j.nama + '_' + (v.sumber === 'bawaan' ? 'awal-WR' : 'v' + v.versi + (tgl ? '_' + tgl : '')),
+      lapor: function (p, teks) { aturStatus(ctx, kunci, (teks || 'Menyiapkan') + ' · ' + Math.max(0, Math.min(100, Math.round(p))) + '%', 'proses'); }
+    };
+    try {
+      var hasil, d = j.k === 'topo' && f === 'asli' ? null : await dataVersiUnduh(j.k, v);
+      if (j.k === 'topo') hasil = f === 'asli' ? { nama: c.namaDasar + '_asli.dtg', blob: await G.ambilBerkas(v.berkas.grid) } : await UnduhData.topo(f, d, c);
+      else if (j.k === 'citra') hasil = await UnduhData.citra(f, d, c);
+      else if (j.k === 'air') {
+        if (f === 'asli' && v.sumber === 'bawaan') hasil = { nama: c.namaDasar + '_asli.json', blob: new Blob([JSON.stringify(window.AIR_PAKAL || {}, null, 1)], { type: 'application/json' }) };
+        else { c.asli = d; hasil = await UnduhData.air(f, A().normalAir(d), c); }
+      } else hasil = await UnduhData[j.k](f, d || {}, c);
+      simpanUnduhan(hasil.blob, hasil.nama);
+      aturStatus(ctx, kunci, '✓ ' + ukuranBerkas(hasil.blob.size) + (hasil.ket ? ' · ' + hasil.ket : ''), 'ok');
+    } catch (e) {
+      aturStatus(ctx, kunci, 'Gagal: ' + (e && e.message || e), 'gagal');
+      toast('Unduhan gagal: ' + (e && e.message || e), 7000);
+    }
+    UN.sedang[kunci] = false;
+    tombol = ctx.grid.querySelector('button[data-kunci="' + kunci + '"]'); if (tombol) tombol.disabled = false;
   }
 
   window.KelolaData = { buka: buka, tutup: tutup };
