@@ -2,7 +2,8 @@
 -- MiningMalut · Gudang data site untuk Digital Twin (23 September 2026)
 --
 -- Satu tempat untuk topo, citra, jaringan jalan beserta batas kecepatannya,
--- area kerja, dan model 3D unit. Dibaca Digital Twin, Water & Road, AMORA,
+-- area kerja, model 3D unit, dan air & sump (sejak 20 Oktober 2026; gudang yang
+-- sudah terpasang sebelumnya cukup menjalankan 02_jenis_air.sql). Dibaca Digital Twin, Water & Road, AMORA,
 -- Speed Watcher (halaman), dan Worker speed-watcher-24-7.
 --
 -- Jalankan sekali di Supabase → SQL Editor. Aman diulang: tidak ada data yang
@@ -41,7 +42,7 @@ $$;
 -- Tabel
 -- ---------------------------------------------------------------------------
 create table if not exists public.site_versi (
-  jenis          text        not null check (jenis in ('topo','citra','jalan','area','armada')),
+  jenis          text        not null check (jenis in ('topo','citra','jalan','area','armada','air')),
   versi          integer     not null check (versi > 0),
   judul          text        not null,
   tanggal        date,
@@ -61,7 +62,7 @@ create table if not exists public.site_versi (
 );
 
 create table if not exists public.site_aktif (
-  jenis        text        primary key check (jenis in ('topo','citra','jalan','area','armada')),
+  jenis        text        primary key check (jenis in ('topo','citra','jalan','area','armada','air')),
   versi        integer     not null,
   diubah_oleh  text        not null,
   diubah_pada  timestamptz not null default now(),
@@ -330,14 +331,17 @@ begin
   if not public.site_is_admin() then
     raise exception 'Hanya admin yang boleh menerbitkan data site.';
   end if;
-  if p_jenis not in ('topo','citra','jalan','area','armada') then
+  if p_jenis not in ('topo','citra','jalan','area','armada','air') then
     raise exception 'Jenis data tidak dikenal: %', p_jenis;
   end if;
   if p_jenis in ('topo','citra') and (p_berkas is null or p_berkas = '{}'::jsonb) then
     raise exception 'Berkas % belum ada.', p_jenis;
   end if;
-  if p_jenis in ('jalan','area','armada') and p_data is null then
+  if p_jenis in ('jalan','area','armada','air') and p_data is null then
     raise exception 'Isi % kosong.', p_jenis;
+  end if;
+  if p_jenis = 'air' and jsonb_typeof(p_data -> 'sump') is distinct from 'array' then
+    raise exception 'Isi air harus memuat daftar sump.';
   end if;
   if p_data is not null and octet_length(p_data::text) > 3000000 then
     raise exception 'Isi terlalu besar (% byte).', octet_length(p_data::text);

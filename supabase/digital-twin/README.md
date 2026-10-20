@@ -21,3 +21,10 @@ select id, public from storage.buckets where id = 'site-data';   -- public = fal
 ```
 
 Lalu buka Digital Twin sebagai admin → **Semai sekarang**. Uraian lengkap: dokumentasi §26.
+
+## `02_jenis_air.sql` (20 Oktober 2026)
+
+Menambah jenis data `air` (sump, berm, parit, parit pinggir jalan, keputusan titik limpasan) untuk
+lapisan **Air & sump** Digital Twin. Untuk gudang yang sudah terpasang: jalankan sekali di SQL Editor,
+sesudah `01`. Aman diulang. Pemasangan baru dari `01` sudah mengenal `air`, tetapi menjalankan `02`
+sesudahnya tetap aman. Uraian: dokumentasi §26.15.
