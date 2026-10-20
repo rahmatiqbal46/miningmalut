@@ -6213,7 +6213,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     if (!a || !Array.isArray(a.sump)) {
       a = { v: 1, sumber: 'Sump awal Water & Road (lokasi saja)', sump: ((window.AIR_PAKAL && AIR_PAKAL.sump) || []).map(function (s) { return { id: s.id, nama: s.nama, cincin: s.cincin }; }), awal: true };
     }
-    ['berm', 'parit', 'limpasan'].forEach(function (k) { if (!Array.isArray(a[k])) a[k] = []; });
+    ['berm', 'parit', 'limpasan', 'warna'].forEach(function (k) { if (!Array.isArray(a[k])) a[k] = []; });
     if (!a.parit_jalan || typeof a.parit_jalan !== 'object') a.parit_jalan = {};
     a.cekungan = Object.assign({}, AIR_BAWAAN.cekungan, a.cekungan || {});
     ['ambang_limpasan_ha', 'asal_limpasan_ha', 'dalam_parit_jalan'].forEach(function (k) { if (!(Number(a[k]) > 0)) a[k] = AIR_BAWAAN[k]; });
@@ -6278,26 +6278,114 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     return { sump: sump, tanam: tanam, cekungan: ck.aktif === false ? null : { dalam: Number(ck.dalam) || 1, luas: Number(ck.luas) || 200 } };
   }
   /* Bukaan atau vegetasi per sel grid topo, dari citra aktif (bukan relief).
-     0 = tidak diketahui (tanpa citra, laut), 1 = vegetasi (hijau, gelap, biru rendah),
-     2 = bukaan (coklat, merah, abu, putih). Diperhalus lagi di HitungTwin. */
-  function tutupanCitra(citra, t) {
+     0 = tidak diketahui (tanpa citra, laut/kolam biru), 1 = vegetasi, 2 = bukaan.
+     Warna citra dikelompokkan menjadi ±32 jenis (k-means, `klasterWarna`). Untuk jenis yang
+     sudah ditetapkan admin (Kelola data › Air & sump › Penafsir warna; data air `warna`),
+     semua sel berwarna itu memakai pilihan admin; sisanya memakai aturan otomatis per sel
+     (hijau, gelap, biru rendah = vegetasi). Diperhalus lagi di HitungTwin. */
+  function kelasOtomatis(R, G, B) { return (G >= R - 10 && B < 0.62 * G && (R + G + B) / 3 < 140) ? 1 : 2; }
+  var memoWarna = { citra: null, sel: null, klaster: null };
+  // warna rata-rata tiap sel (citra digambar 2 × grid lalu dirata-rata 2 × 2)
+  function warnaSel(citra, t) {
     if (!citra || !citra.bitmap || !citra.meta) return null;
-    var m = citra.meta, NX = t.nx, NY = t.ny, DX = t.dx;
+    if (memoWarna.citra === citra && memoWarna.sel && memoWarna.topo === t.nx + 'x' + t.ny + ':' + t.e0 + ':' + t.n0) return memoWarna.sel;
+    var m = citra.meta, NX = t.nx, NY = t.ny, DX = t.dx, n = NX * NY;
     var cv = document.createElement('canvas'); cv.width = NX * 2; cv.height = NY * 2;
     var g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
     var kiri = t.e0 - DX / 2, atas = t.n0 + (NY - 0.5) * DX, s2 = 2 / DX;
     g.drawImage(citra.bitmap, (m.e_min - kiri) * s2, (atas - m.n_max) * s2, (m.e_max - m.e_min) * s2, (m.n_max - m.n_min) * s2);
-    var px = g.getImageData(0, 0, NX * 2, NY * 2).data, W2 = NX * 8, out = new Uint8Array(NX * NY);
+    var px = g.getImageData(0, 0, NX * 2, NY * 2).data, W2 = NX * 8, rgb = new Uint8Array(n * 3), ada = new Uint8Array(n);
     for (var r = 0; r < NY; r++) for (var i = 0; i < NX; i++) {
       var R = 0, Gg = 0, B = 0, A = 0, gelap = 0;
       for (var q = 0; q < 4; q++) {
         var p = (r * 2 + (q >> 1)) * W2 + (i * 2 + (q & 1)) * 4;
         R += px[p]; Gg += px[p + 1]; B += px[p + 2]; A += px[p + 3]; if (px[p] + px[p + 1] + px[p + 2] < 9) gelap++;
       }
+      var c = (NY - 1 - r) * NX + i;
+      R /= 4; Gg /= 4; B /= 4; rgb[3 * c] = R; rgb[3 * c + 1] = Gg; rgb[3 * c + 2] = B;
       if (A < 800 || (m.alpha_hitam && gelap > 1)) continue;
-      R /= 4; Gg /= 4; B /= 4;
       if (B > R + 20 && B > Gg + 10) continue;                      // air laut atau kolam biru
-      out[(NY - 1 - r) * NX + i] = (Gg >= R - 10 && B < 0.62 * Gg && (R + Gg + B) / 3 < 140) ? 1 : 2;
+      ada[c] = 1;
+    }
+    memoWarna = { citra: citra, topo: t.nx + 'x' + t.ny + ':' + t.e0 + ':' + t.n0, sel: { rgb: rgb, ada: ada }, klaster: null };
+    return memoWarna.sel;
+  }
+  /* Jenis warna: k-means 32 pusat pada ±50 ribu sel contoh (acak tetap), tabel cari 32³ untuk
+     menetapkan setiap sel, dan tiga lokasi contoh per jenis (sel yang tetangganya sewarna,
+     berjauhan ≥ 150 m) untuk ditunjukkan ke admin. */
+  function klasterWarna(citra, t) {
+    var W = warnaSel(citra, t); if (!W) return null;
+    if (memoWarna.klaster) return memoWarna.klaster;
+    var n = t.nx * t.ny, NX = t.nx, rgb = W.rgb, ada = W.ada, K = 32, acak = 12345;
+    function rnd() { acak = (acak * 1103515245 + 12345) & 0x7fffffff; return acak / 0x7fffffff; }
+    var idx = []; for (var c = 0; c < n; c++) if (ada[c]) idx.push(c);
+    if (idx.length < K * 4) return null;
+    var langkah = Math.max(1, Math.floor(idx.length / 50000)), sm = [];
+    for (var a = Math.floor(rnd() * langkah); a < idx.length; a += langkah) sm.push(idx[a]);
+    function jarak2(c, p) { var d0 = rgb[3 * c] - p[0], d1 = rgb[3 * c + 1] - p[1], d2 = rgb[3 * c + 2] - p[2]; return d0 * d0 + d1 * d1 + d2 * d2; }
+    // k-means++
+    var pusat = [[rgb[3 * sm[0]], rgb[3 * sm[0] + 1], rgb[3 * sm[0] + 2]]], dmin = new Float64Array(sm.length).fill(Infinity);
+    while (pusat.length < K) {
+      var tot = 0, akhir = pusat[pusat.length - 1];
+      for (var s = 0; s < sm.length; s++) { var dd = jarak2(sm[s], akhir); if (dd < dmin[s]) dmin[s] = dd; tot += dmin[s]; }
+      var x = rnd() * tot, pilih = 0; for (s = 0; s < sm.length; s++) { x -= dmin[s]; if (x <= 0) { pilih = s; break; } }
+      pusat.push([rgb[3 * sm[pilih]], rgb[3 * sm[pilih] + 1], rgb[3 * sm[pilih] + 2]]);
+    }
+    var milik = new Uint8Array(sm.length);
+    for (var it = 0; it < 14; it++) {
+      var jum = pusat.map(function () { return [0, 0, 0, 0]; });
+      for (s = 0; s < sm.length; s++) {
+        var best = 0, bd = Infinity; for (var k = 0; k < K; k++) { var d3 = jarak2(sm[s], pusat[k]); if (d3 < bd) { bd = d3; best = k; } }
+        milik[s] = best; var j3 = jum[best]; j3[0] += rgb[3 * sm[s]]; j3[1] += rgb[3 * sm[s] + 1]; j3[2] += rgb[3 * sm[s] + 2]; j3[3]++;
+      }
+      pusat = pusat.map(function (p, k) { var j3 = jum[k]; return j3[3] ? [j3[0] / j3[3], j3[1] / j3[3], j3[2] / j3[3]] : p; });
+    }
+    // tabel cari 32 × 32 × 32
+    var lut = new Uint8Array(32768);
+    for (var qr = 0; qr < 32; qr++) for (var qg = 0; qg < 32; qg++) for (var qb = 0; qb < 32; qb++) {
+      var R = qr * 8 + 4, G = qg * 8 + 4, B = qb * 8 + 4, best2 = 0, bd2 = Infinity;
+      for (k = 0; k < K; k++) { var p = pusat[k], e = (R - p[0]) * (R - p[0]) + (G - p[1]) * (G - p[1]) + (B - p[2]) * (B - p[2]); if (e < bd2) { bd2 = e; best2 = k; } }
+      lut[(qr << 10) | (qg << 5) | qb] = best2;
+    }
+    var sel = new Uint8Array(n), jumlah = new Float64Array(K), otoVeg = new Float64Array(K);
+    for (c = 0; c < n; c++) {
+      if (!ada[c]) continue;
+      var k2 = lut[((rgb[3 * c] >> 3) << 10) | ((rgb[3 * c + 1] >> 3) << 5) | (rgb[3 * c + 2] >> 3)];
+      sel[c] = k2 + 1; jumlah[k2]++; if (kelasOtomatis(rgb[3 * c], rgb[3 * c + 1], rgb[3 * c + 2]) === 1) otoVeg[k2]++;
+    }
+    // lokasi contoh
+    // (sel yang tetangganya sewarna dicari dulu; bila tidak ada, syarat dilonggarkan bertahap)
+    var contoh = pusat.map(function () { return []; }), DX = t.dx, syarat = [15, 9, 4, 1];
+    for (var tr = 0; tr < 800000; tr++) {
+      var cc = idx[Math.floor(rnd() * idx.length)], kk = sel[cc] - 1; if (kk < 0 || contoh[kk].length >= 3) continue;
+      var minSama = syarat[Math.min(3, Math.floor(tr / 200000))];
+      var ci = cc % NX, sama = 0;
+      for (var dj = -2; dj <= 2; dj++) for (var di = -2; di <= 2; di++) { var nb = cc + dj * NX + di; if (ci + di >= 0 && ci + di < NX && nb >= 0 && nb < n && sel[nb] === kk + 1) sama++; }
+      if (sama < minSama) continue;
+      var x0 = ci * DX, y0 = ((cc / NX) | 0) * DX;
+      if (contoh[kk].some(function (q) { return Math.hypot(q[0] - x0, q[1] - y0) < 150; })) continue;
+      contoh[kk].push([x0, y0]);
+    }
+    var daftar = pusat.map(function (p, k) { return { k: k, rgb: [Math.round(p[0]), Math.round(p[1]), Math.round(p[2])], sel: jumlah[k], persen: jumlah[k] / idx.length * 100, otomatis: otoVeg[k] >= jumlah[k] / 2 ? 1 : 2, fraksiVeg: jumlah[k] ? otoVeg[k] / jumlah[k] : 0, contoh: contoh[k] }; });
+    memoWarna.klaster = { daftar: daftar, sel: sel, nx: NX, ny: t.ny, dx: DX };
+    return memoWarna.klaster;
+  }
+  // pilihan admin untuk tiap jenis warna: keputusan tersimpan dengan warna terdekat (≤ 22 tingkat)
+  function kelasKlaster(Kl, warna) {
+    return Kl.daftar.map(function (j) {
+      var best = null, bd = 22 * 22;
+      (warna || []).forEach(function (w) { var d = (w.rgb[0] - j.rgb[0]) * (w.rgb[0] - j.rgb[0]) + (w.rgb[1] - j.rgb[1]) * (w.rgb[1] - j.rgb[1]) + (w.rgb[2] - j.rgb[2]) * (w.rgb[2] - j.rgb[2]); if (d <= bd) { bd = d; best = w; } });
+      return best ? best.kelas : 0;
+    });
+  }
+  function tutupanCitra(citra, t, warna) {
+    var W = warnaSel(citra, t); if (!W) return null;
+    var Kl = (warna && warna.length) ? klasterWarna(citra, t) : null, kel = Kl ? kelasKlaster(Kl, warna) : null;
+    var n = t.nx * t.ny, out = new Uint8Array(n), rgb = W.rgb;
+    for (var c = 0; c < n; c++) {
+      if (!W.ada[c]) continue;
+      var tetap = kel && Kl.sel[c] ? kel[Kl.sel[c] - 1] : 0;
+      out[c] = tetap || kelasOtomatis(rgb[3 * c], rgb[3 * c + 1], rgb[3 * c + 2]);
     }
     return out;
   }
@@ -6339,8 +6427,9 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var bahanSite = { topo: S.site.topo, air: S.site.air, jalan: S.site.jalan, citra: S.site.citra };
     var t = S.site.topo, air = normalAir(opsi.air || S.site.air), jl = opsi.jalan || S.site.jalan;
     var bahan = bahanAir(air, t, jl);
-    if (!S.tutupan || S.tutupan.citra !== S.site.citra) S.tutupan = { citra: S.site.citra, data: tutupanCitra(S.site.citra, t) };
-    var tut = S.tutupan.data;
+    var kunciW = JSON.stringify(air.warna || []);
+    var tut = (S.tutupan && S.tutupan.citra === S.site.citra && S.tutupan.warna === kunciW) ? S.tutupan.data : tutupanCitra(S.site.citra, t, air.warna);
+    if (pasang) S.tutupan = { citra: S.site.citra, warna: kunciW, data: tut };
     if (pasang && !opsi.diam) toast('Menghitung catchment dari ' + t.judul + '…', 8000);
     var janji = HitungTwin.jalankan('catchment', Object.assign({ z: t.z, nx: t.nx, ny: t.ny, dx: t.dx, ambangAlur: 0.5,
       tutupan: tut, ambangLimpas: Math.min(0.05, Number(air.ambang_limpasan_ha) || 0.25), asalLimpas: Number(air.asal_limpasan_ha) || 1 }, bahan), { progres: opsi.progres }).then(function (r) {
@@ -6361,7 +6450,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     return janji;
   }
   Object.assign(window.TwinApp, { hitungAir: hitungAir, normalAir: normalAir, bahanAir: bahanAir, paritJalan: paritJalan, offsetGaris: offsetGaris,
-    jarakParitJalan: jarakParitJalan, tutupanCitra: tutupanCitra, cocokkanLimpasan: cocokkanLimpasan, AIR_BAWAAN: AIR_BAWAAN, WARNA_LIMPAS: WARNA_LIMPAS_APP, LABEL_LIMPAS: LABEL_LIMPAS });
+    jarakParitJalan: jarakParitJalan, tutupanCitra: tutupanCitra, klasterWarna: klasterWarna, kelasKlaster: kelasKlaster, cocokkanLimpasan: cocokkanLimpasan, AIR_BAWAAN: AIR_BAWAAN, WARNA_LIMPAS: WARNA_LIMPAS_APP, LABEL_LIMPAS: LABEL_LIMPAS });
 
   /* ------------------------------------------------------------------ putar ulang shift (fase 4) */
   var putarRaf = 0;
@@ -8818,7 +8907,8 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       cekungan: Object.assign({}, AK.setel.cekungan),
       ambang_limpasan_ha: AK.setel.ambang_limpasan_ha,
       asal_limpasan_ha: AK.setel.asal_limpasan_ha,
-      limpasan: AK.keputusan.map(function (k) { return Object.assign({}, k); })
+      limpasan: AK.keputusan.map(function (k) { return Object.assign({}, k); }),
+      warna: AK.warna.map(function (w) { return Object.assign({}, w, { rgb: w.rgb.slice() }); })
     };
   }
   function bacaDrafAir() { try { return JSON.parse(localStorage.getItem(KUNCI_DRAF_AIR) || 'null'); } catch (e) { return null; } }
@@ -8830,6 +8920,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     AK.paritJalan = JSON.parse(JSON.stringify(a.parit_jalan || {}));
     AK.setel = { cekungan: Object.assign({}, a.cekungan), ambang_limpasan_ha: a.ambang_limpasan_ha, asal_limpasan_ha: a.asal_limpasan_ha, dalam_parit_jalan: a.dalam_parit_jalan };
     AK.keputusan = (a.limpasan || []).map(function (k) { return Object.assign({}, k); });
+    AK.warna = (a.warna || []).map(function (w) { return Object.assign({}, w, { rgb: w.rgb.slice() }); });
   }
   function kunciBanding(a) {
     a = A().normalAir(a);
@@ -8838,7 +8929,8 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       p: a.parit.map(function (x) { return [x.id, x.nama, x.dalam, x.catatan || '', x.garis.map(function (p) { return [Math.round(p[0] * 10), Math.round(p[1] * 10)]; })]; }),
       j: Object.keys(a.parit_jalan).sort().map(function (k) { var v = a.parit_jalan[k] || {}; return [k, !!v.kiri, !!v.kanan, Number(v.jarak) || 0]; }).filter(function (x) { return x[1] || x[2] || x[3]; }),
       d: a.dalam_parit_jalan, c: a.cekungan, al: a.ambang_limpasan_ha, as: a.asal_limpasan_ha,
-      l: a.limpasan.map(function (k) { return [k.id, k.status, k.catatan || '', k.berm || '', k.fitur ? k.fitur.jenis + ':' + k.fitur.id : '']; }) });
+      l: a.limpasan.map(function (k) { return [k.id, k.status, k.catatan || '', k.berm || '', k.fitur ? k.fitur.jenis + ':' + k.fitur.id : '']; }),
+      w: (a.warna || []).map(function (w) { return [w.rgb.join(','), w.kelas]; }) });
   }
   function bagianAir(opsi) {
     opsi = opsi || {};
@@ -8872,7 +8964,9 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var btnOverlay = h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!AK.overlay), text: 'Catchment', onclick: function () { AK.overlay = !AK.overlay; btnOverlay.setAttribute('aria-pressed', String(AK.overlay)); pasangHasilKeEditor(); } });
     wadah.appendChild(h('div', { class: 'editor-alat kaca' }, alatSeg,
       h('button', { type: 'button', class: 'btn', text: 'Urungkan', onclick: function () { AK.ed.urung(); } }),
-      h('button', { type: 'button', class: 'btn', text: 'Seluruh site', onclick: function () { AK.ed.semua(); } }), btnOverlay, btnAlur, btnTutupan, selesai, petunjuk));
+      h('button', { type: 'button', class: 'btn', text: 'Seluruh site', onclick: function () { AK.ed.semua(); } }), btnOverlay, btnAlur, btnTutupan,
+      h('button', { type: 'button', class: 'btn', text: 'Penafsir warna', title: 'Pilih warna mana yang coklat (area terbuka) dan mana yang hijau (vegetasi)', onclick: function () { var e = samping.querySelector('[data-kartu-warna]'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }),
+      selesai, petunjuk));
     var legenda = h('div', { class: 'editor-bawah' });
     [['#2f86ff', 'sump'], ['#d08a3a', 'berm'], ['#3fb6ff', 'parit'], ['rgba(63,182,255,.6)', 'calon parit jalan'], ['#f2b705', 'perlu dikonfirmasi'], ['#ff6e57', 'temuan'], ['#c77dff', 'masih keluar'], ['#7fd4ff', 'sump alami'], ['rgba(255,150,40,.7)', 'hulu titik terpilih']].forEach(function (x) {
       legenda.appendChild(h('span', { class: 'kaca' }, h('i', { style: 'background:' + x[0] }), x[1]));
@@ -8978,7 +9072,8 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     AK.ed.setLimpas(r ? r.limpasan.map(function (l) { return { id: l.id, x: l.x, y: l.y, status: statusKeputusan(l) }; }) : []);
     AK.ed.setAlami(r ? r.alami : []);
     AK.ed.setAlur(r && AK.alur ? r.tampil.garis : null);
-    AK.ed.setOverlay2(r && AK.tutupan && r.tutupan ? kanvasTutupan(r) : null);
+    var KlS = AK.sorotWarna != null ? klasterIni() : null;
+    AK.ed.setOverlay2(KlS ? kanvasKlaster(KlS, AK.sorotWarna) : (r && AK.tutupan && r.tutupan ? kanvasTutupan(r) : null));
     var lp = r && AK.limpasPilih ? r.limpasan.filter(function (x) { return x.id === AK.limpasPilih; })[0] : null;
     AK.ed.setSorot(lp ? { hulu: lp.hulu, jalurHulu: lp.jalurHulu, jalurHilir: lp.jalurHilir, keluar: lp.keluar } : null);
     if (AK.limpasPilih && !AK.pilih) AK.ed.pilihLimpas(AK.limpasPilih);
@@ -9138,6 +9233,8 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var kb = 0; d.limpasan.forEach(function (k) { var o = ka[k.id]; if (!o || o.status !== k.status || (o.catatan || '') !== (k.catatan || '')) kb++; });
     a.limpasan.forEach(function (k) { if (!d.limpasan.some(function (x) { return x.id === k.id; })) kb++; });
     if (kb) out.push({ nama: 'Keputusan limpasan', ket: kb + ' berubah' });
+    function kW(x) { return JSON.stringify((x || []).map(function (w) { return [w.rgb.join(','), w.kelas]; }).sort()); }
+    if (kW(a.warna) !== kW(d.warna)) out.push({ nama: 'Penafsir warna', ket: (a.warna || []).length + ' → ' + d.warna.length + ' warna ditetapkan admin' });
     if (a.awal) out.push({ nama: 'Data air', ket: 'terbit pertama: sump awal Water & Road masuk gudang' });
     return out;
   }
@@ -9175,6 +9272,8 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     samping.appendChild(kartuPerubahanAir(d, df2, pk));
     // daftar limpasan
     samping.appendChild(kartuDaftarLimpas());
+    // penafsir warna
+    samping.appendChild(kartuWarna());
     // parit pinggir jalan
     samping.appendChild(kartuParitJalan());
     // sump alami
@@ -9239,6 +9338,103 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     return kartu('Titik ' + l.no + ' · air keluar dari area terbuka', isi,
       'Titik yang belum dikonfirmasi tidak tampil di peta. Berm vs parit: tidak ada air yang melewati keduanya. Berm menahan air (air menggenang di hulunya lalu menyusuri berm ke ujungnya), parit menangkap air lalu mengalirkannya sepanjang parit dan melepasnya di ujung hilir. Pilih sesuai yang ada di lapangan.');
   }
+  /* ---------- penafsir warna coklat/hijau ----------
+     Warna citra dikelompokkan (TwinApp.klasterWarna). Admin melihat contoh warna dan
+     lokasinya, lalu memilih Coklat (bukaan) atau Hijau (vegetasi). Pilihan tersimpan di
+     data air (`warna: [{rgb, kelas, oleh, pada}]`) dan berlaku untuk semua sel berwarna itu. */
+  function klasterIni() { return A().klasterWarna(S().site.citra, S().site.topo); }
+  function kelasDraf(Kl) { return A().kelasKlaster(Kl, AK.warna); }
+  function setWarna(j, kelas) {
+    AK.warna = AK.warna.filter(function (w) { var d = (w.rgb[0] - j.rgb[0]) * (w.rgb[0] - j.rgb[0]) + (w.rgb[1] - j.rgb[1]) * (w.rgb[1] - j.rgb[1]) + (w.rgb[2] - j.rgb[2]) * (w.rgb[2] - j.rgb[2]); return d > 22 * 22; });
+    if (kelas) AK.warna.push({ rgb: j.rgb.slice(), kelas: kelas, oleh: S().email || 'admin', pada: new Date().toISOString() });
+    simpanDrafAir(); jadwalHitungAir(); pasangHasilKeEditor(); isiSampingAir();
+  }
+  function kanvasKlaster(Kl, k) {
+    var t = S().site.topo, NX = t.nx, NY = t.ny, cv = document.createElement('canvas'); cv.width = NX; cv.height = NY;
+    var g = cv.getContext('2d'), img = g.createImageData(NX, NY), dd = img.data, sel = Kl.sel;
+    for (var j = 0; j < NY; j++) for (var i = 0; i < NX; i++) {
+      if (sel[j * NX + i] !== k + 1) continue;
+      var p = ((NY - 1 - j) * NX + i) * 4; dd[p] = 255; dd[p + 1] = 40; dd[p + 2] = 220; dd[p + 3] = 150;
+    }
+    g.putImageData(img, 0, 0);
+    return { kanvas: cv, x0: -t.dx / 2, y0: -t.dx / 2, x1: (NX - 0.5) * t.dx, y1: (NY - 0.5) * t.dx };
+  }
+  // potongan citra 60 m di sekitar titik lokal (x, y)
+  function potonganCitra(x, y, ukuran) {
+    var c = S().site.citra, B = bingkaiTopo(), cv = h('canvas', { width: ukuran, height: ukuran, style: 'width:' + ukuran + 'px;height:' + ukuran + 'px;border-radius:6px;display:block;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.25)' });
+    if (!c || !c.bitmap || !c.meta) return cv;
+    var m = c.meta, bw = c.bitmap.width, bh = c.bitmap.height, E = x + B.e0, N = y + B.n0, r = 30;
+    var sx = (E - r - m.e_min) / (m.e_max - m.e_min) * bw, sy = (m.n_max - (N + r)) / (m.n_max - m.n_min) * bh, sw = 2 * r / (m.e_max - m.e_min) * bw, sh = 2 * r / (m.n_max - m.n_min) * bh;
+    var g = cv.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(c.bitmap, sx, sy, sw, sh, 0, 0, ukuran, ukuran);
+    g.strokeStyle = 'rgba(255,40,220,.95)'; g.lineWidth = 2; g.strokeRect(ukuran / 2 - 4, ukuran / 2 - 4, 8, 8);
+    return cv;
+  }
+  function lihatWarna(j) {
+    AK.sorotWarna = j.k; AK.contohKe = AK.contohKe || {};
+    var ke = AK.contohKe[j.k] = ((AK.contohKe[j.k] == null ? -1 : AK.contohKe[j.k]) + 1) % Math.max(1, j.contoh.length);
+    pasangHasilKeEditor();
+    if (j.contoh[ke]) AK.ed.fokusTitik(j.contoh[ke][0], j.contoh[ke][1], 300);
+    isiSampingAir();
+  }
+  function barisWarna(j, kelasAdm, ringkas) {
+    var kini = kelasAdm || j.otomatis, warnaCss = 'rgb(' + j.rgb.join(',') + ')';
+    function tombol(teks, kls) { return h('button', { type: 'button', 'aria-pressed': String(kini === kls), text: teks, onclick: function () { setWarna(j, kls); } }); }
+    var kiri = h('div', { style: 'display:flex;align-items:center;gap:8px;min-width:0' },
+      h('span', { style: 'width:30px;height:30px;border-radius:7px;flex:none;background:' + warnaCss + ';box-shadow:0 0 0 1px rgba(255,255,255,.3)' + (AK.sorotWarna === j.k ? ',0 0 0 3px #ff28dc' : '') }),
+      h('div', { style: 'min-width:0' },
+        h('div', { style: 'font-size:12px;font-weight:600', text: (kini === 1 ? 'Hijau' : 'Coklat') + (kelasAdm ? ' · ditetapkan admin' : ' · otomatis') }),
+        h('div', { class: 'mini redup', text: angka(j.persen, 1) + ' % area · RGB ' + j.rgb.join(' ') })));
+    var seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Tafsir warna', style: 'width:auto;flex:none' }, tombol('Coklat', 2), tombol('Hijau', 1));
+    var isi = [h('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:8px' }, kiri, seg)];
+    if (!ringkas) {
+      var cth = h('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap' });
+      j.contoh.forEach(function (q, n2) { var kv = potonganCitra(q[0], q[1], 52); kv.title = 'Contoh lokasi ' + (n2 + 1) + ' (kotak magenta = sel berwarna ini)'; kv.onclick = function () { AK.sorotWarna = j.k; AK.contohKe = AK.contohKe || {}; AK.contohKe[j.k] = n2; pasangHasilKeEditor(); AK.ed.fokusTitik(q[0], q[1], 300); isiSampingAir(); }; cth.appendChild(kv); });
+      cth.appendChild(h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(AK.sorotWarna === j.k), text: AK.sorotWarna === j.k ? 'Lokasi berikutnya' : 'Tampilkan lokasinya', onclick: function () { lihatWarna(j); } }));
+      if (kelasAdm) cth.appendChild(h('button', { type: 'button', class: 'btn btn-kecil', text: 'Kembali otomatis', onclick: function () { setWarna(j, 0); } }));
+      isi.push(cth);
+    }
+    return h('div', { style: 'display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px solid var(--line)' }, isi);
+  }
+  function kartuWarna() {
+    var Kl = klasterIni();
+    if (!Kl) return kartu('Penafsir warna coklat/hijau', h('div', { class: 'ket', text: 'Citra aktif belum ada atau terlalu kecil untuk ditafsirkan.' }));
+    var kel = kelasDraf(Kl), urut = Kl.daftar.slice().sort(function (a, b) { return b.sel - a.sel; });
+    // jenis yang paling meragukan (aturan otomatis terbelah) ditampilkan dulu bila diminta
+    if (AK.warnaUrut === 'ragu') urut.sort(function (a, b) { return Math.abs(a.fraksiVeg - 0.5) - Math.abs(b.fraksiVeg - 0.5); });
+    var nAdm = kel.filter(Boolean).length;
+    var isi = [h('div', { class: 'ket', style: 'color:var(--ink)', text: 'Warna citra dikelompokkan menjadi ' + Kl.daftar.length + ' jenis. Lihat contoh lokasinya (kotak magenta di potongan citra; tombol Tampilkan lokasinya mewarnai semua sel berwarna itu di peta), lalu pilih Coklat (area terbuka) atau Hijau (vegetasi). Pilihan Anda berlaku untuk semua tempat berwarna sama, dan titik limpasan dihitung ulang.' }),
+      h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
+        h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(AK.warnaUrut !== 'ragu'), text: 'Urut: area terbesar', onclick: function () { AK.warnaUrut = 'luas'; isiSampingAir(); } }),
+        h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(AK.warnaUrut === 'ragu'), text: 'Urut: paling meragukan', onclick: function () { AK.warnaUrut = 'ragu'; isiSampingAir(); } }),
+        AK.sorotWarna != null ? h('button', { type: 'button', class: 'btn btn-kecil', text: 'Hapus sorotan magenta', onclick: function () { AK.sorotWarna = null; pasangHasilKeEditor(); isiSampingAir(); } }) : null)];
+    var tampil = AK.warnaSemua ? urut : urut.slice(0, 8);
+    tampil.forEach(function (j) { isi.push(barisWarna(j, kel[j.k], false)); });
+    if (!AK.warnaSemua) isi.push(h('button', { type: 'button', class: 'btn btn-kecil', style: 'align-self:flex-start', text: 'Tampilkan semua ' + Kl.daftar.length + ' warna', onclick: function () { AK.warnaSemua = true; isiSampingAir(); } }));
+    var kw = kartu('Penafsir warna coklat/hijau · ' + nAdm + ' ditetapkan', isi, 'Warna yang belum ditetapkan memakai aturan otomatis (hijau, gelap, dan sedikit biru = vegetasi). Bila citra diganti, pilihan dipakai lagi untuk warna yang mirip.');
+    kw.setAttribute('data-kartu-warna', '1');
+    return kw;
+  }
+  // warna di sel tempat air keluar (sisi coklat) dan sel sesudahnya (sisi hijau)
+  function kotakWarnaKeluar(l) {
+    var Kl = klasterIni(); if (!Kl || !l.keluar || l.keluar.length < 4) return null;
+    var kel = kelasDraf(Kl), t = S().site.topo, jenis = {}, urut = [];
+    function catat(x, y, sisi) {
+      var i = Math.round(x / t.dx), j2 = Math.round(y / t.dx), k = Kl.sel[j2 * t.nx + i] - 1; if (k < 0) return;
+      if (!jenis[k]) { jenis[k] = { j: Kl.daftar[k], sisi: {} }; urut.push(k); } jenis[k].sisi[sisi] = 1;
+    }
+    for (var q = 0; q + 3 < l.keluar.length && q < 40; q += 4) { catat(l.keluar[q], l.keluar[q + 1], 'keluar'); catat(l.keluar[q + 2], l.keluar[q + 3], 'masuk'); }
+    if (!urut.length) return null;
+    var isi = [h('b', { style: 'font-size:12.5px;font-weight:600', text: 'Warna di sel ungu' }),
+      h('div', { class: 'ket', text: 'Sel ungu dibaca coklat, sel sesudahnya hijau. Bila pembacaan warnanya salah, ubah di sini; berlaku untuk semua tempat berwarna sama.' })];
+    urut.forEach(function (k) {
+      var e = jenis[k];
+      isi.push(h('div', { class: 'mini redup', style: 'margin-top:4px', text: e.sisi.keluar && e.sisi.masuk ? 'Di sel ungu dan sesudahnya' : e.sisi.keluar ? 'Di sel ungu (dibaca sebagai asal air)' : 'Sesudah sel ungu (tempat air masuk)' }));
+      isi.push(barisWarna(e.j, kel[k], true));
+      var cth = h('div', { style: 'display:flex;gap:6px' }), kv = potonganCitra(l.keluar[0], l.keluar[1], 52); kv.title = 'Citra di sel ungu'; kv.onclick = function () { AK.ed.fokusTitik(l.xm, l.ym, 60); };
+      if (k === urut[0]) { cth.appendChild(kv); cth.appendChild(h('button', { type: 'button', class: 'btn btn-kecil', text: 'Tampilkan lokasi warna ini', onclick: function () { AK.sorotWarna = k; pasangHasilKeEditor(); isiSampingAir(); } })); isi.push(cth); }
+    });
+    return h('div', { style: 'display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line)' }, isi);
+  }
   /* Kenapa titik masih ungu: di mana air masih menyeberang, dan apa hubungannya dengan
      berm/parit yang digambar admin. */
   function dalamCincinDatar(x, y, xy) {
@@ -9267,10 +9463,11 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       else if (jenis === 'berm') pesan.push('Penyebab: air tidak menembus berm, tetapi mengalir mengitari ujungnya (ujung terdekat ±' + angka(dU) + ' m dari sel ungu). Perpanjang ujung berm ' + ff.nama + ' melewati sel ungu sampai ke tanah yang lebih tinggi, atau sambungkan ke berm lain.');
       else pesan.push('Penyebab: parit ' + ff.nama + ' menangkap sebagian air, tetapi air dari bagian lain daerah hulu tetap sampai ke sel ungu, atau keluar lagi di ujung parit (ujung terdekat ±' + angka(dU) + ' m). Perpanjang parit melewati sel ungu dan arahkan ujung hilirnya ke sump.');
     }
-    pesan.push('Tombol Coklat/hijau di atas peta menampilkan area yang dianggap bukaan (coklat) dan vegetasi (hijau). Bila pembacaannya salah di sini, pilih Abaikan.');
+    pesan.push('Tombol Coklat/hijau di atas peta menampilkan area yang dianggap bukaan (coklat) dan vegetasi (hijau). Bila warnanya salah dibaca, betulkan di "Warna di sel ungu" di bawah, atau di Penafsir warna.');
     return h('div', { style: 'display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:10px;background:rgba(199,125,255,.12);box-shadow:inset 0 0 0 1px rgba(199,125,255,.45)' },
       h('b', { style: 'font-size:12.5px;font-weight:600;color:#e9d5ff', text: 'Kenapa masih ungu (masih keluar)?' }),
       pesan.map(function (t) { return h('div', { class: 'ket', style: 'color:var(--ink)', text: t }); }),
+      kotakWarnaKeluar(l),
       h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
         h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(!!AK.tutupan), text: AK.tutupan ? 'Sembunyikan coklat/hijau' : 'Tampilkan coklat/hijau', onclick: function () { AK.tutupan = !AK.tutupan; if (AK.btnTutupan) AK.btnTutupan.setAttribute('aria-pressed', String(AK.tutupan)); pasangHasilKeEditor(); isiSampingAir(); } }),
         h('button', { type: 'button', class: 'btn btn-kecil', text: 'Fokus ke sel ungu', onclick: function () { AK.ed.fokusTitik(l.xm, l.ym, 70); } }),
