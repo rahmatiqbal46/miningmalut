@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 9.1 (24 September 2026)
+// Versi 10 (19 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -220,12 +220,59 @@
 // bukan batas shift. Deteksi, perekaman, jejak, dan /api/ringkas?dari=&sampai=
 // tidak berubah.
 //
+// Versi 10 — BIAYA ISOLATE DINGIN (19 Oktober 2026). Batas CPU jebol lagi:
+// 1.000+ kali per hari, 10 e-mail di bulan Oktober, ±2 error per menit saat
+// front aktif. Dengan dua pemicu, blok C (dipikul A) tidak tersimpan 67 menit
+// berturut-turut, dan blok B ikut mati saat beban penuh — padahal B hanya
+// mengerjakan dua putaran.
+//
+// Yang DIUKUR lebih dulu (Node, isolate baru tiap pemanggilan, armada 45 unit):
+// pekerjaan sekali-per-isolate di jalur cron menghabiskan sebagian besar jatah,
+// dan biayanya ikut tumbuh bersama kerapatan titik jalan dari Digital Twin:
+//
+//                              493 titik    1.444 titik    2.842 titik
+//    bangunGrid() .............  1,3 ms       3,1 ms         4,8 ms
+//    periksaJalan() dari kv ....  0,5 ms       0,8 ms         1,8 ms
+//    JSON.parse jalan ..........  0,1 ms       0,3 ms         0,6 ms
+//
+// Cloudflare sering menjalankan cron di isolate baru, jadi biaya itu dibayar
+// hampir di setiap pemanggilan — bukan sekali seumur Worker seperti dugaan v5.
+//
+//  1. Indeks grid sel 55 m diganti INDEKS POTONGAN dua tingkat: kotak batas per
+//     ruas, lalu per potongan 8 penggal, keduanya dilebarkan toleransi dan
+//     disimpan di typed array. Membangunnya satu lintasan atas titik tanpa Map
+//     dan tanpa kunci teks (2.842 titik: 4,8 → 0,46 ms); mencari = memeriksa
+//     kotak lalu mengukur jarak penggal di kotak yang kena. Hasil cariRuas()
+//     IDENTIK dengan grid: himpunan penggal dalam toleransi sama, urutan
+//     pemeriksaan sama (ruas lalu penggal), aturan batas terendah sama. Diuji
+//     pada 1.080.000 titik acak di 36 kombinasi jalan/toleransi/batas: 0 beda.
+//  2. Jalan yang dimuat dari baris kv 'jalan' tidak diperiksa ulang. Baris itu
+//     hanya ditulis Worker ini sendiri SESUDAH periksaJalan() lolos (blok A,
+//     periksaGudangJalan). Pemeriksaan penuh tetap berlaku untuk isi dari
+//     gudang Supabase. MAKS_SEL tetap dihitung, karena aturannya harus sama
+//     dengan Supabase dan Digital Twin.
+//  3. /api/unit — dipanggil tiap 10 detik oleh tiap tab — dijawab JSON ringkas,
+//     bukan berindentasi. /api/status tetap berindentasi untuk dibaca manusia.
+//  4. Log klaim menyebut isolate=baru|lama, supaya seberapa sering cron jatuh
+//     ke isolate dingin bisa dibaca di Workers Logs, bukan ditebak.
+//
+// Aturan deteksi, jadwal enam cek per menit, klaim blok, jejak, dan seluruh
+// alamat API tidak berubah: pada simulasi 25 menit dengan 1, 2, dan 3 pemicu,
+// isolate dingin dan hangat, tabel pelanggaran, state, dan jejak identik byte
+// demi byte dengan versi 9.1. CPU rata-rata per pemanggilan (Node, isolate
+// dingin, tiga pemicu): jalan 493 titik 6,1–7,2 → 5,2–5,5 ms; 2.842 titik
+// 17,4–19,6 → 5,3–5,9 ms.
+//
+// WAJIB bersama versi ini: pemicu cron KETIGA. Dengan dua pemicu, blok A masih
+// memikul blok C sendirian dan pemanggilannya dua kali lebih berat.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
 // berganti (bawaan: proyek MiningMalut, kunci anon publik yang sama dengan
 // index.html).
 // Cron (Settings → Triggers): TIGA pemicu yang masing-masing menyala tiap menit,
-// tulisannya bebas asal berbeda, misalnya  */1 * * * *  ·  * * * * *  ·  0-59 * * * *
+// tulisannya bebas asal berbeda. Terpasang per 19 Oktober 2026:
+//   */1 * * * *  ·  0-59 * * * *  ·  (ketiga, ditambahkan bersama v10) * 0-23 * * *
 // Dengan hanya satu pemicu, Worker tetap bekerja penuh (blok A memikul semuanya).
 // =============================================================================
 
@@ -279,10 +326,12 @@ let jalanDiperiksa = 0;
    - Titik harus di wilayah Pulau Pakal (± 2–3 km dari site).
    - Jumlah sel indeks grid dibatasi: penggal yang sangat panjang tanpa titik
      antara, atau jaringan yang jauh lebih besar, membuat bangunGrid() di isolate
-     dingin menghabiskan anggaran CPU 10 ms dan blok dihentikan Cloudflare. */
+     dingin menghabiskan anggaran CPU 10 ms dan blok dihentikan Cloudflare.
+     (Sejak versi 10 grid itu diganti indeks potongan, tapi batas MAKS_SEL
+     dipertahankan: aturannya dipakai bersama Supabase dan Digital Twin.) */
 const WILAYAH = { lonMin: 128.30, lonMaks: 128.38, latMin: 0.75, latMaks: 0.83 };
 const MAKS_TITIK = 20000;
-const MAKS_SEL = 15000;           // ±11 ms membangun indeks di isolate dingin; jaringan sekarang ±2.500
+const MAKS_SEL = 15000;           // aturan bersama Supabase/Digital Twin (lihat bangunIndeks)
 const POLA_NAMA = /^[A-Za-z0-9][A-Za-z0-9 _.()\/+-]{0,39}$/;
 function periksaJalan(d) {
   if (!d || typeof d !== "object") return "isi kosong";
@@ -315,7 +364,7 @@ function periksaJalan(d) {
   return null;
 }
 
-/* Memasang jalan yang sudah diperiksa. Grid indeks dibangun ulang saat dipakai. */
+/* Memasang jalan yang sudah diperiksa. Indeks potongan dibangun ulang saat dipakai. */
 function pasangJalan(d, versi, judul) {
   RUAS = d.ruas.map((r) => {
     let bb = r.bb;
@@ -328,17 +377,23 @@ function pasangJalan(d, versi, judul) {
   BATAS_LUAR = Number(d.batas_luar);
   TOLERANSI_RUAS = d.toleransi_m == null ? TOLERANSI_RUAS_BAWAAN : Number(d.toleransi_m);
   BATAS_MIN = RUAS.reduce((m, r) => Math.min(m, r.b), BATAS_LUAR);
-  grid = null;
+  indeks = null;
   JALAN = { versi, judul: judul || ("jalan v" + versi), dimuat: Date.now() };
 }
 
-/* Isi jalan dari baris kv 'jalan' (ditulis blok A saat versi berganti). */
+/* Isi jalan dari baris kv 'jalan' (ditulis blok A saat versi berganti).
+
+   Versi 10: TIDAK diperiksa ulang dengan periksaJalan(). Baris ini hanya ditulis
+   oleh periksaGudangJalan() sesudah pemeriksaan penuh lolos, dan memeriksanya
+   lagi di setiap isolate dingin memakan 0,5–1,8 ms dari jatah 10 ms. Yang
+   dicek di sini hanya bentuknya, supaya isi yang rusak tidak dipasang. */
 async function muatJalanKV(env) {
   const teks = await ambilKV(env, "jalan");
   if (!teks) return false;
   let j = null;
   try { j = JSON.parse(teks); } catch (e) { return false; }
-  if (!j || !j.versi || periksaJalan(j.data)) return false;
+  const d = j && j.data;
+  if (!j || !j.versi || !d || !Array.isArray(d.ruas) || !d.ruas.length || !(Number(d.batas_luar) > 0)) return false;
   if (j.versi !== JALAN.versi) pasangJalan(j.data, j.versi, j.judul);
   return true;
 }
@@ -446,6 +501,8 @@ const SIMPAN_HARI = 120;
 // pada tiap permintaan.
 let tabelSiap = false;
 let sidCache = null;
+// true sampai pemanggilan cron pertama di isolate ini — untuk log (versi 10).
+let isolateBaru = true;
 
 // Ringkasan shift untuk kartu Home dipakai bersama selama ini, lintas tab dan
 // lintas isolate (lewat baris `kv`), supaya jumlah penonton tidak melipatgandakan
@@ -471,8 +528,10 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
-const json = (d, s = 200) =>
-  new Response(JSON.stringify(d, null, 2), {
+/* Berindentasi hanya bila diminta (/api/status, dibaca manusia). /api/unit
+   dipanggil tiap 10 detik oleh tiap tab, jadi jawabannya dibuat ringkas (v10). */
+const json = (d, s = 200, rapi = false) =>
+  new Response(rapi ? JSON.stringify(d, null, 2) : JSON.stringify(d), {
     status: s,
     headers: { "Content-Type": "application/json", ...CORS },
   });
@@ -689,10 +748,26 @@ function jarakKeSegmen(lon, lat, x1, y1, x2, y2) {
 
 /* Ruas mana yang berlaku di satu titik.
 
-   Memeriksa 493 titik untuk tiap unit, enam kali per menit, memakan ~35 ms CPU
-   — tiga kali anggaran paket gratis. Karena itu ruas jalan diindeks ke grid sel
-   ~55 m sekali per isolate: pencarian tinggal mengambil daftar penggal jalan di
-   sel tempat unit berada, biasanya nol sampai beberapa saja.
+   Memeriksa seluruh penggal jalan untuk tiap unit, enam kali per menit, memakan
+   ~35 ms CPU — tiga kali anggaran paket gratis. Karena itu penggal jalan
+   diindeks sekali per isolate.
+
+   Versi 5–9 memakai grid sel ~55 m (Map berkunci teks "x:y"). Grid itu murah
+   saat dicari tapi MAHAL saat dibangun: 1,3 ms untuk 493 titik, 4,8 ms untuk
+   2.842 titik — dan Cloudflare sering menjalankan cron di isolate baru, jadi
+   biaya bangun itu dibayar hampir di setiap pemanggilan (versi 10).
+
+   Sekarang INDEKS POTONGAN: tiap ruas dipotong per SEGMEN_PER_POTONG penggal,
+   dan tiap potongan — juga tiap ruas utuh — menyimpan kotak batasnya yang
+   dilebarkan padSel(toleransi), dalam typed array. Membangunnya satu lintasan atas titik, tanpa Map dan tanpa
+   kunci teks. Mencari = memeriksa kotak (perbandingan angka saja), lalu
+   mengukur jarak penggal hanya di potongan yang kotaknya memuat titik.
+
+   Hasilnya identik dengan grid. Penggal yang berjarak ≤ toleransi pasti berada
+   di dalam kotak potongannya (pelebaran > toleransi pada kedua sumbu), jadi
+   himpunan penggal yang lolos uji jarak sama persis; urutan pemeriksaannya juga
+   sama (ruas menaik, lalu penggal menaik), sehingga ruas yang menang pada batas
+   yang seri pun sama.
 
    Bila beberapa ruas bertumpang tindih — hal biasa di persimpangan — yang
    dipakai adalah BATAS TERENDAH, aturan yang sama dengan limitFor() di halaman. */
@@ -700,49 +775,81 @@ function jarakKeSegmen(lon, lat, x1, y1, x2, y2) {
    dilanggar, jadi pencocokan ruas boleh dilewati sama sekali. */
 let BATAS_MIN = RUAS.reduce((m, r) => Math.min(m, r.b), BATAS_LUAR);
 
-const SEL = 0.0005;               // sisi sel grid, derajat
-const PAD_SEL = 0.00025;          // pelebaran kotak penggal, ~28 m
+/* SEL dan PAD_SEL tetap dipakai periksaJalan() untuk menghitung MAKS_SEL —
+   aturan yang dipakai bersama Supabase (site__cek_jalan_worker) dan Digital Twin,
+   jadi tidak boleh berubah sendirian di sini, walau grid-nya sudah tidak ada. */
+const SEL = 0.0005;               // sisi sel grid lama, derajat (aturan MAKS_SEL)
+const PAD_SEL = 0.00025;          // pelebaran kotak, ~28 m
 /* Pelebaran harus melebihi toleransi. Dengan toleransi 20 m cukup 28 m; bila
    admin menaikkannya (paling besar 60 m) pelebaran ikut naik, supaya titik yang
-   masih dalam toleransi tetap menemukan ruasnya di sel tempatnya berada. */
+   masih dalam toleransi tetap menemukan ruasnya. */
 function padSel(tol) { return Math.max(PAD_SEL, (tol + 5) / 111000); }
-let grid = null;
 
-function bangunGrid() {
-  grid = new Map();
+const SEGMEN_PER_POTONG = 8;
+/* Dua tingkat: kotak per RUAS (dilewati utuh bila titik di luarnya), lalu kotak
+   per POTONGAN di dalam ruas itu. Di isolate dingin kode berjalan tanpa JIT,
+   jadi yang dihemat adalah jumlah putaran loop, bukan hanya alokasi. */
+let indeks = null;   // { nr, kotakRuas, c0, c1, kotak, dari, sampai }
+
+function bangunIndeks() {
   const PAD = padSel(TOLERANSI_RUAS);
-  for (let i = 0; i < RUAS.length; i++) {
-    const p = RUAS[i].p;
-    for (let j = 0; j < p.length - 1; j++) {
-      const x1 = p[j][0], y1 = p[j][1], x2 = p[j + 1][0], y2 = p[j + 1][1];
-      const xa = Math.floor((Math.min(x1, x2) - PAD) / SEL);
-      const xb = Math.floor((Math.max(x1, x2) + PAD) / SEL);
-      const ya = Math.floor((Math.min(y1, y2) - PAD) / SEL);
-      const yb = Math.floor((Math.max(y1, y2) + PAD) / SEL);
-      for (let a = xa; a <= xb; a++) {
-        for (let b = ya; b <= yb; b++) {
-          const k = a + ":" + b;
-          let arr = grid.get(k);
-          if (!arr) { arr = []; grid.set(k, arr); }
-          arr.push([i, x1, y1, x2, y2]);
-        }
-      }
-    }
+  const nr = RUAS.length;
+  let n = 0;
+  for (let i = 0; i < nr; i++) {
+    const seg = RUAS[i].p.length - 1;
+    if (seg > 0) n += Math.ceil(seg / SEGMEN_PER_POTONG);
   }
+  const kotakRuas = new Float64Array(nr * 4), c0 = new Int32Array(nr), c1 = new Int32Array(nr);
+  const kotak = new Float64Array(n * 4), dari = new Int32Array(n), sampai = new Int32Array(n);
+  let c = 0;
+  for (let i = 0; i < nr; i++) {
+    const p = RUAS[i].p, seg = p.length - 1;
+    let rx0 = Infinity, ry0 = Infinity, rx1 = -Infinity, ry1 = -Infinity;
+    c0[i] = c;
+    for (let j0 = 0; j0 < seg; j0 += SEGMEN_PER_POTONG) {
+      const j1 = Math.min(seg, j0 + SEGMEN_PER_POTONG);   // penggal j0 … j1-1, titik j0 … j1
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let j = j0; j <= j1; j++) {
+        const x = p[j][0], y = p[j][1];
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      const o = c * 4;
+      kotak[o] = x0 - PAD; kotak[o + 1] = y0 - PAD; kotak[o + 2] = x1 + PAD; kotak[o + 3] = y1 + PAD;
+      dari[c] = j0; sampai[c] = j1;
+      if (x0 < rx0) rx0 = x0; if (x1 > rx1) rx1 = x1;
+      if (y0 < ry0) ry0 = y0; if (y1 > ry1) ry1 = y1;
+      c++;
+    }
+    c1[i] = c;
+    const o = i * 4;
+    kotakRuas[o] = rx0 - PAD; kotakRuas[o + 1] = ry0 - PAD; kotakRuas[o + 2] = rx1 + PAD; kotakRuas[o + 3] = ry1 + PAD;
+  }
+  indeks = { nr, kotakRuas, c0, c1, kotak, dari, sampai };
 }
 
 function cariRuas(lat, lon) {
-  if (!grid) bangunGrid();
-  const arr = grid.get(Math.floor(lon / SEL) + ":" + Math.floor(lat / SEL));
-  if (!arr) return { nama: null, batas: BATAS_LUAR };
+  if (!indeks) bangunIndeks();
+  const { nr, kotakRuas, c0, c1, kotak, dari, sampai } = indeks;
 
   let nama = null, batas = BATAS_LUAR;
-  for (let i = 0; i < arr.length; i++) {
-    const e = arr[i], r = RUAS[e[0]];
+  for (let i = 0; i < nr; i++) {
+    const r = RUAS[i];
     // Ruas yang tidak akan menurunkan batas tidak perlu diukur jaraknya.
     if (nama !== null && r.b >= batas) continue;
-    if (jarakKeSegmen(lon, lat, e[1], e[2], e[3], e[4]) > TOLERANSI_RUAS) continue;
-    nama = r.n; batas = r.b;
+    const q = i * 4;
+    if (lon < kotakRuas[q] || lat < kotakRuas[q + 1] || lon > kotakRuas[q + 2] || lat > kotakRuas[q + 3]) continue;
+    const p = r.p;
+    let kena = false;
+    for (let c = c0[i]; c < c1[i] && !kena; c++) {
+      const o = c * 4;
+      if (lon < kotak[o] || lat < kotak[o + 1] || lon > kotak[o + 2] || lat > kotak[o + 3]) continue;
+      for (let j = dari[c]; j < sampai[c]; j++) {
+        if (jarakKeSegmen(lon, lat, p[j][0], p[j][1], p[j + 1][0], p[j + 1][1]) > TOLERANSI_RUAS) continue;
+        nama = r.n; batas = r.b; kena = true;
+        break;   // penggal lain di ruas yang sama berbatas sama — tidak bisa menurunkannya
+      }
+    }
   }
   return { nama, batas };
 }
@@ -754,7 +861,7 @@ function cariRuas(lat, lon) {
 
    Ini penamaan, BUKAN penilaian: pelanggarannya tetap dinilai dengan
    BATAS_LUAR, dan kolom `ruas` tetap kosong. Sengaja memindai seluruh 493 titik
-   karena indeks grid hanya mengenal sel di sekitar jalan, sedangkan titik yang
+   karena indeks hanya mengenal kotak di sekitar jalan, sedangkan titik yang
    dicari justru berada di luarnya. Boleh mahal karena hanya dijalankan sekali
    saat sebuah pelanggaran dibuka, bukan tiap pembacaan. */
 function jarakKeKotak(lon, lat, bb) {
@@ -1319,7 +1426,7 @@ export default {
           if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
         }
         return json({
-          versi_worker: 9.1,
+          versi_worker: 10,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
@@ -1329,10 +1436,11 @@ export default {
           versi_jalan: JALAN.versi,
           judul_jalan: JALAN.judul,
           jalan_dimuat: JALAN.dimuat,
+          titik_jalan: RUAS.reduce((a, r) => a + r.p.length, 0),
           jejak: JEJAK_HARI + " hari terakhir",
           terbagi,
           blok,
-        });
+        }, 200, true);
       }
 
       if (url.pathname === "/api/pelanggaran") {
@@ -1547,7 +1655,8 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
         console.log(`pemicu "${cron}": ketiga blok menit ini sudah dipegang, dilewati`);
         return;
       }
-      console.log(`blok=${saya} diklaim pemicu "${cron}"`);
+      console.log(`blok=${saya} diklaim pemicu "${cron}" isolate=${isolateBaru ? "baru" : "lama"}`);
+      isolateBaru = false;
 
       // Blok sendiri. Kalau state tidak terbaca, menit ini dilewati utuh (§21.8).
       await tidurSampai(T + BLOK_PETA[saya].mulai);
