@@ -480,7 +480,7 @@
   .lk-rinci[open] summary{margin-bottom:8px}
   .lk-tabel{box-shadow:inset 0 0 0 1px var(--border-soft)}
   .lk-tabel td input{min-width:90px}
-  .adv{margin-top:4px}
+  .adv{margin-top:4px;min-width:0}   /* tabel lebar di Advanced Data bergulir di dalam .table-wrap, tidak melebarkan kolom isian */
   .adv-tombol{appearance:none;border:0;background:none;cursor:pointer;font-family:var(--font);font-size:var(--f-body);font-weight:650;color:var(--text-secondary);display:inline-flex;align-items:center;gap:9px;padding:8px 2px}
   .adv-tombol::before{content:'';width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s var(--ease)}
   .adv-tombol[aria-expanded="true"]::before{transform:rotate(45deg)}
@@ -583,6 +583,7 @@
             <input type="file" id="fileQaqc" accept=".xlsx" hidden>
             <span class="kecil muted" id="qaqcInfo"></span>
           </div>
+          <div class="kecil" id="qaqcKoreksi" style="margin:6px 0 0" hidden></div>
           <details class="lk-rinci" id="rinciQaqc"><summary>Tabel QAQC harian</summary>
             <p class="kecil muted" style="margin:6px 0">Semua kolom (ore, waste, LGO rampstock ANTAM dan BUMD, serta barging BUMD) wajib diisi tiap hari s.d. tanggal data; bila tidak ada, isi <b>0</b>. Sel kuning = belum diisi.</p>
             <label class="kecil lk-opsi"><input type="checkbox" id="cbLgo" checked> LGO Rampstock dihitung sebagai waste (TMM = TMM QAQC)</label>
@@ -620,6 +621,7 @@
               <button type="button" data-adv="drawm" aria-pressed="false">DRA &amp; WM</button>
               <button type="button" data-adv="dasbor" aria-pressed="false">Setelan dashboard</button>
               <button type="button" data-adv="arsip" aria-pressed="false">Arsip bulan</button>
+              <button type="button" data-adv="koreksi" aria-pressed="false" id="advKoreksi" hidden>Koreksi ore QAQC</button>
               <button type="button" data-adv="template" aria-pressed="false" id="advTemplate" hidden>Template</button>
             </div>
 
@@ -688,6 +690,29 @@
               <div class="card"><div class="table-wrap" style="border:0"><table id="tblArsip"><tbody><tr><td class="muted">Memuat daftar bulan…</td></tr></tbody></table></div></div>
               <div class="section-head"><h2>Catatan unduhan terakhir</h2><span class="eyebrow">Loader terpilih, porsi EFO, dan hari tanpa data Minerva. Hanya selama halaman terbuka.</span></div>
               <div class="card"><div class="log" id="logUnduh">Belum ada unduhan di sesi ini.</div></div>
+            </div>
+
+            <div class="adv-p kunci-sibuk" id="adv-koreksi" hidden>
+              <div class="section-head"><h2>Koreksi ore QAQC</h2><span class="eyebrow">Total ore sebulan mengikuti <b>Produksi Pakal</b> (QAQC). Pembagian ANTAM/PCM dan angka per hari mengikuti <b>Laporan Harian Produksi</b> bulan itu. Hanya untuk bulan yang sudah tutup.</span></div>
+              <div class="card">
+                <div class="kecil muted" style="margin:0 0 10px">Pilih sekaligus berkas Produksi Pakal (satu sheet per bulan) dan Laporan Harian Produksi bulan-bulan yang ingin dikoreksi. Bulan laporan harian dibaca dari nama berkasnya (mis. "Laporan Harian … April 2026"). Laporan harian yang sudah diunggah di langkah 2 bulan itu tidak perlu dipilih lagi.</div>
+                <div class="baris-btn">
+                  <label class="btn primary" for="fileKoreksi">Pilih berkas…</label>
+                  <input type="file" id="fileKoreksi" accept=".xlsx" multiple hidden>
+                  <span class="kecil" id="koreksiInfo"></span>
+                </div>
+                <div id="koreksiPratinjau" hidden>
+                  <div class="table-wrap" style="margin-top:10px"><table id="tblKoreksi"></table></div>
+                  <div class="kecil muted" id="koreksiCatatan" style="margin-top:6px"></div>
+                  <div class="baris-btn" style="margin-top:10px">
+                    <button class="btn primary" id="btnKoreksiSimpan" type="button">Simpan koreksi</button>
+                    <button class="btn" id="btnKoreksiBatal" type="button">Batal</button>
+                  </div>
+                </div>
+                <div id="koreksiHasil" style="margin-top:10px"></div>
+              </div>
+              <div class="section-head"><h2>Bulan yang sudah dikoreksi</h2><span class="eyebrow">Ore bulan-bulan ini di dashboard, Excel 1on1, dan YTD = total QAQC Produksi Pakal.</span></div>
+              <div class="card"><div class="kecil" id="koreksiAda">Memuat…</div></div>
             </div>
 
             <div class="adv-p kunci-sibuk" id="adv-template" hidden>
@@ -1133,6 +1158,88 @@ const OE1 = (function () {
     return hasil;
   }
 
+  // ------------------------------------------------------------------ nama bulan di teks (nama sheet, nama berkas)
+  // {bulan: 1..12 | null, tahun: 4 digit | null}. Nama lengkap (Indonesia/Inggris) didahulukan; singkatan hanya bila
+  // tidak ada nama lengkap. Bulan dianggap terbaca bila hanya satu bulan yang disebut.
+  const BULAN_PENUH = [['januari', 'january'], ['februari', 'pebruari', 'february'], ['maret', 'march'], ['april'], ['mei', 'may'], ['juni', 'june'],
+    ['juli', 'july'], ['agustus', 'august'], ['september'], ['oktober', 'october'], ['november', 'nopember'], ['desember', 'december']];
+  const BULAN_SINGKAT = [['jan'], ['feb', 'peb'], ['mar'], ['apr'], [], ['jun'], ['jul'], ['agu', 'agt', 'ags', 'agst', 'aug'], ['sep', 'sept'], ['okt', 'oct'], ['nov', 'nop'], ['des', 'dec']];
+  function bulanDariTeks(teks) {
+    const kata = String(teks == null ? '' : teks).toLowerCase().match(/[a-z]+|\d+/g) || [];
+    const cari = daftar => { const ada = new Set(); daftar.forEach((n, i) => { if (n.some(x => kata.indexOf(x) >= 0)) ada.add(i + 1); }); return ada.size === 1 ? [...ada][0] : null; };
+    const th = kata.filter(k => /^(19|20)\d\d$/.test(k)).map(Number);
+    return { bulan: cari(BULAN_PENUH) || cari(BULAN_SINGKAT), tahun: th.length && th.every(x => x === th[0]) ? th[0] : null };
+  }
+
+  // ------------------------------------------------------------------ Produksi Pakal (QAQC): total ore per bulan
+  // Berkas QAQC "Produksi Pakal <tahun>": satu sheet per bulan bernama "<Bulan> <tahun>" (mis. "September 2026", juga
+  // "Sept 2026", "Agustus 2026 (rev)"). Baris kepala memuat "Pile" dan "Tonnage" (kolomnya bisa bergeser: Juli 2026 mulai
+  // kolom A); rincian satu baris per pile ("01 September 2026/Lokasi/ID"); di bawahnya blok "Production Summary" dengan
+  // baris "Total". Total bulan = baris Total (atau "Grand Total") pertama sesudah label "Production Summary" (angka resmi
+  // QAQC); ada label tetapi tanpa Total sesudahnya: jumlah rincian pile (baris Total di atas label bisa subtotal); tanpa
+  // label: baris Total terakhir; tanpa baris Total: jumlah rincian pile. Rincian ikut dikembalikan supaya selisihnya
+  // terlihat (rincian pile bisa kurang dari Total). Beberapa sheet untuk bulan yang sama (mis. salinan
+  // "September 2026 (2)") hanya dipakai bila isinya sama; bila berbeda, bulan itu ditandai ambigu dan tidak dipakai.
+  function bacaSheetPakal(rows, ym) {
+    const rePile = /^\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s*\//;
+    let hr = -1, cP = -1, cT = -1;
+    for (let r = 0; r < Math.min(rows.length, 40) && hr < 0; r++) {
+      const row = rows[r] || [], teks = re => row.findIndex(v => typeof v === 'string' && re.test(v));
+      const p = teks(/^\s*pile\s*$/i), t = teks(/^\s*tonnage\s*$/i);
+      if (p >= 0 && t >= 0) { hr = r; cP = p; cT = t; }
+    }
+    if (hr < 0) return { galat: 'kolom Pile dan Tonnage tidak ditemukan' };
+    let rincian = 0, pile = 0, akhir = '', ringkasan = false, totalRingkasan = null, totalAkhir = null;
+    for (let r = hr + 1; r < rows.length; r++) {
+      const row = rows[r]; if (!row) continue;
+      const p = row[cP], t = row[cT];
+      const m = typeof p === 'string' ? rePile.exec(p) : null;
+      if (m && typeof t === 'number' && isFinite(t)) {
+        rincian += t; pile++;
+        const b = bulanDariTeks(m[2]).bulan;
+        const d = b ? `${m[3]}-${String(b).padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+        if (d.slice(0, 7) === ym && d > akhir) akhir = d;     // tanggal di ID pile yang salah ketik bulan tidak dipakai
+        continue;
+      }
+      if (!ringkasan && row.some(v => typeof v === 'string' && /production\s*summary/i.test(v))) { ringkasan = true; continue; }
+      if (typeof p === 'string' && /^\s*(grand\s+)?total\s*$/i.test(p) && typeof t === 'number' && isFinite(t)) {
+        if (!ringkasan) totalAkhir = t;
+        else if (totalRingkasan === null) totalRingkasan = t;
+      }
+    }
+    const total = ringkasan ? totalRingkasan : totalAkhir;
+    if (!pile && total === null) return { galat: 'tidak ada pile' };
+    return { total: total !== null ? total : rincian, adaTotal: total !== null, rincian, pile, akhir };
+  }
+  async function parseProduksiPakal(u8) {
+    const namaBulanSheet = n => { const b = bulanDariTeks(n); return b.bulan && b.tahun ? `${b.tahun}-${String(b.bulan).padStart(2, '0')}` : null; };
+    const x = await readXlsx(u8, n => !!namaBulanSheet(n));
+    const hasil = { bulan: {}, catatan: [] }, kelompok = {};
+    for (const nama of x.names) {
+      const ym = namaBulanSheet(nama);
+      if (!ym) { if (bulanDariTeks(nama).tahun) hasil.catatan.push(`sheet "${nama}" tidak dikenali sebagai bulan, dilewati`); continue; }
+      if (!x.sheets[nama]) continue;
+      const b = bacaSheetPakal(x.sheets[nama], ym);
+      if (b.galat) { hasil.catatan.push(`${nama}: ${b.galat}`); continue; }
+      b.sheet = nama;
+      (kelompok[ym] = kelompok[ym] || []).push(b);
+    }
+    const persis = n => /^\s*[A-Za-z]+\s+\d{4}\s*$/.test(n), ton = t => Math.round(t).toLocaleString('id-ID') + ' t';
+    for (const ym of Object.keys(kelompok)) {
+      const k = kelompok[ym];
+      if (k.length === 1) { hasil.bulan[ym] = k[0]; continue; }
+      if (k.every(b => Math.abs(b.total - k[0].total) < 0.5 && b.pile === k[0].pile && b.akhir === k[0].akhir)) {
+        const pilih = k.find(b => persis(b.sheet)) || k[0];
+        hasil.bulan[ym] = pilih;
+        hasil.catatan.push(`${k.filter(b => b !== pilih).map(b => `"${b.sheet}"`).join(', ')}: isinya sama dengan sheet "${pilih.sheet}", diabaikan`);
+      } else {
+        // salinan sheet yang isinya berbeda: tidak bisa ditebak mana yang terbaru, jadi bulan ini tidak dipakai
+        hasil.bulan[ym] = { ambigu: k.map(b => `"${b.sheet}" ${ton(b.total)}`), total: 0, adaTotal: false, rincian: 0, pile: 0, akhir: '', sheet: '' };
+      }
+    }
+    return hasil;
+  }
+
   // ------------------------------------------------------------------ edit XML sheet (sel tertentu)
   // edits: Map ref -> {n:number} | {s:string} | {clear:true}
   function editSheetXml(xml, edits) {
@@ -1288,6 +1395,29 @@ const OE1 = (function () {
       ['waste', 120, 'E11'], ['ore', 121, 'E12'], ['produksi', 122, 'E16'], ['penjualan', 123, 'E17']],
     BRG: [['ewh', 124, 'G3'], ['hujan', 125, 'G4'], ['slippery', 126, 'G5'], ['cd', 127, 'G6'], ['downtime', 128, 'G7']],
   };
+  // Koreksi ore QAQC (§30) untuk bulan yang angkanya tertanam di template (Jan-Agu tahun data). lama = nilai sheet WF YTD
+  // template (parseSheetValues), koreksi = {bulan: {total}}, hanya bulan < mulaiSistem. Hasil [ref, edit] untuk editSheetXml:
+  // produksi (WMT) = total Produksi Pakal; ore BCM ikut berubah dengan perbandingan WMT baru ÷ WMT template (densitas yang
+  // dipakai template tetap; template tanpa produksi: ÷ 1,64); sumber bulan diberi keterangan "ore Produksi Pakal".
+  function editKoreksiYtd(lama, koreksi, mulaiSistem, catatan) {
+    const out = [], rowAkt = k => YTD.AKT.find(x => x[0] === k)[1];
+    const angka = v => (typeof v === 'number' && isFinite(v) ? v : null);
+    for (let m = 1; m < mulaiSistem; m++) {
+      const k = (koreksi || {})[m], tot = k && angka(k.total) !== null && k.total >= 0 ? k.total : null;
+      if (tot === null) continue;
+      const c = n2col(3 + m), sel = r => ((lama || [])[r - 1] || [])[2 + m];
+      const wmt0 = angka(sel(rowAkt('produksi'))), bcm0 = angka(sel(rowAkt('ore'))), lab = sel(YTD.ROW_SUMBER);
+      out.push([`${c}${rowAkt('produksi')}`, { n: tot }]);
+      if (wmt0 > 0 && bcm0 !== null) out.push([`${c}${rowAkt('ore')}`, { n: bcm0 * tot / wmt0 }]);
+      else {
+        out.push([`${c}${rowAkt('ore')}`, { n: tot / 1.64 }]);
+        if (Array.isArray(catatan)) catatan.push(`WF YTD bulan ${m}: produksi template kosong, ore BCM koreksi = WMT ÷ 1,64`);
+      }
+      const asal = typeof lab === 'string' ? lab.replace(/\s*·\s*ore Produksi Pakal\s*$/, '').trim() : '';
+      out.push([`${c}${YTD.ROW_SUMBER}`, { s: (asal ? asal + ' · ' : '') + 'ore Produksi Pakal' }]);
+    }
+    return out;
+  }
   // ringkasan satu bulan dari sheet WF MTD workbook yang sudah dihitung. get(ref) -> nilai sel WF MTD
   function ringkasanWf(get) {
     const angka = v => (typeof v === 'number' && isFinite(v) ? v : null);
@@ -1605,12 +1735,19 @@ const OE1 = (function () {
     }
 
     // ---------------- WF YTD (template v6): data tersimpan bulan tertutup (ringkasan dari sistem)
-    // data.ytd = { tahun, bulan: { 9: ringkasan, ... } } ; Jan-Agu 2026 sudah ada di template dan tidak ditimpa
+    // data.ytd = { tahun, bulan: { 9: ringkasan, ... }, koreksi: { 1: {total}, ... } } ; Jan-Agu 2026 sudah ada di template
+    // dan tidak ditimpa, kecuali ore bulan yang punya koreksi ore QAQC (Produksi Pakal, §30)
     if (versi >= 6 && data.ytd && sheets.some(x => x.name === YTD.SHEET)) {
       const YE = new Map(), th = +data.ytd.tahun;
       const bawaan = th === YTD.TAHUN_DATA;                          // tahun data template (Jan-Agu dari berkas Iqbal)
       const mulaiSistem = bawaan ? +YTD.MULAI.slice(5) : 1;
       if (!bawaan) YE.set(`C${YTD.ROW_TAHUN}`, { n: th });
+      // koreksi ore QAQC untuk bulan template (Jan-Agu tahun data)
+      const KY = bawaan && data.ytd.koreksi ? data.ytd.koreksi : {};
+      if (Object.keys(KY).some(m => +m < mulaiSistem)) {
+        const lama = parseSheetValues((await z.text(path(YTD.SHEET))) || '', parseSST(await z.text('xl/sharedStrings.xml')));
+        for (const [ref, e] of editKoreksiYtd(lama, KY, mulaiSistem, data.catatan)) YE.set(ref, e);
+      }
       for (let m = 1; m <= 12; m++) {
         const c = n2col(3 + m);
         if (m < mulaiSistem) continue;
@@ -1628,10 +1765,10 @@ const OE1 = (function () {
   }
 
   return {
-    crc32, unzip, zip, inflate, deflate, readXlsx, readReport, parseQaqc, pilihLoader, porsiEfo, tanggalShift,
+    crc32, unzip, zip, inflate, deflate, readXlsx, readReport, parseQaqc, parseProduksiPakal, bulanDariTeks, pilihLoader, porsiEfo, tanggalShift,
     editSheetXml, isiTemplate, ymd2serial, serial2ymd, addDays, daysInMonth, weeknum2, mingguLipat, n2col, col2n,
     PARAM_CELLS, RES_ROWS, versiTemplate, TEMPLATE_VERSI, TEMPLATE_VERSI_MIN, WM_JUMLAH_SUMP, angkakanKolom, aktivitasTruck, idx, fixDimension,
-    susunWorkbook, kemasWorkbook, bagianWorkbook, ringkasanWf, YTD,
+    susunWorkbook, kemasWorkbook, bagianWorkbook, ringkasanWf, editKoreksiYtd, YTD,
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = OE1;
@@ -4819,7 +4956,7 @@ OCR1.setTemplates({"dim":192,"lab":"00000000000000000000000000000000111111111111
    =========================================================================== */
 const DASH = (function () {
   'use strict';
-  const VERSI = 5;               // naikkan bila isi snapshot berubah: snapshot lama otomatis dihitung ulang (5: Operational Excellence = SCS SJI)
+  const VERSI = 6;               // naikkan bila isi snapshot berubah: snapshot lama otomatis dihitung ulang (5: Operational Excellence = SCS SJI; 6: koreksi ore QAQC)
   const VERSI_MIN = 1;           // snapshot versi lama yang masih boleh ditampilkan selama versi baru dihitung
 
   // ================================================================== HITUNG
@@ -5158,26 +5295,67 @@ const DASH = (function () {
   }
 
   /**
+   * Koreksi ore QAQC (§30). Admin menyimpan total ore sebulan dari Produksi Pakal (QAQC) di qaqc.koreksiOre = {total, …};
+   * pembagian ANTAM/PCM dan sebaran per hari tetap dari laporan harian bulan itu (qaqc.hari). Ore hari d = ore laporan
+   * harian × faktor, faktor = total ÷ Σ ore laporan harian sebulan (ANTAM + BUMD), jadi jumlah sebulan = total QAQC.
+   * q = isian qaqc, ym = 'YYYY-MM' (hari di luar bulan itu tidak dihitung). null bila tidak ada koreksi atau laporan harian
+   * bulan itu tanpa ore (tidak ada dasar pembagian).
+   */
+  function koreksiOre(q, ym) {
+    const i = koreksiInfo(q, ym);
+    if (!i || !(i.lhpA + i.lhpB > 0) || i.basi) return null;
+    const f = i.total / (i.lhpA + i.lhpB);
+    return { total: i.total, faktor: f, lhpA: i.lhpA, lhpB: i.lhpB, antam: i.lhpA * f, bumd: i.lhpB * f };
+  }
+  /**
+   * Keadaan koreksi ore QAQC bulan ym, juga bila tidak dipakai: {total, lhpA, lhpB, akhirL (hari terakhir berore laporan
+   * harian), akhirQ (pile terakhir Produksi Pakal saat diimpor), basi} atau null bila tidak ada koreksi.
+   * basi = laporan harian sekarang berore lebih dari sehari sesudah pile terakhir Produksi Pakal yang tersimpan (mis. Produksi
+   * Pakal dan laporan harian sama-sama s.d. 19 Okt saat diimpor, lalu laporan harian Oktober penuh diunggah di langkah 2):
+   * total itu belum sebulan penuh, jadi koreksi tidak dipakai (ore kembali ke laporan harian) sampai Produksi Pakal terbaru diimpor.
+   */
+  function koreksiInfo(q, ym) {
+    const isNum = v => typeof v === 'number' && isFinite(v);
+    const K = q && q.koreksiOre, H = (q && q.hari) || {};
+    if (!K || typeof K !== 'object' || !isNum(K.total) || K.total < 0) return null;
+    let a = 0, b = 0, akhirL = '';
+    for (const d of Object.keys(H)) {
+      if (ym && d.slice(0, 7) !== ym) continue;
+      const x = H[d] || {}; let ada = false;
+      if (isNum(x.antamOre) && x.antamOre > 0) { a += x.antamOre; ada = true; }
+      if (isNum(x.bumdOre) && x.bumdOre > 0) { b += x.bumdOre; ada = true; }
+      if (ada && d > akhirL) akhirL = d;
+    }
+    const s = K.sumber && typeof K.sumber.akhir === 'string' ? K.sumber.akhir : '';
+    const akhirQ = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+    return { total: K.total, lhpA: a, lhpB: b, akhirL, akhirQ, basi: !!(akhirQ && akhirL && akhirL > geser(akhirQ, 1)) };
+  }
+
+  /**
    * Sumber angka produksi per hari untuk dashboard (Excel 1on1 tidak memakai aturan ini untuk waste):
-   * ore  = berkas QAQC → isian pagi → Minerva (sementara)
+   * ore  = koreksi ore QAQC bila bulan itu punya (laporan harian × faktor; hari tanpa laporan harian = 0)
+   *        → berkas QAQC → isian pagi → Minerva (sementara)
    * waste = berkas QAQC → Minerva (sementara)
-   * q = S.data.qaqc (hari, oreManual, lgoKeWaste), mat = agregatMinerva(...).mat, barging(d) = barging BUMD hari itu
+   * q = S.data.qaqc (hari, oreManual, lgoKeWaste, koreksiOre), mat = agregatMinerva(...).mat, barging(d) = barging BUMD hari itu
    */
   function aturanSumber(hari, q, mat, barging) {
     const isNum = v => typeof v === 'number' && isFinite(v);
     const Q = (q && q.hari) || {}, M = (q && q.oreManual) || {}, lgo = !q || q.lgoKeWaste !== false;
+    const ym = hari.length ? hari[0].slice(0, 7) : '', kor = ym ? koreksiOre(q, ym) : null, info = ym ? koreksiInfo(q, ym) : null;
     const qa = {}, sumber = {};
     for (const d of hari) {
       const x = Q[d] || {}, m = M[d] || {};
       const a = (mat.A && mat.A[d]) || { ore: 0, lgo: 0, waste: 0 }, b = (mat.B && mat.B[d]) || { ore: 0, lgo: 0, waste: 0 };
-      const ore = (fileV, pagiV, mv) => isNum(fileV) ? [fileV, 'qaqc'] : isNum(pagiV) ? [pagiV, 'pagi'] : [mv.ore + (lgo ? 0 : mv.lgo), 'minerva'];
+      const ore = (fileV, pagiV, mv) => kor ? [isNum(fileV) && fileV > 0 ? fileV * kor.faktor : 0, 'koreksi'] :
+        isNum(fileV) ? [fileV, 'qaqc'] : isNum(pagiV) ? [pagiV, 'pagi'] : [mv.ore + (lgo ? 0 : mv.lgo), 'minerva'];
       const wst = (fileV, lgoRs, mv) => isNum(fileV) ? [fileV + (lgo ? (lgoRs || 0) : 0), 'qaqc'] : [mv.waste + (lgo ? mv.lgo : 0), 'minerva'];
       const oA = ore(x.antamOre, m.antam, a), oB = ore(x.bumdOre, m.bumd, b);
       const wA = wst(x.antamWaste, x.antamLgoRs, a), wB = wst(x.bumdWaste, x.bumdLgoRs, b);
       qa[d] = { antamOre: oA[0], antamWaste: wA[0], bumdOre: oB[0], bumdWaste: wB[0], barging: barging ? barging(d) : 0 };
       sumber[d] = { oA: oA[1], oB: oB[1], wA: wA[1], wB: wB[1] };
     }
-    return { qa, sumber };
+    return { qa, sumber, koreksi: kor ? { total: kor.total, faktor: kor.faktor, lhpA: kor.lhpA, lhpB: kor.lhpB } : null,
+      koreksiBasi: info && info.basi ? { total: info.total, akhirQ: info.akhirQ, akhirL: info.akhirL } : null };
   }
 
   /**
@@ -5210,6 +5388,9 @@ const DASH = (function () {
     return {
       v: VERSI, bulan: o.bulan, cutoff: o.cutoff, hari: hariBulan(o.bulan), dibuat: o.dibuat, oleh: o.oleh || '',
       sidik: o.sidik || {}, wb: o.baca, mv: o.mv, sumber: o.sumber, loader: o.loader || {},
+      // koreksi ore QAQC bulan ini {total, faktor, lhpA, lhpB} (aturanSumber) atau null; koreksiBasi = koreksi yang tidak
+      // dipakai karena laporan harian lebih baru dari Produksi Pakal tersimpan {total, akhirQ, akhirL} atau null
+      koreksi: o.koreksi || null, koreksiBasi: o.koreksiBasi || null,
       // jarak bulan-bulan tertutup tahun ini untuk kartu Jarak YTD: {aturan, tahun, bulan: {'YYYY-MM': {A,B,G,AO,AW,BO,BW}},
       // sumber: {'YYYY-MM': 'excel'|'dasbor'|'minerva'}, kurang: ['YYYY-MM']}
       jarakYtd: o.jarakYtd || { aturan: ATURAN_JARAK, tahun: +String(o.bulan).slice(0, 4), bulan: {}, sumber: {}, kurang: [] },
@@ -5569,7 +5750,7 @@ const DASH = (function () {
     if (D.iCut < n - 1) s += `<line x1="${xc}" x2="${xc}" y1="${T}" y2="${T + ph}" stroke="${WARNA.sumbu}" stroke-width="1"/>`;
     return s + '</svg>';
   }
-  function sumberTeks(s) { return s === 'qaqc' ? 'QAQC' : s === 'pagi' ? 'isian pagi' : s === 'minerva' ? 'Minerva (sementara)' : '—'; }
+  function sumberTeks(s) { return s === 'koreksi' ? 'Produksi Pakal' : s === 'qaqc' ? 'QAQC' : s === 'pagi' ? 'isian pagi' : s === 'minerva' ? 'Minerva (sementara)' : '—'; }
 
   // ---------------------------------------------------------------- grafik: produksi harian satu front (ore + waste bertumpuk, target ore & TMM)
   // Seperti grafik "TMM dan Ore vs Target" di Excel dashboard lama, dipadatkan jadi satu: tinggi kolom = TMM.
@@ -6223,6 +6404,15 @@ const DASH = (function () {
     };
     if (D.sementara.ore.length) bits.push(`<span class="d-chip warn">Ore sementara (Minerva): ${escH(rentang(D.sementara.ore))}</span>`);
     if (D.sementara.wst.length) bits.push(`<span class="d-chip warn">Waste sementara (Minerva): ${escH(rentang(D.sementara.wst))}</span>`);
+    // koreksi ore QAQC (§30): keterangan, bukan peringatan (snapshot bisa ditulis semua pengguna login: angka dipaksa bilangan)
+    const KO = M.koreksi, kTot = KO ? +KO.total : NaN, kF = KO ? +KO.faktor : NaN, kL = KO ? (+KO.lhpA || 0) + (+KO.lhpB || 0) : NaN;
+    if (isFinite(kTot) && isFinite(kF) && kF > 0 && isFinite(kL)) bits.push(`<span class="d-chip" tabindex="0" data-tt="${daftarTip([{ t: 'Ore = total QAQC Produksi Pakal' },
+      { v: fmt(kTot) + ' WMT', l: 'total ore QAQC sebulan' }, { v: fmt(kL) + ' WMT', l: 'laporan harian, dasar pembagian ANTAM/PCM dan per hari' },
+      { v: '× ' + fmt(kF, 3), l: 'faktor ore tiap hari' }])}">Ore = total QAQC Produksi Pakal</span>`);
+    const KB = M.koreksiBasi, tgl = x => (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) ? tglP(x) : '—');
+    if (KB && typeof KB === 'object') bits.push(`<span class="d-chip warn" tabindex="0" data-tt="${daftarTip([{ t: 'Koreksi ore QAQC tidak dipakai' },
+      { v: tgl(KB.akhirQ), l: 'pile terakhir Produksi Pakal yang tersimpan' }, { v: tgl(KB.akhirL), l: 'ore terakhir laporan harian' },
+      { l: 'Admin: impor ulang Produksi Pakal terbaru di Data → Advanced Data → Koreksi ore QAQC. Sampai itu ore bulan ini dari laporan harian.' }])}">Koreksi ore QAQC tidak dipakai: Produksi Pakal s.d. ${escH(tgl(KB.akhirQ))}</span>`);
     if ((M.mvGagal || []).length) bits.push(`<span class="d-chip err">Minerva gagal diambil: ${escH(rentang(M.mvGagal.slice().sort()))}</span>`);
     if ((M.mvKosong || []).length) bits.push(`<span class="d-chip">Minerva tanpa data: ${escH(rentang(M.mvKosong.slice().sort()))}</span>`);
     // template Excel lebih lama dari halaman (snapshot bisa ditulis semua pengguna login: angka dipaksa bilangan bulat)
@@ -6298,7 +6488,7 @@ const DASH = (function () {
     return c.D;
   }
 
-  return { VERSI, VERSI_MIN, agregatMinerva, pasangOpex, bacaWorkbook, aturanSumber, ewhRencana, susunModel, turunan, pareto, render,
+  return { VERSI, VERSI_MIN, agregatMinerva, pasangOpex, bacaWorkbook, aturanSumber, koreksiOre, koreksiInfo, ewhRencana, susunModel, turunan, pareto, render,
     hariBulan, jumlahHari, geser, parseAngka, OPEX, BASELINE_BAWAAN, namaBln,
     JARAK, ATURAN_JARAK, KUNCI_JARAK, jarakExcel, bobotJarak, jarakRencana, jarakKosong, jumlahJarak, tambahJarak, jarakBulanSah, gambarUlangKartu };
 })();
@@ -6406,7 +6596,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     // tanda "pilihan loader sudah dicek" dari tabel oe_1on1_cek {sampai, waktu, oleh}; tandaBaca/tandaFungsi false = SQL 03 belum dipasang
     tanda: null, tandaBaca: null, tandaFungsi: null, menandai: false,
     // muat isian: nomor muat terakhir, sedang memuat, gagal dimuat (selama itu isian tidak disimpan)
-    muatTk: 0, memuat: false, muatGagal: false };
+    muatTk: 0, memuat: false, muatGagal: false,
+    // pratinjau Koreksi ore QAQC (§30): {pp: nama berkas Produksi Pakal, daftar: [per bulan], galat: [teks]}
+    koreksi: null };
 
   /* ---------- pil status ---------- */
   function pil(teks, jenis, judul) {
@@ -6507,16 +6699,21 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var bulan = S.bulan, data = S.data;           // dikunci di awal: denganBulan bisa meminjam S.bulan/S.data selama menunggu jaringan
     pil('Menyimpan…', 'warn');
     try {
-      if (!paksa) {
-        var cek = await rest('/rest/v1/oe_1on1?bulan=eq.' + bulan + '&select=updated_at,updated_by', { method: 'GET' });
-        var r0 = cek && cek[0];
-        if (r0 && S.updatedAt && r0.updated_at !== S.updatedAt && r0.updated_by !== emailLogin()) {
-          tampilBanner('bannerKonflik', 'Isian ' + esc(namaBulan(bulan)) + ' baru diubah oleh <b>' + esc(r0.updated_by) + '</b> (' + esc(jamWit(r0.updated_at)) +
-            '). Perubahanmu belum disimpan. <button class="btn kecil" id="btnMuatUlang">Muat versi server</button> <button class="btn kecil" id="btnTimpa">Timpa dengan versiku</button>');
-          el('btnMuatUlang').onclick = function () { el('bannerKonflik').hidden = true; muat(); };
-          el('btnTimpa').onclick = function () { el('bannerKonflik').hidden = true; S.kotor = true; simpan(true); };
-          pil('Belum tersimpan', 'err'); return;
-        }
+      // pemeriksaan bentrok selalu dijalankan, juga untuk "Timpa dengan versiku" (paksa): paksa hanya melewati bentrok isian biasa
+      var cek = await rest('/rest/v1/oe_1on1?bulan=eq.' + bulan + '&select=updated_at,updated_by,korw:data->qaqc->koreksiOre->>waktu', { method: 'GET' });
+      var r0 = cek && cek[0];
+      var berubah = !!r0 && (S.updatedAt ? r0.updated_at !== S.updatedAt : true);
+      // koreksi ore QAQC (§30) yang disimpan dari tab/halaman lain — juga oleh pengguna yang sama — belum ada di isian ini:
+      // menyimpan sekarang akan menghapusnya, jadi diperlakukan sebagai bentrok yang tidak bisa ditimpa; hanya bisa memuat versi server
+      var korSini = (data.qaqc && data.qaqc.koreksiOre && data.qaqc.koreksiOre.waktu) || null, korBeda = !!r0 && (r0.korw || null) !== korSini;
+      if (berubah && (korBeda || (!paksa && r0.updated_by !== emailLogin()))) {
+        tampilBanner('bannerKonflik', (korBeda ? 'Koreksi ore QAQC ' + esc(namaBulan(bulan)) + ' baru disimpan dari tab atau halaman lain (' + esc(jamWit(r0.updated_at)) +
+          '). Perubahanmu belum disimpan; muat versi server supaya koreksinya tidak hilang, lalu ulangi perubahanmu. <button class="btn kecil" id="btnMuatUlang">Muat versi server</button>' :
+          'Isian ' + esc(namaBulan(bulan)) + ' baru diubah oleh <b>' + esc(r0.updated_by) + '</b> (' + esc(jamWit(r0.updated_at)) +
+          '). Perubahanmu belum disimpan. <button class="btn kecil" id="btnMuatUlang">Muat versi server</button> <button class="btn kecil" id="btnTimpa">Timpa dengan versiku</button>'));
+        el('btnMuatUlang').onclick = function () { el('bannerKonflik').hidden = true; muat(); };
+        if (el('btnTimpa')) el('btnTimpa').onclick = function () { el('bannerKonflik').hidden = true; S.kotor = true; simpan(true); };
+        pil('Belum tersimpan', 'err'); return;
       }
       var v0 = S.versiUbah || 0;                                   // isi yang dikirim = isian sampai titik ini
       var res = await rest('/rest/v1/oe_1on1?on_conflict=bulan', {
@@ -6556,6 +6753,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       el('advNav').querySelectorAll('button[data-adv]').forEach(function (b) { b.classList.toggle('on', b.dataset.adv === nama); b.setAttribute('aria-pressed', String(b.dataset.adv === nama)); });
       document.querySelectorAll('#advIsi .adv-p').forEach(function (p) { p.hidden = p.id !== 'adv-' + nama; });
       if (nama === 'template') infoTemplate();
+      if (nama === 'koreksi') renderKoreksiAda();
     }
     if (gulir) (nama ? el('adv-' + nama) : el('advIsi')).scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -6846,24 +7044,29 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
 
   /* ================================================================ QAQC */
+  // hasil OE1.parseQaqc → isian qaqc.hari bulan ym. Berkas mencakup s.d. hari terakhir yang berisi angka; hari 0 sebelum
+  // itu = memang tanpa produksi (mis. libur). Dipakai langkah 2 dan Koreksi ore QAQC (§30).
+  function hariDariQaqc(h, ym) {
+    var n = jumlahHari(ym), hari = {}, isi = 0, nol = 0, akhirAda = 0;
+    var adaAngka = function (k) { var A = h.hari[k].ANTAM || {}, K = h.hari[k].KONTRAKTOR || {};
+      return [A.oreWmt, A.wasteWmt, A.lgoRampstockWmt, K.oreWmt, K.wasteWmt, K.lgoRampstockWmt, K.bargingWmt].some(function (v) { return v; }); };
+    Object.keys(h.hari).forEach(function (k) { if (adaAngka(k) && +k > akhirAda) akhirAda = +k; });
+    Object.keys(h.hari).forEach(function (k) {
+      var d = +k; if (d < 1 || d > n || d > akhirAda) return;
+      var A = h.hari[k].ANTAM || {}, K = h.hari[k].KONTRAKTOR || {};
+      if (!adaAngka(k)) nol++;
+      hari[ym + '-' + pad(d)] = { antamOre: A.oreWmt || 0, antamWaste: A.wasteWmt || 0, antamLgoRs: A.lgoRampstockWmt || 0,
+        bumdOre: K.oreWmt || 0, bumdWaste: K.wasteWmt || 0, bumdLgoRs: K.lgoRampstockWmt || 0, barging: K.bargingWmt || 0, antamBarging: A.bargingWmt || 0 };
+      isi++;
+    });
+    return { hari: hari, isi: isi, nol: nol };
+  }
   async function prosesQaqc(file) {
     el('qaqcInfo').textContent = 'Membaca…';
     try {
       var u8 = new Uint8Array(await file.arrayBuffer());
       var h = await OE1.parseQaqc(u8);
-      var n = jumlahHari(S.bulan), hari = {}, isi = 0, nol = 0, akhirAda = 0;
-      var adaAngka = function (k) { var A = h.hari[k].ANTAM || {}, K = h.hari[k].KONTRAKTOR || {};
-        return [A.oreWmt, A.wasteWmt, A.lgoRampstockWmt, K.oreWmt, K.wasteWmt, K.lgoRampstockWmt, K.bargingWmt].some(function (v) { return v; }); };
-      // berkas mencakup s.d. hari terakhir yang berisi angka; hari 0 sebelum itu = memang tanpa produksi (mis. libur)
-      Object.keys(h.hari).forEach(function (k) { if (adaAngka(k) && +k > akhirAda) akhirAda = +k; });
-      Object.keys(h.hari).forEach(function (k) {
-        var d = +k; if (d < 1 || d > n || d > akhirAda) return;
-        var A = h.hari[k].ANTAM || {}, K = h.hari[k].KONTRAKTOR || {};
-        if (!adaAngka(k)) nol++;
-        hari[S.bulan + '-' + pad(d)] = { antamOre: A.oreWmt || 0, antamWaste: A.wasteWmt || 0, antamLgoRs: A.lgoRampstockWmt || 0,
-          bumdOre: K.oreWmt || 0, bumdWaste: K.wasteWmt || 0, bumdLgoRs: K.lgoRampstockWmt || 0, barging: K.bargingWmt || 0, antamBarging: A.bargingWmt || 0 };
-        isi++;
-      });
+      var hd = hariDariQaqc(h, S.bulan), hari = hd.hari, isi = hd.isi, nol = hd.nol;
       S.data.qaqc.hari = hari;
       S.data.qaqc.berkas = { nama: file.name, waktu: new Date().toISOString(), label: h.bulanLabel || '' };
       var lain = labelBulanLain(h.bulanLabel);
@@ -6889,6 +7092,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     });
   }
   function qaqcLengkap(d) { return !qaqcKurang(d).length; }
+  // koreksi ore QAQC bulan yang dibuka (§30): {total, faktor, lhpA, lhpB, antam, bumd} atau null
+  function koreksiBulan() { return DASH.koreksiOre(S.data.qaqc, S.bulan); }
+  // ore yang dipakai hari d bila bulan ini punya koreksi: ore laporan harian × faktor
+  function oreKoreksi(d, kor) { var x = S.data.qaqc.hari[d] || {}; return { antam: x.antamOre > 0 ? x.antamOre * kor.faktor : 0, bumd: x.bumdOre > 0 ? x.bumdOre * kor.faktor : 0 }; }
   // label bulan di berkas QAQC menyebut bulan/tahun lain -> teks label (untuk peringatan); cocok atau tidak terbaca -> ''
   var NAMA_BLN = [['januari', 'january', 'jan'], ['februari', 'february', 'feb'], ['maret', 'march', 'mar'], ['april', 'apr'], ['mei', 'may'], ['juni', 'june', 'jun'],
     ['juli', 'july', 'jul'], ['agustus', 'august', 'agu', 'aug', 'agt'], ['september', 'sept', 'sep'], ['oktober', 'october', 'okt', 'oct'], ['november', 'nov'], ['desember', 'december', 'des', 'dec']];
@@ -6948,8 +7155,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     el('bargingInfo').innerHTML = S.bargingPesan ? S.bargingPesan : nBM ?
       nBM + ' hari berisi isian manual (sel kuning di kolom Barging BUMD), jumlah ' + angka(Object.keys(BM).filter(dalamBulan).reduce(function (t, d) { return t + (BM[d] || 0); }, 0)) + ' WMT.' :
       '<span class="muted">Belum ada isian manual; barging BUMD mengikuti berkas QAQC.</span>';
-    var OM = Q.oreManual || {};
-    var h = '<thead><tr><th>Tanggal</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + k[1] + ' (WMT)</th>'; }).join('') + '<th class="num">Waste ke ACT</th><th class="num" title="Diisi di tab Dashboard; dipakai hanya bila hari itu belum ada di berkas QAQC">Ore isian pagi ANTAM · PCM</th></tr></thead><tbody>';
+    var OM = Q.oreManual || {}, kor = koreksiBulan(), sumK = { antam: 0, bumd: 0 };
+    // koreksi ore QAQC (§30): ore yang dipakai = laporan harian × faktor; kolom ore di tabel tetap angka laporan harian (dasar pembagian)
+    var nk = el('qaqcKoreksi'), KS = Q.koreksiOre, KI = DASH.koreksiInfo(Q, S.bulan);
+    if (kor) { nk.hidden = false; nk.innerHTML = 'Ore bulan ini mengikuti total QAQC Produksi Pakal <b>' + angka(kor.total) + ' WMT</b>: ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) +
+      '. Pembagian dan angka per hari dari laporan harian (' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + ').'; }
+    else if (KI && KI.basi) { nk.hidden = false; nk.innerHTML = '<span style="color:var(--bad)">Koreksi ore QAQC (' + angka(KI.total) + ' WMT) tidak dipakai: ore laporan harian sampai ' + esc(tglPendek(KI.akhirL)) +
+      ', sedangkan Produksi Pakal yang tersimpan hanya sampai ' + esc(tglPendek(KI.akhirQ)) + '. Impor ulang Produksi Pakal terbaru di Advanced Data → Koreksi ore QAQC; sampai itu ore bulan ini dari laporan harian.</span>'; }
+    else if (KS && typeof KS.total === 'number') { nk.hidden = false; nk.innerHTML = '<span style="color:var(--bad)">Total QAQC Produksi Pakal ' + angka(KS.total) + ' WMT tersimpan, tetapi laporan harian bulan ini belum berisi ore, jadi koreksi belum berlaku.</span>'; }
+    else { nk.hidden = true; nk.innerHTML = ''; }
+    var h = '<thead><tr><th>Tanggal</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + k[1] + ' (WMT)</th>'; }).join('') + '<th class="num">Waste ke ACT</th>' +
+      (kor ? '<th class="num" title="Ore laporan harian × ' + esc(angka(kor.faktor, 3)) + '; jumlah sebulan = total QAQC Produksi Pakal">Ore dipakai ANTAM · PCM</th>' : '') +
+      '<th class="num" title="Diisi di tab Dashboard; dipakai hanya bila hari itu belum ada di berkas QAQC">Ore isian pagi ANTAM · PCM</th></tr></thead><tbody>';
     var sum = {};
     hariBulan(S.bulan).forEach(function (d) {
       var x = Q.hari[d] || {}; var lewat = d > S.cutoff;
@@ -6960,12 +7177,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
         h += '<td class="num' + (perlu ? ' perlu' : '') + '"' + (perlu ? ' title="Wajib diisi; isi 0 bila tidak ada"' : '') + '><input class="num" data-k="' + k[0] + '" value="' + (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ',')) + '"' +
           (man ? ' style="background:#fff8d6" title="Isian manual"' : '') + (S.admin ? '' : ' disabled') + '></td>'; });
       var w = (x.antamWaste || 0) + (Q.lgoKeWaste !== false ? (x.antamLgoRs || 0) : 0);
-      var om = OM[d], adaOm = om && (om.antam != null || om.bumd != null);
-      h += '<td class="num muted">' + (Q.hari[d] ? angka(w) : '—') + '</td>' +
-        '<td class="num' + (adaOm && oreBerkas(d) ? ' muted' : '') + '"' + (adaOm && oreBerkas(d) ? ' title="Tidak dipakai: hari ini sudah ada di berkas QAQC"' : '') + '>' +
+      var om = OM[d], adaOm = om && (om.antam != null || om.bumd != null), omMati = adaOm && (oreBerkas(d) || kor);
+      h += '<td class="num muted">' + (Q.hari[d] ? angka(w) : '—') + '</td>';
+      if (kor) { var ok = oreKoreksi(d, kor); if (!lewat) { sumK.antam += ok.antam; sumK.bumd += ok.bumd; } h += '<td class="num">' + (Q.hari[d] ? angka(ok.antam) + ' · ' + angka(ok.bumd) : '—') + '</td>'; }
+      h += '<td class="num' + (omMati ? ' muted' : '') + '"' + (omMati ? ' title="Tidak dipakai: ' + (kor ? 'ore bulan ini mengikuti total QAQC Produksi Pakal' : 'hari ini sudah ada di berkas QAQC') + '"' : '') + '>' +
         (adaOm ? angka(om.antam) + ' · ' + angka(om.bumd) + (oreBerkas(d) ? ' <span class="kecil">(ada berkas)</span>' : '') : '') + '</td></tr>';
     });
-    h += '</tbody><tfoot><tr><th>Jumlah s.d. ' + tglPendek(S.cutoff) + '</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + angka(sum[k[0]] || 0) + '</th>'; }).join('') + '<th></th><th></th></tr></tfoot>';
+    h += '</tbody><tfoot><tr><th>Jumlah s.d. ' + tglPendek(S.cutoff) + '</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + angka(sum[k[0]] || 0) + '</th>'; }).join('') + '<th></th>' +
+      (kor ? '<th class="num">' + angka(sumK.antam) + ' · ' + angka(sumK.bumd) + '</th>' : '') + '<th></th></tr></tfoot>';
     el('tblQaqc').innerHTML = h;
     el('tblQaqc').querySelectorAll('tr[data-d] input').forEach(function (inp) {
       inp.onchange = function () {
@@ -7410,15 +7629,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       });
     });
     var qa = {}, lgo = D.qaqc.lgoKeWaste !== false, BM = D.qaqc.bargingManual || {};
+    // koreksi ore QAQC (§30): ore = laporan harian × faktor (total sebulan = total Produksi Pakal); isian pagi tidak dipakai
+    var kor = DASH.koreksiOre(D.qaqc, S.bulan);
     Object.keys(D.qaqc.hari || {}).forEach(function (d) {
       var x = D.qaqc.hari[d];
-      qa[d] = { antamOre: x.antamOre || 0, antamWaste: (x.antamWaste || 0) + (lgo ? x.antamLgoRs || 0 : 0),
-        bumdOre: x.bumdOre || 0, bumdWaste: (x.bumdWaste || 0) + (lgo ? x.bumdLgoRs || 0 : 0), barging: BM[d] != null ? BM[d] : x.barging || 0 };
+      qa[d] = { antamOre: kor ? (x.antamOre > 0 ? x.antamOre * kor.faktor : 0) : x.antamOre || 0, antamWaste: (x.antamWaste || 0) + (lgo ? x.antamLgoRs || 0 : 0),
+        bumdOre: kor ? (x.bumdOre > 0 ? x.bumdOre * kor.faktor : 0) : x.bumdOre || 0, bumdWaste: (x.bumdWaste || 0) + (lgo ? x.bumdLgoRs || 0 : 0), barging: BM[d] != null ? BM[d] : x.barging || 0 };
     });
     // hari yang hanya punya isian manual barging: sel ore/waste tetap kosong
     Object.keys(BM).forEach(function (d) { if (!qa[d] && dalamBulan(d) && BM[d] != null) qa[d] = { barging: BM[d] }; });
     // ore QC isian pagi (tab Dashboard) untuk hari yang belum ada di berkas QAQC; waste hari itu tetap kosong
-    var OM = D.qaqc.oreManual || {};
+    var OM = kor ? {} : D.qaqc.oreManual || {};
     Object.keys(OM).forEach(function (d) {
       if (!dalamBulan(d)) return;
       var m = OM[d] || {}, x = D.qaqc.hari[d] || {};
@@ -7519,8 +7740,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   // simpan ringkasan ke baris bulan itu (isian lain ikut dikirim apa adanya). Bila isian berubah sejak dibaca, tidak disimpan.
   async function simpanRingkasan(ym, rowData, rk, updatedAt) {
     if (updatedAt) {
-      var cek = await rest('/rest/v1/oe_1on1?bulan=eq.' + ym + '&select=updated_at', { method: 'GET' });
-      if (!cek || !cek[0] || cek[0].updated_at !== updatedAt) throw galat('isian ' + namaBulan(ym) + ' berubah selama dihitung', 'berubah');
+      // tulis bersyarat (bukan periksa lalu upsert): isian yang berubah selama dihitung, mis. koreksi ore QAQC (§30), tidak tertimpa
+      var rb = await rest('/rest/v1/oe_1on1?bulan=eq.' + ym + '&updated_at=eq.' + encodeURIComponent(updatedAt) + '&select=updated_at', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify({ data: Object.assign({}, rowData, { ringkasan: rk }) })
+      });
+      if (!Array.isArray(rb) || !rb.length) throw galat('isian ' + namaBulan(ym) + ' berubah selama dihitung', 'berubah');
+      return rb[0].updated_at || null;
     }
     var r = await rest('/rest/v1/oe_1on1?on_conflict=bulan&select=updated_at', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' },
@@ -7536,8 +7762,31 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     for (var m = dari; m < bl; m++) out.push(th + '-' + pad(m));
     return out;
   }
+  // bulan tahun data yang angkanya tertanam di template (Jan-Agu 2026) dan dipakai WF YTD bulan ini. Koreksi ore QAQC
+  // yang tersimpan di baris bulan itu (§30) menimpa produksi template saat workbook disusun (OE1.susunWorkbook).
+  function bulanTemplateYtd(ym) {
+    var th = +ym.slice(0, 4), bl = +ym.slice(5), Y = OE1.YTD, out = [];
+    if (th !== Y.TAHUN_DATA) return out;
+    for (var m = 1; m < Math.min(+Y.MULAI.slice(5), bl); m++) out.push(th + '-' + pad(m));
+    return out;
+  }
+  // tanda koreksi bulan template untuk sidik YTD (snapshot dashboard & kunci simpanan Excel): hanya koreksi yang dipakai WF YTD,
+  // jadi isian lain bulan itu yang berubah tidak membuat dashboard/Excel bulan sesudahnya dihitung ulang. null = tanpa koreksi.
+  function tandaKoreksi(kor) {
+    var t = kor && typeof kor.total === 'number' && isFinite(kor.total) && kor.total >= 0 ? kor.total : null;
+    return t === null ? null : 'koreksi ' + t + ' · ' + String(kor.waktu || '');
+  }
   async function siapkanYtd(tpl, versi, log, prog, tanpaTruck) {
-    var hasil = { tahun: +S.bulan.slice(0, 4), bulan: {}, kurang: [], waktu: {} }, daftar = bulanYtd(S.bulan);
+    var hasil = { tahun: +S.bulan.slice(0, 4), bulan: {}, kurang: [], waktu: {}, koreksi: {} }, daftar = bulanYtd(S.bulan), tplBln = bulanTemplateYtd(S.bulan);
+    if (tplBln.length) {
+      // tanda koreksi ikut dicatat seperti waktuYtd (sidik snapshot & kunci simpanan Excel)
+      var kr = await rest('/rest/v1/oe_1on1?bulan=in.(' + tplBln.join(',') + ')&select=bulan,kor:data->qaqc->koreksiOre', { method: 'GET' }) || [], nKor = [];
+      kr.forEach(function (r) {
+        var tanda = tandaKoreksi(r.kor); if (!tanda) return;
+        hasil.waktu[r.bulan] = tanda; hasil.koreksi[+r.bulan.slice(5)] = { total: r.kor.total }; nKor.push(r.bulan);
+      });
+      if (nKor.length) log.push('WF YTD: ore ' + nKor.sort().map(function (m) { return BLN[+m.slice(5) - 1]; }).join(', ') + ' = total QAQC Produksi Pakal (koreksi ore)');
+    }
     if (!daftar.length) return hasil;
     var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + daftar.join(',') + ')&select=bulan,data,updated_at', { method: 'GET' }) || [];
     for (var i = 0; i < daftar.length; i++) {
@@ -7632,7 +7881,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     baris.push('Tongkang: ' + hitungTongkang(bg) + ' selesai ' + tglPendek(mulai()) + '–' + tglPendek(S.cutoff) + ' masuk Excel (dari ' + bg.rows.length + ' baris Minerva)' + (X.bgCatatan ? ' · ' + X.bgCatatan : ''));
     var kosongQ = hari.filter(function (d) { return !S.data.qaqc.hari[d]; });
     if (kosongQ.length) baris.push('QAQC kosong: ' + kosongQ.map(tglPendek).join(', '));
-    var oreP = hari.filter(function (d) { var m = (S.data.qaqc.oreManual || {})[d]; return !oreBerkas(d) && m && (m.antam != null || m.bumd != null); });
+    var kor = koreksiBulan(), ki = DASH.koreksiInfo(S.data.qaqc, S.bulan);
+    if (kor) baris.push('Ore = total QAQC Produksi Pakal ' + angka(kor.total) + ' WMT (ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) + '): ore laporan harian ' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + ' per hari');
+    else if (ki && ki.basi) baris.push('KOREKSI ORE QAQC TIDAK DIPAKAI: ore laporan harian sampai ' + tglPendek(ki.akhirL) + ', Produksi Pakal tersimpan hanya sampai ' + tglPendek(ki.akhirQ) + '; impor ulang Produksi Pakal terbaru (ore Excel ini dari laporan harian)');
+    var oreP = kor ? [] : hari.filter(function (d) { var m = (S.data.qaqc.oreManual || {})[d]; return !oreBerkas(d) && m && (m.antam != null || m.bumd != null); });
     if (oreP.length) baris.push('Ore dari isian pagi (belum ada di berkas QAQC; waste hari itu kosong): ' + oreP.map(tglPendek).join(', '));
     var nMan = hari.filter(function (d) { return bargingManual()[d] != null; }).length;
     if (nMan) baris.push('Barging BUMD dari isian manual: ' + nMan + ' hari');
@@ -7875,10 +8127,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   /* ================================================================ ARSIP BULAN */
   // yang tersimpan hanya isian (tabel oe_1on1); Excel bulan lalu disusun ulang saat diunduh
   async function muatArsip() {
-    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by,rk:data->ringkasan->>dihitung&order=bulan.desc', { method: 'GET' }) || []; }
+    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by,rk:data->ringkasan->>dihitung,kor:data->qaqc->koreksiOre->>total,korw:data->qaqc->koreksiOre->>waktu,koro:data->qaqc->koreksiOre->>oleh,kora:data->qaqc->koreksiOre->sumber->>akhir&order=bulan.desc', { method: 'GET' }) || []; }
     catch (e) { S.arsip = null; S.arsipGalat = pesan(e); }
-    renderArsip(); renderRingkas();
+    renderArsip(); renderRingkas(); renderKoreksiAda();
   }
+  // total koreksi ore QAQC baris arsip (teks dari ->>) atau null
+  function korArsip(r) { var v = r && r.kor != null && r.kor !== '' ? Number(r.kor) : NaN; return isFinite(v) && v >= 0 ? v : null; }
   function renderArsip() {
     var t = el('tblArsip'); if (!t) return;
     if (S.arsip === undefined) return;
@@ -7888,9 +8142,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (!rows.length) { t.innerHTML = '<tbody><tr><td class="muted">Belum ada bulan lalu yang tersimpan. Isian bulan ini otomatis masuk arsip saat bulan berganti.</td></tr></tbody>'; return; }
     var mati = S.sibuk || S.tplAda === false ? ' disabled' : '';
     t.innerHTML = '<thead><tr><th>Bulan</th><th>Isian terakhir diubah</th><th>YTD</th><th></th></tr></thead><tbody>' + rows.map(function (r) {
-      var aktif = r.bulan === S.bulan, pakaiYtd = r.bulan >= OE1.YTD.MULAI;
-      var ytd = !pakaiYtd ? '<span class="kecil muted">dari berkas (template)</span>' :
+      var aktif = r.bulan === S.bulan, pakaiYtd = r.bulan >= OE1.YTD.MULAI, kor = korArsip(r);
+      var ytd = !pakaiYtd ? '<span class="kecil muted">dari berkas (template)' + (kor != null ? ' · ore QAQC ' + angka(kor) + ' WMT' : '') + '</span>' :
         (r.rk ? '<span class="pil ok">✓ ' + esc(jamWit(r.rk)) + '</span>' : '<span class="kecil muted">dihitung saat unduh bulan berikutnya</span>') +
+        (kor != null ? ' <span class="kecil muted">· ore QAQC ' + angka(kor) + ' WMT</span>' : '') +
         (S.admin ? ' <button class="btn kecil" data-ytd="' + esc(r.bulan) + '"' + mati + ' title="Hitung ulang ringkasan bulan ini (mis. setelah data Minerva dikoreksi)">Hitung ulang</button>' : '');
       return '<tr><td><b>' + esc(namaBulan(r.bulan)) + '</b>' + (aktif ? ' <span class="pil">sedang dibuka</span>' : '') + '</td><td class="kecil muted">' + esc(jamWit(r.updated_at)) + (r.updated_by ? ' · ' + esc(r.updated_by) : '') + '</td>' +
         '<td>' + ytd + '</td>' +
@@ -7903,6 +8158,194 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     t.querySelectorAll('button[data-lihat]').forEach(function (b) { b.onclick = function () { unduhArsip(b.dataset.lihat, 'lihat'); }; });
     t.querySelectorAll('button[data-ytd]').forEach(function (b) { b.onclick = function () { hitungUlangYtd(b.dataset.ytd); }; });
   }
+  /* ================================================================ KOREKSI ORE QAQC (§30) */
+  // Admin memilih berkas Produksi Pakal (QAQC: total ore per bulan) bersama Laporan Harian Produksi bulan-bulan yang ingin
+  // dikoreksi. Per bulan: total = baris Total Production Summary; pembagian ANTAM/PCM dan angka per hari = laporan harian
+  // (berkas yang dipilih, atau yang sudah ada di sistem). Disimpan ke baris bulan itu: qaqc.koreksiOre, ditambah qaqc.hari
+  // dan qaqc.berkas bila laporan hariannya ikut dipilih (sama dengan unggah di langkah 2). Isian lain tidak disentuh.
+  // Dashboard dan Excel menghitung ore = laporan harian × (total ÷ Σ laporan harian) (DASH.koreksiOre). Hanya bulan
+  // yang sudah tutup.
+  function bulanTutup(ym) { return Date.now() >= lengkapPada(akhirBulan(ym)); }
+  function infoKoreksi(html) { el('koreksiInfo').innerHTML = html; }
+  async function bacaBerkasKoreksi(files) {
+    var pp = null, lh = {}, galatB = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i], u8 = new Uint8Array(await f.arrayBuffer()), p = null;
+      try { p = await OE1.parseProduksiPakal(u8); } catch (e) { p = null; }
+      if (p && Object.keys(p.bulan).length) {
+        if (pp) galatB.push(f.name + ': berkas Produksi Pakal kedua, yang dipakai ' + pp.nama);
+        else pp = { nama: f.name, hasil: p };
+        continue;
+      }
+      try {
+        var h = await OE1.parseQaqc(u8);
+        // label bulan di laporan harian sering salah (berkas April berlabel "Januari 2026"): bulan dari nama berkas
+        var bt = OE1.bulanDariTeks(f.name), th = bt.tahun || OE1.bulanDariTeks(h.bulanLabel).tahun;
+        if (!bt.bulan || !th) { galatB.push(f.name + ': bulan dan tahun tidak terbaca dari nama berkas. Ganti nama berkasnya supaya memuat nama bulan dan tahun, mis. "Laporan Harian April 2026".'); continue; }
+        var ym = th + '-' + pad(bt.bulan);
+        if (lh[ym]) { galatB.push(f.name + ': laporan harian ' + namaBulan(ym) + ' sudah dari ' + lh[ym].nama + ', berkas ini tidak dipakai'); continue; }
+        lh[ym] = { nama: f.name, hasil: h };
+      } catch (e) { galatB.push(f.name + ': bukan Produksi Pakal atau Laporan Harian Produksi (' + pesan(e) + ')'); }
+    }
+    return { pp: pp, lh: lh, galat: galatB };
+  }
+  // satu bulan pratinjau: {ym, P (Produksi Pakal), row (server), hariBaru, sumberLh, kor, lama, status, siap, catatan}
+  function nilaiKoreksi(ym, P, L, row) {
+    var Q0 = (row && row.data && row.data.qaqc) || {}, it = { ym: ym, P: P, row: row || null, berkasLh: L ? L.nama : '', labelLh: L ? L.hasil.bulanLabel || '' : '', hariBaru: null, catatan: [] };
+    if (L) it.hariBaru = hariDariQaqc(L.hasil, ym).hari;
+    var hari = it.hariBaru || Q0.hari || {};
+    it.sumberLh = L ? 'berkas' : Object.keys(Q0.hari || {}).length ? 'sistem' : '';
+    it.gantiLh = !!(L && Object.keys(Q0.hari || {}).length);    // laporan harian di sistem diganti berkas yang dipilih
+    it.kor = P.ambigu ? null : DASH.koreksiOre({ koreksiOre: { total: P.total }, hari: hari }, ym);
+    it.lama = Q0.koreksiOre && typeof Q0.koreksiOre.total === 'number' && isFinite(Q0.koreksiOre.total) ? Q0.koreksiOre.total : null;
+    var akhirSimpan = (Q0.koreksiOre && Q0.koreksiOre.sumber && Q0.koreksiOre.sumber.akhir) || '';
+    // hari terakhir berore di laporan harian vs pile terakhir di Produksi Pakal: Produksi Pakal yang diekspor sebelum
+    // bulannya selesai (pile berhenti lebih dari sehari sebelum ore laporan harian) tidak boleh dipakai sebagai total sebulan
+    var akhirOre = function (H) { return Object.keys(H || {}).filter(function (d) { var x = H[d]; return d.slice(0, 7) === ym && x && (x.antamOre > 0 || x.bumdOre > 0); }).sort().pop() || ''; };
+    var akhirLh = akhirOre(hari), akhirLama = it.gantiLh ? akhirOre(Q0.hari) : '';
+    var ppLama = !!(P.akhir && akhirLh && P.akhir < geser(akhirLh, -1));
+    // laporan harian yang dipilih berakhir lebih awal dari yang sudah di sistem: kemungkinan berkas lama, jangan menggantikannya
+    var lhLama = !!(akhirLama && akhirLh && akhirLh < akhirLama);
+    if (P.ambigu) it.catatan.push('beberapa sheet untuk bulan ini: ' + P.ambigu.join(', ') + '; sisakan satu sheet bernama "' + namaBulan(ym) + '"');
+    if (lhLama) it.catatan.push('laporan harian yang dipilih hanya s.d. ' + tglPendek(akhirLh) + ', yang di sistem s.d. ' + tglPendek(akhirLama));
+    if (!bulanTutup(ym)) it.status = 'belum';
+    else if (P.ambigu) it.status = 'ambigu';
+    else if (!(P.total > 0) || !P.pile) it.status = 'tanpaQaqc';
+    else if (!P.akhir) it.status = 'tanpaTanggal';
+    else if (!it.sumberLh) it.status = 'tanpaLh';
+    else if (lhLama) it.status = 'lhLama';
+    else if (!it.kor) it.status = 'lhNol';
+    else if (ppLama) it.status = 'ppLama';
+    // sama = total, pile terakhir yang tercatat (dasar aturan basi), dan laporan harian tidak berubah
+    else if (it.lama === P.total && akhirSimpan === (P.akhir || '') && (!L || kanon(it.hariBaru) === kanon(Q0.hari || {}))) it.status = 'sama';
+    else it.status = 'siap';
+    it.siap = it.status === 'siap';
+    if (P.ambigu) { /* sudah dicatat di atas */ }
+    else if (!P.pile) it.catatan.push('tidak ada rincian pile');
+    else if (!P.akhir) it.catatan.push('tanggal di ID pile tidak terbaca, jadi kelengkapan Produksi Pakal tidak bisa diperiksa');
+    else if (!P.adaTotal) it.catatan.push('tanpa baris Total; dipakai jumlah rincian pile');
+    else if (Math.abs(P.total - P.rincian) > 0.5) it.catatan.push('rincian pile ' + angka(P.rincian) + ' t, dipakai baris Total');
+    if (P.akhir && akhirLh && akhirLh < P.akhir) it.catatan.push('ore laporan harian hanya s.d. ' + tglPendek(akhirLh) + ', pile QAQC s.d. ' + tglPendek(P.akhir));
+    if (P.akhir && akhirLh && P.akhir < akhirLh) it.catatan.push('pile QAQC hanya s.d. ' + tglPendek(P.akhir) + ', ore laporan harian s.d. ' + tglPendek(akhirLh) + (ppLama ? ': pakai Produksi Pakal terbaru' : ''));
+    return it;
+  }
+  async function pratinjauKoreksi(files) {
+    if (!S.admin) return;
+    if (S.sibuk || S.dipinjam) { infoKoreksi('<span style="color:var(--warn)">Halaman sedang menghitung; tunggu sebentar lalu pilih berkas lagi.</span>'); return; }
+    S.koreksi = null; renderKoreksi(); el('koreksiHasil').innerHTML = '';
+    infoKoreksi('Membaca ' + files.length + ' berkas…');
+    try {
+      var B = await bacaBerkasKoreksi(files);
+      if (!B.pp) throw new Error('berkas Produksi Pakal (QAQC, satu sheet per bulan) belum ikut dipilih' + (B.galat.length ? '. ' + B.galat.join(' · ') : ''));
+      var bulanPP = Object.keys(B.pp.hasil.bulan).sort();
+      var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + bulanPP.join(',') + ')&select=bulan,data,updated_at', { method: 'GET' }) || [];
+      var server = {}; rows.forEach(function (r) { server[r.bulan] = r; });
+      var daftar = bulanPP.map(function (ym) { return nilaiKoreksi(ym, B.pp.hasil.bulan[ym], B.lh[ym], server[ym]); });
+      var galatB = B.galat.concat(B.pp.hasil.catatan);
+      Object.keys(B.lh).sort().forEach(function (ym) { if (!B.pp.hasil.bulan[ym]) galatB.push(B.lh[ym].nama + ': ' + namaBulan(ym) + ' tidak ada di Produksi Pakal, tidak dipakai'); });
+      S.koreksi = { pp: B.pp.nama, daftar: daftar, galat: galatB };
+      infoKoreksi(esc(B.pp.nama) + ' · ' + bulanPP.length + ' bulan · ' + Object.keys(B.lh).length + ' laporan harian');
+      renderKoreksi();
+    } catch (e) { S.koreksi = null; renderKoreksi(); infoKoreksi('<span style="color:var(--bad)">Gagal: ' + esc(pesan(e)) + '</span>'); }
+  }
+  var STATUS_KOREKSI = { siap: ['ok', 'siap disimpan'], sama: ['', 'sudah sama'], belum: ['warn', 'bulan belum tutup'], tanpaQaqc: ['err', 'tanpa data QAQC'],
+    ambigu: ['err', 'sheet ganda'], tanpaTanggal: ['err', 'tanggal pile tidak terbaca'], tanpaLh: ['err', 'perlu laporan harian'],
+    lhLama: ['err', 'laporan harian lebih lama dari di sistem'], lhNol: ['err', 'laporan harian tanpa ore'], ppLama: ['err', 'Produksi Pakal belum lengkap'] };
+  function renderKoreksi() {
+    var K = S.koreksi, box = el('koreksiPratinjau');
+    if (!K) { box.hidden = true; el('tblKoreksi').innerHTML = ''; return; }
+    box.hidden = false;
+    var jum = { total: 0, antam: 0, bumd: 0 };
+    var h = '<thead><tr><th>Bulan</th><th class="num">Total QAQC</th><th class="num">Ore ANTAM</th><th class="num">Ore PCM</th><th class="num" title="Total QAQC ÷ ore laporan harian sebulan">Faktor</th>' +
+      '<th class="num">Laporan harian ANTAM · PCM</th><th>Status</th></tr></thead><tbody>';
+    K.daftar.forEach(function (it) {
+      var kor = it.kor, st = STATUS_KOREKSI[it.status] || ['', it.status];
+      if (it.siap) { jum.total += it.P.total; jum.antam += kor.antam; jum.bumd += kor.bumd; }
+      var asal = it.sumberLh === 'berkas' ? '<span title="' + esc(it.berkasLh) + '">berkas dipilih</span>' + (it.gantiLh && it.siap ? ', mengganti yang di sistem' : '') :
+        it.sumberLh === 'sistem' ? 'sudah di sistem' : '';
+      h += '<tr><td><b>' + esc(namaBulan(it.ym)) + '</b>' + (it.catatan.length ? '<div class="kecil muted" style="white-space:normal;min-width:150px;max-width:210px">' + esc(it.catatan.join(' · ')) + '</div>' : '') + '</td>' +
+        '<td class="num">' + (it.P.ambigu ? '—' : angka(it.P.total)) + (it.lama != null && it.lama !== it.P.total ? '<div class="kecil muted">tersimpan ' + angka(it.lama) + '</div>' : '') + '</td>' +
+        '<td class="num">' + (kor ? angka(kor.antam) : '—') + '</td><td class="num">' + (kor ? angka(kor.bumd) : '—') + '</td>' +
+        '<td class="num">' + (kor ? angka(kor.faktor, 3) : '—') + '</td>' +
+        '<td class="num">' + (kor ? angka(kor.lhpA) + ' · ' + angka(kor.lhpB) : '—') + (asal ? '<div class="kecil muted">' + asal + '</div>' : '') + '</td>' +
+        '<td><span class="pil' + (st[0] ? ' ' + st[0] : '') + '">' + esc(st[1]) + '</span></td></tr>';
+    });
+    var n = K.daftar.filter(function (x) { return x.siap; }).length;
+    h += '</tbody>' + (n ? '<tfoot><tr><th>Disimpan (' + n + ' bulan)</th><th class="num">' + angka(jum.total) + '</th><th class="num">' + angka(jum.antam) + '</th><th class="num">' + angka(jum.bumd) + '</th><th></th><th></th><th></th></tr></tfoot>' : '');
+    el('tblKoreksi').innerHTML = h;
+    el('koreksiCatatan').textContent = K.galat.join(' · ');
+    var b = el('btnKoreksiSimpan'); b.disabled = !n || !!S.sibuk; b.textContent = n ? 'Simpan koreksi ' + n + ' bulan' : 'Tidak ada yang perlu disimpan';
+  }
+  function batalKoreksi() { S.koreksi = null; renderKoreksi(); infoKoreksi(''); }
+  // tulis satu bulan: baca-ubah-tulis bersyarat updated_at (baris lain tidak tersentuh); dibaca ulang sekali bila bentrok
+  async function tulisKoreksi(it, namaPP) {
+    for (var coba = 0; coba < 2; coba++) {
+      var row = it.row;
+      if (coba) { var rr = await rest('/rest/v1/oe_1on1?bulan=eq.' + it.ym + '&select=bulan,data,updated_at', { method: 'GET' }); row = (rr && rr[0]) || null; }
+      var data = Object.assign({}, (row && row.data) || {}), q = Object.assign({}, data.qaqc || {}), kini = new Date().toISOString();
+      if (it.hariBaru) { q.hari = it.hariBaru; q.berkas = { nama: it.berkasLh, waktu: kini, label: it.labelLh }; }
+      var kor = DASH.koreksiOre({ koreksiOre: { total: it.P.total }, hari: q.hari || {} }, it.ym);
+      if (!kor) throw new Error('laporan harian ' + namaBulan(it.ym) + ' di sistem tidak berisi ore; pilih berkas laporan hariannya');
+      q.koreksiOre = { v: 1, bulan: it.ym, total: it.P.total, waktu: kini, oleh: emailLogin(),
+        sumber: { berkas: namaPP, sheet: it.P.sheet, rincian: it.P.rincian, pile: it.P.pile, adaTotal: !!it.P.adaTotal, akhir: it.P.akhir || '' },
+        lhp: { antam: kor.lhpA, bumd: kor.lhpB, berkas: (q.berkas && q.berkas.nama) || '' } };
+      data.qaqc = q;
+      if (row) {
+        var r = await rest('/rest/v1/oe_1on1?bulan=eq.' + it.ym + '&updated_at=eq.' + encodeURIComponent(row.updated_at) + '&select=updated_at',
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ data: data }) });
+        if (Array.isArray(r) && r.length) return r[0].updated_at;
+      } else {
+        try {
+          var r2 = await rest('/rest/v1/oe_1on1?select=updated_at', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+            body: JSON.stringify({ bulan: it.ym, data: data }) });
+          if (Array.isArray(r2) && r2.length) return r2[0].updated_at;
+        } catch (e) { if (e.jenis === 'sesi' || !/\b409\b|23505|duplicate/i.test(e.message || '')) throw e; }   // baris baru dibuat tab lain: dibaca ulang
+      }
+    }
+    throw new Error('isian ' + namaBulan(it.ym) + ' sedang diubah di tempat lain; coba lagi');
+  }
+  async function simpanKoreksi() {
+    var K = S.koreksi; if (!K || !S.admin) return;
+    var siap = K.daftar.filter(function (x) { return x.siap; }); if (!siap.length) return;
+    if (S.sibuk || S.dipinjam) { infoKoreksi('<span style="color:var(--warn)">Halaman sedang menghitung; tunggu sebentar lalu coba lagi.</span>'); return; }
+    if (isianBelumSiap()) { infoKoreksi('<span style="color:var(--bad)">' + esc(isianBelumSiap()) + '</span>'); return; }
+    var selesai = [], galat = null;
+    S.sibuk = true; kunciHalaman(true); renderKoreksi();
+    try {
+      if (S.kotor || S.menyimpan) await simpan();                // isian bulan yang dibuka disimpan dulu: bisa jadi ikut dikoreksi
+      if (S.kotor) throw new Error('isian ' + namaBulan(S.bulan) + ' belum tersimpan (lihat pesan di atas); selesaikan dulu');
+      for (var i = 0; i < siap.length; i++) {
+        infoKoreksi('Menyimpan ' + esc(namaBulan(siap[i].ym)) + ' (' + (i + 1) + '/' + siap.length + ')…');
+        await tulisKoreksi(siap[i], K.pp);
+        selesai.push(siap[i]);
+      }
+    } catch (e) { galat = e; }
+    finally { S.sibuk = false; kunciHalaman(false); }
+    var teks = selesai.map(function (x) { return BLN[+x.ym.slice(5) - 1] + ' ' + x.ym.slice(0, 4) + ' ' + angka(x.P.total); }).join(' · ');
+    el('koreksiHasil').innerHTML = (selesai.length ? '<div class="banner ok"><div>Koreksi tersimpan (' + selesai.length + ' bulan, WMT): ' + esc(teks) + '. Dashboard dan Excel menghitung ulang angkanya saat dibuka.</div></div>' : '') +
+      (galat ? '<div class="banner err"><div>' + (selesai.length ? 'Bulan berikutnya tidak tersimpan: ' : 'Koreksi gagal disimpan: ') + esc(pesan(galat)) + '</div></div>' : '');
+    infoKoreksi('');
+    S.koreksi = null; renderKoreksi();
+    if (!selesai.length) return;
+    // bulan yang dibuka ikut dikoreksi: muat ulang (S.data lama tanpa koreksi tidak boleh tersimpan lagi); selain itu nilai ulang dashboard
+    if (selesai.some(function (x) { return x.ym === S.bulan; })) await muat();
+    else { S.excelSesi = null; renderSemua(); mulaiDasbor(); }
+    muatArsip();
+  }
+  // daftar bulan yang sudah punya koreksi (dari daftar arsip)
+  function renderKoreksiAda() {
+    var w = el('koreksiAda'); if (!w) return;
+    if (S.arsip === undefined) { w.textContent = 'Memuat…'; return; }
+    if (S.arsip === null) { w.textContent = 'Daftar bulan tidak bisa dimuat: ' + (S.arsipGalat || ''); return; }
+    var ada = S.arsip.filter(function (r) { return korArsip(r) != null; }).sort(function (a, b) { return a.bulan < b.bulan ? -1 : 1; });
+    if (!ada.length) { w.innerHTML = '<span class="muted">Belum ada bulan yang dikoreksi.</span>'; return; }
+    w.innerHTML = '<div class="table-wrap" style="border:0"><table><thead><tr><th>Bulan</th><th class="num">Total ore QAQC (WMT)</th><th>Pile QAQC s.d.</th><th>Disimpan</th></tr></thead><tbody>' +
+      ada.map(function (r) {
+        var ak = /^\d{4}-\d{2}-\d{2}$/.test(r.kora || '') ? tglPendek(r.kora) : '—';
+        return '<tr><td>' + esc(namaBulan(r.bulan)) + '</td><td class="num">' + angka(korArsip(r)) + '</td><td>' + esc(ak) + '</td><td class="kecil muted">' + (r.korw ? esc(jamWit(r.korw)) : '') + (r.koro ? ' · ' + esc(r.koro) : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
   // admin: hitung ulang ringkasan WF YTD satu bulan (isian bulan itu + Minerva sebulan penuh), simpan
   async function hitungUlangYtd(ym) {
     if (S.sibuk || !S.admin) return; S.sibuk = true; kunciHalaman(true);
@@ -7990,11 +8433,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     S.dTabel = true;
   }
   // cap waktu isian bulan-bulan yang dipakai WF YTD (ringkasannya ikut angka YTD dashboard)
+  // bulan template (Jan-Agu 2026) masuk hanya bila punya koreksi ore QAQC, dengan tanda koreksinya (§30); sama dengan siapkanYtd
   async function waktuYtd(ym) {
-    var daftar = bulanYtd(ym), out = {};
+    var tplBln = bulanTemplateYtd(ym), daftar = bulanYtd(ym).concat(tplBln), out = {};
     if (!daftar.length) return out;
-    var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + daftar.join(',') + ')&select=bulan,updated_at', { method: 'GET' }) || [];
-    rows.forEach(function (r) { out[r.bulan] = r.updated_at; });
+    var rows = await rest('/rest/v1/oe_1on1?bulan=in.(' + daftar.join(',') + ')&select=bulan,updated_at' + (tplBln.length ? ',kor:data->qaqc->koreksiOre' : ''), { method: 'GET' }) || [];
+    rows.forEach(function (r) {
+      if (tplBln.indexOf(r.bulan) < 0) { out[r.bulan] = r.updated_at; return; }
+      var tanda = tandaKoreksi(r.kor); if (tanda) out[r.bulan] = tanda;
+    });
     return out;
   }
   // snapshot bisa ditulis semua pengguna login: bentuknya diperiksa sebelum dipakai (isi teks tetap di-escape saat tampil)
@@ -8104,9 +8551,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       DASH.pasangOpex(mv, baca.kap);                              // Operational Excellence = SCS SJI: ritase exca utama × kapasitas truck
       mv.jarak = DASH.jarakExcel(ex, hari, function (d) { return loader[d]; }, DASH.bobotJarak(baca, bulan));   // kartu Jarak mining & front
       pasangJarakExcel(jarakYtd, baca, bulan);                    // Jan-Agu dari berkas Excel di template (versi 8)
-      var sidikD = { isian: isianPada, tpl: S.tplWaktu || null, ytd: await waktuYtd(bulan), lengkap: mulaiAmbil >= lengkapPada(cutoff) };
+      // sidik YTD = yang dipakai hitungan ini (dibaca siapkanYtd sebelum menghitung); dibaca ulang sesudahnya bisa mencatat
+      // perubahan yang angkanya belum ikut, sehingga snapshot basi tampak mutakhir
+      var sidikD = { isian: isianPada, tpl: S.tplWaktu || null, ytd: ytd ? ytd.waktu : await waktuYtd(bulan), lengkap: mulaiAmbil >= lengkapPada(cutoff) };
       var M = DASH.susunModel({ bulan: bulan, cutoff: cutoff, dibuat: new Date().toISOString(), oleh: emailLogin(), sidik: sidikD, baca: baca, mv: mv,
-        sumber: at.sumber, loader: loader, catatan: log, mvKosong: ex.kosong, mvGagal: ex.gagal.map(function (x) { return String(x).slice(0, 10); }), jarakYtd: jarakYtd });
+        sumber: at.sumber, koreksi: at.koreksi, koreksiBasi: at.koreksiBasi, loader: loader, catatan: log, mvKosong: ex.kosong, mvGagal: ex.gagal.map(function (x) { return String(x).slice(0, 10); }), jarakYtd: jarakYtd });
       if (versi < OE1.TEMPLATE_VERSI) M.tplLama = { versi: versi, terbaru: OE1.TEMPLATE_VERSI };
       var jarakTakAman = jarakTakTerbaca && cutoff === cutoffBawaan(bulan) && !(await gabungJarakTersimpan(M));   // bulan jarak yang tersimpan jangan hilang saat snapshot ditimpa
       if (tk !== S.dToken) return;                                // bulan diganti selama dihitung: hasil dibuang
@@ -8371,6 +8820,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
 
   /* ---------- ore QC pagi (admin): satu baris; diringkas bila semua hari s.d. tanggal data sudah terisi ---------- */
   function hariKurangOre() {
+    if (koreksiBulan()) return [];                    // ore bulan ini mengikuti total QAQC Produksi Pakal (§30)
     return hariBulan(S.bulan).filter(function (x) { if (x > S.cutoff) return false; var mm = oreManual()[x]; return !oreBerkas(x) && !(mm && (mm.antam != null || mm.bumd != null)); });
   }
   function renderPagi() {
@@ -8405,7 +8855,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var d = el('dPagiTgl').value, f = dalamBulan(d) ? oreBerkas(d) : null, m = oreManual()[d] || {}, info = el('dPagiInfo');
     var a = el('dPagiA'), b = el('dPagiB'), btn = el('btnDPagi');
     var tulis = function (inp, v) { if (document.activeElement !== inp) inp.value = v == null ? '' : angka(v, v % 1 ? 2 : 0); };
-    if (f) {
+    var kor = dalamBulan(d) ? koreksiBulan() : null;
+    if (kor) {
+      var ok = oreKoreksi(d, kor);
+      tulis(a, Math.round(ok.antam)); tulis(b, Math.round(ok.bumd)); a.disabled = b.disabled = btn.disabled = true;
+      info.className = 'd-pagi-info ok'; info.textContent = 'Total QAQC Produksi Pakal';
+    } else if (f) {
       tulis(a, f.antamOre); tulis(b, f.bumdOre); a.disabled = b.disabled = btn.disabled = true;
       info.className = 'd-pagi-info ok'; info.textContent = 'Ada di berkas QAQC';
     } else {
@@ -8425,7 +8880,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var d = el('dPagiTgl').value, info = el('dPagiInfo');
     var salah = function (t) { info.className = 'd-pagi-info err'; info.textContent = t; };
     if (!d || !dalamBulan(d) || d > S.cutoff) return salah('Pilih tanggal ' + tglPendek(mulai()) + '–' + tglPendek(S.cutoff));
-    if (oreBerkas(d)) return;
+    if (oreBerkas(d) || koreksiBulan()) return;
     if (isianBelumSiap()) return salah(isianBelumSiap());
     var a = angkaTempel(el('dPagiA').value), b = angkaTempel(el('dPagiB').value);
     if ((a != null && (isNaN(a) || a < 0)) || (b != null && (isNaN(b) || b < 0))) return salah('Angka tidak terbaca. Contoh: 2.250');
@@ -8597,7 +9052,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (!token()) { el('bannerSesi').hidden = false; pil('Belum login', 'err'); }
     setBulan(geser(hariIniWit(), -1).slice(0, 7));                // tanggal 1: bulan lalu sebulan penuh (bahan rapat pagi)
     try { S.admin = !!(await rest('/rest/v1/rpc/op_is_admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })); } catch (e) { S.admin = false; }
-    el('bannerBaca').hidden = S.admin || tabAktif() !== 'data'; el('advTemplate').hidden = !S.admin;
+    el('bannerBaca').hidden = S.admin || tabAktif() !== 'data'; el('advTemplate').hidden = el('advKoreksi').hidden = !S.admin;
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.onclick = function () { pilihTab(b.dataset.v); }; });
     el('inBulan').onchange = async function () { if (S.sibuk) { el('inBulan').value = S.bulan; return; } if (!el('inBulan').value) return; bukaBulan(el('inBulan').value); };
     el('inCutoff').onchange = function () { var v = el('inCutoff').value; if (!S.sibuk && v && v.slice(0, 7) === S.bulan) { S.cutoff = v; S.loaderAuto = null; renderSemua(); mulaiDasbor(); if (tabAktif() === 'data') siapkanUnduhLatar(); } else el('inCutoff').value = S.cutoff; };
@@ -8610,6 +9065,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     el('fileQaqc').onchange = function () { if (this.files[0]) prosesQaqc(this.files[0]); this.value = ''; };
     el('cbLgo').onchange = function () { S.data.qaqc.lgoKeWaste = this.checked; ubah(); renderQaqc(); };
     el('fileTpl').onchange = function () { if (this.files[0]) unggahTemplate(this.files[0]); this.value = ''; };
+    el('fileKoreksi').onchange = function () { var f = Array.prototype.slice.call(this.files || []); this.value = ''; if (f.length) pratinjauKoreksi(f); };
+    el('btnKoreksiSimpan').onclick = simpanKoreksi;
+    el('btnKoreksiBatal').onclick = batalKoreksi;
     el('btnBargingTerapkan').onclick = terapkanBarging;
     el('btnBargingHapus').onclick = hapusBarging;
     el('dlgTutup').onclick = el('dlgBatal').onclick = function () { el('dlgBaca').close(); };
