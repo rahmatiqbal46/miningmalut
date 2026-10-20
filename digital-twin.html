@@ -3286,10 +3286,12 @@ button.kl-baris:hover{background:var(--isi)}
 
     /* ---------------- sump (Water & Road) ---------------- */
     var sumpGroup = new THREE.Group(); sumpGroup.visible = false; scene.add(sumpGroup);
+    var sumpLabelGroup = new THREE.Group(); sumpLabelGroup.visible = false; scene.add(sumpLabelGroup);
     var sump = [], sfSump = {};
     function warnaSF(sf) { return sf == null || sf === '' ? 0x9fb3b0 : Number(sf) >= 1.25 ? 0x2f86ff : 0xff7a1a; }
     function bangunSump(daftar) {
       sumpGroup.children.slice().forEach(function (m) { sumpGroup.remove(m); m.geometry.dispose(); m.material.dispose(); });
+      sumpLabelGroup.children.slice().forEach(function (sp) { sumpLabelGroup.remove(sp); lepasSprite(sp); });
       sump = [];
       (daftar || []).forEach(function (sd) {
         var cx = 0, cy = 0, cn = 0, mesh = [];
@@ -3304,16 +3306,26 @@ button.kl-baris:hover{background:var(--isi)}
             var g6 = new THREE.BufferGeometry(); g6.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)); g6.setIndex(fi);
             var mm = new THREE.Mesh(g6, new THREE.MeshBasicMaterial({ color: warnaSF(sfSump[sd.id]), transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false }));
             mm.renderOrder = 5; mm.userData = { kind: 'sump', id: sd.id }; sumpGroup.add(mm); mesh.push(mm);
+            // garis tepi putih: sump eksisting tegas, beda dari genangan sump alami yang berarsir
+            var tp = kontur.map(function (c2) { return new THREE.Vector3(c2.x, zz + 0.3, c2.y); }); tp.push(tp[0].clone());
+            var gl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(tp), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false }));
+            gl.renderOrder = 6; gl.userData = { kind: 'sump', id: sd.id, garis: true }; sumpGroup.add(gl);
           }
         });
         var luasM2 = 0;
         (sd.cincin || []).forEach(function (rg) { var a2 = 0; for (var q = 0, r2 = rg.length - 1; q < rg.length; r2 = q++) a2 += (rg[r2][0] + rg[q][0]) * (rg[r2][1] - rg[q][1]); luasM2 += Math.abs(a2) / 2; });
-        sump.push({ id: sd.id, nama: sd.nama, luasHa: luasM2 / 10000, x: cn ? cx / cn : 0, y: cn ? cy / cn : 0, mesh: mesh });
+        var sx0 = cn ? cx / cn : 0, sy0 = cn ? cy / cn : 0;
+        if (cn) {
+          var lt = labelTex(THREE, 'Sump ' + sd.nama, { size: 19, bold: true, edge: 'rgba(47,134,255,.55)' });
+          var lb = spr(lt, 19, { order: 19, center: [0.5, -0.4] }); lb.userData.labelTex = lt; lb.userData.milikSendiri = true;
+          lb.position.set(wx(sx0), hAt(sx0, sy0) * exag + 4, wz(sy0)); sumpLabelGroup.add(lb);
+        }
+        sump.push({ id: sd.id, nama: sd.nama, luasHa: luasM2 / 10000, x: sx0, y: sy0, mesh: mesh });
       });
     }
     function setSF(peta) {
       sfSump = peta || {};
-      sump.forEach(function (s) { s.mesh.forEach(function (m) { m.material.color.setHex(warnaSF(sfSump[s.id])); }); });
+      sump.forEach(function (s) { s.mesh.forEach(function (m) { if (!m.userData.garis) m.material.color.setHex(warnaSF(sfSump[s.id])); }); });
     }
     /* ---------------- arah aliran air ----------------
        Partikel kecil berjalan menyusuri alur ke hilir dengan ekor memudar di
@@ -3456,13 +3468,16 @@ button.kl-baris:hover{background:var(--isi)}
        d.garis    [x1,y1,x2,y2,…] segmen alur sel → sel penerima (meter lokal),
        d.tanam    [{jenis:'berm'|'parit', garis:[x,y,…]}] yang ikut dihitung,
        d.limpasan [{id, x, y, status}] titik air keluar dari bukaan ke vegetasi. */
-    var airMesh = null, aliranAir = null, limpas = [];
+    var airMesh = null, alamiMesh = null, aliranAir = null, limpas = [];
+    var alamiLabelGroup = new THREE.Group(); alamiLabelGroup.visible = false; scene.add(alamiLabelGroup);
     var tanamGroup = new THREE.Group(); tanamGroup.visible = false; scene.add(tanamGroup);
     var limpasGroup = new THREE.Group(); limpasGroup.visible = false; scene.add(limpasGroup);
     var WARNA_LIMPAS = { baru: '#f2b705', bocor: '#f2b705', temuan: '#ff6e57', berm: '#3ecf8e', abaikan: '#9fb3b0' }, texLimpas = {};
     function teksturLimpas(st) { var w = WARNA_LIMPAS[st] || WARNA_LIMPAS.baru; if (!texLimpas[w]) texLimpas[w] = ikonLimpasTex(THREE, w); return texLimpas[w]; }
     function bersihAir() {
       if (airMesh) { scene.remove(airMesh); airMesh.material.map.dispose(); airMesh.material.dispose(); airMesh = null; }
+      if (alamiMesh) { scene.remove(alamiMesh); alamiMesh.material.map.dispose(); alamiMesh.material.dispose(); alamiMesh = null; }
+      alamiLabelGroup.children.slice().forEach(function (sp) { alamiLabelGroup.remove(sp); lepasSprite(sp); });
       if (aliranAir) { aliranAir.buang(); aliranAir = null; }
       tanamGroup.children.slice().forEach(function (m) { tanamGroup.remove(m); m.geometry.dispose(); m.material.dispose(); });
       limpas.forEach(function (l) { limpasGroup.remove(l.sp); lepasSprite(l.sp); }); limpas = [];
@@ -3496,13 +3511,18 @@ button.kl-baris:hover{background:var(--isi)}
         var g = cv.getContext('2d'), img = g.createImageData(NX, NY), dd = img.data;
         var rgb = (d.warna || []).map(function (hx) { var c = new THREE.Color(hx); return [c.r * 255, c.g * 255, c.b * 255]; });
         var lb = d.label, gn = d.genangan;
+        var cvA = null, gA = null, imgA = null, dA = null;
+        if (gn) { cvA = document.createElement('canvas'); cvA.width = NX; cvA.height = NY; gA = cvA.getContext('2d'); imgA = gA.createImageData(NX, NY); dA = imgA.data; }
         for (var jj = 0; jj < NY; jj++) for (var ii = 0; ii < NX; ii++) {
           var kk = jj * NX + ii, k = lb[kk]; if (!k || !rgb[k - 1]) continue;
           var p = ((NY - 1 - jj) * NX + ii) * 4, c = rgb[k - 1];
           if (gn && gn[kk]) {
-            // genangan sump alami: biru air, tepinya tegas
+            // genangan sump alami: arsir miring biru muda/biru, tepi putus-putus terang (sump eksisting: isi polos bertepi putih)
             var tg = (ii > 0 && !gn[kk - 1]) || (ii < NX - 1 && !gn[kk + 1]) || (jj > 0 && !gn[kk - NX]) || (jj < NY - 1 && !gn[kk + NX]);
-            dd[p] = tg ? 150 : 47; dd[p + 1] = tg ? 220 : 134; dd[p + 2] = 255; dd[p + 3] = tg ? 250 : 165; continue;
+            var garisA = (ii + (NY - 1 - jj)) % 5 < 2, putus = ((ii + jj) >> 1) % 2 === 0;
+            if (tg) { dA[p] = putus ? 235 : 90; dA[p + 1] = putus ? 250 : 200; dA[p + 2] = 255; dA[p + 3] = 250; }
+            else if (garisA) { dA[p] = 170; dA[p + 1] = 230; dA[p + 2] = 255; dA[p + 3] = 225; }
+            else { dA[p] = 35; dA[p + 1] = 105; dA[p + 2] = 200; dA[p + 3] = 120; }
           }
           var tepi = (ii > 0 && lb[kk - 1] !== k) || (ii < NX - 1 && lb[kk + 1] !== k) || (jj > 0 && lb[kk - NX] !== k) || (jj < NY - 1 && lb[kk + NX] !== k);
           dd[p] = c[0]; dd[p + 1] = c[1]; dd[p + 2] = c[2]; dd[p + 3] = tepi ? 235 : 62;
@@ -3511,7 +3531,18 @@ button.kl-baris:hover{background:var(--isi)}
         var tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
         airMesh = new THREE.Mesh(tGeo, new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
         airMesh.renderOrder = 2; airMesh.visible = false; scene.add(airMesh);
+        if (cvA) {
+          gA.putImageData(imgA, 0, 0);
+          var txA = new THREE.CanvasTexture(cvA); txA.magFilter = THREE.NearestFilter; txA.minFilter = THREE.LinearFilter; txA.generateMipmaps = false;
+          alamiMesh = new THREE.Mesh(tGeo, new THREE.MeshBasicMaterial({ map: txA, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2.5, polygonOffsetUnits: -5 }));
+          alamiMesh.renderOrder = 3; alamiMesh.visible = false; scene.add(alamiMesh);
+        }
       }
+      (d.alami || []).forEach(function (a) {
+        var lt = labelTex(THREE, 'Sump alami ' + a.no, { size: 16, edge: 'rgba(127,212,255,.6)' });
+        var lb2 = spr(lt, 16, { order: 18, center: [0.5, -0.4] }); lb2.userData.labelTex = lt; lb2.userData.milikSendiri = true;
+        lb2.position.set(wx(a.x), hPermukaan(a.x, a.y) + 3, wz(a.y)); alamiLabelGroup.add(lb2);
+      });
       if (d.garis && d.garis.length >= 4) aliranAir = buatAliran(rantaiAlur(d.garis), { angkat: 1.6, warna: '#a8e4ff', warnaGaris: 0x5fb8ff, opasitasGaris: 0.8, antar: 55 });
       (d.tanam || []).forEach(function (t) {
         if (!t.garis || t.garis.length < 4) return;
@@ -3781,7 +3812,7 @@ button.kl-baris:hover{background:var(--isi)}
       if (hit) { pilih({ kind: 'area', id: hit.object.userData.id }); return; }
       var objs = [];
       if (roadGroup.visible) jalan.forEach(function (r) { objs.push(r.mesh); });
-      if (sumpGroup.visible) sumpGroup.children.forEach(function (m) { objs.push(m); });
+      if (sumpGroup.visible) sumpGroup.children.forEach(function (m) { if (!m.userData.garis) objs.push(m); });
       objs.push(terrain);
       var h2 = ray.intersectObjects(objs, false)[0];
       if (!h2) { pilih(null); return; }
@@ -3970,7 +4001,7 @@ button.kl-baris:hover{background:var(--isi)}
     /* ---------------- lapisan & gambar ---------------- */
     /* unitNonaktif: tampilkan unit yang GPS-nya hilang (> 10 menit), pudar.
        panah: chevron arah gerak di depan unit yang bergerak. */
-    var lapis = { jalan: true, labelJalan: false, area: true, unit: true, unitNonaktif: false, panah: true, pelanggaran: true, air: false, kontur: false, perubahan: false };
+    var lapis = { jalan: true, labelJalan: false, area: true, unit: true, unitNonaktif: false, panah: true, pelanggaran: true, air: false, airCatchment: true, airAliran: true, airSump: true, airAlami: true, airTanam: true, airTemuan: true, kontur: false, perubahan: false };
     var tmpV = new THREE.Vector3();
     function rapikanLabel() {
       var W2 = vpH * camera.aspect, taruh = [], cand = [];
@@ -3979,6 +4010,8 @@ button.kl-baris:hover{background:var(--isi)}
       roadLabelGroup.children.forEach(function (sp) { sp.visible = true; });
       unit.forEach(function (u) { add(u.label, (pilihan && pilihan.kind === 'unit' && pilihan.id === u.id) ? 0 : (u.cincin.visible ? 1 : 3)); });
       area.forEach(function (a2) { add(a2.label, 2); });
+      if (sumpLabelGroup.visible) sumpLabelGroup.children.forEach(function (sp) { sp.visible = true; add(sp, 3.5); });
+      if (alamiLabelGroup.visible) alamiLabelGroup.children.forEach(function (sp) { sp.visible = true; add(sp, 4.5); });
       if (roadLabelGroup.visible) roadLabelGroup.children.forEach(function (sp) { add(sp, 4); });
       if (dunia) { if (dunia.penanda.visible) add(dunia.sNama, 0.5); dunia.label.forEach(function (lb) { add(lb.sprite, 5); }); }
       cand.sort(function (a2, b2) { return a2[0] - b2[0]; });
@@ -4068,11 +4101,15 @@ button.kl-baris:hover{background:var(--isi)}
       // kamera jauh (lebih dari 25 km, atau globe): isi site terlalu kecil untuk dilihat, jadi tidak digambar
       var dekat = !jauhSite;
       roadGroup.visible = lapis.jalan && dekat; roadLabelGroup.visible = lapis.jalan && lapis.labelJalan && jarak < 4500 && dekat;
-      areaGroup.visible = lapis.area && dekat; evGroup.visible = lapis.pelanggaran && dekat; sumpGroup.visible = lapis.air && dekat;
-      if (airMesh) airMesh.visible = lapis.air && dekat;
-      tanamGroup.visible = lapis.air && dekat; limpasGroup.visible = lapis.air && dekat;
+      areaGroup.visible = lapis.area && dekat; evGroup.visible = lapis.pelanggaran && dekat;
+      var airOn = lapis.air && dekat;
+      sumpGroup.visible = airOn && lapis.airSump; sumpLabelGroup.visible = sumpGroup.visible && jarak < 3200;
+      if (alamiMesh) alamiMesh.visible = airOn && lapis.airAlami;
+      alamiLabelGroup.visible = airOn && lapis.airAlami && jarak < 1400;
+      if (airMesh) airMesh.visible = airOn && lapis.airCatchment;
+      tanamGroup.visible = airOn && lapis.airTanam; limpasGroup.visible = airOn && lapis.airTemuan;
       if (limpasGroup.visible) limpas.forEach(function (l) { l.sp.visible = l.utama || jarak < 2600 || (pilihan && pilihan.kind === 'limpasan' && pilihan.id === l.id); });
-      if (aliranAir) { aliranAir.grup.visible = lapis.air && dekat; if (aliranAir.grup.visible) aliranAir.perbarui(dtDetik, jarak); }
+      if (aliranAir) { aliranAir.grup.visible = airOn && lapis.airAliran; if (aliranAir.grup.visible) aliranAir.perbarui(dtDetik, jarak); }
       if (diffMesh) diffMesh.visible = lapis.perubahan && dekat;
       if (konturObj) konturObj.visible = lapis.kontur && dekat;
       if (dunia) {
@@ -4688,7 +4725,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       if (tut) {
         if (lapor) lapor('Mencari air yang keluar dari bukaan', 82);
         if (genangan) for (c = 0; c < n; c++) if (genangan[c]) tut[c] = 2;
-        limpasan = cariLimpasan(tut, acc, arah, label, sumpSel, genangan, NX, NY, DX, (d.ambangLimpas || 0.05) / haSel, (d.asalLimpas || 1) / haSel, K);
+        limpasan = cariLimpasan(tut, acc, arah, label, sumpSel, genangan, NX, NY, DX, (d.ambangLimpas || 0.05) / haSel, (d.asalLimpas || 1) / haSel, K, urutan, nUrut);
       }
       var g = new Float32Array(garis), transfer = [lab.buffer, g.buffer];
       var hasil = { label: lab, luasHa: luasHa, lautHa: Math.round(laut * haSel * 10) / 10, garis: g, alami: hasilAlami, limpasan: limpasan, tanamSel: tanamSel };
@@ -4746,7 +4783,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
        (≥ asalSel) supaya bercak terang di tengah hutan tidak ikut. Titik yang
        berdekatan (≤ 24 m) digabung. Tiap titik membawa usulan garis berm di
        tepi bukaan sekitarnya. */
-    function cariLimpasan(tut, acc, arah, label, sumpSel, genangan, NX, NY, DX, ambangSel, asalSel, K) {
+    function cariLimpasan(tut, acc, arah, label, sumpSel, genangan, NX, NY, DX, ambangSel, asalSel, K, urutan, nUrut) {
       var n = NX * NY, c, calon = [];
       // luas komponen bukaan
       var kompB = new Int32Array(n), luasB = [0], antre = new Int32Array(n), nk = 0;
@@ -4802,11 +4839,40 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
                    hx: (ke % NX) * DX - (best % NX) * DX, hy: ((ke / NX) | 0) * DX - ((best / NX) | 0) * DX,
                    huluHa: Math.round(tot * DX * DX / 100) / 100, lebar: Math.round(Math.max(x1 - x0, y1 - y0) * DX + DX),
                    tujuan: tujuan > 0 ? tujuan : 0, keSump: tujuan > 0 && tujuan <= K,
-                   usulBerm: usulBerm(tut, best, NX, NY, DX, Math.max(x1 - x0, y1 - y0) * DX / 2 + 30) });
+                   usulBerm: usulBerm(tut, best, NX, NY, DX, Math.max(x1 - x0, y1 - y0) * DX / 2 + 30), _sel: sel, _best: best });
       });
       out.sort(function (a, b) { return b.huluHa - a.huluHa; });
-      return out.slice(0, 300);
+      out = out.slice(0, 300);
+      /* Supaya admin melihat dari mana dan ke mana airnya: daerah hulu tiap titik (semua sel
+         yang alirannya lewat titik itu) sebagai poligon, alur utama di hulu (tetangga hulu
+         dengan akumulasi terbesar, ≤ 450 m), dan jalur air sesudah keluar (≤ 360 m). */
+      var tanda = new Uint16Array(n), pertama = new Int32Array(out.length + 1).fill(-1);
+      out.forEach(function (o, k) { o._sel.forEach(function (cc) { tanda[cc] = k + 1; }); });
+      for (var q = 0; q < nUrut; q++) { c = urutan[q]; if (tanda[c]) continue; var pa = arah[c]; if (pa >= 0 && tanda[pa]) tanda[c] = tanda[pa]; }
+      for (c = 0; c < n; c++) if (tanda[c] && pertama[tanda[c]] < 0) pertama[tanda[c]] = c;
+      out.forEach(function (o, k) {
+        var id = k + 1;
+        o.hulu = pertama[id] >= 0 ? telusuriTepi(function (cc) { return tanda[cc] === id; }, pertama[id], NX, NY, DX, 40000) : null;
+        var b = o._best, hulu = [(b % NX) * DX, ((b / NX) | 0) * DX], cur = b;
+        for (var st = 0; st < 150; st++) {
+          var x = cur % NX, nx2 = -1, am = 0;
+          for (var m = 0; m < 8; m++) {
+            var xn = x + DI8X[m]; if (xn < 0 || xn >= NX) continue;
+            var nb = cur + DI8X[m] + DI8Y[m] * NX; if (nb < 0 || nb >= n || arah[nb] !== cur) continue;
+            if (acc[nb] > am) { am = acc[nb]; nx2 = nb; }
+          }
+          if (nx2 < 0 || am < 3) break;
+          cur = nx2; hulu.push((cur % NX) * DX, ((cur / NX) | 0) * DX);
+        }
+        var hilir = [(b % NX) * DX, ((b / NX) | 0) * DX]; cur = b;
+        for (st = 0; st < 120; st++) { cur = arah[cur]; if (cur < 0) break; hilir.push((cur % NX) * DX, ((cur / NX) | 0) * DX); if (sumpSel[cur] || (genangan && genangan[cur])) break; }
+        o.jalurHulu = dp(balikXY(hulu), 1.5); o.jalurHilir = dp(hilir, 1.5);
+        delete o._sel; delete o._best;
+      });
+      return out;
     }
+    // [x0,y0,x1,y1,…] dibalik urutan titiknya (hulu → titik keluar)
+    function balikXY(xy) { var o = []; for (var k = xy.length - 2; k >= 0; k -= 2) o.push(xy[k], xy[k + 1]); return o; }
     /* Usulan garis berm: rantai sel tepi bukaan (bukaan yang bersebelahan dengan
        vegetasi) di sekitar titik keluar, sepanjang ± `jauh` meter ke dua arah.
        Ujung A = sel tepi terjauh dari titik; lalu jalur terpanjang dari A. */
@@ -5437,20 +5503,29 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     { k: 'unitNonaktif', nm: 'Unit tidak aktif', sw: '#4b6763', induk: 'unit', ket: 'Unit yang GPS-nya hilang lebih dari 10 menit. Dimatikan: unit itu disembunyikan dari peta (tetap terhitung di kartu Armada).' },
     { k: 'panah', nm: 'Panah arah gerak', sw: '#ffffff', induk: 'unit', ket: 'Chevron di depan unit yang sedang bergerak, menunjukkan arahnya. Merah bila melaju di atas batas.' },
     { k: 'pelanggaran', nm: 'Pelanggaran hari ini', sw: '#ff6e57' },
-    { k: 'air', nm: 'Air & sump', sw: '#2f86ff', ket: 'Sump, catchment, dan arah aliran dihitung dari topo aktif, termasuk berm dan parit yang sudah dikonfirmasi admin, sump alami (cekungan besar), dan temuan limpasan (air keluar dari bukaan ke vegetasi) yang sudah dikonfirmasi admin.' },
+    { k: 'air', nm: 'Air & sump', sw: '#2f86ff', ket: 'Sump, catchment, dan arah aliran dihitung dari topo aktif, termasuk berm dan parit yang sudah dikonfirmasi admin, sump alami (cekungan besar), dan temuan limpasan (air keluar dari bukaan ke vegetasi) yang sudah dikonfirmasi admin. Pilih bagian yang ditampilkan di baris-baris di bawahnya.' },
+    { k: 'airCatchment', nm: 'Catchment', sw: 'linear-gradient(90deg,#5fb8ff 33%,#ff9f6b 33% 66%,#b58cff 66%)', induk: 'air', ket: 'Daerah tangkapan tiap sump (warna per sump, batas tegas).' },
+    { k: 'airAliran', nm: 'Aliran air', sw: '#a8e4ff', induk: 'air', ket: 'Alur air dan tetes yang bergerak ke hilir.' },
+    { k: 'airSump', nm: 'Sump eksisting', sw: '#2f86ff', induk: 'air', ket: 'Sump terdaftar (data air & sump): isi polos berwarna SF dari Water & Road, tepi putih, bernama.' },
+    { k: 'airAlami', nm: 'Sump alami', sw: 'repeating-linear-gradient(135deg,#aee6ff 0 2px,#2369c8 2px 5px)', induk: 'air', ket: 'Cekungan besar di bukaan tempat air berkumpul menurut topo: arsir biru, tepi putus-putus.' },
+    { k: 'airTanam', nm: 'Berm & parit', sw: 'linear-gradient(90deg,#d08a3a 50%,#3fb6ff 50%)', induk: 'air', ket: 'Berm (coklat) dan parit (biru) yang dikonfirmasi admin dan ikut dihitung.' },
+    { k: 'airTemuan', nm: 'Temuan limpasan', sw: '#ff6e57', induk: 'air', ket: 'Titik air keluar dari bukaan ke vegetasi yang sudah dikonfirmasi admin sebagai temuan.' },
     { k: 'kontur', nm: 'Kontur 10 m', sw: '#9fb3b0' },
     { k: 'perubahan', nm: 'Perubahan topo', sw: 'linear-gradient(90deg,#ff5440 50%,#40a4ff 50%)' }
   ];
   var KUNCI_LAPIS = 'twin_lapis_unit';
+  // pilihan baris anak yang diingat per peramban (Unit dan Air & sump)
+  var ANAK_SIMPAN = ['unitNonaktif', 'panah', 'airCatchment', 'airAliran', 'airSump', 'airAlami', 'airTanam', 'airTemuan'];
   function bacaPrefLapis() {
     try {
       var p = JSON.parse(localStorage.getItem(KUNCI_LAPIS) || '{}'), o = {};
-      ['unitNonaktif', 'panah'].forEach(function (k) { if (typeof p[k] === 'boolean') o[k] = p[k]; });
+      ANAK_SIMPAN.forEach(function (k) { if (typeof p[k] === 'boolean') o[k] = p[k]; });
       return o;
     } catch (e) { return {}; }
   }
   function simpanPrefLapis() {
-    try { localStorage.setItem(KUNCI_LAPIS, JSON.stringify({ unitNonaktif: !!S.lapis.unitNonaktif, panah: !!S.lapis.panah })); } catch (e) {}
+    var o = {}; ANAK_SIMPAN.forEach(function (k) { o[k] = !!S.lapis[k]; });
+    try { localStorage.setItem(KUNCI_LAPIS, JSON.stringify(o)); } catch (e) {}
   }
   function bangunPanelLapis() {
     var w = $('daftarLapis');
@@ -5475,6 +5550,10 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     set('panah', du.length ? String(gerak) : '');
     set('pelanggaran', S.pel.length ? String(S.pel.length) : '');
     set('air', S.airSedang ? 'menghitung…' : S.air ? ringkasAir() : (S.site.air ? S.site.air.sump.length + ' sump' : ''));
+    set('airSump', S.site.air ? String(S.site.air.sump.length) : '');
+    set('airAlami', S.air ? String(S.air.alami.length) : '');
+    set('airTanam', S.air ? String(S.air.tampil.tanam.length) : '');
+    set('airTemuan', S.air ? String(S.air.tampil.limpasan.length) : '');
     set('perubahan', S.site.topoLama ? tglPendek(S.site.topoLama.tanggal).replace(/ \d{4}$/, '') + ' → ' + tglPendek(S.site.topo.tanggal).replace(/ \d{4}$/, '') : (S.topoLamaSedang ? 'memuat…' : ''));
     document.querySelectorAll('#daftarLapis input').forEach(function (i) { i.checked = !!(S.lapis && S.lapis[i.dataset.k]); });
     // baris anak ikut redup bila induknya mati
@@ -5499,7 +5578,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     }
     S.eng.setLapis(k, on); S.lapis = S.eng.lapis();
     if (k === 'air' && on && !S.air) hitungAir();
-    if (k === 'unitNonaktif' || k === 'panah') simpanPrefLapis();
+    if (ANAK_SIMPAN.indexOf(k) >= 0) simpanPrefLapis();
     perbaruiKetLapis();
   }
   async function muatTopoLama() {
@@ -6116,10 +6195,10 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
   var WARNA_SUMP = ['#5fb8ff', '#ff9f6b', '#b58cff', '#6ee7b7', '#ffd166', '#ff7eb6', '#7dd3fc', '#c4f1a5', '#f4a261', '#a0c4ff',
                     '#ffadad', '#caffbf', '#9bf6ff', '#bdb2ff', '#ffc6ff', '#fdffb6', '#e9c46a', '#90e0ef', '#f28482', '#84a59d'];
   var WARNA_ALAMI = ['#8fb3c9', '#a3c2b4', '#b8a9c9', '#c9b48f', '#9fc9c4', '#c4a9a9'];
-  var WARNA_LIMPAS_APP = { baru: '#f2b705', bocor: '#f2b705', temuan: '#ff6e57', berm: '#3ecf8e', abaikan: '#9fb3b0' };
-  var LABEL_LIMPAS = { baru: 'Belum ditinjau', bocor: 'Masih keluar', temuan: 'Temuan', berm: 'Berm', abaikan: 'Diabaikan' };
-  var KET_LIMPAS = { baru: 'Belum ditinjau admin', bocor: 'Sudah dinyatakan ada berm, tetapi air masih keluar di sini', temuan: 'Temuan potensi limpasan (dikonfirmasi admin)',
-                     berm: 'Seharusnya ada berm · berm sudah ditanam ke hitungan', abaikan: 'Diabaikan admin' };
+  var WARNA_LIMPAS_APP = { baru: '#f2b705', bocor: '#c77dff', temuan: '#ff6e57', berm: '#3ecf8e', parit: '#3ecf8e', abaikan: '#9fb3b0' };
+  var LABEL_LIMPAS = { baru: 'Perlu dikonfirmasi', bocor: 'Masih keluar', temuan: 'Temuan', berm: 'Ada berm', parit: 'Ada parit', abaikan: 'Diabaikan' };
+  var KET_LIMPAS = { baru: 'Perlu dikonfirmasi admin', bocor: 'Admin menyatakan ada berm/parit di lapangan, tetapi menurut hitungan air masih keluar di sini', temuan: 'Temuan potensi limpasan (dikonfirmasi admin)',
+                     berm: 'Ada berm di lapangan · berm ikut dihitung', parit: 'Ada parit di lapangan · parit ikut dihitung', abaikan: 'Diabaikan admin' };
   var AIR_BAWAAN = { cekungan: { aktif: true, dalam: 1, luas: 200 }, ambang_limpasan_ha: 0.25, asal_limpasan_ha: 1, dalam_parit_jalan: 0.5, tinggi_berm: 1, dalam_parit: 0.5 };
   function normalAir(d) {
     var a = d && typeof d === 'object' ? JSON.parse(JSON.stringify(d)) : null;
@@ -6220,7 +6299,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       var E = l.x + t.e0, N = l.y + t.n0, best = null, bd = 30;
       (keputusan || []).forEach(function (k) { var d = Math.hypot(k.E - E, k.N - N); if (d < bd && !dipakai[k.id]) { bd = d; best = k; } });
       if (best) dipakai[best.id] = 1;
-      var st = best ? (best.status === 'berm' ? 'bocor' : best.status) : 'baru';
+      var st = best ? (best.status === 'berm' || best.status === 'parit' ? 'bocor' : best.status) : 'baru';
       return Object.assign({}, l, { id: best ? best.id : 'L' + Math.round(E) + '_' + Math.round(N), E: E, N: N, status: st, keputusan: best || null, no: n + 1 });
     });
   }
@@ -6233,7 +6312,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var tanam = bahan.tanam.map(function (x) { return { jenis: x.jenis, id: x.id, garis: x.garis }; });
     return { luas: luas, alami: alami, limpasan: limp, laut: r.lautHa, label: r.label, genangan: r.genangan || null, tutupan: r.tutupan || null, K: K, tanamSel: r.tanamSel || 0,
              topo: t.versi, waktu: Date.now(),
-             tampil: { label: r.label, warna: warna, genangan: r.genangan || null, garis: r.garis, tanam: tanam,
+             tampil: { label: r.label, warna: warna, genangan: r.genangan || null, garis: r.garis, tanam: tanam, alami: alami,
                        limpasan: limp.filter(function (l) { return l.status === 'temuan'; }) } };
   }
   /* Menghitung air untuk data `air` (bawaan: versi aktif). opsi.diam: tanpa pesan;
@@ -7066,7 +7145,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var gambarBaru = null, seret = null, geser = null, arahkan = null, overlay = null, sorotKotak = null;
     var skala = 1, ox = 0, oy = 0, dpr = Math.min(global.devicePixelRatio || 1, 2), lebar = 0, tinggi = 0;
     var latar = o.latar || null, belah = null, titikTanda = [];
-    var air = salinAir(o.air), calon = o.calonParit || [], limpasT = o.limpasan || [], alamiT = o.alami || [], pilihF = null, pilihL = null;
+    var air = salinAir(o.air), calon = o.calonParit || [], limpasT = o.limpasan || [], alamiT = o.alami || [], pilihF = null, pilihL = null, sorotL = null, alurT = null;
 
     if (o.jalan) ruas = salinRuas(o.jalan);
     if (o.area) area = salinArea(o.area);
@@ -7221,8 +7300,26 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       g.beginPath();
       for (var k = 0; k < xy.length; k += 2) { var s = keLayar(xy[k], xy[k + 1]); if (k) g.lineTo(s[0], s[1]); else g.moveTo(s[0], s[1]); }
     }
+    function panahDi(xy, warna) {
+      var n = xy.length; if (n < 4) return;
+      var a = keLayar(xy[n - 4], xy[n - 3]), b = keLayar(xy[n - 2], xy[n - 1]), ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(b[0] - 12 * Math.cos(ang - 0.45), b[1] - 12 * Math.sin(ang - 0.45)); g.lineTo(b[0] - 12 * Math.cos(ang + 0.45), b[1] - 12 * Math.sin(ang + 0.45)); g.closePath();
+      g.fillStyle = warna; g.fill();
+    }
     function gambarAir() {
       g.lineJoin = 'round'; g.lineCap = 'round';
+      // semua alur hasil hitung (tipis), bila diminta
+      if (alurT && alurT.length >= 4) {
+        g.beginPath();
+        for (var q = 0; q + 3 < alurT.length; q += 4) { var u1 = keLayar(alurT[q], alurT[q + 1]), u2 = keLayar(alurT[q + 2], alurT[q + 3]); g.moveTo(u1[0], u1[1]); g.lineTo(u2[0], u2[1]); }
+        g.lineWidth = 1.2; g.strokeStyle = 'rgba(127,212,255,.8)'; g.stroke();
+      }
+      // titik limpasan terpilih: daerah hulu (oranye), alur utama di hulu, dan jalur air sesudah keluar (biru)
+      if (sorotL) {
+        if (sorotL.hulu && sorotL.hulu.length >= 6) { jalurDatar(sorotL.hulu); g.closePath(); g.fillStyle = 'rgba(255,150,40,.24)'; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(255,170,60,.95)'; g.stroke(); }
+        if (sorotL.jalurHulu && sorotL.jalurHulu.length >= 4) { jalurDatar(sorotL.jalurHulu); g.setLineDash([7, 5]); g.lineWidth = 3; g.strokeStyle = '#ffc04d'; g.stroke(); g.setLineDash([]); panahDi(sorotL.jalurHulu, '#ffc04d'); }
+        if (sorotL.jalurHilir && sorotL.jalurHilir.length >= 4) { jalurDatar(sorotL.jalurHilir); g.lineWidth = 4; g.strokeStyle = '#3fb6ff'; g.stroke(); panahDi(sorotL.jalurHilir, '#3fb6ff'); }
+      }
       // sump alami hasil hitung (rujukan, putus-putus)
       alamiT.forEach(function (a) {
         if (!a.cincin || a.cincin.length < 6) return;
@@ -7398,7 +7495,9 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
         if (jn === 'berm') f.tinggi = o.tinggiBerm ? o.tinggiBerm() : 1; else f.dalam = o.dalamParit ? o.dalamParit() : 0.5;
         air[jn].push(f); sel = { jenis: jn, i: air[jn].length - 1 };
       }
-      gambarBaru = null; alat = 'pilih'; if (o.onAlat) o.onAlat('pilih');
+      gambarBaru = null;
+      if (o.onFiturBaru) o.onFiturBaru(sel);
+      alat = 'pilih'; if (o.onAlat) o.onAlat('pilih');
       pilihF = sel; if (o.onPilihFitur) o.onPilihFitur(sel); ubah();
       return true;
     }
@@ -7583,6 +7682,8 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       setCalon: function (c) { calon = c || []; gambar(); },
       setLimpas: function (l) { limpasT = l || []; gambar(); },
       setAlami: function (a) { alamiT = a || []; gambar(); },
+      setSorot: function (l) { sorotL = l || null; gambar(); },
+      setAlur: function (gs) { alurT = gs || null; gambar(); },
       fokusFitur: function (sel) {
         var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         cincinF(sel).forEach(function (rg) { rg.forEach(function (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }); });
@@ -8680,7 +8781,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       v: 1, sumber: 'Digital Twin · disunting ' + (S().email || 'admin') + ' · ' + hariIni(),
       sump: e.sump.map(function (s) { return { id: s.id, nama: String(s.nama || '').trim(), catatan: s.catatan || '', cincin: s.cincin.filter(function (r) { return r.length >= 3; }).map(function (r) { return r.map(g); }) }; }),
       berm: e.berm.map(function (b) { return { id: b.id, nama: String(b.nama || '').trim(), tinggi: Number(b.tinggi) || 1, catatan: b.catatan || '', sumber: b.sumber || 'manual', garis: b.garis.map(g) }; }),
-      parit: e.parit.map(function (b) { return { id: b.id, nama: String(b.nama || '').trim(), dalam: Number(b.dalam) || 0.5, catatan: b.catatan || '', garis: b.garis.map(g) }; }),
+      parit: e.parit.map(function (b) { return { id: b.id, nama: String(b.nama || '').trim(), dalam: Number(b.dalam) || 0.5, catatan: b.catatan || '', sumber: b.sumber || 'manual', garis: b.garis.map(g) }; }),
       parit_jalan: JSON.parse(JSON.stringify(AK.paritJalan)),
       dalam_parit_jalan: AK.setel.dalam_parit_jalan,
       cekungan: Object.assign({}, AK.setel.cekungan),
@@ -8706,7 +8807,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       p: a.parit.map(function (x) { return [x.id, x.nama, x.dalam, x.catatan || '', x.garis.map(function (p) { return [Math.round(p[0] * 10), Math.round(p[1] * 10)]; })]; }),
       j: Object.keys(a.parit_jalan).sort().map(function (k) { var v = a.parit_jalan[k] || {}; return [k, !!v.kiri, !!v.kanan, Number(v.jarak) || 0]; }).filter(function (x) { return x[1] || x[2] || x[3]; }),
       d: a.dalam_parit_jalan, c: a.cekungan, al: a.ambang_limpasan_ha, as: a.asal_limpasan_ha,
-      l: a.limpasan.map(function (k) { return [k.id, k.status, k.catatan || '', k.berm || '']; }) });
+      l: a.limpasan.map(function (k) { return [k.id, k.status, k.catatan || '', k.berm || '', k.fitur ? k.fitur.jenis + ':' + k.fitur.id : '']; }) });
   }
   function bagianAir(opsi) {
     opsi = opsi || {};
@@ -8724,15 +8825,23 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var ALAT = [['pilih', 'Pilih & geser'], ['tambah', 'Tambah simpul'], ['hapus', 'Hapus simpul'], ['sumpBaru', 'Sump baru'], ['bermBaru', 'Berm baru'], ['paritBaru', 'Parit baru']];
     var PETUNJUK = { pilih: 'Klik sump, berm, atau parit untuk memilih; seret simpul putih untuk memindah. Klik garis biru putus-putus untuk memakai parit pinggir jalan. Klik tanda segitiga untuk meninjau limpasan.',
       tambah: 'Klik pada tepi sump atau garis terpilih untuk menambah simpul.', hapus: 'Klik simpul fitur terpilih untuk menghapusnya.',
-      sumpBaru: 'Klik titik demi titik mengelilingi kolam; klik ganda atau Enter untuk selesai.', bermBaru: 'Klik titik demi titik sepanjang berm; klik ganda atau Enter untuk selesai.', paritBaru: 'Klik titik demi titik sepanjang parit, dari hulu ke hilir; klik ganda atau Enter untuk selesai.' };
-    function setAlat(a) { alatSeg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === a)); }); AK.ed.setAlat(a); petunjuk.textContent = PETUNJUK[a]; selesai.hidden = !/Baru$/.test(a); }
-    ALAT.forEach(function (a) { alatSeg.appendChild(h('button', { type: 'button', 'data-v': a[0], 'aria-pressed': String(a[0] === 'pilih'), text: a[1], onclick: function () { setAlat(a[0]); } })); });
+      sumpBaru: 'Klik titik demi titik mengelilingi kolam; klik ganda atau Enter untuk selesai.',
+      bermBaru: 'BERM = tanggul yang menahan air. Klik titik demi titik di puncak berm; klik ganda atau Enter untuk selesai. Air dihitung tertahan di sisi hulu lalu mengalir menyusuri berm ke ujungnya.',
+      paritBaru: 'PARIT = saluran yang menampung dan mengalirkan air. Klik titik demi titik sepanjang dasar parit, dari hulu ke hilir; klik ganda atau Enter untuk selesai. Air dihitung masuk ke parit lalu mengikutinya ke ujung yang lebih rendah.' };
+    function setAlat(a) {
+      alatSeg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === a)); }); AK.ed.setAlat(a); petunjuk.textContent = PETUNJUK[a]; selesai.hidden = !/Baru$/.test(a);
+      if (AK.menggambarUntuk && a !== AK.menggambarUntuk.jenis + 'Baru') { AK.menggambarUntuk = null; isiSampingAir(); }
+    }
+    AK.setAlat = setAlat;
+    var JUDUL_ALAT = { bermBaru: 'Berm: tanggul yang menahan air (air menggenang di hulunya lalu menyusuri berm)', paritBaru: 'Parit: saluran yang menangkap air lalu mengalirkannya sepanjang parit ke hilir' };
+    ALAT.forEach(function (a) { alatSeg.appendChild(h('button', { type: 'button', 'data-v': a[0], 'aria-pressed': String(a[0] === 'pilih'), title: JUDUL_ALAT[a[0]] || null, text: a[1], onclick: function () { setAlat(a[0]); } })); });
+    var btnAlur = h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!AK.alur), text: 'Aliran', title: 'Tampilkan semua alur air hasil hitung', onclick: function () { AK.alur = !AK.alur; btnAlur.setAttribute('aria-pressed', String(AK.alur)); pasangHasilKeEditor(); } });
     var btnOverlay = h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!AK.overlay), text: 'Catchment', onclick: function () { AK.overlay = !AK.overlay; btnOverlay.setAttribute('aria-pressed', String(AK.overlay)); pasangHasilKeEditor(); } });
     wadah.appendChild(h('div', { class: 'editor-alat kaca' }, alatSeg,
       h('button', { type: 'button', class: 'btn', text: 'Urungkan', onclick: function () { AK.ed.urung(); } }),
-      h('button', { type: 'button', class: 'btn', text: 'Seluruh site', onclick: function () { AK.ed.semua(); } }), btnOverlay, selesai, petunjuk));
+      h('button', { type: 'button', class: 'btn', text: 'Seluruh site', onclick: function () { AK.ed.semua(); } }), btnOverlay, btnAlur, selesai, petunjuk));
     var legenda = h('div', { class: 'editor-bawah' });
-    [['#2f86ff', 'sump'], ['#d08a3a', 'berm'], ['#3fb6ff', 'parit'], ['rgba(63,182,255,.6)', 'calon parit jalan'], ['#f2b705', 'limpasan belum ditinjau'], ['#ff6e57', 'temuan'], ['#7fd4ff', 'sump alami']].forEach(function (x) {
+    [['#2f86ff', 'sump'], ['#d08a3a', 'berm'], ['#3fb6ff', 'parit'], ['rgba(63,182,255,.6)', 'calon parit jalan'], ['#f2b705', 'perlu dikonfirmasi'], ['#ff6e57', 'temuan'], ['#c77dff', 'masih keluar'], ['#7fd4ff', 'sump alami'], ['rgba(255,150,40,.7)', 'hulu titik terpilih']].forEach(function (x) {
       legenda.appendChild(h('span', { class: 'kaca' }, h('i', { style: 'background:' + x[0] }), x[1]));
     });
     wadah.appendChild(legenda);
@@ -8741,10 +8850,11 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     AK.ed = EditorPeta.buat({ kanvas: kv, latar: S().eng.kanvasCitra(), bingkai: { W: B.W, H: B.H }, mode: 'air', air: AK.lokal, jalan: ruasLokal(S().site.jalan),
       calonParit: calonParitLokal(),
       tinggiBerm: function () { return 1; }, dalamParit: function () { return 0.5; }, nomorSumpBaru: nomorSumpBaru,
-      onPilihFitur: function (sel) { AK.pilih = sel; if (sel) AK.limpasPilih = null; isiSampingAir(); },
+      onPilihFitur: function (sel) { AK.pilih = sel; if (sel && !AK.menggambarUntuk && !AK.tahanLimpas) AK.limpasPilih = null; AK.tahanLimpas = false; isiSampingAir(); },
+      onFiturBaru: function (sel) { fiturUntukLimpas(sel); },
       onUbah: function () { AK.lokal = AK.ed.air(); simpanDrafAir(); jadwalHitungAir(); isiSampingAir(); },
       onKlikCalon: function (c) { ubahParitJalan(c.ruas, c.sisi); },
-      onKlikLimpas: function (id) { AK.limpasPilih = id; AK.pilih = null; isiSampingAir(); },
+      onKlikLimpas: function (id) { AK.limpasPilih = id; AK.pilih = null; pasangHasilKeEditor(); isiSampingAir(); },
       onAlat: function (a) { setAlat(a); }, onPesan: function (t) { toast(t); },
       onGambar: function (n) { selesai.disabled = n < (AK.ed.alat() === 'sumpBaru' ? 3 : 2); } });
     var akIni = AK, edIni = AK.ed;
@@ -8817,47 +8927,100 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     AK.ed.setOverlay(r && AK.overlay ? kanvasLabel(r) : null);
     AK.ed.setLimpas(r ? r.limpasan.map(function (l) { return { id: l.id, x: l.x, y: l.y, status: statusKeputusan(l) }; }) : []);
     AK.ed.setAlami(r ? r.alami : []);
+    AK.ed.setAlur(r && AK.alur ? r.tampil.garis : null);
+    var lp = r && AK.limpasPilih ? r.limpasan.filter(function (x) { return x.id === AK.limpasPilih; })[0] : null;
+    AK.ed.setSorot(lp ? { hulu: lp.hulu, jalurHulu: lp.jalurHulu, jalurHilir: lp.jalurHilir } : null);
     if (AK.limpasPilih && !AK.pilih) AK.ed.pilihLimpas(AK.limpasPilih);
   }
   // status menurut keputusan di draf (bisa berubah sebelum dihitung ulang)
   function keputusanUntuk(l) { return AK.keputusan.filter(function (k) { return k.id === l.id; })[0] || null; }
-  function statusKeputusan(l) { var k = keputusanUntuk(l); if (!k) return 'baru'; if (k.status === 'berm') return l.keputusan && l.keputusan.status === 'berm' ? 'bocor' : 'berm'; return k.status; }
+  /* Status menurut draf. Ada berm/parit yang sudah terbit tetapi titiknya masih terdeteksi
+     di hitungan = masih keluar (berm/paritnya di hitungan belum menahan air). */
+  function statusKeputusan(l) {
+    var k = keputusanUntuk(l); if (!k) return 'baru';
+    if (k.status === 'berm' || k.status === 'parit') return l.keputusan && (l.keputusan.status === 'berm' || l.keputusan.status === 'parit') && !AK.hitungUsang ? 'bocor' : k.status;
+    return k.status;
+  }
+  function fiturKeputusan(k) { if (!k) return null; if (k.fitur) return k.fitur; if (k.berm) return { jenis: 'berm', id: k.berm }; return null; }
+  function cariFitur(f) { if (!f || !AK.ed) return -1; return AK.ed.air()[f.jenis].map(function (x) { return x.id; }).indexOf(f.id); }
   function fokusLimpas(id) {
     var l = AK.hitung && AK.hitung.limpasan.filter(function (x) { return x.id === id; })[0];
-    if (l && AK.ed) { AK.ed.fokusTitik(l.x, l.y, 140); AK.ed.pilihLimpas(id); }
+    if (l && AK.ed) {
+      var x0 = l.x - 120, y0 = l.y - 120, x1 = l.x + 120, y1 = l.y + 120;
+      [l.hulu, l.jalurHilir].forEach(function (g) { for (var q = 0; g && q < g.length; q += 2) { x0 = Math.min(x0, g[q]); y0 = Math.min(y0, g[q + 1]); x1 = Math.max(x1, g[q]); y1 = Math.max(y1, g[q + 1]); } });
+      AK.ed.fokusTitik((x0 + x1) / 2, (y0 + y1) / 2, Math.min(900, Math.max(140, (x1 - x0) / 2 + 30, (y1 - y0) / 2 + 30)));
+      AK.ed.pilihLimpas(id);
+    }
   }
-  function putuskanLimpas(l, status) {
-    var k = keputusanUntuk(l), sumber = l.keputusan;
-    // berm usulan yang dibuat dari titik ini ikut dibuang bila keputusannya bukan berm lagi
-    if (k && k.berm && status !== 'berm') {
-      var ib = AK.ed.air().berm.map(function (b) { return b.id; }).indexOf(k.berm), bb = ib >= 0 ? AK.ed.air().berm[ib] : null;
-      if (bb && bb.sumber === 'limpasan') AK.ed.hapusFitur({ jenis: 'berm', i: ib });
-      delete k.berm;
+  /* Keputusan admin untuk satu titik.
+     'berm' / 'parit' + {gambar:true}: admin menggambar berm/parit sesuai posisinya di lapangan
+       (boleh di hulu titik); keputusan baru tercatat sesudah garisnya selesai (fiturUntukLimpas).
+     'berm' + {usulan:true}: berm usulan otomatis di tepi bukaan.
+     'temuan' / 'abaikan' / null (kembali perlu dikonfirmasi). */
+  function putuskanLimpas(l, status, opsi) {
+    opsi = opsi || {};
+    if ((status === 'berm' || status === 'parit') && opsi.gambar) {
+      AK.menggambarUntuk = { id: l.id, jenis: status };
+      AK.pilih = null; AK.ed.pilihFitur(null);
+      AK.setAlat(status + 'Baru'); AK.menggambarUntuk = { id: l.id, jenis: status };
+      isiSampingAir();
+      return;
+    }
+    var k = keputusanUntuk(l), sumber = l.keputusan, f = fiturKeputusan(k);
+    // berm usulan otomatis ikut dibuang bila keputusannya berganti; berm/parit yang digambar admin
+    // (kondisi lapangan) tetap ada sebagai data, hanya tidak lagi ditautkan ke titik ini
+    if (k && f && !(status === 'berm' && opsi.usulan && f.jenis === 'berm')) {
+      var i0 = cariFitur(f), ff = i0 >= 0 ? AK.ed.air()[f.jenis][i0] : null;
+      if (ff && ff.sumber === 'limpasan' && status !== f.jenis) AK.ed.hapusFitur({ jenis: f.jenis, i: i0 });
+      if (status !== f.jenis) { delete k.fitur; delete k.berm; }
     }
     if (!status) { AK.keputusan = AK.keputusan.filter(function (x) { return x.id !== l.id; }); }
     else {
-      if (!k) { k = { id: sumber ? sumber.id : 'lp' + Date.now().toString(36), E: bulat2(l.E), N: bulat2(l.N) }; AK.keputusan.push(k); }
-      k.status = status; k.oleh = S().email || 'admin'; k.pada = new Date().toISOString(); k.hulu_ha = l.huluHa;
-      // id titik ikut keputusan supaya cocok lagi sesudah dihitung ulang
-      if (l.id !== k.id) { l.id = k.id; AK.limpasPilih = k.id; }
-      if (k.berm && !AK.ed.air().berm.some(function (b) { return b.id === k.berm; })) delete k.berm;   // bermnya sudah dihapus/diurungkan
-      if (status === 'berm' && !k.berm) {
-        var garis = l.usulBerm && l.usulBerm.length >= 4 ? l.usulBerm : null, pts = [];
-        if (garis) for (var q = 0; q < garis.length; q += 2) pts.push([garis[q], garis[q + 1]]);
-        else {
-          // tanpa usulan tepi: garis 40 m tegak lurus arah aliran di titik keluar
-          var L = Math.hypot(l.hx, l.hy) || 1, nx = -l.hy / L, ny = l.hx / L;
-          pts = [[l.xm - nx * 20, l.ym - ny * 20], [l.xm + nx * 20, l.ym + ny * 20]];
+      k = catatKeputusan(l, status);
+      if (status === 'berm' && opsi.usulan) {
+        f = fiturKeputusan(k);
+        if (f && cariFitur(f) < 0) { delete k.fitur; delete k.berm; f = null; }       // fiturnya sudah dihapus/diurungkan
+        if (!f) {
+          var garis = l.usulBerm && l.usulBerm.length >= 4 ? l.usulBerm : null, pts = [];
+          if (garis) for (var q = 0; q < garis.length; q += 2) pts.push([garis[q], garis[q + 1]]);
+          else {
+            // tanpa usulan tepi: garis 40 m tegak lurus arah aliran di titik keluar
+            var L = Math.hypot(l.hx, l.hy) || 1, nx = -l.hy / L, ny = l.hx / L;
+            pts = [[l.xm - nx * 20, l.ym - ny * 20], [l.xm + nx * 20, l.ym + ny * 20]];
+          }
+          var n = AK.ed.air().berm.length + 1, nama; do { nama = 'Berm ' + n++; } while (AK.ed.air().berm.some(function (x) { return x.nama === nama; }));
+          var id = 'b' + Date.now().toString(36);
+          AK.tahanLimpas = true;
+          AK.ed.tambahFitur('berm', { id: id, nama: nama, tinggi: 1, catatan: 'usulan di tepi bukaan, titik ' + l.no, sumber: 'limpasan', garis: pts, baru: true });
+          k.fitur = { jenis: 'berm', id: id };
+          toast('Berm usulan ditambahkan di tepi bukaan. Geser simpulnya ke posisi berm sebenarnya bila perlu, lalu terbitkan.', 6000);
         }
-        var n = AK.ed.air().berm.length + 1, nama; do { nama = 'Berm ' + n++; } while (AK.ed.air().berm.some(function (x) { return x.nama === nama; }));
-        var id = 'b' + Date.now().toString(36);
-        AK.ed.tambahFitur('berm', { id: id, nama: nama, tinggi: 1, catatan: 'dari titik limpasan ' + l.no, sumber: 'limpasan', garis: pts, baru: true });
-        k.berm = id;
-        toast('Berm usulan ditambahkan di tepi bukaan. Periksa dan geser simpulnya bila perlu, lalu terbitkan.', 6000);
       }
     }
     simpanDrafAir(); pasangHasilKeEditor(); isiSampingAir();
-    if (status === 'berm') jadwalHitungAir();
+    if (status === 'berm' || status === 'parit') jadwalHitungAir();
+  }
+  function catatKeputusan(l, status) {
+    var k = keputusanUntuk(l), sumber = l.keputusan;
+    if (!k) { k = { id: sumber ? sumber.id : 'lp' + Date.now().toString(36), E: bulat2(l.E), N: bulat2(l.N) }; AK.keputusan.push(k); }
+    k.status = status; k.oleh = S().email || 'admin'; k.pada = new Date().toISOString(); k.hulu_ha = l.huluHa;
+    // id titik ikut keputusan supaya cocok lagi sesudah dihitung ulang
+    if (l.id !== k.id) { l.id = k.id; AK.limpasPilih = k.id; }
+    return k;
+  }
+  // garis berm/parit yang baru selesai digambar untuk titik yang sedang ditinjau
+  function fiturUntukLimpas(sel) {
+    var m = AK.menggambarUntuk; if (!m || !sel || sel.jenis !== m.jenis) return;
+    AK.menggambarUntuk = null;
+    var l = AK.hitung && AK.hitung.limpasan.filter(function (x) { return x.id === m.id; })[0]; if (!l) return;
+    var fb = AK.ed.air()[sel.jenis][sel.i];
+    fb.sumber = 'lapangan'; fb.catatan = 'kondisi lapangan · titik ' + l.no;
+    var k = catatKeputusan(l, sel.jenis), f = fiturKeputusan(k);
+    if (f && f.id !== fb.id) { var i0 = cariFitur(f), ff = i0 >= 0 ? AK.ed.air()[f.jenis][i0] : null; if (ff && ff.sumber === 'limpasan') AK.ed.hapusFitur({ jenis: f.jenis, i: i0 }); }
+    k.fitur = { jenis: sel.jenis, id: fb.id }; delete k.berm;
+    AK.limpasPilih = k.id; AK.tahanLimpas = true;      // kartu titik tetap terbuka di samping kartu garisnya
+    toast((sel.jenis === 'berm' ? 'Berm' : 'Parit') + ' dicatat untuk titik ' + l.no + '. Hitung ulang sebentar lagi akan menunjukkan apakah air tertahan.', 6000);
+    simpanDrafAir(); jadwalHitungAir();
   }
   function jadikanSumpDariAlami(al) {
     var pts = []; for (var q = 0; q < al.cincin.length; q += 2) pts.push([al.cincin[q], al.cincin[q + 1]]);
@@ -8889,14 +9052,15 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       if (!(b.dalam >= 0.1 && b.dalam <= 3)) out.push({ j: 'no', t: (b.nama || 'Parit') + ': dalam harus 0,1–3 m', k: 'Kedalaman parit dari permukaan topo.', sel: { jenis: 'parit', i: i } });
     });
     d.limpasan.forEach(function (k) {
-      if (k.status === 'berm' && k.berm && !d.berm.some(function (b) { return b.id === k.berm; })) out.push({ j: 'wr', t: 'Keputusan "seharusnya ada berm" tanpa berm', k: 'Bermnya sudah dihapus. Gambar berm di titik itu, atau ubah keputusannya.' });
+      var ft = k.fitur || (k.berm ? { jenis: 'berm', id: k.berm } : null);
+      if ((k.status === 'berm' || k.status === 'parit') && ft && !(d[ft.jenis] || []).some(function (b) { return b.id === ft.id; })) out.push({ j: 'wr', t: 'Keputusan "ada ' + k.status + '" tanpa garisnya', k: 'Garisnya sudah dihapus. Gambar lagi di titik itu, atau ubah keputusannya.' });
     });
     if (!(d.dalam_parit_jalan >= 0.1 && d.dalam_parit_jalan <= 3)) out.push({ j: 'no', t: 'Dalam parit pinggir jalan harus 0,1–3 m', k: '' });
     if (d.cekungan.aktif !== false && !(d.cekungan.dalam >= 0.3 && d.cekungan.dalam <= 30 && d.cekungan.luas >= 27 && d.cekungan.luas <= 100000)) out.push({ j: 'no', t: 'Batas sump alami belum sah', k: 'Dalam 0,3–30 m dan luas 27–100.000 m².' });
     if (!(d.ambang_limpasan_ha >= 0.05 && d.ambang_limpasan_ha <= 50)) out.push({ j: 'no', t: 'Ambang limpasan harus 0,05–50 ha', k: '' });
     if (AK.hitung) {
       var baru = AK.hitung.limpasan.filter(function (l) { return statusKeputusan(l) === 'baru'; }).length;
-      if (baru) out.push({ j: 'wr', t: baru + ' titik limpasan belum dikonfirmasi', k: 'Tetap bisa terbit. Titik yang belum dikonfirmasi hanya tampil di sini; di peta hanya temuan yang tampil.' });
+      if (baru) out.push({ j: 'wr', t: baru + ' titik limpasan perlu dikonfirmasi', k: 'Tetap bisa terbit. Titik yang belum dikonfirmasi hanya tampil di sini; di peta hanya temuan yang tampil.' });
     }
     return out;
   }
@@ -8944,6 +9108,14 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var st = AK.hitungSedang ? 'Menghitung catchment dengan draf…' : AK.hitungGagal ? 'Hitungan gagal: ' + AK.hitungGagal.message : AK.hitung ? 'Catchment, sump alami, dan limpasan dihitung dari ' + S().site.topo.judul + (AK.hitungUsang ? ' · ada perubahan, dihitung ulang sebentar lagi' : ' · sesuai draf') : 'Belum dihitung';
     samping.appendChild(h('div', { class: 'kartu k', style: 'padding:10px 12px' }, h('div', { class: 'ket', text: st }),
       h('button', { type: 'button', class: 'btn btn-kecil', style: 'align-self:flex-start', disabled: !!AK.hitungSedang, text: 'Hitung ulang', onclick: hitungDrafAir })));
+    // panduan singkat bila belum ada titik yang dipilih
+    var rr = AK.hitung, nPerlu = rr ? rr.limpasan.filter(function (l) { return statusKeputusan(l) === 'baru'; }).length : 0;
+    if (rr && nPerlu && !AK.limpasPilih && !AK.pilih) {
+      samping.appendChild(kartu('Cara meninjau titik limpasan', [
+        h('div', { class: 'ket', style: 'color:var(--ink)', text: nPerlu + ' titik perlu dikonfirmasi. Hitungan dari topo menemukan tempat air dari area terbuka (coklat di citra) keluar ke vegetasi (hijau). Titik ini belum tampil di peta; Anda yang memastikan kondisi lapangannya.' }),
+        h('div', { class: 'ket', text: '1. Pilih titik (daftar di bawah atau segitiga kuning di peta). 2. Lihat daerah hulu (oranye) dan jalur air (biru). 3. Pilih: ada berm, ada parit, benar keluar (temuan), atau abaikan. 4. Terbitkan.' }),
+        h('button', { type: 'button', class: 'btn btn-utama', style: 'align-self:flex-start', text: 'Mulai dari titik terbesar', onclick: function () { var l = rr.limpasan.filter(function (x) { return statusKeputusan(x) === 'baru'; })[0]; if (l) { AK.limpasPilih = l.id; fokusLimpas(l.id); pasangHasilKeEditor(); isiSampingAir(); } } })]));
+    }
     // fitur terpilih
     var e = AK.ed ? AK.ed.air() : AK.lokal, sel = AK.pilih, f = sel && e[sel.jenis] && e[sel.jenis][sel.i];
     if (f) samping.appendChild(kartuFiturAir(sel, f));
@@ -8996,20 +9168,34 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     return kartu(judul + ' · ' + (f.nama || ''), isi);
   }
   function kartuLimpasTerpilih(l) {
-    var stD = statusKeputusan(l), k = keputusanUntuk(l);
-    var isi = [h('div', { class: 'ket', text: 'Titik ' + l.no + ' · daerah hulu ±' + angka(l.huluHa, 2) + ' ha · lebar keluar ±' + angka(l.lebar) + ' m · lalu ke ' + tujuanTeks(l.tujuan) }),
-      h('div', { class: 'ket', text: 'Status: ' + A().LABEL_LIMPAS[stD] + (k && k.oleh ? ' · ' + String(k.oleh).split('@')[0] : '') })];
-    var ct = h('input', { class: 'inp', type: 'text', value: (k && k.catatan) || '', placeholder: 'mis. berm jebol, dicek pengawas' });
-    ct.addEventListener('change', function () { var kk = keputusanUntuk(l); if (!kk) { toast('Pilih keputusan dulu, lalu isi catatan.'); return; } kk.catatan = ct.value; simpanDrafAir(); isiSampingAir(); });
-    isi.push(h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
-      h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(stD === 'berm' || stD === 'bocor'), text: 'Seharusnya ada berm', onclick: function () { putuskanLimpas(l, 'berm'); } }),
-      h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(stD === 'temuan'), text: 'Temuan limpasan', onclick: function () { putuskanLimpas(l, 'temuan'); } }),
-      h('button', { type: 'button', class: 'btn btn-kecil', 'aria-pressed': String(stD === 'abaikan'), text: 'Abaikan', onclick: function () { putuskanLimpas(l, 'abaikan'); } }),
-      k ? h('button', { type: 'button', class: 'btn btn-kecil', text: 'Belum ditinjau', onclick: function () { putuskanLimpas(l, null); } }) : null));
+    var stD = statusKeputusan(l), k = keputusanUntuk(l), f = fiturKeputusan(k), i0 = cariFitur(f), ff = i0 >= 0 ? AK.ed.air()[f.jenis][i0] : null;
+    var isi = [];
+    isi.push(h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' },
+      h('span', { class: 'chip' }, h('i', { style: 'background:' + A().WARNA_LIMPAS[stD] }), A().LABEL_LIMPAS[stD]),
+      k && k.oleh ? h('span', { class: 'mini redup', text: 'oleh ' + String(k.oleh).split('@')[0] }) : null));
+    isi.push(h('div', { class: 'ket', style: 'color:var(--ink)', text: 'Menurut topo aktif, air hujan dari daerah seluas ±' + angka(l.huluHa, 2) + ' ha (arsir oranye di peta; garis kuning putus-putus = alur utamanya) berkumpul dan keluar dari area terbuka di titik ini, lalu mengalir masuk ke vegetasi (garis biru) menuju ' + tujuanTeks(l.tujuan) + '.' }));
+    isi.push(h('div', { class: 'ket', text: 'Topo grid 3 m tidak membaca berm atau parit kecil. Bisa jadi di lapangan air sudah tertahan sebelum sampai ke sini. Pilih yang sesuai kondisi lapangan:' }));
+    function pilihan(teks, ket, tekan, fn, kelas) {
+      return h('button', { type: 'button', class: 'btn ' + (kelas || ''), 'aria-pressed': String(!!tekan), style: 'display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;white-space:normal;height:auto;padding:8px 10px;width:100%', onclick: fn },
+        h('b', { style: 'font-weight:600;font-size:12.5px', text: teks }), h('span', { class: 'mini redup', text: ket }));
+    }
+    var menggambar = AK.menggambarUntuk && AK.menggambarUntuk.id === l.id ? AK.menggambarUntuk.jenis : null;
+    isi.push(h('div', { style: 'display:flex;flex-direction:column;gap:6px' },
+      pilihan('Ada berm di lapangan', menggambar === 'berm' ? 'Sedang menggambar: klik titik demi titik di puncak berm (boleh di hulu titik ini), klik ganda untuk selesai.' : 'Gambar berm sesuai posisinya. Air dihitung tertahan di sisi hulu berm.', stD === 'berm' || (stD === 'bocor' && f && f.jenis === 'berm') || menggambar === 'berm', function () { putuskanLimpas(l, 'berm', { gambar: true }); }),
+      pilihan('Ada parit di lapangan', menggambar === 'parit' ? 'Sedang menggambar: klik titik demi titik sepanjang parit dari hulu ke hilir, klik ganda untuk selesai.' : 'Gambar parit dari hulu ke hilir. Air dihitung masuk parit lalu mengikutinya.', stD === 'parit' || (stD === 'bocor' && f && f.jenis === 'parit') || menggambar === 'parit', function () { putuskanLimpas(l, 'parit', { gambar: true }); }),
+      pilihan('Benar, air keluar di sini (temuan)', 'Tidak ada berm atau parit. Sesudah terbit tampil merah di peta semua pengguna.', stD === 'temuan', function () { putuskanLimpas(l, 'temuan'); }),
+      pilihan('Abaikan', 'Salah baca citra, mis. area reklamasi yang sudah hijau, atau bukan aliran nyata.', stD === 'abaikan', function () { putuskanLimpas(l, 'abaikan'); })));
+    var bawah = [h('button', { type: 'button', class: 'btn btn-kecil', text: 'Fokus ke titik', onclick: function () { fokusLimpas(l.id); } }),
+      h('button', { type: 'button', class: 'btn btn-kecil', title: 'Berm otomatis di tepi area terbuka sekitar titik ini; geser simpulnya bila posisi berm sebenarnya berbeda', text: 'Pakai usulan berm di tepi bukaan', onclick: function () { putuskanLimpas(l, 'berm', { usulan: true }); } })];
+    if (k) bawah.push(h('button', { type: 'button', class: 'btn btn-kecil', text: 'Kembalikan ke perlu dikonfirmasi', onclick: function () { putuskanLimpas(l, null); } }));
+    isi.push(h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' }, bawah));
+    if (ff) isi.push(h('div', { class: 'ket' }, (f.jenis === 'berm' ? 'Berm' : 'Parit') + ' tertaut: ', h('button', { type: 'button', class: 'btn btn-kecil', text: ff.nama, onclick: function () { var sel = { jenis: f.jenis, i: i0 }; AK.pilih = sel; AK.ed.pilihFitur(sel); AK.ed.fokusFitur(sel); isiSampingAir(); } }),
+      stD === 'bocor' ? ' · menurut hitungan air masih keluar: periksa posisinya, perpanjang ujungnya, atau naikkan tingginya.' : ''));
+    var ct = h('input', { class: 'inp', type: 'text', value: (k && k.catatan) || '', placeholder: 'mis. berm ada sejak Sep, dicek pengawas' });
+    ct.addEventListener('change', function () { var kk = keputusanUntuk(l); if (!kk) { toast('Pilih kondisi lapangannya dulu, lalu isi catatan.'); return; } kk.catatan = ct.value; simpanDrafAir(); isiSampingAir(); });
     isi.push(h('label', { class: 'isian' }, 'Catatan', ct));
-    isi.push(h('button', { type: 'button', class: 'btn btn-kecil', style: 'align-self:flex-start', text: 'Fokus', onclick: function () { fokusLimpas(l.id); } }));
-    return kartu('Air keluar dari bukaan · titik ' + l.no, isi,
-      'Seharusnya ada berm: berm usulan dibuat di tepi bukaan dan ikut dihitung sesudah terbit. Temuan: air memang bisa keluar ke area tidak terganggu; sesudah terbit tampil merah di peta semua pengguna. Abaikan: salah baca citra, mis. area reklamasi. Titik yang belum dikonfirmasi tidak tampil di peta.');
+    return kartu('Titik ' + l.no + ' · air keluar dari area terbuka', isi,
+      'Titik yang belum dikonfirmasi tidak tampil di peta. Berm vs parit: berm menahan air (air menggenang di hulunya lalu menyusuri berm), parit menangkap air lalu mengalirkannya sepanjang parit. Keduanya mengalihkan air; pilih sesuai yang ada di lapangan.');
   }
   function tujuanTeks(k) {
     var r = AK.hitung; if (!r || !k) return 'laut atau tepi data';
@@ -9027,13 +9213,15 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var daftar = h('div', { class: 'ruas-daftar' });
     r.limpasan.slice(0, 60).forEach(function (l) {
       var stD = statusKeputusan(l);
-      daftar.appendChild(h('button', { type: 'button', 'aria-current': AK.limpasPilih === l.id ? 'true' : null, onclick: function () { AK.limpasPilih = l.id; AK.pilih = null; AK.ed.pilihFitur(null); fokusLimpas(l.id); isiSampingAir(); } },
+      daftar.appendChild(h('button', { type: 'button', 'aria-current': AK.limpasPilih === l.id ? 'true' : null, onclick: function () { AK.limpasPilih = l.id; AK.pilih = null; AK.ed.pilihFitur(null); fokusLimpas(l.id); pasangHasilKeEditor(); isiSampingAir(); } },
         h('span', null, h('i', { style: 'display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:' + A().WARNA_LIMPAS[stD] }), 'Titik ' + l.no + ' · ±' + angka(l.huluHa, 2) + ' ha'),
         h('span', { class: 'redup', text: A().LABEL_LIMPAS[stD] })));
     });
     isi.push(daftar);
     var lama = AK.keputusan.filter(function (k) { return !r.limpasan.some(function (l) { return l.id === k.id; }); });
-    if (lama.length) isi.push(h('div', { class: 'ket', text: lama.length + ' keputusan lama tidak terdeteksi lagi di hitungan ini (mis. sudah tertahan berm). Keputusannya tetap disimpan.' }));
+    var tertahan = lama.filter(function (k) { return k.status === 'berm' || k.status === 'parit'; }).length;
+    if (tertahan) isi.push(h('div', { class: 'ket', style: 'color:#9ff0c6', text: '✓ ' + tertahan + ' titik kini tertahan oleh berm/parit yang Anda gambar (tidak terdeteksi lagi di hitungan).' }));
+    if (lama.length - tertahan) isi.push(h('div', { class: 'ket', text: (lama.length - tertahan) + ' keputusan lain tidak terdeteksi lagi di hitungan ini. Keputusannya tetap disimpan.' }));
     return kartu('Titik limpasan · ' + r.limpasan.length, isi, 'Air dari bukaan (coklat di citra) yang mengalir masuk ke vegetasi (hijau), dengan daerah hulu ≥ ' + angka(AK.setel.ambang_limpasan_ha, 2) + ' ha. Diurutkan dari yang terbesar.');
   }
   function kartuParitJalan() {
