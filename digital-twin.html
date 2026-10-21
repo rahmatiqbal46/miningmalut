@@ -8766,10 +8766,19 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
 
   /* ================================================================== CITRA (butuh kanvas) */
   /* Piksel RGBA utuh dari citra → {lebar, tinggi, data}. */
-  function pikselCitra(bitmap) {
+  /* Piksel RGBA citra. Citra yang tersimpan sebagai JPEG (peramban tanpa penyandi WebP, OlahCitra.enkode)
+     memakai hitam murni sebagai "tanpa citra" (meta.alpha_hitam): dijadikan transparan dengan aturan yang
+     sama dengan peta (R, G, B < 3), juga di kanvasnya, supaya potongan KMZ dan JPG ikut benar. */
+  function pikselCitra(bitmap, meta) {
     var kv = document.createElement('canvas'); kv.width = bitmap.width; kv.height = bitmap.height;
     var g = kv.getContext('2d', { willReadFrequently: true }); g.drawImage(bitmap, 0, 0);
-    return { kanvas: kv, lebar: kv.width, tinggi: kv.height, data: g.getImageData(0, 0, kv.width, kv.height).data };
+    var id = g.getImageData(0, 0, kv.width, kv.height);
+    if (meta && meta.alpha_hitam) {
+      var d = id.data;
+      for (var p = 0; p < d.length; p += 4) if (d[p] < 3 && d[p + 1] < 3 && d[p + 2] < 3) d[p] = d[p + 1] = d[p + 2] = d[p + 3] = 0;
+      g.putImageData(id, 0, 0);
+    }
+    return { kanvas: kv, lebar: kv.width, tinggi: kv.height, data: id.data };
   }
   function kanvasKeBlob(kv, tipe, mutu) { return new Promise(function (ok, gagal) { kv.toBlob(function (b) { b ? ok(b) : gagal(new Error('Gambar tidak bisa disandikan')); }, tipe, mutu); }); }
   /* Ukuran piksel di tanah: px dari pengolahan bila ada (pusat piksel x di e_min + (x + ½)·px), selain itu
@@ -8787,7 +8796,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var bmp = cit.bitmap || await createImageBitmap(cit.blob);
     if (format === 'tif') {
       lapor(3, 'Membaca piksel citra');
-      var P = pikselCitra(bmp), W = P.lebar, H = P.tinggi, rb = W * 4, g = geoCitra(meta, W, H);
+      var P = pikselCitra(bmp, meta), W = P.lebar, H = P.tinggi, rb = W * 4, g = geoCitra(meta, W, H);
       var blob = await geotiff({ lebar: W, tinggi: H, spp: 4, bps: 8, format: 1, prediktor: 2, alfa: true, x0: g.x0, y0: g.y0, px: g.px, py: g.py,
         judul: 'Citra Pulau Pakal ' + lv(c) + ' ' + (c.tanggal || ''), baris: function (y) { return new Uint8Array(P.data.buffer, P.data.byteOffset + y * rb, rb); } },
         function (f) { lapor(5 + f * 95, 'Menyusun GeoTIFF'); });
@@ -8796,7 +8805,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     if (format === 'jpg') {
       lapor(10, 'Menyandikan JPG');
       var kv = document.createElement('canvas'); kv.width = bmp.width; kv.height = bmp.height;
-      var gx = kv.getContext('2d'); gx.fillStyle = '#ffffff'; gx.fillRect(0, 0, kv.width, kv.height); gx.drawImage(bmp, 0, 0);
+      var gx = kv.getContext('2d'); gx.fillStyle = '#ffffff'; gx.fillRect(0, 0, kv.width, kv.height); gx.drawImage(meta.alpha_hitam ? pikselCitra(bmp, meta).kanvas : bmp, 0, 0);
       var jpg = await kanvasKeBlob(kv, 'image/jpeg', 0.9), geo = geoCitra(meta, kv.width, kv.height);
       lapor(80, 'Menyusun ZIP');
       return { nama: nm + '_jpg-worldfile.zip', blob: await zip([{ nama: nm + '.jpg', isi: jpg, simpan: true }, { nama: nm + '.jgw', isi: worldFile(geo) }, { nama: nm + '.prj', isi: PRJ_ESRI },
@@ -8808,14 +8817,17 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
           'Surpac: buka .jpg sebagai gambar latar; world file .jgw dipakai untuk posisinya.']) }]) };
     }
     if (format === 'kmz') {
-      var T = 512, W2 = bmp.width, H2 = bmp.height, gc = geoCitra(meta, W2, H2), P2 = pikselCitra(bmp), ov = [], files = [], nT = Math.ceil(W2 / T) * Math.ceil(H2 / T), k = 0;
+      var T = 512, W2 = bmp.width, H2 = bmp.height, gc = geoCitra(meta, W2, H2), P2 = pikselCitra(bmp, meta), ov = [], files = [], nT = Math.ceil(W2 / T) * Math.ceil(H2 / T), k = 0;
+      // sumber potongan: bitmap asli, atau bitmap dari kanvas yang hitamnya sudah transparan. Menggambar tiap potongan
+      // langsung dari kanvas baca-cepat (memori CPU) belasan kali lebih lambat.
+      var sumber = meta.alpha_hitam ? await createImageBitmap(P2.kanvas) : bmp;
       var tk = document.createElement('canvas'), gt = tk.getContext('2d');
       for (var ty = 0; ty < H2; ty += T) for (var tx = 0; tx < W2; tx += T) {
         var w = Math.min(T, W2 - tx), h = Math.min(T, H2 - ty), isi = 0, kosong = 0;
         for (var yy = ty; yy < ty + h; yy++) for (var xx = tx; xx < tx + w; xx++) { if (P2.data[(yy * W2 + xx) * 4 + 3] > 0) isi++; else kosong++; }
         k++; lapor(k / nT * 90, 'Memotong citra untuk Google Earth');
         if (!isi) continue;
-        tk.width = w; tk.height = h; gt.clearRect(0, 0, w, h); gt.drawImage(bmp, tx, ty, w, h, 0, 0, w, h);
+        tk.width = w; tk.height = h; gt.clearRect(0, 0, w, h); gt.drawImage(sumber, tx, ty, w, h, 0, 0, w, h);
         var penuh = !kosong, blob2 = await kanvasKeBlob(tk, penuh ? 'image/jpeg' : 'image/png', penuh ? 0.9 : undefined), nmT = 'files/c_' + (ty / T) + '_' + (tx / T) + (penuh ? '.jpg' : '.png');
         files.push({ nama: nmT, isi: blob2, simpan: true });
         // sudut tile di UTM → lintang-bujur; putaran = kebalikan arah utara grid terhadap utara sebenarnya
@@ -10806,7 +10818,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     'citra:tif': 'QGIS · ArcGIS · Global Mapper. RGBA, bagian tanpa citra transparan',
     'citra:jpg': 'AutoCAD · Surpac. JPG, .jgw, dan .prj dalam satu ZIP',
     'citra:kmz': 'Dipotong 512 px; bagian tanpa citra tidak ikut',
-    'citra:asli': 'WebP persis seperti di gudang (tanpa posisi)',
+    'citra:asli': 'Gambar persis seperti di gudang (tanpa posisi)',
     'topo:tif': 'DEM Float32 untuk QGIS · ArcGIS · Global Mapper',
     'topo:csv': 'Titik grid 3 m: E, N, Z. Bisa diunggah lagi di Kelola data › Topo',
     'topo:str': 'Titik grid 3 m sebagai string, siap dibuat DTM',
@@ -10872,10 +10884,11 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var k = h('section', { class: 'kartu k', id: 'unduh-' + j.k }, h('div', { class: 'unduh-kepala' }, h('h3', { text: j.t }), sel), info, tambahan, grid);
     var ctx = { j: j, sel: sel, info: info, grid: grid, tambahan: tambahan };
     sel.addEventListener('change', function () { UN.pilih[j.k] = Number(sel.value); isiKartuUnduh(ctx); });
-    k.siap = daftarVersiUnduh(j.k).then(function (vs) {
-      UN.versi[j.k] = vs;
+    k.siap = daftarVersiUnduh(j.k).then(function (hasil) {
+      var vs = hasil.versi;
+      UN.versi[j.k] = vs; ctx.galat = hasil.galat;
       kosongkan(sel);
-      if (!vs.length) { sel.appendChild(h('option', { text: 'Belum ada versi' })); info.textContent = 'Belum ada data ' + j.t.toLowerCase() + ' di gudang.'; return; }
+      if (!vs.length) { sel.appendChild(h('option', { text: hasil.galat ? 'Gagal memuat' : 'Belum ada versi' })); info.textContent = hasil.galat ? 'Daftar versi tidak terbaca: ' + hasil.galat.message : 'Belum ada data ' + j.t.toLowerCase() + ' di gudang.'; return; }
       vs.forEach(function (v) {
         var teks = (v.sumber === 'bawaan' ? 'Bawaan' : 'v' + v.versi) + ' · ' + (v.judul || '—') + (v.aktif ? ' · aktif' : '') + (berkasHilang(j.k, v) ? ' · berkas dihapus' : '');
         sel.appendChild(h('option', { value: String(v.versi), text: teks, disabled: berkasHilang(j.k, v) }));
@@ -10887,28 +10900,35 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     }).catch(function (e) { kosongkan(sel).appendChild(h('option', { text: 'Gagal memuat' })); info.textContent = 'Daftar versi tidak terbaca: ' + e.message; });
     return k;
   }
+  function extGambar(v) { var m = /\.([a-z0-9]{2,4})$/i.exec(String((v.berkas && v.berkas.gambar) || '')); return m ? '.' + m[1].toLowerCase() : '.webp'; }
   function berkasHilang(jenis, v) { return !!(v.berkas_dihapus && (jenis === 'topo' || jenis === 'citra')); }
   function versiTerpilih(jenis) { var vs = (UN.versi[jenis] || []); return vs.filter(function (v) { return v.versi === UN.pilih[jenis]; })[0] || null; }
 
-  /* Daftar versi satu jenis, terbaru di atas. Gudang aktif → riwayat server; belum disemai atau
-     tidak terjangkau → data awal repo; air yang belum pernah terbit → sump awal Water & Road. */
+  /* Daftar versi satu jenis, terbaru di atas → {versi, galat}. Gudang aktif → riwayat server. Riwayat tidak
+     terbaca (jaringan, sesi berakhir) → hanya versi aktif dari daftar isi yang sudah termuat (datanya ada di peta
+     atau Cache Storage), dengan galat ditampilkan; tidak pernah diam-diam jatuh ke data lama. Gudang belum disemai
+     atau tak terjangkau sejak halaman dibuka → data awal repo, sama dengan yang dipakai peta. Air yang belum pernah
+     terbit → sump awal Water & Road. */
   async function daftarVersiUnduh(jenis) {
-    var m = S().manifest, out = [];
-    if (m && m.sumber === 'server') {
+    var m = S().manifest, e = m && m.jenis && m.jenis[jenis], out = [], galat = null;
+    var dariServer = !!(m && m.sumber === 'server');
+    if (dariServer) {
       try {
         var r = await G.riwayat(jenis);
         (r.versi || []).forEach(function (v) { out.push(Object.assign({}, v, { sumber: 'server', aktif: v.versi === r.aktif })); });
-      } catch (e) { /* jatuh ke data awal */ }
+      } catch (x) {
+        galat = x;
+        if (e && !e.dariAwal) out.push(Object.assign({}, e, { sumber: 'server', aktif: true }));
+      }
     }
-    if (!out.length) {
+    if (!out.length && (!dariServer || (e && e.dariAwal))) {
       try {
-        var aw = await G.manifestAwal(), e = aw.lengkap && aw.lengkap.jenis && aw.lengkap.jenis[jenis];
-        var aktifAwal = !(m && m.sumber === 'server' && m.jenis && m.jenis[jenis] && !m.jenis[jenis].dariAwal);
-        if (e) e.versi.slice().sort(function (a, b) { return b.versi - a.versi; }).forEach(function (v) { out.push(Object.assign({}, v, { sumber: 'awal', aktif: aktifAwal && v.versi === e.aktif, dibuat_oleh: 'data awal repo' })); });
-      } catch (e2) { /* tidak ada data awal */ }
+        var aw = await G.manifestAwal(), ea = aw.lengkap && aw.lengkap.jenis && aw.lengkap.jenis[jenis];
+        if (ea) ea.versi.slice().sort(function (a, b) { return b.versi - a.versi; }).forEach(function (v) { out.push(Object.assign({}, v, { sumber: 'awal', aktif: v.versi === ea.aktif, dibuat_oleh: 'data awal repo' })); });
+      } catch (x2) { if (!galat) galat = x2; }
     }
-    if (!out.length && jenis === 'air') out.push({ versi: 0, judul: 'Sump awal Water & Road', tanggal: null, meta: { sump: ((window.AIR_PAKAL && AIR_PAKAL.sump) || []).length }, berkas: {}, sumber: 'bawaan', aktif: true });
-    return out;
+    if (!out.length && jenis === 'air' && !e) out.push({ versi: 0, judul: 'Sump awal Water & Road', tanggal: null, meta: { sump: ((window.AIR_PAKAL && AIR_PAKAL.sump) || []).length }, berkas: {}, sumber: 'bawaan', aktif: true });
+    return { versi: out, galat: galat };
   }
 
   function ringkasVersi(jenis, v) {
@@ -10930,9 +10950,10 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var j = ctx.j, v = versiTerpilih(j.k);
     kosongkan(ctx.grid); kosongkan(ctx.tambahan);
     if (!v) return;
-    ctx.info.textContent = ringkasVersi(j.k, v);
+    ctx.info.textContent = (ctx.galat ? 'Daftar versi tidak terbaca (' + ctx.galat.message + '); hanya versi aktif yang bisa diunduh sekarang. ' : '') + ringkasVersi(j.k, v);
+    ctx.info.style.color = ctx.galat ? '#f7dc85' : '';
     j.f.forEach(function (f) {
-      var ext = f === 'asli' ? (j.k === 'topo' ? '.dtg' : j.k === 'citra' ? '.webp' : '.json') : FMT_UNDUH[f][1];
+      var ext = f === 'asli' ? (j.k === 'topo' ? '.dtg' : j.k === 'citra' ? extGambar(v) : '.json') : FMT_UNDUH[f][1];
       var ket = KET_UNDUH[j.k + ':' + f] || '';
       if (f === 'kontur') ket = 'Garis kontur 3D tiap ' + UN.interval + ' m, mayor tiap ' + (UN.interval * 5) + ' m. Terbaca juga di Surpac dan Civil 3D';
       if (j.k === 'air' && v.sumber === 'bawaan' && f === 'asli') ket = 'Sump awal Water & Road seperti tertanam di halaman';
@@ -10949,9 +10970,12 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       ctx.tambahan.appendChild(h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap' }, h('span', { class: 'ket', text: 'Interval kontur untuk Kontur AutoCAD' }), seg));
     }
   }
-  function aturStatus(ctx, kunci, teks, kelas) {
+  /* Tombol dicari di DOM yang sedang tampil: bagian ini bisa ditinggal lalu dibuka lagi selama berkas disusun,
+     dan tombolnya dibuat ulang. */
+  function tombolUnduh(kunci) { return root ? root.querySelector('.unduh-format button[data-kunci="' + kunci + '"]') : null; }
+  function aturStatus(kunci, teks, kelas) {
     UN.status[kunci] = { t: teks, k: kelas || '' };
-    var b = ctx.grid.querySelector('button[data-kunci="' + kunci + '"]'), st = b && b.querySelector('.st');
+    var b = tombolUnduh(kunci), st = b && b.querySelector('.st');
     if (st) { st.textContent = teks; st.className = 'st' + (kelas ? ' ' + kelas : ''); }
   }
 
@@ -10976,7 +11000,12 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
         return { blob: await G.ambilBerkas(v.berkas.gambar), bitmap: akt ? S().site.citra.bitmap : null, meta: v.meta || {} };
       }
       if (v.sumber === 'bawaan') return null;
-      return await G.ambilData(jenis, { versi: v.versi, berkas: v.berkas || {} });
+      try { return await G.ambilData(jenis, { versi: v.versi, berkas: v.berkas || {} }); }
+      catch (e) {
+        // versi aktif: pakai yang sudah termuat di peta (mis. sesi login berakhir dan Cache Storage mati)
+        if (samaDenganAktif(jenis, v) && S().site[jenis]) return S().site[jenis];
+        throw e;
+      }
     })();
     UN.memo[kunci] = p; p.catch(function () { delete UN.memo[kunci]; });
     return p;
@@ -10990,9 +11019,9 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
   }
   async function unduhFormat(ctx, v, f, kunci) {
     if (UN.sedang[kunci]) return;
-    var j = ctx.j, tombol = ctx.grid.querySelector('button[data-kunci="' + kunci + '"]');
+    var j = ctx.j, tombol = tombolUnduh(kunci);
     UN.sedang[kunci] = true; if (tombol) tombol.disabled = true;
-    aturStatus(ctx, kunci, 'Menyiapkan…', 'proses');
+    aturStatus(kunci, 'Menyiapkan…', 'proses');
     // nama berkas memakai tanggal data; bila tidak ada, tanggal terbit; data awal repo tanpa tanggal tidak diberi tanggal
     var tgl = v.tanggal ? String(v.tanggal).slice(0, 10) : v.dibuat_pada ? new Date(Date.parse(v.dibuat_pada) + WIT).toISOString().slice(0, 10) : '';
     var c = {
@@ -11001,7 +11030,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       waktuUnduh: waktuTeks(new Date().toISOString()), pengunduh: String(S().email || '').split('@')[0],
       topo: S().site.topo, jalan: S().site.jalan, interval: UN.interval,
       namaDasar: 'Pakal_' + j.nama + '_' + (v.sumber === 'bawaan' ? 'awal-WR' : 'v' + v.versi + (tgl ? '_' + tgl : '')),
-      lapor: function (p, teks) { aturStatus(ctx, kunci, (teks || 'Menyiapkan') + ' · ' + Math.max(0, Math.min(100, Math.round(p))) + '%', 'proses'); }
+      lapor: function (p, teks) { aturStatus(kunci, (teks || 'Menyiapkan') + ' · ' + Math.max(0, Math.min(100, Math.round(p))) + '%', 'proses'); }
     };
     try {
       var hasil, d = j.k === 'topo' && f === 'asli' ? null : await dataVersiUnduh(j.k, v);
@@ -11012,13 +11041,13 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
         else { c.asli = d; hasil = await UnduhData.air(f, A().normalAir(d), c); }
       } else hasil = await UnduhData[j.k](f, d || {}, c);
       simpanUnduhan(hasil.blob, hasil.nama);
-      aturStatus(ctx, kunci, '✓ ' + ukuranBerkas(hasil.blob.size) + (hasil.ket ? ' · ' + hasil.ket : ''), 'ok');
+      aturStatus(kunci, '✓ ' + ukuranBerkas(hasil.blob.size) + (hasil.ket ? ' · ' + hasil.ket : ''), 'ok');
     } catch (e) {
-      aturStatus(ctx, kunci, 'Gagal: ' + (e && e.message || e), 'gagal');
+      aturStatus(kunci, 'Gagal: ' + (e && e.message || e), 'gagal');
       toast('Unduhan gagal: ' + (e && e.message || e), 7000);
     }
     UN.sedang[kunci] = false;
-    tombol = ctx.grid.querySelector('button[data-kunci="' + kunci + '"]'); if (tombol) tombol.disabled = false;
+    tombol = tombolUnduh(kunci); if (tombol) tombol.disabled = false;
   }
 
   window.KelolaData = { buka: buka, tutup: tutup };
