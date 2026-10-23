@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 10 (19 Oktober 2026)
+// Versi 11 (23 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -266,6 +266,60 @@
 // WAJIB bersama versi ini: pemicu cron KETIGA. Dengan dua pemicu, blok A masih
 // memikul blok C sendirian dan pemanggilannya dua kali lebih berat.
 //
+// Versi 11 — PEMBACAAN GPS DARI UNIT YANG DIAM (23 Oktober 2026, §21.15).
+// 9RD26 sedang stand by/breakdown, tapi tercatat empat kali melanggar pada
+// 22–23 Oktober: 145, 101, 39, dan 34 km/jam. Jejak GPS-nya menunjukkan unit
+// itu parkir di ujung RD_SubaimBawah sepanjang waktu. Dua pola GPS rusak:
+//
+//  1. Posisi ngawur 6–7 km di luar site (utara Pulau Pakal) dengan kecepatan
+//     TETAP 145 atau 101 km/jam, posisinya tidak bergeser satu meter pun selama
+//     ±5 menit. Loncatan itu sempat ditolak — tetapi pembandingnya sampel sah
+//     terakhir, jadi jarak yang "boleh" ditempuh ikut tumbuh bersama waktu.
+//     Setelah ±3 menit, 7 km tampak terjangkau di bawah 150 km/jam dan
+//     pembacaannya diterima; sesudah itu tidak ada aturan yang menolak
+//     "145 km/jam tapi posisinya diam".
+//  2. Posisi unit yang parkir "melayang" 75–500 m lalu kembali dalam 1–2 menit
+//     dengan kecepatan acak. Contoh: diam 0 km/jam, sembilan detik kemudian
+//     sudah 209 m jauhnya dengan 62 km/jam — mustahil bagi dump truck yang
+//     berangkat dari diam.
+//
+// Empat aturan baru di sampelSah(), semuanya untuk pembacaan yang tidak mungkin
+// datang dari unit yang benar-benar bergerak. Yang ditolak dicatat per alasan
+// di baris log tiap blok (`alasan=wilayah:4,diam:2,…`).
+//
+//  - wilayah: posisi di luar kotak WILAYAH (Pulau Pakal ± 2–3 km — kotak yang
+//    sama dengan pemeriksaan jalan) dibuang. Batas kecepatan site tidak berlaku
+//    di luar site, dan posisi seperti itu tidak boleh menjadi pembanding.
+//  - diam: kecepatan ≥ 15 km/jam, jeda ≤ 20 dtk, tetapi perpindahannya (+10 m
+//    galat GPS) lebih pendek dari jarak yang PASTI sudah ditempuh untuk sampai
+//    di kecepatan itu — walau unitnya baru berangkat dari diam dengan percepatan
+//    2 m/s²: v²/2a, mis. 17 m untuk 30 km/jam, 180 m untuk 101 km/jam dalam
+//    10 dtk. Dinilai terhadap sampel sah sebelumnya DAN terhadap pesan tepat
+//    sebelumnya bila pesan itu ditolak: pembanding sah bisa sudah berumur
+//    menit-menit, sedangkan pesan ngawur yang membeku datang berderet tiap
+//    10 detik. Tanpa yang kedua, deret 145 km/jam beku lolos sekali-sekali.
+//    (Versi pertama aturan ini memakai "kurang dari ¼ kecepatan × jeda" dan
+//    salah menolak truk yang baru berangkat di tengah jeda 16–20 detik;
+//    ketahuan pada simulasi armada.)
+//  - arah: kecepatan ≥ 15 km/jam, jeda ≤ 20 dtk, pindah ≥ 20 m, tetapi arah GPS
+//    berselisih lebih dari 150° dengan arah perpindahan sebenarnya — arahnya
+//    terbalik. Pembacaan 9RD26 pukul 06.17.24: 166°. Manuver tertajam di data
+//    nyata 20–22 Oktober: 89° (DTH_40 berbelok 131° dalam 13 detik di RD_EFO);
+//    di simulasi, kait 139° di ujung RD_Harmoni yang dilalui 27 km/jam: 131°.
+//  - tempuh: perpindahan lebih jauh dari yang mungkin ditempuh dari kecepatan
+//    sebelumnya dengan percepatan 2 m/s², pengereman 4 m/s², dan puncak
+//    72 km/jam (lebih tinggi bila kecepatan lapornya lebih tinggi), ditambah
+//    30 m galat GPS. Kecepatan sebelumnya diambil yang lebih besar antara
+//    kecepatan lapor dan kecepatan hitung (jarak ÷ waktu), supaya satu
+//    pembacaan 0 di tengah perjalanan tidak memperketat batasnya.
+//  Aturan tempuh hanya dipakai untuk jeda ≤ 60 detik. Angkanya batas fisik
+//  alat berat, bukan setelan: armada yang dipantau hanya dump truck dan
+//  excavator (§6.6), dan dump truck nyata berakselerasi ±0,5–1,5 m/s².
+//
+// Aturan buka/tutup kejadian, median, batas per ruas, jadwal cek, klaim blok,
+// jejak, dan seluruh alamat API TIDAK berubah. Jejak tetap mencatat semua posisi,
+// termasuk yang ditolak, supaya putar ulang Digital Twin menampilkan data mentah.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
 // berganti (bawaan: proyek MiningMalut, kunci anon publik yang sama dengan
@@ -496,6 +550,20 @@ const LOMPAT_M    = 150;      // meter
 const LOMPAT_DT   = 5;        // detik
 const UMUR_MAKS   = 300;      // detik; pesan lebih tua diabaikan
 const SIMPAN_HARI = 120;
+
+/* Versi 11 — aturan gerak (lihat kepala berkas). Batas fisik alat berat, bukan
+   setelan. Halaman speed-watcher.html memakai angka yang sama (GERAK di sana);
+   keduanya harus diubah bersama. */
+const KEC_CEK    = 15;        // km/jam; di bawah ini aturan diam dan arah tidak dipakai
+const JEDA_PENDEK = 20;       // detik; aturan diam dan arah hanya untuk jeda sesingkat ini
+const GERAK_DT   = 60;        // detik; aturan tempuh hanya untuk jeda sesingkat ini
+const DIAM_TOL   = 10;        // meter, galat GPS pada aturan diam
+const ARAH_MIN_M = 20;        // meter; perpindahan minimal supaya arahnya bermakna
+const ARAH_MAKS  = 150;       // derajat
+const PERCEPATAN = 2;         // m/s²
+const PENGEREMAN = 4;         // m/s²
+const PUNCAK_MS  = 20;        // m/s (72 km/jam), puncak dalam profil jarak terjauh
+const TEMPUH_TOL = 30;        // meter, galat GPS di dua ujung
 
 // Bertahan selama isolate hidup, jadi pekerjaan sekali-jalan tidak diulang
 // pada tiap permintaan.
@@ -892,23 +960,113 @@ function ruasTerdekat(lat, lon) {
   return { nama: nama, jarak: isFinite(jarak) ? Math.round(jarak) : null };
 }
 
-/* Pembacaan yang tidak masuk akal dibuang sebelum sempat menuduh siapa pun.
-   Alasannya sama dengan tab "Ditolak" di halaman. */
-function sampelSah(s, prev, nowDetik) {
-  if (!koordSah(s.lat, s.lon)) return false;
-  if (!Number.isFinite(s.speed) || s.speed < 0 || s.speed > KEC_MAKS) return false;
-  if (s.sat != null && s.sat < MIN_SATELIT) return false;
-  if (nowDetik - s.t > UMUR_MAKS) return false;
-  if (prev) {
-    const dt = s.t - prev.t;
-    if (dt <= 0) return false;
-    if (koordSah(prev.lat, prev.lon)) {
-      const jarak = haversine(prev.lat, prev.lon, s.lat, s.lon);
-      if (dt <= LOMPAT_DT && jarak > LOMPAT_M) return false;
-      if ((jarak / dt) * 3.6 > KEC_MAKS) return false;
+/* Versi 11: posisi di dalam wilayah Pulau Pakal — kotak yang sama dengan
+   pemeriksaan koordinat jalan (periksaJalan). */
+function dalamWilayah(lat, lon) {
+  return lon >= WILAYAH.lonMin && lon <= WILAYAH.lonMaks &&
+         lat >= WILAYAH.latMin && lat <= WILAYAH.latMaks;
+}
+
+/* Versi 11: jarak terdekat (meter) yang PASTI sudah ditempuh unit yang kini
+   melaju v1 m/s, dari kecepatan awal berapa pun dalam dt detik terakhir. Paling
+   pendek bila ia diam lalu berangkat secepat PERCEPATAN tepat pada waktunya:
+   v1²/2a. Bila v1 tidak terkejar dari diam dalam dt, ia sudah melaju sejak awal
+   jeda. Batas bawah ini tidak pernah salah untuk gerak sungguhan — truk yang baru
+   berangkat dari parkir pun memenuhinya — jadi yang ditolaknya hanya kecepatan
+   besar dengan posisi beku. */
+function jarakTerdekat(v1, dt) {
+  const a = PERCEPATAN;
+  return v1 <= a * dt ? (v1 * v1) / (2 * a) : v1 * dt - (a * dt * dt) / 2;
+}
+
+/* Versi 11: jarak terjauh (meter) yang bisa ditempuh dalam dt detik bila
+   berangkat dengan kecepatan v0 dan tiba dengan v1 (m/s): naik secepat
+   PERCEPATAN sampai puncak, lalu turun secepat PENGEREMAN, puncaknya paling
+   tinggi PUNCAK_MS. Bila perubahan v0 → v1 sendiri sudah melebihi kemampuan itu,
+   kecepatan lapornya yang janggal; batasnya dilonggarkan menjadi kecepatan
+   tertinggi × dt, supaya aturan ini hanya menilai jarak. */
+function jarakTerjauh(v0, v1, dt) {
+  const a = PERCEPATAN, b = PENGEREMAN;
+  const vc = Math.max(PUNCAK_MS, v0, v1);
+  const vp = (dt + v0 / a + v1 / b) / (1 / a + 1 / b);
+  if (vp < Math.max(v0, v1)) return vc * dt;
+  if (vp <= vc) return (vp * vp - v0 * v0) / (2 * a) + (vp * vp - v1 * v1) / (2 * b);
+  return (vc * vc - v0 * v0) / (2 * a) + (vc * vc - v1 * v1) / (2 * b) +
+         vc * (dt - (vc - v0) / a - (vc - v1) / b);
+}
+
+/* Versi 11: pembacaan yang tidak mungkin datang dari unit yang bergerak
+   sungguhan, dinilai terhadap sampel sah sebelumnya (`dt` detik, `jarak` meter).
+   Mengembalikan alasan, atau null.
+
+   Dijalankan untuk setiap pesan baru yang lolos aturan lama, jadi biayanya
+   dijaga (anggaran CPU §21.6). Pesan lambat (< KEC_CEK) yang pindah kurang dari
+   TEMPUH_TOL — unit parkir, memuat, merayap: kebanyakan armada setiap saat —
+   langsung lolos, karena aturan diam dan arah hanya untuk pesan cepat dan aturan
+   tempuh tidak mungkin menolak perpindahan di bawah toleransinya sendiri. Arah
+   dihitung dengan skala derajat tetap Pulau Pakal, tanpa Math.cos dan objek baru. */
+const SKALA_X = 111320 * Math.cos((0.785 * Math.PI) / 180);   // m per derajat bujur di site
+const SKALA_Y = 110540;                                        // m per derajat lintang
+function cekGerak(s, prev, dt, jarak) {
+  if (dt > GERAK_DT) return null;
+  if (s.speed < KEC_CEK && jarak < TEMPUH_TOL) return null;
+  const v1 = s.speed / 3.6;
+  if (s.speed >= KEC_CEK && dt <= JEDA_PENDEK) {
+    // Kecepatan besar, posisi praktis diam. Jeda dibatasi pendek supaya garis
+    // lurus antara dua posisi masih mendekati panjang lintasan.
+    if (jarak + DIAM_TOL < jarakTerdekat(v1, dt)) return "diam";
+    // Arah GPS berlawanan dengan arah perpindahan. Arah 0 dilewati: sebagian
+    // perangkat mengirim 0 bila arahnya tidak diketahui.
+    if (jarak >= ARAH_MIN_M && s.arah) {
+      const arahPindah = Math.atan2((s.lon - prev.lon) * SKALA_X, (s.lat - prev.lat) * SKALA_Y) * 180 / Math.PI;
+      const selisih = Math.abs((((s.arah - arahPindah) % 360) + 540) % 360 - 180);
+      if (selisih > ARAH_MAKS) return "arah";
     }
   }
-  return true;
+  // Terlalu jauh untuk ditempuh dari kecepatan sebelumnya. Hanya bila kecepatan
+  // hitung sampel sebelumnya diketahui (jedanya juga ≤ GERAK_DT).
+  if (prev.vi != null &&
+      jarak > jarakTerjauh(Math.max(prev.speed, prev.vi) / 3.6, v1, dt) + TEMPUH_TOL) return "tempuh";
+  return null;
+}
+
+/* Pembacaan yang tidak masuk akal dibuang sebelum sempat menuduh siapa pun.
+   Alasannya sama dengan tab "Ditolak" di halaman.
+
+   Sejak versi 11 mengembalikan ALASAN penolakan (teks pendek untuk log), atau
+   null bila sah. Untuk sampel sah, `s.vi` diisi kecepatan hitungnya (km/jam,
+   jarak ÷ waktu dari sampel sah sebelumnya) bila jedanya ≤ GERAK_DT — dipakai
+   aturan tempuh pada sampel berikutnya.
+
+   `mentah` = [t, lat, lon] pesan tepat sebelumnya bila pesan itu DITOLAK (versi
+   11). Pembanding sah `prev` bisa sudah berumur menit-menit, sedangkan aturan
+   diam hanya menilai jeda ≤ JEDA_PENDEK; pesan ngawur yang posisinya membeku
+   datang berderet tiap 10 detik, jadi dibanding sesamanya ia tetap ketahuan. */
+function sampelSah(s, prev, nowDetik, mentah = null) {
+  s.vi = null;
+  if (!koordSah(s.lat, s.lon)) return "koordinat";
+  if (!dalamWilayah(s.lat, s.lon)) return "wilayah";
+  if (!Number.isFinite(s.speed) || s.speed < 0 || s.speed > KEC_MAKS) return "kecepatan";
+  if (s.sat != null && s.sat < MIN_SATELIT) return "satelit";
+  if (nowDetik - s.t > UMUR_MAKS) return "basi";
+  if (mentah && s.speed >= KEC_CEK) {
+    const dtm = s.t - mentah[0];
+    if (dtm > 0 && dtm <= JEDA_PENDEK &&
+        haversine(mentah[1], mentah[2], s.lat, s.lon) + DIAM_TOL < jarakTerdekat(s.speed / 3.6, dtm)) return "diam";
+  }
+  if (prev) {
+    const dt = s.t - prev.t;
+    if (dt <= 0) return "urutan";
+    if (koordSah(prev.lat, prev.lon)) {
+      const jarak = haversine(prev.lat, prev.lon, s.lat, s.lon);
+      if (dt <= LOMPAT_DT && jarak > LOMPAT_M) return "lompat";
+      if ((jarak / dt) * 3.6 > KEC_MAKS) return "lompat";
+      const g = cekGerak(s, prev, dt, jarak);
+      if (g) return g;
+      if (dt <= GERAK_DT) s.vi = Math.round((jarak / dt) * 36) / 10;
+    }
+  }
+  return null;
 }
 
 async function bukaPelanggaran(env, u, ev) {
@@ -995,6 +1153,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
   const nowDetik = Math.floor(Date.now() / 1000);
 
   let sah = 0, ditolak = 0, basi = 0, melanggar = 0;
+  const alasan = {};   // jumlah penolakan per alasan (versi 11)
 
   for (const u of units) {
     const k = String(u.id);
@@ -1009,10 +1168,20 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
     if (nowDetik - t > UMUR_MAKS) { basi++; continue; }
     if (koordSah(u.lat, u.lon)) catatJejak(jejak, T0, u, t);
 
-    const s = { t, lat: u.lat, lon: u.lon, speed: u.kecepatan ?? 0, sat: u.satelit };
-    if (!sampelSah(s, st.sah, nowDetik)) { ditolak++; continue; }
+    const s = { t, lat: u.lat, lon: u.lon, speed: u.kecepatan ?? 0, sat: u.satelit, arah: u.arah };
+    const tolak = sampelSah(s, st.sah, nowDetik, st.m);
+    if (tolak) {
+      ditolak++; alasan[tolak] = (alasan[tolak] || 0) + 1;
+      // Pesan yang ditolak menjadi pembanding `mentah` bagi pesan berikutnya.
+      // Hanya disimpan selama deret tolak berjalan, supaya state tetap kecil.
+      if (koordSah(s.lat, s.lon)) st.m = [s.t, s.lat, s.lon];
+      continue;
+    }
     sah++;
     st.sah = { t: s.t, lat: s.lat, lon: s.lon, speed: s.speed };
+    // Kecepatan hitung ikut disimpan hanya bila diketahui, supaya state tetap kecil.
+    if (s.vi != null) st.sah.vi = s.vi;
+    if (st.m) st.m = undefined;   // tidak ikut tersimpan (JSON melewati undefined)
 
     st.buf.push({ t: s.t, lat: s.lat, lon: s.lon, speed: s.speed });
     if (st.buf.length > 4) st.buf.shift();
@@ -1084,7 +1253,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
     }
   }
 
-  return { unit: units.length, sah, ditolak, basi, melanggar };
+  return { unit: units.length, sah, ditolak, basi, melanggar, alasan };
 }
 
 /* Dipakai /api/uji: satu putaran lengkap berikut baca dan tulis state. */
@@ -1148,6 +1317,7 @@ async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [
   const tunda = new Map();
   const jejak = new Map();
   const deretSah = [], deretTolak = [], gagal = [];
+  const alasan = {};
   let langgar = 0, unit = 0;
 
   for (let i = 0; i < PUTARAN_PER_BLOK; i++) {
@@ -1157,6 +1327,7 @@ async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [
       unit = h.unit;
       deretSah.push(h.sah); deretTolak.push(h.ditolak);
       langgar += h.melanggar;
+      for (const k in h.alasan) alasan[k] = (alasan[k] || 0) + h.alasan[k];
     } catch (e) {
       deretSah.push("x"); deretTolak.push("x");
       gagal.push(`${i + 1}: ${String(e.message || e)}`);
@@ -1185,9 +1356,11 @@ async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [
     hasil = null;
   }
 
+  const teksAlasan = Object.keys(alasan).map((k) => k + ":" + alasan[k]).join(",");
   console.log(
     `blok=${nama}${oleh !== nama ? ` oleh=${oleh}` : ""} unit=${unit} ` +
     `sah=${deretSah.join(",")} tolak=${deretTolak.join(",")} ` +
+    (teksAlasan ? `alasan=${teksAlasan} ` : "") +
     `langgar=${langgar} tulis=${ditulis} jejak=${jejak.size} jalan=v${JALAN.versi}` +
     (gagal.length ? ` | gagal ${gagal.join(" ; ")}` : "")
   );
@@ -1426,7 +1599,7 @@ export default {
           if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
         }
         return json({
-          versi_worker: 10,
+          versi_worker: 11,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,

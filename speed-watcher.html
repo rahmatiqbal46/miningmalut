@@ -658,6 +658,7 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
         <span class="info" tabindex="0" data-tip="Menyaring pembacaan yang tidak masuk akal: posisi meloncat saat sinyal buruk, kecepatan mustahil, atau data bertanggal mundur.">i</span>
       </summary>
       <div class="grp-body">
+        <p class="hint" style="margin:0 0 8px">Selain isian di bawah, pembacaan yang mustahil bagi dump truck selalu dibuang, sama dengan server: posisi di luar wilayah site, kecepatan besar tapi posisi diam, arah GPS berlawanan dengan arah pindah, dan jarak yang tak terjangkau dari kecepatan sebelumnya. Alasannya tampil di tab Ditolak.</p>
         <div class="row2">
           <div class="field"><label for="vMaxSpeed">Kecepatan wajar maks. <span class="info kiri" tabindex="0" data-tip="km/jam. Pembacaan di atas ini dianggap galat sensor dan dibuang.">i</span></label><input id="vMaxSpeed" type="number" min="20" max="400" step="5" value="150"></div>
           <div class="field"><label for="vSats">Satelit minimum <span class="info kiri" tabindex="0" data-tip="Isi 0 untuk mengabaikan pemeriksaan ini. Perangkat dengan sedikit satelit sering melaporkan posisi yang meleset jauh.">i</span></label><input id="vSats" type="number" min="0" max="20" value="4"></div>
@@ -894,20 +895,72 @@ const REASON = {
   ACCEL:      "Percepatan tidak masuk akal",
   MISMATCH:   "Kecepatan lapor beda jauh dari hitungan",
   FROZEN:     "Posisi diam tapi kecepatan besar",
+  WILAYAH:    "Di luar wilayah site",
+  ARAH:       "Arah GPS berlawanan dengan arah pindah",
+  TEMPUH:     "Jarak mustahil dari kecepatan sebelumnya",
 };
+
+/* Aturan gerak — SALINAN Worker versi 11 (KEC_CEK, JEDA_PENDEK, DIAM_TOL, … di
+   worker/speed-watcher-24-7.js, dokumentasi §21.15). Bukan setelan: batas fisik
+   dump truck dan excavator. Kalau diubah, ubah keduanya bersama, supaya layar
+   dan server menolak pembacaan yang sama. WILAYAH = kotak pemeriksaan jalan di
+   Worker (Pulau Pakal ± 2–3 km). */
+const GERAK = {
+  kecCek: 15,        // km/jam; di bawah ini aturan diam dan arah tidak dipakai
+  jedaPendek: 20,    // detik; aturan diam dan arah hanya untuk jeda sesingkat ini
+  dt: 60,            // detik; aturan tempuh hanya untuk jeda sesingkat ini
+  diamTol: 10,       // meter
+  arahMinM: 20,      // meter
+  arahMaks: 150,     // derajat
+  percepatan: 2,     // m/s²
+  pengereman: 4,     // m/s²
+  puncakMs: 20,      // m/s (72 km/jam)
+  tempuhTol: 30,     // meter
+};
+const WILAYAH = { lonMin: 128.30, lonMaks: 128.38, latMin: 0.75, latMaks: 0.83 };
+const SKALA_X = 111320 * Math.cos((0.785 * Math.PI) / 180), SKALA_Y = 110540;   // m per derajat di site
+
+/** Jarak (m) yang pasti sudah ditempuh unit yang kini melaju v1 m/s — sama dengan jarakTerdekat() di Worker. */
+function jarakTerdekat(v1, dt) {
+  const a = GERAK.percepatan;
+  return v1 <= a * dt ? (v1 * v1) / (2 * a) : v1 * dt - (a * dt * dt) / 2;
+}
+
+/** Jarak terjauh (m) dalam dt detik, berangkat v0 dan tiba v1 (m/s) — sama dengan jarakTerjauh() di Worker. */
+function jarakTerjauh(v0, v1, dt) {
+  const a = GERAK.percepatan, b = GERAK.pengereman;
+  const vc = Math.max(GERAK.puncakMs, v0, v1);
+  const vp = (dt + v0 / a + v1 / b) / (1 / a + 1 / b);
+  if (vp < Math.max(v0, v1)) return vc * dt;
+  if (vp <= vc) return (vp * vp - v0 * v0) / (2 * a) + (vp * vp - v1 * v1) / (2 * b);
+  return (vc * vc - v0 * v0) / (2 * a) + (vc * vc - v1 * v1) / (2 * b) +
+         vc * (dt - (vc - v0) / a - (vc - v1) / b);
+}
 
 /**
  * Menilai satu sampel terhadap sampel valid terakhir.
- * @returns {{ok:boolean, hard:string[], soft:string[], dt:number, dist:number, implied:number, accel:number}}
+ * `mentah` = sampel tepat sebelumnya bila sampel itu ditolak (aturan diam
+ * versi 11 juga menilai terhadapnya, sama dengan Worker).
+ * @returns {{ok:boolean, hard:string[], soft:string[], dt:number, dist:number, implied:number, accel:number, vi:number}}
  */
-function validateSample(s, prev, cfg, now) {
+function validateSample(s, prev, cfg, now, mentah) {
   const hard = [], soft = [];
-  let dt = null, dist = null, implied = null, accel = null;
+  let dt = null, dist = null, implied = null, accel = null, vi = null;
 
   if (!validCoord(s.lat, s.lon)) hard.push(REASON.NO_FIX);
+  // Mode simulasi berada di koordinat contoh, bukan di Pulau Pakal.
+  else if (!App.demo && !(s.lon >= WILAYAH.lonMin && s.lon <= WILAYAH.lonMaks &&
+                          s.lat >= WILAYAH.latMin && s.lat <= WILAYAH.latMaks)) hard.push(REASON.WILAYAH);
   if (!isFinite(s.speed) || s.speed < 0 || s.speed > cfg.maxSpeed) hard.push(REASON.SPEED);
   if (cfg.minSats > 0 && s.sats != null && s.sats < cfg.minSats) hard.push(REASON.SATS);
   if (cfg.maxAge > 0 && now - s.t > cfg.maxAge) hard.push(REASON.STALE);
+
+  // Kecepatan besar tapi posisinya sama dengan pesan sebelumnya yang ditolak.
+  if (mentah && s.speed >= GERAK.kecCek && validCoord(s.lat, s.lon) && validCoord(mentah.lat, mentah.lon)) {
+    const dtm = s.t - mentah.t;
+    if (dtm > 0 && dtm <= GERAK.jedaPendek &&
+        haversine(mentah.lat, mentah.lon, s.lat, s.lon) + GERAK.diamTol < jarakTerdekat(s.speed / 3.6, dtm)) hard.push(REASON.FROZEN);
+  }
 
   if (prev) {
     dt = s.t - prev.t;
@@ -928,13 +981,33 @@ function validateSample(s, prev, cfg, now) {
       // Kecepatan dari GPS vs hasil hitung tidak sejalan.
       if (dt <= 60 && Math.abs(s.speed - implied) > cfg.mismatch) soft.push(REASON.MISMATCH);
 
-      // Posisi tidak bergerak padahal melaporkan kecepatan besar → posisi membeku.
-      if (dt >= 30 && dist < 10 && s.speed > 20) soft.push(REASON.FROZEN);
+      if (dt <= GERAK.dt) {
+        vi = Math.round(implied * 10) / 10;
+        const v1 = s.speed / 3.6;
+        if (s.speed >= GERAK.kecCek && dt <= GERAK.jedaPendek) {
+          // Kecepatan besar, posisi praktis diam — ditolak (versi 11).
+          if (dist + GERAK.diamTol < jarakTerdekat(v1, dt)) hard.push(REASON.FROZEN);
+          // Arah GPS berlawanan dengan arah perpindahan. Arah 0 = tidak diketahui.
+          if (dist >= GERAK.arahMinM && s.course) {
+            const arahPindah = Math.atan2((s.lon - prev.lon) * SKALA_X, (s.lat - prev.lat) * SKALA_Y) * 180 / Math.PI;
+            const selisih = Math.abs((((s.course - arahPindah) % 360) + 540) % 360 - 180);
+            if (selisih > GERAK.arahMaks) hard.push(REASON.ARAH);
+          }
+        }
+        // Terlalu jauh untuk ditempuh dari kecepatan sebelumnya.
+        if (prev.vi != null) {
+          const v0 = Math.max(prev.speed || 0, prev.vi) / 3.6;
+          if (dist > jarakTerjauh(v0, v1, dt) + GERAK.tempuhTol) hard.push(REASON.TEMPUH);
+        }
+      } else if (dist < 10 && s.speed > 20) {
+        // Jeda panjang: hanya ditandai janggal seperti sebelumnya.
+        soft.push(REASON.FROZEN);
+      }
     }
   }
 
   const ok = hard.length === 0 && !(cfg.strict && soft.length > 0);
-  return { ok, hard, soft, dt, dist, implied, accel };
+  return { ok, hard, soft, dt, dist, implied, accel, vi: hard.length ? null : vi };
 }
 
 /* ==========================================================================
@@ -1089,11 +1162,13 @@ function pushSample(u, raw, cfg, now, opts) {
     u.status = "SAMA";
     return null;
   }
+  // Pesan sebelumnya yang ditolak ikut menjadi pembanding aturan diam (versi 11).
+  const mentah = u.lastRaw && u.lastRaw.valid === false ? u.lastRaw : null;
   u.lastRaw = s;
 
-  const v = validateSample(s, u.lastValid, cfg, now);
+  const v = validateSample(s, u.lastValid, cfg, now, mentah);
   s.valid = v.ok; s.hard = v.hard; s.soft = v.soft;
-  s.dt = v.dt; s.dist = v.dist; s.implied = v.implied; s.accel = v.accel;
+  s.dt = v.dt; s.dist = v.dist; s.implied = v.implied; s.accel = v.accel; s.vi = v.vi;
   s.over = false;
 
   u.samples.push(s);
