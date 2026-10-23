@@ -1606,20 +1606,112 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
     var a = dari.slice(0, 7), b = sampai.slice(0, 7);
     return a === b ? [a] : [a, b];
   }
+  /* Tarikan berindeks (23 Oktober 2026), pola yang sama dengan modul Dispatch
+     (§20.9). PostgREST Supabase memotong balasan di 1.000 baris tanpa pesan, dan
+     laporan dispatch bertambah ±2–3 per hari: tarikan sekaligus lama pada
+     waktunya akan kehilangan sebagian laporan tanpa tanda apa pun. Sekarang
+     indeks `id,updated_at` ditarik per halaman (kunci id > id terakhir; halaman
+     pertama meminta jumlah total), lalu isi hanya untuk baris yang baru atau
+     berubah sejak tarikan sebelumnya. CERMIN menyimpan isi per pola filter
+     selama halaman terbuka, jadi tarikan 5 menitan berikutnya hampir hanya
+     indeks. */
+  var HAL = 1000;
+  var CERMIN = {};                 // filter → { id → {u: updated_at, data} }
+  function halaman(filter, pilih, setelah, hitung) {
+    var t = sesi();
+    if (!t) {
+      var g = new Error('sesi login kedaluwarsa');
+      g.kedaluwarsa = true;
+      return Promise.reject(g);
+    }
+    var h = { apikey: CFG.key, Authorization: 'Bearer ' + t };
+    if (hitung) h.Prefer = 'count=exact';
+    return fetch(CFG.url.replace(/\/+$/, '') + '/rest/v1/dashboard?' + filter + '&select=' + pilih +
+      '&order=id.asc&limit=' + HAL + (setelah ? '&id=gt.' + encodeURIComponent(setelah) : ''),
+      { headers: h }).then(function (r) {
+      if (!r.ok) {
+        var e = new Error('HTTP ' + r.status);
+        if (r.status === 401) e.kedaluwarsa = true;
+        throw e;
+      }
+      var m = /\/(\d+)\s*$/.exec(r.headers.get('content-range') || '');   // "0-999/2345"
+      return r.json().then(function (j) {
+        if (!Array.isArray(j)) throw new Error('balasan server bukan daftar');
+        return { baris: j, total: m ? +m[1] : null };
+      });
+    });
+  }
+  function semua(filter, pilih) {
+    var hasil = [], total = null;
+    function lanjut(setelah, ke) {
+      if (ke >= 500) return Promise.reject(new Error('penarikan berhenti: lebih dari 500 halaman'));
+      return halaman(filter, pilih, setelah, ke === 0).then(function (h) {
+        if (ke === 0) total = h.total;
+        Array.prototype.push.apply(hasil, h.baris);
+        if (!h.baris.length || (total !== null && hasil.length >= total)) return hasil;
+        return lanjut(String(h.baris[h.baris.length - 1].id), ke + 1);
+      });
+    }
+    return lanjut('', 0);
+  }
+  function ambilId(ids) {
+    var out = [], potong = [];
+    for (var i = 0; i < ids.length; i += 40) potong.push(ids.slice(i, i + 40));
+    return potong.reduce(function (p, kel) {
+      return p.then(function () {
+        var daftar = '(' + kel.map(function (x) {
+          return '"' + String(x).replace(/["\\]/g, '\\$&') + '"';
+        }).join(',') + ')';
+        return ambilJson('id=in.' + encodeURIComponent(daftar) + '&select=id,data,updated_at')
+          .then(function (j) {
+            if (!Array.isArray(j)) throw new Error('balasan server bukan daftar');
+            Array.prototype.push.apply(out, j);
+          });
+      });
+    }, Promise.resolve()).then(function () { return out; });
+  }
+  // Isi lengkap untuk satu pola filter: { id → {u, data} }.
+  function cermin(filter) {
+    var c = CERMIN[filter] || (CERMIN[filter] = {});
+    return semua(filter, 'id,updated_at').then(function (indeks) {
+      var ada = {}, perlu = [];
+      indeks.forEach(function (x) {
+        var id = String(x.id || '');
+        if (!id) return;
+        ada[id] = 1;
+        if (!c[id] || c[id].u !== x.updated_at) perlu.push(id);
+      });
+      Object.keys(c).forEach(function (id) { if (!ada[id]) delete c[id]; });   // dihapus di server
+      if (!perlu.length) return c;
+      var ambil = (perlu.length > 150 || perlu.length === indeks.length)
+        ? semua(filter, 'id,data,updated_at') : ambilId(perlu);
+      return ambil.then(function (baris) {
+        var kembali = {};
+        baris.forEach(function (b) {
+          var id = String(b.id || '');
+          if (!id) return;
+          kembali[id] = 1;
+          c[id] = { u: b.updated_at, data: b.data };
+        });
+        perlu.forEach(function (id) { if (!kembali[id]) delete c[id]; });   // terhapus di antara dua langkah
+        return c;
+      });
+    });
+  }
   function muatBaris(dari, sampai) {
-    var qLap = 'id=like.' + encodeURIComponent('dispatch|laporan|') + '*&select=id,data';
-    var minta = [ambilJson(qLap)].concat(bulanRentang(dari, sampai).map(function (bl) {
-      return ambilJson('id=like.' + encodeURIComponent('dispatch|kepatuhan|') + '*' +
-        encodeURIComponent('|' + bl + '-') + '*&select=id,data');
+    var fLap = 'id=like.' + encodeURIComponent('dispatch|laporan|') + '*';
+    var minta = [cermin(fLap)].concat(bulanRentang(dari, sampai).map(function (bl) {
+      return cermin('id=like.' + encodeURIComponent('dispatch|kepatuhan|') + '*' +
+        encodeURIComponent('|' + bl + '-') + '*');
     }));
     return Promise.all(minta).then(function (h) {
-      var laporan = (Array.isArray(h[0]) ? h[0] : []).map(isiPayload).filter(Boolean);
+      var laporan = Object.keys(h[0]).map(function (id) { return isiPayload(h[0][id]); }).filter(Boolean);
       var slot = { ANTAM: {}, PCM: {} };
       h.slice(1).forEach(function (kel) {
-        (Array.isArray(kel) ? kel : []).forEach(function (row) {
-          var p = String(row.id || '').split('|');   // dispatch|kepatuhan|SITE|tgl|Shift N
+        Object.keys(kel).forEach(function (id) {
+          var p = id.split('|');   // dispatch|kepatuhan|SITE|tgl|Shift N
           if (p.length < 5 || !slot[p[2]]) return;
-          var isi = isiPayload(row);
+          var isi = isiPayload(kel[id]);
           slot[p[2]][p[3] + '|' + normShift(p[4])] = Array.isArray(isi) ? isi : [];
         });
       });

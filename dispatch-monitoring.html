@@ -1365,16 +1365,106 @@ async function supaDelete(key){
   });
   if(!r.ok) throw new Error('HTTP '+r.status);
 }
-async function supaSelectAll(){
-  const url = supaRest()+'?id=like.'+encodeURIComponent(SUPA.prefiks+'*')+'&select=id,data,updated_at';
-  const r = await fetch(url, { headers: supaHeaders() });
+/* ================= TARIKAN BERTAHAP (23 Oktober 2026) =================
+   PostgREST Supabase memotong setiap balasan di 1.000 baris TANPA pesan.
+   Sampai hari ini seluruh `dispatch|*` ditarik dalam satu permintaan tiap 60
+   detik. Begitu barisnya lewat 1.000, sisanya tidak pernah sampai, dan karena
+   applyRemote() menganggap tarikan sebagai isi server yang lengkap, laporan
+   dan penilaian di luar potongan itu ikut hilang dari layar dan dari salinan
+   perangkat. Selain itu seluruh isi (±2 MB, terus tumbuh) ditarik ulang tiap
+   menit walau tidak ada yang berubah.
+
+   Sekarang dua langkah:
+   1. Indeks: hanya `id,updated_at`, per halaman dengan kunci (id > id
+      terakhir), bukan offset — baris yang dihapus atau ditambah selama
+      penarikan tidak membuat baris lain terlewat. Halaman pertama meminta
+      jumlah total (Prefer: count=exact → Content-Range); tanpa jumlah itu,
+      penarikan berlanjut sampai halaman kosong. Batas baris server berapa pun
+      tidak bisa memotongnya diam-diam.
+   2. Isi: hanya baris yang baru atau `updated_at`-nya berbeda dari CERMIN,
+      salinan isi server di memori halaman ini. Saat halaman baru dibuka
+      CERMIN kosong, jadi isi ditarik penuh — juga bertahap.
+   Baris yang hilang dari indeks berarti dihapus di server. Yang diserahkan ke
+   applyRemote() tetap SELURUH baris, persis seperti tarikan lama, jadi aturan
+   penggabungan di sana tidak berubah. */
+const HAL_SUPA=1000;          // batas baris per balasan PostgREST Supabase
+const AMBANG_TARIK_PENUH=150; // lebih dari ini baris berubah: tarik isi penuh bertahap
+const CERMIN=new Map();       // id baris → {u: updated_at, data}
+
+// Satu halaman berkunci. Mengembalikan {baris, total}; total null bila tidak diketahui.
+async function supaHalaman(filter, pilih, setelah, hitung){
+  let url=supaRest()+'?'+filter+'&select='+pilih+'&order=id.asc&limit='+HAL_SUPA;
+  if(setelah) url+='&id=gt.'+encodeURIComponent(setelah);
+  const r=await fetch(url, { headers: supaHeaders(hitung ? {Prefer:'count=exact'} : null) });
   if(!r.ok) throw new Error('HTTP '+r.status);
-  const j = await r.json();
+  const baris=await r.json();
+  if(!Array.isArray(baris)) throw new Error('balasan server bukan daftar');
+  const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||'');   // "0-999/2345"
+  return { baris, total: m ? +m[1] : null };
+}
+// Semua baris yang cocok dengan filter, halaman demi halaman.
+async function supaSemua(filter, pilih){
+  const hasil=[];
+  let setelah='', total=null;
+  for(let ke=0; ke<500; ke++){
+    const h=await supaHalaman(filter, pilih, setelah, ke===0);
+    if(ke===0) total=h.total;
+    h.baris.forEach(b=>hasil.push(b));
+    if(!h.baris.length || (total!==null && hasil.length>=total)) return hasil;
+    setelah=String(h.baris[h.baris.length-1].id);
+  }
+  throw new Error('penarikan berhenti: lebih dari 500 halaman');
+}
+// Isi beberapa baris menurut id, 40 per permintaan (jauh di bawah batas baris
+// dan panjang alamat). Nilai dikutip supaya "|" dan spasi aman di filter in.
+async function supaAmbilId(ids){
+  const out=[];
+  for(let i=0; i<ids.length; i+=40){
+    const daftar='('+ids.slice(i,i+40).map(x=>'"'+String(x).replace(/["\\]/g,'\\$&')+'"').join(',')+')';
+    const r=await fetch(supaRest()+'?id=in.'+encodeURIComponent(daftar)+'&select=id,data,updated_at',
+                        { headers: supaHeaders() });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    if(!Array.isArray(j)) throw new Error('balasan server bukan daftar');
+    j.forEach(b=>out.push(b));
+  }
+  return out;
+}
+async function supaSelectAll(){
+  const filter='id=like.'+encodeURIComponent(SUPA.prefiks+'*');
+  const indeks=await supaSemua(filter, 'id,updated_at');
+  /* Indeks kosong: sesi habis (RLS menyembunyikan semuanya) atau server memang
+     masih kosong. Sama dengan perilaku lama: kembalikan kosong dan jangan
+     menyentuh CERMIN; pengaman di syncPull()/applyRemote() yang memutuskan. */
+  if(!indeks.length) return [];
+  const ada=new Set(), perlu=[];
+  indeks.forEach(x=>{
+    const id=String(x.id||'');
+    if(!id) return;
+    ada.add(id);
+    const c=CERMIN.get(id);
+    if(!c || c.u!==x.updated_at) perlu.push(id);
+  });
+  [...CERMIN.keys()].forEach(id=>{ if(!ada.has(id)) CERMIN.delete(id); });   // dihapus di server
+  if(perlu.length){
+    const baris = (perlu.length>AMBANG_TARIK_PENUH || perlu.length===indeks.length)
+      ? await supaSemua(filter, 'id,data,updated_at')
+      : await supaAmbilId(perlu);
+    const kembali=new Set();
+    baris.forEach(b=>{
+      const id=String(b.id||'');
+      if(!id) return;
+      kembali.add(id);
+      CERMIN.set(id, {u:b.updated_at, data:b.data||{}});
+    });
+    // Ada di indeks tapi tidak kembali: terhapus di antara kedua langkah
+    perlu.forEach(id=>{ if(!kembali.has(id)) CERMIN.delete(id); });
+  }
   // Bentuk ulang agar cocok dengan applyRemote(): {key, type, payload}
-  return (Array.isArray(j)?j:[]).map(row=>{
-    const d = row.data || {};
+  return [...CERMIN].map(([id,c])=>{
+    const d=c.data || {};
     return {
-      key: String(row.id||'').slice(SUPA.prefiks.length),
+      key: id.slice(SUPA.prefiks.length),
       type: d.type || '',
       payload: typeof d.payload==='string' ? d.payload : JSON.stringify(d.payload||{})
     };
