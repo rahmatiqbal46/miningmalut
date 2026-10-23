@@ -4119,31 +4119,94 @@ function mergeLegacyByDate(legacy){
   return n;
 }
 
-async function smrPullAll(){
-  if(!CFG.url||!CFG.key)return 0;
-  const r=await fetch(cloudBase()+"?id=like.smr%7C*&select=id,data,updated_at&order=id",{headers:cloudHeaders()});
+/* ---- Tarikan bertahap (23 Oktober 2026) ----
+   PostgREST Supabase memotong setiap balasan di 1.000 baris TANPA pesan. Tarikan
+   lama berupa satu permintaan berurut id, jadi yang terpotong justru tanggal
+   TERBARU, dan baris di luar potongan yang pernah tercatat di pakal_smr_ids_v1
+   dianggap "dihapus orang lain" lalu dibuang dari perangkat. Satu baris per
+   tanggal+shift (±730 setahun), jadi batas itu tercapai sekitar 2027.
+
+   Sekarang pola yang sama dengan Dispatch (dokumentasi §20.9): halaman demi
+   halaman dengan kunci id > id terakhir (bukan offset, supaya baris yang dihapus
+   saat penarikan tidak membuat baris lain terlewat), total lewat
+   Prefer: count=exact; tanpa total, berlanjut sampai halaman kosong. Pemeriksaan
+   20 detik (smrPollChanges) menarik isi hanya untuk baris yang berubah.
+
+   Balasan kosong — mis. sesi habis sehingga RLS menyembunyikan semua — tidak lagi
+   menghapus apa pun. Dulu ia membuang seluruh SMR dari salinan perangkat sampai
+   login berikutnya; sekarang pengaman 1 di §12.4 ("hanya menimpa, tidak pernah
+   mengosongkan") berlaku juga untuk kasus itu. */
+const SMR_HAL=1000;
+async function smrHalaman(pilih,setelah,hitung){
+  let url=cloudBase()+"?id=like.smr%7C*&select="+pilih+"&order=id.asc&limit="+SMR_HAL;
+  if(setelah)url+="&id=gt."+encodeURIComponent(setelah);
+  const h=cloudHeaders();if(hitung)h.Prefer="count=exact";
+  const r=await fetch(url,{headers:h});
   if(!r.ok)throw new Error("HTTP "+r.status);
-  const j=await r.json()||[];
-  const now={};let n=0;const perluBersih=[];
-  j.forEach(row=>{
+  const baris=await r.json();
+  if(!Array.isArray(baris))throw new Error("balasan server bukan daftar");
+  const m=/\/(\d+)\s*$/.exec(r.headers.get("content-range")||"");   // "0-999/2345"
+  return {baris,total:m?+m[1]:null};
+}
+async function smrSemua(pilih){
+  const hasil=[];let setelah="",total=null;
+  for(let ke=0;ke<500;ke++){
+    const h=await smrHalaman(pilih,setelah,ke===0);
+    if(ke===0)total=h.total;
+    h.baris.forEach(b=>hasil.push(b));
+    if(!h.baris.length||(total!==null&&hasil.length>=total))return hasil;
+    setelah=String(h.baris[h.baris.length-1].id);
+  }
+  throw new Error("penarikan SMR berhenti: lebih dari 500 halaman");
+}
+// Isi beberapa baris menurut id, 40 per permintaan; nilai dikutip supaya "|" aman.
+async function smrAmbilId(ids){
+  const out=[];
+  for(let i=0;i<ids.length;i+=40){
+    const daftar="("+ids.slice(i,i+40).map(x=>'"'+String(x).replace(/["\\]/g,"\\$&")+'"').join(",")+")";
+    const r=await fetch(cloudBase()+"?id=in."+encodeURIComponent(daftar)+"&select=id,data,updated_at",{headers:cloudHeaders()});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    if(!Array.isArray(j))throw new Error("balasan server bukan daftar");
+    j.forEach(b=>out.push(b));
+  }
+  return out;
+}
+// Pasang baris server ke byDate dan catat updated_at-nya di `now`. Baris tanpa isi
+// alat tidak dihitung ada (sama dengan tarikan lama).
+function smrPasang(rows,now,perluBersih){
+  let n=0;
+  rows.forEach(row=>{
     const k=parseSmrRowId(row.id);if(!k)return;
-    const alat=row.data&&row.data.alat;if(!alat||typeof alat!=="object")return;
+    const alat=row.data&&row.data.alat;if(!alat||typeof alat!=="object"){delete now[row.id];return;}
     if(buangAlatDihapus(alat))perluBersih.push(k.dt+"|"+k.sh);
     if(!S.smr.byDate[k.dt])S.smr.byDate[k.dt]={};
     S.smr.byDate[k.dt][k.sh]=alat;
     smrTs[row.id]=row.updated_at;now[row.id]=row.updated_at;n++;
   });
-  // baris yang dulu ada di server lalu hilang = dihapus orang lain
-  const prev=loadSmrIds();
+  return n;
+}
+// Baris yang dulu ada di server (pakal_smr_ids_v1) tapi tidak ada di `now` = dihapus orang lain.
+function smrBuangHilang(now){
+  const prev=loadSmrIds();let n=0;
   Object.keys(prev).forEach(id=>{
     if(now[id])return;
     const k=parseSmrRowId(id);if(!k)return;
     if(S.smr.byDate[k.dt]&&S.smr.byDate[k.dt][k.sh]){
-      delete S.smr.byDate[k.dt][k.sh];
+      delete S.smr.byDate[k.dt][k.sh];n++;
       if(!Object.keys(S.smr.byDate[k.dt]).length)delete S.smr.byDate[k.dt];
     }
     delete smrTs[id];
   });
+  return n;
+}
+async function smrPullAll(){
+  if(!CFG.url||!CFG.key)return 0;
+  const j=await smrSemua("id,data,updated_at");
+  if(!j.length)return 0;     // kosong: sesi habis atau server belum terisi — tidak mengosongkan apa pun
+  const now={},perluBersih=[];
+  const n=smrPasang(j,now,perluBersih);
+  smrBuangHilang(now);
   saveSmrIds(now);
   smrIndexSig=j.map(x=>x.id+"@"+x.updated_at).join(";");
   try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
@@ -4208,18 +4271,28 @@ async function smrDeleteDate(dt){
 
 async function smrPollChanges(){
   if(!CFG.url||!CFG.key)return 0;
-  const r=await fetch(cloudBase()+"?id=like.smr%7C*&select=id,updated_at&order=id",{headers:cloudHeaders()});
-  if(!r.ok)return 0;
-  const j=await r.json()||[];
+  let j;
+  try{j=await smrSemua("id,updated_at");}catch(e){return 0;}
+  if(!j.length)return 0;     // kosong: sesi habis — bukan berarti semua baris dihapus
   const sig=j.map(x=>x.id+"@"+x.updated_at).join(";");
   if(sig===smrIndexSig)return 0;
   const now={};j.forEach(x=>now[x.id]=x.updated_at);
-  const changed=j.filter(x=>smrTs[x.id]!==x.updated_at).length;
+  const berubah=j.filter(x=>smrTs[x.id]!==x.updated_at).map(x=>x.id);
   const prev=loadSmrIds();
   const removed=Object.keys(prev).filter(id=>!now[id]).length;
   smrIndexSig=sig;
-  if(!changed&&!removed){saveSmrIds(now);return 0;}
-  return await smrPullAll();
+  if(!berubah.length&&!removed){saveSmrIds(now);return 0;}
+  if(berubah.length>150)return await smrPullAll();          // banyak berubah: tarik penuh bertahap
+  // Sedikit berubah: hanya baris itu yang ditarik isinya
+  const rows=berubah.length?await smrAmbilId(berubah):[];
+  const kembali={};rows.forEach(r=>{kembali[r.id]=1;});
+  berubah.forEach(id=>{if(!kembali[id])delete now[id];});   // terhapus di antara kedua langkah
+  const perluBersih=[];
+  const n=smrPasang(rows,now,perluBersih)+smrBuangHilang(now);
+  saveSmrIds(now);
+  try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
+  smrBersihkanServer(perluBersih);
+  return n;
 }
 
 /* ---- pemindahan data lama dari baris 'pakal' ke baris per tanggal+shift ---- */
