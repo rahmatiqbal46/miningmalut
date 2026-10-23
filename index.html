@@ -292,6 +292,14 @@ iframe.page.show{display:block}
 .login canvas.peta{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;
   transition:opacity .9s cubic-bezier(.16,1,.3,1)}
 .login canvas.peta.siap{opacity:1}
+/* Memulihkan sesi saat halaman dibuka dengan token yang sudah habis: lembar login
+   disembunyikan, peta tetap bergerak, sampai token baru diterima (biasanya < 1 detik).
+   Latar login tetap tanpa tulisan apa pun (permintaan Iqbal, 17 September 2026):
+   keterangan "Memulihkan sesi…" hanya untuk pembaca layar, tidak tampil. */
+.login.pulih .card-login{visibility:hidden}
+.pulih-teks{display:none}
+.login.pulih .pulih-teks{display:block;position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 /* Latar login tanpa teks apa pun: hanya penunjuk utara sebagai simbol peta. */
 .peta-utara{position:absolute;right:26px;bottom:24px;width:12px;height:17px;pointer-events:none;opacity:.5}
 .peta-utara svg{display:block;width:100%;height:100%;fill:#a6cbc9}
@@ -557,6 +565,7 @@ iframe.page.show{display:block}
    <div class="kontak">Butuh informasi login? Hubungi<br><button type="button" class="salin" id="btnSalinEmail" title="Salin alamat email" aria-label="Salin alamat email rahmat.iqbal@antam.com"><span id="salinTeks">rahmat.iqbal@antam.com</span><svg class="ikon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5 9.5 17.5 19.5 6.5"/></svg></button><span class="salin-info" id="salinInfo" role="status" aria-live="polite"></span></div>
    <div class="foot">Akses internal Biro Mining</div>
  </div>
+ <div class="pulih-teks" role="status">Memulihkan sesi…</div>
 </div>
 
 <script>
@@ -574,7 +583,8 @@ function judulAkun(){var sb=document.getElementById('setbtn');if(sb)sb.title='Ke
 async function cekAdmin(){
   let a=false;
   try{
-    const r=await fetch(CFG.url.replace(/\/+$/,'')+'/rest/v1/rpc/op_is_admin',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+AUTH.access_token,'Content-Type':'application/json'},body:'{}'});
+    const s=bacaAuth()||AUTH;   // token terbaru: bisa sudah disegarkan tab lain
+    const r=await fetch(CFG.url.replace(/\/+$/,'')+'/rest/v1/rpc/op_is_admin',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:'{}'});
     a=r.ok&&(await r.json())===true;
   }catch(e){a=false;}
   ADMIN_SAYA=a;
@@ -586,11 +596,232 @@ async function doLogin(em,pw){
   const r=await fetch(authBase()+'/token?grant_type=password',{method:'POST',headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(j.error_description||j.msg||j.error||'Email atau password salah');
-  AUTH={access_token:j.access_token,expires_at:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600),user:j.user||{email:em}};
+  AUTH=sesiDari(j,{email:em});
   localStorage.setItem(AUTHKEY,JSON.stringify(AUTH));
-  try{localStorage.setItem('pakal_auth_required','1');}catch(e){}
+  try{localStorage.setItem('pakal_auth_required','1');localStorage.removeItem(SESI_TOLAK);}catch(e){}
+  segarGagal=0; segarTunda=0; jadwalSegar(AUTH);
   return AUTH;
 }
+
+/* =============================================================================
+   PENYEGARAN SESI (roadmap 76, Oktober 2026)
+
+   Access token Supabase berumur ±1 jam. Dulu refresh_token dibuang saat login,
+   jadi sejam kemudian semua modul diam-diam berhenti sinkron sampai pengguna
+   keluar lalu masuk lagi. Sekarang shell menyimpannya di pakal_auth dan
+   memperbarui sesi 5 menit sebelum habis (token berumur pendek: pada separuh
+   umurnya), juga segera saat tab kembali terlihat, jendela kembali fokus,
+   jaringan kembali, atau perangkat bangun dari tidur dengan token yang sudah
+   atau nyaris habis. Denyut 20 detik membandingkan jam dinding, jadi tidur
+   panjang tetap tertangkap walau pengatur waktu ikut tertidur.
+
+   Supabase MEMUTAR refresh_token: setiap penyegaran memberi token baru dan
+   mencabut yang lama. Token lama yang dipakai ulang lewat ±10 detik dianggap
+   penyalahgunaan, dan SELURUH sesi dicabut. Padahal yang terbuka bersamaan bisa
+   banyak: beberapa tab, ditambah setiap modul di bingkainya. Karena itu:
+   - hanya shell (halaman ini) yang menyegarkan; modul cukup membaca pakal_auth
+     setiap kali meminta data (Mine Development memanggil PakalAuth.segarkan);
+   - satu konteks pada satu waktu, lewat Web Locks 'pakal-auth-refresh'
+     (cadangan bila tidak tersedia: sewa singkat di localStorage);
+   - di dalam kunci pakal_auth dibaca ulang; kalau konteks lain sudah
+     menyegarkan, tidak ada yang dikirim.
+
+   Gagal jaringan, waktu habis, atau server sibuk: sesi dipertahankan dan dicoba
+   lagi (3 dan 8 detik dulu, lalu makin jarang). Bila jawaban penyegaran hilang
+   SESUDAH server memutar token, percobaan berikutnya memakai token lama: masih
+   diterima di dalam jendela pemakaian ulang Supabase (±10 detik sejak diputar);
+   di luar itu sesi bisa ditolak dan pengguna masuk lagi, sama dengan keadaan
+   sebelum penyegaran otomatis ada. Hanya penolakan pasti
+   (HTTP 400/401, mis. "Invalid Refresh Token") yang menghapus sesi dan
+   memunculkan layar login. Sesi lama tanpa refresh_token tetap seperti dulu:
+   masuk lagi setelah kedaluwarsa.
+   ============================================================================= */
+const SESI_KUNCI='pakal-auth-refresh', SESI_SEWA='pakal_auth_lease', SESI_TOLAK='pakal_auth_ditolak';
+const PESAN_TOLAK='Sesi berakhir. Silakan masuk lagi.';
+const SESI_BATAS_MS=10000;               // batas tunggu satu permintaan penyegaran
+const SESI_SEWA_MS=15000;                // umur sewa cadangan, lebih panjang dari SESI_BATAS_MS
+const SESI_ULANG_S=[3,8,20,45,90,120];   // jeda coba lagi sesudah gagal (detik)
+let faseSesi='login';                    // login · pulih (penyegaran saat dibuka) · app
+let segarJanji=null, segarTimer=0, segarGagal=0, segarTunda=0, emailApp='';
+
+function bacaAuth(){try{return JSON.parse(localStorage.getItem(AUTHKEY)||'null');}catch(e){return null;}}
+/* expires_at dihitung dari jam PERANGKAT (sekarang + expires_in), bukan jam server:
+   semua modul membandingkannya dengan Date.now(), jadi jam perangkat yang meleset
+   tidak membuat token tampak masih berlaku padahal sudah ditolak server. */
+function sesiDari(j,userLama){
+  const umur=(+j.expires_in>0)?Math.round(+j.expires_in):0, kini=Math.floor(Date.now()/1000);
+  return {access_token:j.access_token,refresh_token:j.refresh_token||null,
+    expires_at:umur?kini+umur:(j.expires_at||kini+3600),expires_in:umur||3600,user:j.user||userLama||null};
+}
+function sisaMs(a){return (a&&a.expires_at)?a.expires_at*1000-Date.now():-Infinity;}
+function ambangMs(a){const u=(a&&+a.expires_in>0)?+a.expires_in:3600;return Math.min(300000,Math.max(5000,u*500));}
+function bisaSegar(a){return !!(a&&a.access_token&&a.refresh_token);}
+function tidur(ms){return new Promise(function(ok){setTimeout(ok,ms);});}
+/* Tab yang menerima penolakan meninggalkan cap waktu sebelum menghapus sesi, supaya
+   tab dan bingkai lain yang ikut ke layar login menampilkan alasan yang sama. Keluar
+   biasa tidak meninggalkan cap, jadi tetap tanpa pesan. */
+function pesanAkhir(){let t=0;try{t=+localStorage.getItem(SESI_TOLAK)||0;}catch(e){}return Date.now()-t<60000?PESAN_TOLAK:'';}
+
+/* Satu konteks pada satu waktu di seluruh tab dan bingkai seasal. Kerja di
+   dalamnya tidak pernah melempar galat: hasilnya selalu salah satu status. */
+async function denganKunci(kerja){
+  if(navigator.locks&&navigator.locks.request){
+    const ac=new AbortController(), t=setTimeout(function(){ac.abort();},30000);
+    try{return await navigator.locks.request(SESI_KUNCI,{signal:ac.signal},kerja);}
+    catch(e){if(ac.signal.aborted)return 'gagal';}       // menunggu kunci terlalu lama: coba lagi nanti
+    finally{clearTimeout(t);}
+  }
+  return denganSewa(kerja);
+}
+async function denganSewa(kerja){
+  const id=Math.random().toString(36).slice(2)+Date.now().toString(36), batas=Date.now()+30000;
+  function baca(){try{return JSON.parse(localStorage.getItem(SESI_SEWA)||'null');}catch(e){return null;}}
+  for(;;){
+    const s=baca();
+    if(!s||!(s.sampai>Date.now())){
+      try{localStorage.setItem(SESI_SEWA,JSON.stringify({id:id,sampai:Date.now()+SESI_SEWA_MS}));}catch(e){return kerja();}
+      await tidur(80+Math.random()*120);                   // konteks lain yang menulis bersamaan: yang terakhir menang
+      const s2=baca();
+      if(s2&&s2.id===id)break;
+    }
+    if(Date.now()>batas)return 'gagal';
+    await tidur(300+Math.random()*300);
+  }
+  try{return await kerja();}
+  finally{const s=baca();if(s&&s.id===id){try{localStorage.removeItem(SESI_SEWA);}catch(e){}}}
+}
+/* Di dalam kunci. `dilihat` = refresh_token yang dibaca sebelum menunggu kunci. */
+async function kerjaSegar(dilihat){
+  const a=bacaAuth();
+  if(!bisaSegar(a))return 'kosong';                          // sudah keluar
+  if(dilihat&&a.refresh_token!==dilihat)return 'sudah';      // konteks lain sudah menyegarkan
+  if(sisaMs(a)>ambangMs(a))return 'sudah';                   // masih segar
+  if(navigator.onLine===false)return 'gagal';
+  const ac=new AbortController(), t=setTimeout(function(){ac.abort();},SESI_BATAS_MS);
+  let r, j;
+  try{
+    r=await fetch(authBase()+'/token?grant_type=refresh_token',{method:'POST',signal:ac.signal,
+      headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:a.refresh_token})});
+    j=await r.json().catch(function(){return {};});
+  }catch(e){return 'gagal';}
+  finally{clearTimeout(t);}
+  const kini=bacaAuth();
+  if(r.ok&&j&&j.access_token&&j.refresh_token){
+    if(!kini)return 'kosong';                                // keluar selagi menunggu jawaban
+    if(kini.refresh_token!==a.refresh_token)return 'sudah';  // sudah masuk lagi dengan sesi lain
+    try{localStorage.setItem(AUTHKEY,JSON.stringify(sesiDari(j,a.user)));}catch(e){return 'gagal';}
+    return 'ok';
+  }
+  if(r.status===400||r.status===401||(r.status===403&&j&&(j.error||j.error_code||j.msg))){
+    if(kini&&kini.refresh_token!==a.refresh_token)return 'sudah';   // sesi lain sudah menggantikannya
+    try{localStorage.setItem(SESI_TOLAK,String(Date.now()));localStorage.removeItem(AUTHKEY);}catch(e){}
+    return 'ditolak';
+  }
+  return 'gagal';                                            // 5xx, 429, dan lainnya: sementara
+}
+/* Hasil: ok · sudah (segar oleh konteks lain) · gagal (sementara) · ditolak · kosong. */
+function segarkanSesi(alasan,dilihat){
+  if(segarJanji)return segarJanji;
+  const habis=sisaMs(bacaAuth())<=15000;
+  segarJanji=(async function(){
+    let h='gagal';
+    try{h=await denganKunci(function(){return kerjaSegar(dilihat);})||'gagal';}catch(e){}
+    segarJanji=null;
+    try{setelahSegar(h,habis);}catch(e){}
+    return h;
+  })();
+  return segarJanji;
+}
+function setelahSegar(h,habis){
+  AUTH=bacaAuth()||AUTH;
+  if(h==='ok'||h==='sudah'){
+    segarGagal=0; segarTunda=0; jadwalSegar();
+    if(habis&&faseSesi==='app')pulihUI();
+    return;
+  }
+  clearTimeout(segarTimer); segarTimer=0;
+  if(h==='ditolak'||h==='kosong'){
+    AUTH=bacaAuth();
+    if(faseSesi==='app')tampilLogin(h==='ditolak'?PESAN_TOLAK:pesanAkhir());
+    return;
+  }
+  segarGagal++;
+  const d=SESI_ULANG_S[Math.min(segarGagal,SESI_ULANG_S.length)-1]*1000;
+  segarTunda=Date.now()+d;
+  segarTimer=setTimeout(function(){segarTimer=0;cekSegar('ulang');},d);
+}
+function jadwalSegar(a){
+  a=a||bacaAuth();
+  clearTimeout(segarTimer); segarTimer=0;
+  if(!bisaSegar(a))return;
+  segarTimer=setTimeout(function(){segarTimer=0;cekSegar('jadwal');},Math.max(1000,Math.min(sisaMs(a)-ambangMs(a),2147000000)));
+}
+function cekSegar(alasan){
+  const a=bacaAuth();
+  if(!bisaSegar(a))return;
+  if(sisaMs(a)>ambangMs(a)){if(!segarTimer)jadwalSegar(a);return;}
+  if(Date.now()<segarTunda){                                 // masih dalam jeda sesudah gagal
+    if(!segarTimer)segarTimer=setTimeout(function(){segarTimer=0;cekSegar('ulang');},segarTunda-Date.now());
+    return;
+  }
+  segarkanSesi(alasan,a.refresh_token);
+}
+/* Sesudah pulih dari token yang sudah habis (bangun dari tidur, jaringan kembali):
+   status admin dan kartu Home ditarik ulang dengan token baru. */
+function pulihUI(){
+  cekAdmin();
+  const h=document.getElementById('home');
+  if(!document.hidden&&h&&h.getClientRects().length)window.dispatchEvent(new CustomEvent('hometick',{detail:{baruMuncul:true}}));
+}
+/* Sesi ditolak server, atau keluar di tab lain: kembali ke layar login tanpa
+   memuat ulang, jadi isian yang belum tersimpan di modul tidak hilang. */
+function tampilLogin(pesan){
+  faseSesi='login';
+  if(homeTimer){clearInterval(homeTimer);homeTimer=null;}
+  try{closeDrawer();}catch(e){}
+  document.getElementById('app').style.display='none';
+  const tw=document.getElementById('swToastWrap'); if(tw)tw.innerHTML='';   // notifikasi yang masih tampil ikut hilang
+  const lg=document.getElementById('login'); lg.classList.remove('pulih'); lg.style.display='flex';
+  const pw=document.getElementById('in_pw'); if(pw)pw.value='';
+  const er=document.getElementById('loginErr'); if(er)er.textContent=pesan||'';
+}
+/* Dibuka dengan token yang sudah habis tapi refresh_token ada: disegarkan diam-diam. */
+async function pulihkanSesi(){
+  faseSesi='pulih';
+  const lg=document.getElementById('login'); lg.classList.add('pulih'); lg.style.display='flex';
+  const h=await segarkanSesi('awal',AUTH.refresh_token);
+  lg.classList.remove('pulih');
+  AUTH=bacaAuth();
+  /* Gagal jaringan: sesi tetap dipakai dan dicoba lagi di latar; modul pulih
+     sendiri begitu token baru masuk. */
+  if((h==='ok'||h==='sudah'||h==='gagal')&&AUTH&&AUTH.access_token){showApp();return;}
+  tampilLogin(h==='ditolak'?PESAN_TOLAK:pesanAkhir());
+}
+/* Blok login-npp di bawah mengalihkan ke cek-aman bila ada sesi NPP dan sesi
+   shell tidak berlaku. Penyegaran awal tidak dimulai dalam keadaan itu: halaman
+   segera ditinggalkan, dan token yang sempat diputar server tanpa sempat
+   tersimpan akan hangus. */
+function nppAkanAlih(){try{const s=JSON.parse(localStorage.getItem('gng_sesi')||'null');return !!(s&&s.token);}catch(e){return false;}}
+
+window.PakalAuth={segarkan:function(alasan){return segarkanSesi(alasan||'modul');},sesi:bacaAuth};
+setInterval(function(){cekSegar('denyut');},20000);
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')cekSegar('terlihat');});
+window.addEventListener('focus',function(){cekSegar('fokus');});
+window.addEventListener('pageshow',function(){cekSegar('pageshow');});
+document.addEventListener('resume',function(){cekSegar('resume');});
+window.addEventListener('online',function(){segarTunda=0;cekSegar('online');});
+/* Perubahan pakal_auth dari tab atau bingkai lain. */
+window.addEventListener('storage',function(e){
+  if(e.key!==AUTHKEY&&e.key!==null)return;
+  const lama=AUTH, a=bacaAuth();
+  AUTH=a;
+  if(!a||!a.access_token){clearTimeout(segarTimer);segarTimer=0;if(faseSesi==='app')tampilLogin(pesanAkhir());return;}
+  if(sisaMs(a)>ambangMs(a)){segarGagal=0;segarTunda=0;}
+  jadwalSegar(a);
+  const emLama=lama&&lama.user&&lama.user.email, emBaru=a.user&&a.user.email;
+  if(faseSesi==='app'&&emLama&&emBaru&&emLama!==emBaru){location.reload();return;}   // akun lain masuk di tab lain
+  if(faseSesi==='login'&&authValid())showApp();                                        // masuk di tab lain
+});
 function fullName(){const e=email();if(!e)return'Pengguna';const lp=e.split('@')[0];return lp.split(/[._\-]+/).filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
 // pages
 const PAGES={
@@ -649,7 +880,13 @@ scrim.onclick=closeDrawer;
 document.querySelectorAll('#nav .item,#nav .leaf').forEach(b=>b.addEventListener('click',closeDrawer));
 // baris akun = tombol Keluar (popover Setting dihapus 24 September 2026;
 // Input Data kini tombol di bilah atas Mine Development)
-document.getElementById('setbtn').onclick=()=>{try{localStorage.removeItem(AUTHKEY);localStorage.removeItem('pakal_auth_required');}catch(e){}location.reload();};
+/* Keluar juga mencabut sesi perangkat ini di server (scope=local; sesi di perangkat
+   lain tetap), supaya refresh_token yang tersimpan tidak bisa dipakai lagi. Tidak
+   ditunggu: keepalive menjaga permintaannya tetap terkirim walau halaman dimuat ulang. */
+document.getElementById('setbtn').onclick=()=>{
+  const a=bacaAuth();
+  if(a&&a.access_token){try{fetch(authBase()+'/logout?scope=local',{method:'POST',keepalive:true,headers:{apikey:CFG.key,Authorization:'Bearer '+a.access_token}}).catch(function(){});}catch(e){}}
+  try{localStorage.removeItem(AUTHKEY);localStorage.removeItem('pakal_auth_required');}catch(e){}location.reload();};
 // login flow
 /* Minerva: data tonase per shift, tidak berubah tiap 20 detik.
    Jaringan hanya dipanggil tiap 5 menit, dan hanya saat tab terlihat DAN
@@ -696,6 +933,11 @@ tickJam(); setInterval(tickJam,1000);
 
 let homeTimer=null;
 function showApp(){
+ /* Masuk lagi sesudah sesi ditolak: akun yang sama melanjutkan dengan modul yang
+    sudah terbuka; akun lain dimuat ulang supaya tidak ada isi akun sebelumnya. */
+ if(faseSesi==='login'&&emailApp&&email()&&emailApp!==email()){location.reload();return;}
+ faseSesi='app'; emailApp=email();
+ if(!segarTimer)jadwalSegar();
  document.getElementById('login').style.display='none';
  document.getElementById('app').style.display='flex';
  document.getElementById('greetName').textContent=fullName(); var sg=document.getElementById('sideGreet'); if(sg)sg.textContent=fullName();
@@ -716,11 +958,16 @@ document.getElementById('btnLogin').onclick=async()=>{
 document.getElementById('in_pw').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btnLogin').click();});
 
 // notifikasi Speed Watcher -> toast shell (tetap muncul di halaman lain)
-window.addEventListener('message',function(e){var d=e&&e.data;if(d&&d.type==='sw-notif'&&d.text){showSwToast(d.text);}});
+/* Notifikasi Speed Watcher hanya selama aplikasi tampil: sesudah keluar di tab lain atau
+   sesi ditolak, bingkai modul tetap hidup di balik layar login, dan kirimannya tidak boleh
+   muncul di atas layar login (latar tanpa tulisan; data operasi tidak tampil tanpa login). */
+window.addEventListener('message',function(e){var d=e&&e.data;if(d&&d.type==='sw-notif'&&d.text&&faseSesi==='app'){showSwToast(d.text);}});
 function showSwToast(text){var w=document.getElementById('swToastWrap');if(!w){w=document.createElement('div');w.id='swToastWrap';document.body.appendChild(w);}var el=document.createElement('div');el.className='sw-toast';el.innerHTML='<b>\u26A0 Speed Watcher</b><span></span>';el.querySelector('span').textContent=text;el.onclick=function(){try{showPage('speed');}catch(e){}if(el.parentNode)el.remove();};w.appendChild(el);setTimeout(function(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.remove();},400);},8000);}
 
 // boot
-if(authValid())showApp(); else document.getElementById('login').style.display='flex';
+if(authValid())showApp();
+else if(bisaSegar(AUTH)&&!nppAkanAlih())pulihkanSesi();
+else document.getElementById('login').style.display='flex';
 </script><script id="login-npp">
 /* =============================================================================
    Masuk dengan NPP untuk operator dan pengawas (Asesmen Go/No-Go).
@@ -2289,6 +2536,10 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
   window.addEventListener('load', function () {
     pasangGaya();
     pasangWadah();
+    /* Tombol di kaki kartu Keaktifan; dibuat home-periode, yang penangan load-nya
+       berjalan lebih dulu. Polanya sama dengan speedBuka dan topBuka. */
+    var b = el('kepBuka');
+    if (b) b.addEventListener('click', function () { try { showPage('dispatch'); } catch (e) {} });
     window.addEventListener('homeperiode', function () { tarik(true); });
     window.addEventListener('hometick', function () { tarik(false); });
   });

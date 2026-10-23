@@ -866,7 +866,7 @@ window.muatAppFrame=function(sec,siap){
               <div id="smr_paste_msg" class="pesan"></div>
             </div>
             <div id="smr_patch_box" class="hidden" style="margin-bottom:14px">
-              <p class="note" style="margin:0 0 8px">Untuk koreksi kecil tanpa mengirim ulang seluruh shift. Format barisnya sama persis dengan ekspor, satu baris pun boleh. <b>Hanya kategori yang disebut yang diganti</b>, sisanya utuh. Kalau satu kategori punya beberapa kode (misalnya SRG dan DTR), sertakan keduanya bila keduanya berubah &mdash; nilainya dijumlahkan lalu menggantikan kategori itu.</p>
+              <p class="note" style="margin:0 0 8px">Untuk koreksi kecil tanpa mengirim ulang seluruh shift. Format barisnya sama persis dengan ekspor, satu baris pun boleh. <b>Hanya kategori yang disebut yang diganti</b>, sisanya utuh. Kalau satu kategori punya beberapa kode (misalnya SRG dan DTR untuk Refueling, SWS dan SWR untuk Waktu Hujan), sertakan semua kodenya &mdash; nilainya dijumlahkan lalu menggantikan kategori itu, jadi kode yang tidak disertakan ikut hilang.</p>
               <textarea class="inp" id="smr_patch" rows="4" placeholder="9/14/2026&#9;Day Shift&#9;Front&#9;SMR 09&#9;RTM&#9;11.5" style="width:100%;font-family:ui-monospace,monospace;font-size:12px;resize:vertical"></textarea>
               <div style="margin-top:8px"><button id="smr_patch_apply" class="seg-btn utama">Terapkan perbaikan</button></div>
               <div id="smr_patch_msg" class="pesan"></div>
@@ -2725,12 +2725,38 @@ const TCATS=[["kerja","Waktu Kerja"],["hujan","Waktu Hujan"],["moving","Moving E
 // kategori yang TIDAK ikut dihitung sebagai MOHH (dasar PA dan UA)
 const MOHH_EXCL=["holiday"];
 // kode mentah ekspor -> kategori (beberapa kode boleh menuju kategori yang sama)
-const SMR_CODEMAP={RLD:"kerja",RTM:"kerja",DFR:"kerja",SWS:"hujan",DME:"moving",SCU:"p2h",
+/* SWS dan SWR sama-sama Waktu Hujan (keputusan Iqbal, 24 Oktober 2026). Unit SMR mengerjakan
+   regrading/penataan lahan yang langsung lanjut sesudah hujan, jadi tidak pernah terkendala
+   slippery. Sebelumnya SWR dianggap kode terlarang. DFR tetap Waktu Kerja untuk unit SMR. */
+const SMR_CODEMAP={RLD:"kerja",RTM:"kerja",DFR:"kerja",SWS:"hujan",SWR:"hujan",DME:"moving",SCU:"p2h",
  SRG:"refuel",DTR:"refuel",SRM:"rest",SST:"safety",SFS:"pray",SCS:"change",
  SNO:"nooper",SDP:"nooper",SOP:"nooper",SNJ:"nojob",SFD:"fogdust",
  SPH:"holiday",SFM:"holiday",BBU:"down",BBS:"down"};
 // kode yang seharusnya tidak muncul di ekspor SMR -> beri peringatan
-const SMR_BADCODES=["DSP","DWL","DWT","SFR","SRK","SUA","SOS","STD","SNS","SWD","SWR"];
+const SMR_BADCODES=["DSP","DWL","DWT","SFR","SRK","SUA","SOS","STD","SNS","SWD"];
+/* Kode yang dulu terlarang tapi kini punya kategori. Jamnya yang sudah tersimpan sebagai kode
+   terlarang (alat._bad, data bershift sejak 15 September 2026) dipindah ke kategorinya setiap kali
+   data dibaca — dari localStorage, baris 'pakal', maupun baris smr|tgl|shift — dengan pola yang
+   sama dengan EQUIP_DIHAPUS. MEMINDAH, bukan menambah: begitu _bad.SWR hilang, pemindahan
+   berikutnya tidak menemukan apa pun, jadi tidak ada jam yang terhitung dua kali. */
+const SMR_KODE_PINDAH={SWR:"hujan"};
+function pindahKodeLama(set){            // set = {alat:{kategori,_bad}}; true bila ada yang dipindah
+  if(!set||typeof set!=="object")return false;
+  let ada=false;
+  Object.keys(set).forEach(e=>{
+    const o=set[e];
+    if(!o||typeof o!=="object"||!o._bad||typeof o._bad!=="object")return;
+    Object.keys(SMR_KODE_PINDAH).forEach(c=>{
+      if(!Object.prototype.hasOwnProperty.call(o._bad,c))return;
+      const cat=SMR_KODE_PINDAH[c],v=num(o._bad[c]);
+      // dibulatkan seperti r4(); r4 belum terdefinisi saat migrateSMRShift() berjalan ketika dimuat
+      if(v)o[cat]=Math.round((num(o[cat])+v)*1000000)/1000000;
+      delete o._bad[c];ada=true;
+    });
+    if(!Object.keys(o._bad).length)delete o._bad;
+  });
+  return ada;
+}
 const SHIFT_ORDER=["DS","NS","-"];
 const SHIFT_LAB={DS:"Day Shift",NS:"Night Shift","-":"Tanpa shift"};
 const now=new Date();
@@ -2766,7 +2792,8 @@ function normRekla(rk){
 normRekla(S.rekla);
 /* Data SMR lama berbentuk byDate[tgl][alat][kategori] (tanpa shift).
    Dipindah ke byDate[tgl]["-"][alat][kategori] supaya tidak ada angka dashboard yang berubah.
-   Sekalian membuang alat yang sudah dikeluarkan dari daftar (EQUIP_DIHAPUS).
+   Sekalian membuang alat yang sudah dikeluarkan dari daftar (EQUIP_DIHAPUS) dan memindah jam
+   kode yang kini punya kategori (SMR_KODE_PINDAH, mis. SWR -> Waktu Hujan).
    Mengembalikan true bila ada yang berubah. */
 function migrateSMRShift(){
   const bd=S.smr&&S.smr.byDate;if(!bd)return false;
@@ -2775,7 +2802,7 @@ function migrateSMRShift(){
     let day=bd[dt];
     if(!day||typeof day!=="object")return;
     if(Object.keys(day).some(kunciAlat)){day={"-":day};bd[dt]=day;ubah=true;}
-    Object.keys(day).forEach(sh=>{if(buangAlatDihapus(day[sh]))ubah=true;});
+    Object.keys(day).forEach(sh=>{if(buangAlatDihapus(day[sh]))ubah=true;if(pindahKodeLama(day[sh]))ubah=true;});
   });
   return ubah;
 }
@@ -3995,13 +4022,17 @@ const CFGKEY="pakal_cloud_cfg", AUTHKEY="pakal_auth", ROW="pakal";
 const BAKED=(window.PAKAL_CFG||{});
 const HAS_AUTH=!!(BAKED.SUPABASE_URL && BAKED.SUPABASE_ANON_KEY);
 let CFG={url:BAKED.SUPABASE_URL||"",key:BAKED.SUPABASE_ANON_KEY||"",auto:true}, AUTH=null, lastSyncTs=null, lastLocalEdit=0, pushT=null, pollIV=null;
+// Penghitung perubahan baris 'pakal': cloudUbah naik di setiap simpan lokal, cloudTerkirim = nomor
+// perubahan terakhir yang sudah diterima server. cloudUbah > cloudTerkirim = ada yang belum terkirim.
+let cloudUbah=0, cloudTerkirim=0;
 function loadCfg(){try{const r=JSON.parse(localStorage.getItem(CFGKEY));if(r)CFG=Object.assign(CFG,r);}catch(e){} if(BAKED.SUPABASE_URL)CFG.url=BAKED.SUPABASE_URL; if(BAKED.SUPABASE_ANON_KEY)CFG.key=BAKED.SUPABASE_ANON_KEY;}
 function saveCfg(){try{localStorage.setItem(CFGKEY,JSON.stringify(CFG));}catch(e){}}
 function setCloudStatus(t,kind){const c=kind==="ok"?"var(--ok)":kind==="bad"?"var(--bad)":"var(--muted)";["#cloud_status","#cloud_status2"].forEach(id=>{const el=$(id);if(el){el.textContent="Status: "+t;el.style.color=c;}});}
 function loadAuth(){try{AUTH=JSON.parse(localStorage.getItem(AUTHKEY));}catch(e){AUTH=null;}return AUTH;}
 function saveAuth(a){AUTH=a;try{a?localStorage.setItem(AUTHKEY,JSON.stringify(a)):localStorage.removeItem(AUTHKEY);}catch(e){}}
 function authValid(){return !!(AUTH&&AUTH.access_token&&AUTH.expires_at&&AUTH.expires_at*1000>Date.now()+15000);}
-function cloudHeaders(){const tok=(AUTH&&AUTH.access_token)?AUTH.access_token:CFG.key;return {apikey:CFG.key,Authorization:"Bearer "+tok,"Content-Type":"application/json"};}
+// Token dibaca ulang dari pakal_auth di SETIAP permintaan: shell memperbaruinya sebelum kedaluwarsa (±tiap 55 menit).
+function cloudHeaders(){loadAuth();const tok=(AUTH&&AUTH.access_token)?AUTH.access_token:CFG.key;return {apikey:CFG.key,Authorization:"Bearer "+tok,"Content-Type":"application/json"};}
 function authBase(){return CFG.url.replace(/\/+$/,"").replace(/\/rest\/v1$/,"").replace(/\/+$/,"")+"/auth/v1";}
 async function doLogin(email,pw){
   const r=await fetch(authBase()+"/token?grant_type=password",{method:"POST",headers:{apikey:CFG.key,"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})});
@@ -4011,18 +4042,49 @@ async function doLogin(email,pw){
   try{localStorage.setItem("pakal_auth_required","1");}catch(e){}
   return AUTH;
 }
+/* Penyegaran token (roadmap 76, Oktober 2026). Sesi Supabase dipegang shell (index.html):
+   shell menyimpan refresh_token dan memperbaruinya sebelum kedaluwarsa, satu konteks pada
+   satu waktu di bawah kunci 'pakal-auth-refresh'. Supabase memutar refresh_token dan
+   mencabut SELURUH sesi bila token lama dipakai ulang, jadi halaman ini tidak lagi memakai
+   refresh_token sendiri: ia meminta shell, lalu membaca ulang pakal_auth. Dibuka di luar
+   shell: tidak ada penyegaran (masuk lewat halaman utama). */
+function authShell(){let w=window;for(let i=0;i<4&&w.parent&&w.parent!==w;i++){try{w=w.parent;if(w.PakalAuth&&w.PakalAuth.segarkan)return w.PakalAuth;}catch(e){return null;}}return null;}
 async function refreshAuth(){
-  if(!AUTH||!AUTH.refresh_token)return false;
-  try{const r=await fetch(authBase()+"/token?grant_type=refresh_token",{method:"POST",headers:{apikey:CFG.key,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:AUTH.refresh_token})});
-    const j=await r.json().catch(()=>({}));if(!r.ok)return false;
-    saveAuth({access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at||(Math.floor(Date.now()/1000)+(j.expires_in||3600)),email:AUTH.email});return true;
-  }catch(e){return false;}
+  const P=authShell();
+  if(P){try{await P.segarkan("minedev");}catch(e){}}
+  loadAuth();return authValid();
 }
-function showLogin(msg){const ov=$("#loginOverlay");if(ov)ov.style.display="flex";const e=$("#login_err");if(e)e.textContent=msg||"";}
+/* Tanpa sesi berlaku (penyegaran tertunda jaringan, atau keluar): sinkronisasi disambung
+   sendiri begitu shell menyimpan sesi baru, tanpa memuat ulang halaman.
+   Isian yang dibuat selama menunggu (baris 'pakal' dan baris SMR yang gagal terkirim)
+   DIKIRIM DULU, baru data server ditarik: afterAuth() memasang isi server, jadi tanpa
+   urutan ini isian itu tertimpa (temuan tinjauan 24 Oktober 2026). Gagal kirim -> tidak
+   menarik apa pun dan dicoba lagi 15 detik kemudian; sesudah 8 kali (±2 menit, mis. server
+   menolak tulisan akun ini) sinkronisasi tetap disambung seperti dulu: data server yang dipakai. */
+let sesiDitunggu=false, sambungJalan=false, sambungGagal=0;
+async function sambungSesi(){
+  if(!sesiDitunggu||sambungJalan)return;
+  loadAuth();if(!authValid())return;
+  // Formulir yang sedang diisi tidak ditimpa; penjaga yang sama dengan polling 20 detik.
+  if((document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))||Date.now()-lastLocalEdit<5000){setTimeout(sambungSesi,5000);return;}
+  sambungJalan=true;
+  let terkirim=false;
+  try{
+    if(cloudUbah>cloudTerkirim)await cloudPush();
+    if(cloudUbah<=cloudTerkirim){await smrPushDirty();terkirim=true;}
+  }catch(e){}
+  finally{sambungJalan=false;}
+  if(!terkirim&&++sambungGagal<8){setTimeout(sambungSesi,15000);return;}
+  if(!sesiDitunggu)return;
+  sambungGagal=0;sesiDitunggu=false;hideLogin();afterAuth();
+}
+window.addEventListener("storage",e=>{if(HAS_AUTH&&sesiDitunggu&&(e.key===AUTHKEY||e.key===null))sambungSesi();});
+function showLogin(msg){sesiDitunggu=true;const ov=$("#loginOverlay");if(ov)ov.style.display="flex";const e=$("#login_err");if(e)e.textContent=msg||"";}
 function hideLogin(){const ov=$("#loginOverlay");if(ov)ov.style.display="none";}
 function displayName(){if(AUTH&&AUTH.email){let lp=(AUTH.email.split("@")[0].split(/[._\-]/)[0])||AUTH.email;return lp.charAt(0).toUpperCase()+lp.slice(1);}return"";}
 function updateGreet(){const g=$("#greet");if(!g)return;const n=displayName();g.textContent=n?("Hi, "+n+"!"):"";g.style.display=n?"inline-flex":"none";}
-function logout(){try{fetch(authBase()+"/logout",{method:"POST",headers:cloudHeaders()});}catch(e){}saveAuth(null);updateGreet();stopPoll();showLogin();}
+// scope=local: hanya sesi perangkat ini yang dicabut; sesi di perangkat lain tetap bisa disegarkan.
+function logout(){try{fetch(authBase()+"/logout?scope=local",{method:"POST",headers:cloudHeaders()}).catch(()=>{});}catch(e){}saveAuth(null);updateGreet();stopPoll();showLogin();}
 function setupLogin(){
   const b=$("#login_btn");if(!b)return;
   const go=async()=>{const email=($("#login_email").value||"").trim(),pw=$("#login_pw").value||"";
@@ -4081,11 +4143,11 @@ async function cloudPull(){
 }
 async function cloudPush(){
   if(!CFG.url||!CFG.key)return;
-  const ts=new Date().toISOString();
+  const ts=new Date().toISOString(), ke=cloudUbah;   // perubahan lokal ke berapa yang ikut terkirim
   const r=await fetch(cloudBase(),{method:"POST",
     headers:Object.assign(cloudHeaders(),{Prefer:"resolution=merge-duplicates,return=minimal"}),
     body:JSON.stringify([{id:ROW,data:cloudPayload(),updated_at:ts}])});
-  if(r.ok){lastSyncTs=ts;setCloudStatus("Tersinkron · "+new Date().toLocaleTimeString("id-ID"),"ok");}
+  if(r.ok){cloudTerkirim=Math.max(cloudTerkirim,ke);lastSyncTs=ts;setCloudStatus("Tersinkron · "+new Date().toLocaleTimeString("id-ID"),"ok");}
   else{setCloudStatus("Gagal simpan (HTTP "+r.status+")","bad");}
 }
 /* ---------------------------------------------------------------
@@ -4180,7 +4242,8 @@ function smrPasang(rows,now,perluBersih){
   rows.forEach(row=>{
     const k=parseSmrRowId(row.id);if(!k)return;
     const alat=row.data&&row.data.alat;if(!alat||typeof alat!=="object"){delete now[row.id];return;}
-    if(buangAlatDihapus(alat))perluBersih.push(k.dt+"|"+k.sh);
+    const dibuang=buangAlatDihapus(alat),dipindah=pindahKodeLama(alat);   // keduanya wajib berjalan
+    if(dibuang||dipindah)perluBersih.push(k.dt+"|"+k.sh);
     if(!S.smr.byDate[k.dt])S.smr.byDate[k.dt]={};
     S.smr.byDate[k.dt][k.sh]=alat;
     smrTs[row.id]=row.updated_at;now[row.id]=row.updated_at;n++;
@@ -4215,7 +4278,8 @@ async function smrPullAll(){
   return n;
 }
 
-/* Baris di server yang masih memuat alat yang sudah dihapus ditulis ulang tanpa alat itu.
+/* Baris di server yang masih memuat alat yang sudah dihapus, atau jam kode yang kini punya
+   kategori (SMR_KODE_PINDAH), ditulis ulang tanpa alat itu / dengan jam di kategorinya.
    Cukup sekali per baris: sesudahnya tarikan berikutnya tidak menemukannya lagi. Yang dikirim
    adalah isi server yang baru saja ditarik, jadi tidak ada angka alat lain yang berubah.
    Gagal kirim -> masuk antrean biasa (smrDirty) dan ikut terkirim pada simpan berikutnya. */
@@ -4364,7 +4428,7 @@ async function smrMigrateAll(){
   }finally{ if(btn){btn.disabled=false;btn.textContent="Pindahkan sekarang";} }
 }
 
-function cloudOnSave(){if(!CFG.url||!CFG.key)return;lastLocalEdit=Date.now();clearTimeout(pushT);
+function cloudOnSave(){if(!CFG.url||!CFG.key)return;lastLocalEdit=Date.now();cloudUbah++;clearTimeout(pushT);
   pushT=setTimeout(()=>{
     cloudPush().catch(()=>{});
     smrPushDirty().then(n=>{if(n)setCloudStatus("Tersinkron · "+n+" baris SMR · "+new Date().toLocaleTimeString("id-ID"),"ok");})
@@ -4411,7 +4475,7 @@ function setupCloudUI(){
     const ac=$("#cloud_acct");if(ac)ac.textContent=(AUTH&&AUTH.email)||"—";
     try{localStorage.setItem("pakal_auth_required","1");}catch(e){}
     if(authValid()){hideLogin();afterAuth();}
-    else if(AUTH&&AUTH.refresh_token){refreshAuth().then(ok=>{if(ok){hideLogin();const a2=$("#cloud_acct");if(a2&&AUTH)a2.textContent=AUTH.email;afterAuth();}else showLogin();});}
+    else if(AUTH&&AUTH.refresh_token){refreshAuth().then(ok=>{if(ok){hideLogin();const a2=$("#cloud_acct");if(a2&&AUTH)a2.textContent=AUTH.email||(AUTH.user&&AUTH.user.email)||"—";afterAuth();}else showLogin();});}
     else showLogin();
     return;
   }

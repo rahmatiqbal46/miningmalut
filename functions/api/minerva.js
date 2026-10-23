@@ -37,12 +37,21 @@ export async function onRequest(context) {
   const BASE = env.MINERVA_URL || DEFAULT_URL;
   const KEY  = env.MINERVA_TOKEN;
   const wit  = new Date(Date.now() + 9 * 3600 * 1000);
-  const date = wit.toISOString().slice(0, 10);
   /* Shift berganti 06.30 dan 18.30 WIT (pergantian shift sebenarnya di site; sama
      dengan label shift di Home, Digital Twin, dan Worker 9.1). 07.00/19.00 hanya
      jadwal sinkronisasi Operator Performance, bukan batas shift (24 September 2026). */
   const menit = wit.getUTCHours() * 60 + wit.getUTCMinutes();
   const shift = env.MINERVA_SHIFT || (menit >= 390 && menit < 1110 ? 'DS' : 'NS');
+  /* Minerva mencatat shift malam pada TANGGAL MULAINYA. Diuji langsung ke Minerva:
+     23 Oktober 2026 20.49 WIT "2026-10-22 NS" = 675 ore (shift 22 Okt 18.30 – 23 Okt
+     06.30, sudah lengkap) dan "2026-10-23 NS" = 350 ore (baru berjalan); 24 Oktober
+     00.35 WIT "2026-10-23 NS" = 1.025 ore (shift yang sedang berjalan) sedangkan
+     "2026-10-24 NS" kosong. Jadi pukul 00.00–06.29 WIT shift malam yang berjalan
+     milik tanggal KEMARIN; dulu yang ditanyakan tanggal hari ini, yaitu shift yang
+     belum mulai, dan semua angka nol (teramati 3 September 2026 ±01.00 WIT; §17
+     butir 1). */
+  const hariShift = (shift === 'NS' && menit < 390) ? new Date(wit.getTime() - 86400000) : wit;
+  const date = hariShift.toISOString().slice(0, 10);
   const url = BASE + (BASE.includes('?') ? '&' : '?') +
     'updated_at_gte=' + date + '&updated_at_lte=' + date + '&shift_type=' + shift;
 
