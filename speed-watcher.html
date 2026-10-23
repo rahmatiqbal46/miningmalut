@@ -239,6 +239,11 @@ td.n{font-family:var(--mono);white-space:nowrap;color:var(--ink)}
 td.strong{color:var(--ink);font-weight:590}
 td a{color:var(--teal);text-decoration:none}
 td a:hover{text-decoration:underline}
+/* Tabel Kejadian dirapatkan: enam kolom berjarak 12px butuh ±490px, panel
+   hanya 428px, jadi kolom Ruas terpotong di kanan. Sisipan tepi tetap 12px. */
+#view-events table th,#view-events table td{padding-left:6px;padding-right:6px}
+#view-events table th:first-child,#view-events table td:first-child{padding-left:12px}
+#view-events table td:last-child{padding-right:12px}
 .empty{padding:38px 22px;text-align:center;color:var(--ink-3);
   font-size:var(--f-callout);line-height:1.6}
 .empty b{display:block;color:var(--ink-2);font-size:var(--f-head);
@@ -515,7 +520,7 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
           <button class="btn sm" id="btnClearEvents">Bersihkan</button>
         </div>
         <table>
-          <thead><tr><th>Mulai</th><th>Unit</th><th>Maks</th><th>Batas</th><th>Durasi</th><th>Ruas</th></tr></thead>
+          <thead><tr><th>Mulai</th><th>Unit</th><th>Maks</th><th>Batas</th><th>Durasi</th><th>Ruas</th><th class="aksi" hidden></th></tr></thead>
           <tbody id="allEvents"></tbody>
         </table>
       </div>
@@ -788,6 +793,7 @@ const App = {
   units: new Map(),      // id -> objek unit
   events: [],            // kejadian overspeed (terbaru di depan)
   rejects: [],           // sampel yang dibuang validasi
+  admin: false,          // admin MiningMalut (op_is_admin) — tombol hapus kejadian
   zones: [],             // geofence dari peta: ruas jalan dan areanya
   connected: false,
   demo: false,
@@ -1864,6 +1870,11 @@ function renderFleet() {
   }).join("");
 }
 
+/* Simbol tempat sampah untuk tombol hapus admin (§21.16), digambar sebaris. */
+const IKON_HAPUS = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.8 4.4h10.4' +
+  'M6.3 4.4V2.9h3.4v1.5M4.4 4.4l.6 8.4c.05.7.6 1.2 1.3 1.2h3.4c.7 0 1.25-.5 1.3-1.2l.6-8.4M6.7 7v4.4M9.3 7v4.4" ' +
+  'fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 function eventRow(ev, compact) {
   const map = '<a href="https://www.google.com/maps?q=' + ev.lat + "," + ev.lon +
     '" target="_blank" rel="noopener">' + ev.lat.toFixed(4) + ", " + ev.lon.toFixed(4) + "</a>";
@@ -1874,10 +1885,20 @@ function eventRow(ev, compact) {
       "<td class='n'>" + ev.limit + "</td><td class='n'>" + fmtDur(ev.duration || 0) + "</td>" +
       "<td>" + ruas + "</td></tr>";
   }
+  /* Kolom aksi hanya untuk admin, dan hanya untuk kejadian tercatat di server
+     yang sudah selesai: kejadian layar tidak punya baris server, dan kejadian
+     yang masih berjalan masih diperbarui Worker (§21.16). */
+  const aksi = !App.admin ? "" : "<td class='aksi'>" + (ev._sid && !ev.open
+    ? "<button class='hapus-kej' data-sid='" + ev._sid + "' title='Hapus kejadian ini' aria-label='Hapus kejadian " +
+      esc(ev.unitName) + " " + fmtTime(ev.tStart) + "'>" + IKON_HAPUS + "</button>"
+    : "") + "</td>";
+  /* Nama ruas boleh patah di batas huruf besar (RD_Subaim|Bawah) supaya
+     kolom tidak melebar melewati panel. */
+  const ruasPatah = ev.zone || ev.location ? ruas.replace(/([a-z0-9])([A-Z])/g, "$1<wbr>$2") : ruas;
   return "<tr><td class='n'>" + fmtTime(ev.tStart) + "</td><td class='strong'>" + esc(ev.unitName) + "</td>" +
     "<td class='n' style='color:var(--danger)'>" + Math.round(ev.maxSpeed) + "</td>" +
     "<td class='n'>" + ev.limit + "</td><td class='n'>" + fmtDur(ev.duration || 0) + "</td>" +
-    "<td>" + ruas + "</td></tr>";
+    "<td>" + ruasPatah + "</td>" + aksi + "</tr>";
 }
 
 function renderEvents() {
@@ -1888,9 +1909,11 @@ function renderEvents() {
 
   const fu = $("evUnitFilter").value, fs = num($("evMinSpeed").value, 0);
   const rows = App.events.filter(ev => (!fu || String(ev.unitId) === fu) && ev.maxSpeed >= fs);
+  const thAksi = document.querySelector("#view-events thead th.aksi");
+  if (thAksi) thAksi.hidden = !App.admin;
   $("allEvents").innerHTML = rows.length
     ? rows.map(ev => eventRow(ev, false)).join("")
-    : '<tr><td colspan="6"><div class="empty"><b>Daftar masih kosong</b>Belum ada kejadian yang cocok dengan saringan.</div></td></tr>';
+    : '<tr><td colspan="' + (App.admin ? 7 : 6) + '"><div class="empty"><b>Daftar masih kosong</b>Belum ada kejadian yang cocok dengan saringan.</div></td></tr>';
 }
 
 function renderRejects() {
@@ -3877,6 +3900,8 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
         daftar.forEach(labelRuas);   // hanya mengisi yang ruasnya kosong
         gabung(daftar);              // baris yang tidak ikut terkirim tetap dipegang
         try { render(); } catch (e) {}
+        // Daftar "Dihapus admin" hanya ikut tarikan penuh, bukan susulan tiap menit.
+        if ((!susulan || !d.sebagian) && typeof App !== 'undefined' && App.admin) tarikTerhapus();
 
         var n = Object.keys(arsip.ids).length;
         kabar(n
@@ -3932,6 +3957,244 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
   }
 
 
+
+  /* ------------------------------------------- hapus kejadian oleh admin
+     Sejak Worker versi 12 (§21.16). Admin = daftar app_admin yang sama dengan
+     seluruh MiningMalut (Mining Bureau → Kelola Admin), ditanyakan ke Supabase
+     lewat RPC op_is_admin memakai sesi login shell (GudangSite.sesi). Worker
+     memeriksanya lagi sendiri; tombol di sini hanya tampilan.
+     Kejadian yang dihapus dipindah ke arsip, bukan dimusnahkan: bagian
+     "Dihapus admin" di bawah daftar menampilkannya dan bisa memulihkannya. */
+  var hapusSid = null, sibukHapus = false, pemicuHapus = null;
+
+  function sesiAdmin() {
+    try { return (window.GudangSite && GudangSite.sesi()) || null; } catch (e) { return null; }
+  }
+
+  function periksaAdmin() {
+    if (typeof App === 'undefined') return;
+    if (!sesiAdmin()) { pasangAdmin(false); return; }
+    GudangSite.rpc('op_is_admin', {}).then(function (v) { pasangAdmin(v === true); },
+                                           function () { pasangAdmin(false); });
+  }
+
+  function pasangAdmin(ya) {
+    if (App.admin === ya) return;
+    App.admin = ya;
+    try { render(); } catch (e) {}
+    if (ya) tarikTerhapus(); else { var b = el('swTerhapus'); if (b) b.hidden = true; }
+  }
+
+  function permintaanAdmin(jalur, isi) {
+    var s = sesiAdmin();
+    if (!s) return Promise.reject(new Error('Sesi login berakhir. Muat ulang MiningMalut, masuk lagi, lalu ulangi.'));
+    var opsi = { headers: { Authorization: 'Bearer ' + s.token }, cache: 'no-store' };
+    if (isi) { opsi.method = 'POST'; opsi.headers['Content-Type'] = 'application/json'; opsi.body = JSON.stringify(isi); }
+    return fetch(API + jalur, opsi).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok || (d && d.error)) {
+          var e = new Error((d && d.error) || ('Server menjawab HTTP ' + r.status));
+          e.status = r.status;
+          throw e;
+        }
+        return d;
+      });
+    });
+  }
+
+  function ringkasKejadian(ev) {
+    return esc(ev.unitName) + ' · ' + fmtTime(ev.tStart) + ' · ' + Math.round(ev.maxSpeed) +
+           ' km/jam (batas ' + ev.limit + ')' + (ev.zone ? ' · ' + esc(ev.zone) : '');
+  }
+
+  function bukaHapus(sid, pemicu) {
+    var ev = App.events.filter(function (e) { return e._sid === sid; })[0];
+    if (!ev) return;
+    hapusSid = sid; pemicuHapus = pemicu || null;
+    el('swHapusRingkas').innerHTML = ringkasKejadian(ev);
+    el('swHapusAlasan').value = '';
+    el('swHapusGalat').hidden = true;
+    el('swHapusYa').disabled = false; el('swHapusYa').textContent = 'Hapus';
+    el('swHapus').classList.add('on');
+    setTimeout(function () { el('swHapusAlasan').focus(); }, 30);
+  }
+
+  function tutupHapus() {
+    if (sibukHapus) return;
+    el('swHapus').classList.remove('on');
+    hapusSid = null;
+    // Fokus kembali ke tombol pemicu kalau barisnya masih ada (dibatalkan).
+    if (pemicuHapus && document.body.contains(pemicuHapus)) { try { pemicuHapus.focus(); } catch (e) {} }
+    pemicuHapus = null;
+  }
+
+  function galatHapus(m) { var g = el('swHapusGalat'); g.textContent = m; g.hidden = false; }
+
+  function kirimHapus() {
+    if (sibukHapus || hapusSid == null) return;
+    var alasan = el('swHapusAlasan').value.replace(/\s+/g, ' ').trim();
+    if (alasan.length < 5) { galatHapus('Tulis alasannya dulu (minimal 5 huruf), misalnya "GPS rusak, unit breakdown".'); return; }
+    var sid = hapusSid, ev = App.events.filter(function (e) { return e._sid === sid; })[0];
+    sibukHapus = true;
+    el('swHapusYa').disabled = true; el('swHapusYa').textContent = 'Menghapus…';
+    permintaanAdmin('/api/hapus', { id: sid, alasan: alasan })
+      .then(function () {
+        App.events = App.events.filter(function (e) { return e._sid !== sid; });
+        delete arsip.ids[sid]; delete arsip.buka[sid];
+        try { render(); } catch (e) {}
+        var n = Object.keys(arsip.ids).length;
+        kabar((n ? n + ' kejadian tercatat' : 'Belum ada kejadian tercatat pada tanggal ini') + ' · 1 dihapus ' + jam(new Date()));
+        catat('Kejadian dihapus: ' + (ev ? ev.unitName + ' ' + fmtTime(ev.tStart) + ' ' + Math.round(ev.maxSpeed) + ' km/jam' : '#' + sid) + ' — ' + alasan);
+        sibukHapus = false;
+        tutupHapus();
+        tarikTerhapus();
+      })
+      .catch(function (e) {
+        sibukHapus = false;
+        el('swHapusYa').disabled = false; el('swHapusYa').textContent = 'Hapus';
+        galatHapus(e && e.message ? e.message : String(e));
+        if (e && (e.status === 401 || e.status === 403)) periksaAdmin();
+      });
+  }
+
+  function tarikTerhapus() {
+    var bag = el('swTerhapus');
+    if (!bag || typeof App === 'undefined' || !App.admin || !tglPilih) { if (bag) bag.hidden = true; return; }
+    var tgl = tglPilih;
+    permintaanAdmin('/api/terhapus?tanggal=' + encodeURIComponent(tgl))
+      .then(function (d) {
+        if (tgl !== tglPilih) return;
+        var daftar = (d && d.terhapus) || [];
+        el('swTerhapusTgl').textContent = tgl.split('-').reverse().join('/');
+        /* Daftar bertumpuk, bukan tabel: alasan dan nama penghapus panjang,
+           dan panel hanya 428px. */
+        el('swTerhapusBaris').innerHTML = daftar.map(function (r) {
+          var t = new Date(Number(r.dihapus_pada) || 0);
+          var ruas = r.ruas || (r.ruas_dekat ? r.ruas_dekat + ' (sekitar)' : '');
+          return '<div class="swt-baris"><div class="swt-isi">' +
+            '<div class="swt-judul"><b>' + esc(r.unit || '—') + '</b> · <span class="n">' + fmtTime(Math.round(r.mulai / 1000)) +
+              '</span> · <span class="n">' + Math.round(r.kecepatan_max) + '</span> km/jam (batas ' + esc(r.batas) + ')' +
+              (ruas ? ' · ' + esc(ruas) : '') + '</div>' +
+            '<div class="swt-alasan">' + esc(r.alasan || '') + '</div>' +
+            '<div class="swt-oleh">Dihapus oleh ' + esc(r.dihapus_oleh || '—') + ' · ' +
+              pad(t.getDate()) + '/' + pad(t.getMonth() + 1) + ' ' + jam(t) + '</div></div>' +
+            '<button class="btn sm pulih-kej" data-sid="' + Number(r.id) + '">Pulihkan</button></div>';
+        }).join('');
+        el('swTerhapusMeta').textContent = daftar.length + ' kejadian';
+        bag.hidden = !daftar.length;
+      })
+      .catch(function (e) {
+        bag.hidden = true;
+        if (e && (e.status === 401 || e.status === 403)) periksaAdmin();
+      });
+  }
+
+  function pulihkan(sid, tombol) {
+    if (tombol) { tombol.disabled = true; tombol.textContent = 'Memulihkan…'; }
+    permintaanAdmin('/api/pulihkan', { id: sid })
+      .then(function (d) {
+        catat('Kejadian dipulihkan: ' + (d && d.unit ? d.unit + ' ' : '') + '#' + sid);
+        tarikArsip(false, true);
+        tarikTerhapus();
+      })
+      .catch(function (e) {
+        var m = 'Pulihkan gagal: ' + (e && e.message ? e.message : e);
+        if (tombol) { tombol.disabled = false; tombol.textContent = 'Pulihkan'; }
+        catat(m, true);
+        var meta = el('swTerhapusMeta'); if (meta) meta.textContent = m;
+        if (e && (e.status === 401 || e.status === 403)) periksaAdmin();
+      });
+  }
+
+  function pasangHapus() {
+    if (el('swHapus')) return;
+    var g = document.createElement('style');
+    g.textContent =
+      '#swHapus{position:fixed;inset:0;z-index:100000;background:rgba(6,33,29,.58);display:none;' +
+      'align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(18px) saturate(1.4);' +
+      '-webkit-backdrop-filter:blur(18px) saturate(1.4)}' +
+      '#swHapus.on{display:flex}' +
+      '.swh-card{background:var(--surface);border-radius:18px;max-width:440px;width:100%;padding:22px;' +
+      'box-shadow:0 24px 60px rgba(0,16,15,.42),0 0 0 1px rgba(0,60,60,.09)}' +
+      '.swh-card h3{font-size:var(--f-t3);line-height:var(--lh-t3);font-weight:640;color:var(--ink);margin:0}' +
+      '.swh-sub{font-size:var(--f-sub);line-height:var(--lh-sub);color:var(--ink-2);margin:4px 0 14px;font-family:var(--mono)}' +
+      '.swh-card label{display:block;font-size:var(--f-callout);font-weight:590;color:var(--ink);margin-bottom:6px}' +
+      '.swh-card label span{font-weight:400;color:var(--ink-2)}' +
+      '.swh-card textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:68px;font:inherit;' +
+      'font-size:var(--f-callout);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);' +
+      'border-radius:var(--r-kecil);padding:9px 10px}' +
+      '.swh-note{font-size:var(--f-sub);line-height:1.5;color:var(--ink-2);margin:10px 0 0}' +
+      '.swh-galat{font-size:var(--f-sub);line-height:1.5;color:var(--danger);margin:10px 0 0}' +
+      '.swh-tombol{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}' +
+      /* Tombol merusak bergaya tint: teks merah di atas isian merah lembut.
+         Teks putih di atas --danger hanya 2,8:1; tint ini 5,4:1. */
+      '.btn.bahaya{background:var(--danger-soft);color:var(--danger);box-shadow:inset 0 0 0 1px rgba(255,110,87,.34)}' +
+      '.btn.bahaya:hover{filter:brightness(1.18);color:var(--danger);box-shadow:inset 0 0 0 1px rgba(255,110,87,.5)}' +
+      /* Kolom aksi menempel di tepi kanan panel: tetap terlihat walau tabel
+         lebih lebar dari panel (layar ponsel). */
+      'td.aksi,th.aksi{width:1%;white-space:nowrap;text-align:right;position:sticky;right:0}' +
+      '#view-events td.aksi{padding:5px 12px 5px 2px;background:var(--surface);z-index:1}' +
+      'th.aksi{z-index:3}' +
+      '#view-events tbody tr:hover td.aksi{background:linear-gradient(var(--isi),var(--isi)),var(--surface)}' +
+      '.hapus-kej{appearance:none;border:0;background:transparent;color:var(--ink-3);width:24px;height:24px;' +
+      'padding:0;border-radius:var(--r-kecil);display:inline-grid;place-items:center;cursor:pointer;vertical-align:top}' +
+      '.hapus-kej:hover{background:var(--danger-soft);color:var(--danger)}' +
+      '.hapus-kej:focus-visible{outline:2px solid var(--teal);outline-offset:1px}' +
+      '#swTerhapus h2{margin:0;font-size:var(--f-head);line-height:var(--lh-head);font-weight:620}' +
+      '.swt-baris{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid var(--line-2)}' +
+      '.swt-isi{flex:1;min-width:0}' +
+      '.swt-judul{font-size:var(--f-callout);line-height:var(--lh-callout);color:var(--ink-2)}' +
+      '.swt-judul b{color:var(--ink);font-weight:620}' +
+      '.swt-judul .n{font-family:var(--mono);color:var(--ink)}' +
+      '.swt-alasan{font-size:var(--f-callout);line-height:var(--lh-callout);color:var(--ink);margin-top:4px;overflow-wrap:anywhere}' +
+      '.swt-oleh{font-size:var(--f-sub);line-height:var(--lh-sub);color:var(--ink-2);margin-top:3px;overflow-wrap:anywhere}';
+    document.head.appendChild(g);
+
+    var d = document.createElement('div');
+    d.id = 'swHapus';
+    d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'swHapusJudul');
+    d.innerHTML =
+      '<div class="swh-card">' +
+        '<h3 id="swHapusJudul">Hapus kejadian</h3>' +
+        '<p class="swh-sub" id="swHapusRingkas"></p>' +
+        '<label for="swHapusAlasan">Alasan <span>(wajib · tercatat bersama nama Anda)</span></label>' +
+        '<textarea id="swHapusAlasan" rows="3" maxlength="300" placeholder="mis. GPS 9RD26 rusak, unit breakdown"></textarea>' +
+        '<p class="swh-note">Kejadian dipindah ke arsip terhapus: tidak tampil lagi di Speed Watcher, Home, ' +
+        'Digital Twin, dan Unduh Excel. Bisa dipulihkan dari bagian “Dihapus admin” di bawah daftar.</p>' +
+        '<p class="swh-galat" id="swHapusGalat" hidden></p>' +
+        '<div class="swh-tombol"><button class="btn" id="swHapusBatal">Batal</button>' +
+        '<button class="btn bahaya" id="swHapusYa">Hapus</button></div>' +
+      '</div>';
+    document.body.appendChild(d);
+    el('swHapusBatal').addEventListener('click', tutupHapus);
+    el('swHapusYa').addEventListener('click', kirimHapus);
+    // Pesan salah hilang begitu alasan mulai diketik ulang.
+    el('swHapusAlasan').addEventListener('input', function () { el('swHapusGalat').hidden = true; });
+    d.addEventListener('click', function (e) { if (e.target === d) tutupHapus(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && d.classList.contains('on')) tutupHapus(); });
+
+    var daftar = el('allEvents');
+    if (daftar) daftar.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.hapus-kej') : null;
+      if (b) bukaHapus(Number(b.getAttribute('data-sid')), b);
+    });
+
+    var tampil = el('view-events');
+    if (tampil) {
+      var bag = document.createElement('div');
+      bag.id = 'swTerhapus'; bag.hidden = true;
+      bag.innerHTML =
+        '<div class="toolrow" style="border-top:1px solid var(--line-2);margin-top:6px">' +
+          '<h2>Dihapus admin · <span id="swTerhapusTgl"></span></h2>' +
+          '<span class="meta" id="swTerhapusMeta"></span></div>' +
+        '<div id="swTerhapusBaris"></div>';
+      tampil.appendChild(bag);
+      bag.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.pulih-kej') : null;
+        if (b) pulihkan(Number(b.getAttribute('data-sid')), b);
+      });
+    }
+  }
 
   /* ------------------------------------------------- tip mengambang ("i") */
   /* Tooltip bawaan memakai ::after position:absolute di dalam .drawer-body
@@ -4459,6 +4722,10 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
 
     if (el('swReconnect')) el('swReconnect').addEventListener('click', reconnect);
     pasangTip(); pasangUnduh(); catatanUnit();
+    /* Hapus kejadian (admin). Status admin diperiksa ulang tiap 10 menit, supaya
+       admin yang baru ditambahkan atau dicabut ikut berubah tanpa muat ulang. */
+    pasangHapus(); periksaAdmin();
+    setInterval(periksaAdmin, 600000);
 
     /* Teruskan pelanggaran baru ke shell supaya toast tetap muncul di halaman
        lain. Kejadian arsip yang baru dimuat tidak boleh ikut memicu: App

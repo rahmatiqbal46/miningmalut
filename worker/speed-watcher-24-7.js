@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 11 (23 Oktober 2026)
+// Versi 12 (23 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -320,6 +320,37 @@
 // jejak, dan seluruh alamat API TIDAK berubah. Jejak tetap mencatat semua posisi,
 // termasuk yang ditolak, supaya putar ulang Digital Twin menampilkan data mentah.
 //
+// Versi 12 — ADMIN BISA MENGHAPUS KEJADIAN (23 Oktober 2026, §21.16).
+// Permintaan Iqbal sesudah kasus 9RD26: kejadian yang terbukti salah harus bisa
+// dihapus dari dashboard, tanpa SQL. Tiga alamat baru, semuanya khusus admin:
+//
+//   POST /api/hapus     {id, alasan}  kejadian dipindah ke arsip terhapus
+//   GET  /api/terhapus  ?tanggal= atau ?dari=&sampai=   daftar arsip terhapus
+//   POST /api/pulihkan  {id}          kejadian dikembalikan dengan id yang sama
+//
+//  - Admin = daftar yang sama dengan seluruh MiningMalut (tabel app_admin,
+//    Mining Bureau → Kelola Admin). Halaman mengirim token login Supabase di
+//    header Authorization; Worker menanyakan RPC op_is_admin ke Supabase dengan
+//    token itu. Token palsu, kedaluwarsa, atau bukan admin ditolak Supabase,
+//    jadi Worker tidak perlu menyimpan rahasia apa pun. Email penghapus dibaca
+//    dari isi token SESUDAH Supabase menerimanya.
+//  - Bukan dihapus permanen: baris dipindah utuh (JSON) ke tabel
+//    pelanggaran_dihapus bersama siapa, kapan, dan alasannya, lalu dihapus dari
+//    `pelanggaran`. Karena itu semua pembaca lama — tab Kejadian, Home, Unduh
+//    Excel — otomatis tidak melihatnya tanpa satu pun kueri diubah. Tabel arsip
+//    dibuat saat pertama dipakai, bukan di siapkanTabel(), supaya jalur yang
+//    ramai tidak menanggung kueri tambahan.
+//  - Kejadian yang masih berjalan tidak bisa dihapus: barisnya masih dipegang
+//    state cron dan akan diperbarui terus.
+//  - Simpanan ringkasan Home (baris kv 'ringkas:*') dibuang setiap hapus dan
+//    pulihkan. Kartu Home menyesuaikan dalam ±1 menit untuk shift berjalan;
+//    rentang tanggal yang sudah lewat bisa tertahan di memori isolate lain
+//    paling lama 10 menit (RINGKAS_TUTUP).
+//  - id tidak pernah dipakai ulang (AUTOINCREMENT), jadi pemulihan aman memakai
+//    id lama.
+//
+// Deteksi, jadwal cek, jejak, dan alamat lama TIDAK berubah dari versi 11.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
 // berganti (bawaan: proyek MiningMalut, kunci anon publik yang sama dengan
@@ -594,7 +625,8 @@ const YATIM_MS = 3600000;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  // Authorization sejak versi 12: token login admin untuk hapus/pulihkan.
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 /* Berindentasi hanya bila diminta (/api/status, dibaca manusia). /api/unit
    dipanggil tiap 10 detik oleh tiap tab, jadi jawabannya dibuat ringkas (v10). */
@@ -1531,6 +1563,158 @@ function jendelaShift(paksa) {
   };
 }
 
+// ------------------------------------------------ hapus oleh admin (versi 12)
+
+/* Arsip kejadian yang dihapus admin. `data` = baris asli utuh (JSON), supaya
+   pemulihan tetap lengkap walau kolom tabel `pelanggaran` kelak bertambah. */
+const SQL_ARSIP =
+  `CREATE TABLE IF NOT EXISTS pelanggaran_dihapus (
+     id INTEGER PRIMARY KEY, unit TEXT, tanggal TEXT, mulai INTEGER,
+     data TEXT NOT NULL, dihapus_pada INTEGER, dihapus_oleh TEXT, alasan TEXT)`;
+const KOLOM_PELANGGARAN = ["id", "unit_id", "unit", "tanggal", "mulai", "selesai",
+  "kecepatan_max", "kecepatan_rata", "sampel", "batas", "ruas", "ruas_dekat",
+  "jarak_ruas", "lat", "lon", "berjalan"];
+
+/* Simpanan ringkasan Home dibuang supaya kartu Home langsung menghitung ulang.
+   Kunci "ringkas:<mulai>-<selesai>"; ';' adalah huruf sesudah ':', jadi rentang
+   ini tepat seluruh awalan dan berjalan di kunci utama kv. */
+const perintahBuangRingkas = (env) =>
+  env.DB.prepare(`DELETE FROM kv WHERE k >= 'ringkas:' AND k < 'ringkas;'`);
+
+/* Email di dalam token login. Hanya dipakai SESUDAH Supabase menerima token itu
+   (cekAdmin), jadi isinya bisa dipercaya tanpa memeriksa tanda tangannya di sini. */
+function emailDariToken(t) {
+  try {
+    const b = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const j = JSON.parse(atob(b + "===".slice((b.length + 3) % 4)));
+    return String(j.email || "").toLowerCase() || "admin";
+  } catch (e) {
+    return "admin";
+  }
+}
+
+/* Admin = daftar app_admin yang sama dengan seluruh MiningMalut. Supabase yang
+   menilai tokennya; Worker hanya meneruskan pertanyaannya. */
+async function cekAdmin(env, req) {
+  const m = (req.headers.get("Authorization") || "").match(/^Bearer\s+(\S+)$/);
+  if (!m) return { galat: "Masuk dulu ke MiningMalut sebagai admin.", status: 401 };
+  const url = (env.SUPABASE_URL || SUPA_URL).replace(/\/+$/, "") + "/rest/v1/rpc/op_is_admin";
+  const key = env.SUPABASE_ANON_KEY || SUPA_KEY;
+  const opsi = {
+    method: "POST",
+    headers: { apikey: key, Authorization: "Bearer " + m[1], "Content-Type": "application/json" },
+    body: "{}",
+  };
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") opsi.signal = AbortSignal.timeout(BATAS_TUNGGU_MS);
+  let r;
+  try { r = await fetch(url, opsi); }
+  catch (e) { return { galat: "Supabase tidak terjangkau untuk memeriksa admin. Coba lagi.", status: 502 }; }
+  if (r.status === 401 || r.status === 403) return { galat: "Sesi login berakhir. Muat ulang MiningMalut, masuk lagi, lalu ulangi.", status: 401 };
+  if (!r.ok) return { galat: "Pemeriksaan admin gagal (HTTP " + r.status + ").", status: 502 };
+  let jawab = null;
+  try { jawab = await r.json(); } catch (e) {}
+  if (jawab !== true) return { galat: "Hanya admin yang boleh menghapus atau memulihkan kejadian.", status: 403 };
+  return { email: emailDariToken(m[1]) };
+}
+
+async function bacaJSON(req) {
+  try { return (await req.json()) || {}; } catch (e) { return {}; }
+}
+
+const tanpaTabelArsip = (e) => /no such table/i.test(String((e && e.message) || e));
+
+async function hapusKejadian(env, req) {
+  if (req.method !== "POST") return json({ error: "Pakai POST." }, 405);
+  const a = await cekAdmin(env, req);
+  if (a.galat) return json({ error: a.galat }, a.status);
+  const isi = await bacaJSON(req);
+  const id = Number(isi.id);
+  const alasan = String(isi.alasan || "").replace(/\s+/g, " ").trim().slice(0, 300);
+  if (!Number.isInteger(id) || id <= 0) return json({ error: "Nomor kejadian tidak sah." }, 400);
+  if (alasan.length < 5) return json({ error: "Tulis alasan penghapusan (minimal 5 huruf)." }, 400);
+
+  const baris = await env.DB.prepare(`SELECT * FROM pelanggaran WHERE id = ?`).bind(id).first();
+  if (!baris) return json({ error: "Kejadian tidak ditemukan — mungkin sudah dihapus." }, 404);
+  if (Number(baris.berjalan)) return json({ error: "Kejadian ini masih berjalan. Hapus sesudah selesai." }, 409);
+
+  const kini = Date.now();
+  await env.DB.prepare(SQL_ARSIP).run();
+  const hasil = await env.DB.batch([
+    env.DB.prepare(
+      `INSERT OR REPLACE INTO pelanggaran_dihapus
+         (id, unit, tanggal, mulai, data, dihapus_pada, dihapus_oleh, alasan)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).bind(id, baris.unit, baris.tanggal, baris.mulai, JSON.stringify(baris), kini, a.email, alasan),
+    // COALESCE: baris lama yang kolom berjalan-nya kosong (NULL) tetap ikut terhapus.
+    env.DB.prepare(`DELETE FROM pelanggaran WHERE id = ? AND COALESCE(berjalan, 0) = 0`).bind(id),
+    perintahBuangRingkas(env),
+  ]);
+  ringkasMem.clear();
+  const terhapus = Number(hasil[1]?.meta?.changes || 0) > 0;
+  console.log(`hapus id=${id} unit=${baris.unit} tanggal=${baris.tanggal} oleh=${a.email} alasan="${alasan}"` +
+              (terhapus ? "" : " (baris sudah tidak ada)"));
+  return json({ ok: true, id, unit: baris.unit, tanggal: baris.tanggal, dihapus_oleh: a.email, dihapus_pada: kini });
+}
+
+async function pulihkanKejadian(env, req) {
+  if (req.method !== "POST") return json({ error: "Pakai POST." }, 405);
+  const a = await cekAdmin(env, req);
+  if (a.galat) return json({ error: a.galat }, a.status);
+  const id = Number((await bacaJSON(req)).id);
+  if (!Number.isInteger(id) || id <= 0) return json({ error: "Nomor kejadian tidak sah." }, 400);
+
+  let x = null;
+  try { x = await env.DB.prepare(`SELECT data FROM pelanggaran_dihapus WHERE id = ?`).bind(id).first(); }
+  catch (e) { if (!tanpaTabelArsip(e)) throw e; }
+  if (!x) return json({ error: "Kejadian ini tidak ada di arsip terhapus." }, 404);
+  let r = null;
+  try { r = JSON.parse(x.data); } catch (e) {}
+  if (!r || Number(r.id) !== id) return json({ error: "Isi arsip rusak; tidak bisa dipulihkan." }, 500);
+  r.berjalan = 0;
+
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO pelanggaran (${KOLOM_PELANGGARAN.join(", ")})
+         VALUES (${KOLOM_PELANGGARAN.map(() => "?").join(", ")})`
+      ).bind(...KOLOM_PELANGGARAN.map((k) => (r[k] === undefined ? null : r[k]))),
+      env.DB.prepare(`DELETE FROM pelanggaran_dihapus WHERE id = ?`).bind(id),
+      perintahBuangRingkas(env),
+    ]);
+  } catch (e) {
+    if (/UNIQUE|constraint/i.test(String(e.message || e))) return json({ error: "Kejadian dengan nomor ini sudah ada di daftar." }, 409);
+    throw e;
+  }
+  ringkasMem.clear();
+  console.log(`pulihkan id=${id} unit=${r.unit} tanggal=${r.tanggal} oleh=${a.email}`);
+  return json({ ok: true, id, unit: r.unit, tanggal: r.tanggal });
+}
+
+async function daftarTerhapus(env, req, url) {
+  const a = await cekAdmin(env, req);
+  if (a.galat) return json({ error: a.galat }, a.status);
+  const sah = (t) => /^\d{4}-\d{2}-\d{2}$/.test(t || "");
+  let dari = url.searchParams.get("dari"), sampai = url.searchParams.get("sampai");
+  const tgl = url.searchParams.get("tanggal");
+  if (sah(tgl)) { dari = tgl; sampai = tgl; }
+  if (!sah(dari) || !sah(sampai)) return json({ error: "Pakai ?tanggal= atau ?dari=&sampai= (YYYY-MM-DD)." }, 400);
+  if (dari > sampai) { const t = dari; dari = sampai; sampai = t; }
+  let results = [];
+  try {
+    results = (await env.DB.prepare(
+      `SELECT data, dihapus_pada, dihapus_oleh, alasan FROM pelanggaran_dihapus
+        WHERE tanggal BETWEEN ? AND ? ORDER BY mulai DESC`
+    ).bind(dari, sampai).all()).results || [];
+  } catch (e) { if (!tanpaTabelArsip(e)) throw e; }
+  const terhapus = [];
+  for (const r of results) {
+    let d = null;
+    try { d = JSON.parse(r.data); } catch (e) {}
+    if (d) terhapus.push(Object.assign(d, { dihapus_pada: r.dihapus_pada, dihapus_oleh: r.dihapus_oleh, alasan: r.alasan }));
+  }
+  return json({ dari, sampai, jumlah: terhapus.length, terhapus });
+}
+
 // ---------------------------------------------------------------- titik masuk
 
 export default {
@@ -1599,7 +1783,7 @@ export default {
           if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
         }
         return json({
-          versi_worker: 11,
+          versi_worker: 12,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
@@ -1788,6 +1972,11 @@ export default {
         ).first();
         return json({ diisi: perintah.length, sisa: sisa?.n ?? 0 });
       }
+
+      /* Versi 12: khusus admin (token login Supabase di header Authorization). */
+      if (url.pathname === "/api/hapus") return await hapusKejadian(env, req);
+      if (url.pathname === "/api/pulihkan") return await pulihkanKejadian(env, req);
+      if (url.pathname === "/api/terhapus") return await daftarTerhapus(env, req, url);
 
 if (url.pathname === "/api/uji") return json(await periksa(env));
 
