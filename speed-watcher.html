@@ -663,7 +663,7 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
         <span class="info" tabindex="0" data-tip="Menyaring pembacaan yang tidak masuk akal: posisi meloncat saat sinyal buruk, kecepatan mustahil, atau data bertanggal mundur.">i</span>
       </summary>
       <div class="grp-body">
-        <p class="hint" style="margin:0 0 8px">Selain isian di bawah, pembacaan yang mustahil bagi dump truck selalu dibuang, sama dengan server: posisi di luar wilayah site, kecepatan besar tapi posisi diam, arah GPS berlawanan dengan arah pindah, dan jarak yang tak terjangkau dari kecepatan sebelumnya. Alasannya tampil di tab Ditolak.</p>
+        <p class="hint" style="margin:0 0 8px">Selain isian di bawah, pembacaan yang mustahil bagi dump truck selalu dibuang, sama dengan server: posisi di luar wilayah site, kecepatan besar tapi posisi diam, arah GPS berlawanan dengan arah pindah, dan jarak yang tak terjangkau dari kecepatan sebelumnya. Unit yang sensor mesinnya (ignition) melapor mati juga tidak dianggap melaju. Alasannya tampil di tab Ditolak.</p>
         <div class="row2">
           <div class="field"><label for="vMaxSpeed">Kecepatan wajar maks. <span class="info kiri" tabindex="0" data-tip="km/jam. Pembacaan di atas ini dianggap galat sensor dan dibuang.">i</span></label><input id="vMaxSpeed" type="number" min="20" max="400" step="5" value="150"></div>
           <div class="field"><label for="vSats">Satelit minimum <span class="info kiri" tabindex="0" data-tip="Isi 0 untuk mengabaikan pemeriksaan ini. Perangkat dengan sedikit satelit sering melaporkan posisi yang meleset jauh.">i</span></label><input id="vSats" type="number" min="0" max="20" value="4"></div>
@@ -910,6 +910,7 @@ const REASON = {
   WILAYAH:    "Di luar wilayah site",
   ARAH:       "Arah GPS berlawanan dengan arah pindah",
   TEMPUH:     "Jarak mustahil dari kecepatan sebelumnya",
+  MESIN:      "Mesin mati",                  // sensor ignition melapor mati (versi 13)
 };
 
 /* Aturan gerak — SALINAN Worker versi 11 (KEC_CEK, JEDA_PENDEK, DIAM_TOL, … di
@@ -1017,6 +1018,12 @@ function validateSample(s, prev, cfg, now, mentah) {
       }
     }
   }
+
+  /* Versi 13 (usulan Ariq): sensor mesin melapor MATI tapi GPS mengaku melaju
+     ≥ 15 km/jam. Dinilai sesudah aturan lain, sama urutannya dengan Worker.
+     `mesin` datang dari server: false hanya bila unit punya sensor mesin yang
+     dipercaya dan sedang mati; null bila tidak diketahui (tidak dinilai). */
+  if (!hard.length && s.mesin === false && s.speed >= GERAK.kecCek) hard.push(REASON.MESIN);
 
   const ok = hard.length === 0 && !(cfg.strict && soft.length > 0);
   return { ok, hard, soft, dt, dist, implied, accel, vi: hard.length ? null : vi };
@@ -1166,6 +1173,7 @@ function pushSample(u, raw, cfg, now, opts) {
     t: raw.t, lat: raw.lat, lon: raw.lon,
     speed: raw.speed, sats: raw.sats == null ? null : raw.sats,
     course: raw.course, seq: ++App.seq,
+    mesin: raw.mesin === true ? true : (raw.mesin === false ? false : null),
   };
 
   // Tidak ada data baru dari perangkat — bukan kesalahan, cukup dilewati.
@@ -1869,7 +1877,8 @@ function renderFleet() {
         '<div class="uname">' + esc(u.name) + "</div>" +
         '<div class="uzone">' + lokasi + " \u00b7 batas " + limit + "</div>" +
         '<div class="usub">' + (s ? fmtTime(s.t) + (age != null ? " \u00b7 " + fmtDur(age) + " lalu" : "") : "belum ada data") +
-          (s && s.sats != null ? " \u00b7 " + s.sats + " sat" : "") + "</div>" +
+          (s && s.sats != null ? " \u00b7 " + s.sats + " sat" : "") +
+          (u.lastRaw && u.lastRaw.mesin === false ? " \u00b7 mesin mati" : "") + "</div>" +
       "</div>" +
       '<div class="uright">' + statusBadge(u) + '<div class="spark">' + (bars || "") + "</div></div>" +
     "</div>";
@@ -3766,7 +3775,8 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
             t: Math.round(x.waktu / 1000), lat: x.lat, lon: x.lon,
             speed: x.kecepatan == null ? 0 : x.kecepatan,
             course: x.arah,
-            sats: x.satelit == null ? null : x.satelit
+            sats: x.satelit == null ? null : x.satelit,
+            mesin: x.mesin
           }, cfg, now);
         });
 

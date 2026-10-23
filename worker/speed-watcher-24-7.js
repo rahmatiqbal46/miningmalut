@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 12 (23 Oktober 2026)
+// Versi 13 (23 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -351,6 +351,37 @@
 //
 // Deteksi, jadwal cek, jejak, dan alamat lama TIDAK berubah dari versi 11.
 //
+// Versi 13 — MESIN MATI (23 Oktober 2026, §21.17).
+// Usulan Ariq (Dispatch, pembuat Speed Watcher V.2): pembacaan dari unit yang
+// mesinnya mati (ignition/engine off) tidak sah. Unit yang stand by atau
+// breakdown seperti 9RD26 tidak mungkin melaju, jadi kecepatan yang dilaporkan
+// GPS-nya — termasuk "melayang" yang geraknya mulus dan lolos aturan gerak v11 —
+// bukan pelanggaran.
+//
+//  - Sumber: sensor jenis "engine operation" (sensor kunci kontak) di Wialon.
+//    Blok A memetakannya sedikit demi sedikit: 4 unit per menit lewat
+//    core/search_item flag 4097 (nama + sensor), unit baru lebih dulu, lalu
+//    diperiksa ulang sekali sehari. Hasilnya di baris kv 'mesin'. Nilainya dibaca
+//    dari pesan terakhir (lmsg) yang SUDAH ikut di jawaban flag 1024 tiap
+//    putaran, jadi tidak ada panggilan Wialon tambahan per putaran.
+//  - Yang dipakai hanya parameter tunggal (io_239, ign, acc, …) atau bit masukan
+//    digital (in1, …), lengkap dengan tabel kalkulasi dan batas bawah/atas
+//    sensornya. Parameter berupa rumus dilewati. Unit tanpa sensor mesin tetap
+//    dinilai seperti versi 12.
+//  - Aturan: bacaan yang LOLOS semua aturan gerak, ≥ 15 km/jam, dengan sensor
+//    mesin melapor mati → ditolak, alasan `mesin`.
+//  - Pengaman sensor macet: bila satu unit mengumpulkan 30 bacaan bergerak wajar
+//    dengan mesin "mati" dalam sejam (±5 menit berjalan), sensornya dianggap
+//    macet dan diabaikan 3 hari, supaya pelanggaran sungguhan unit itu tidak
+//    terus hilang. Harganya: ±5 menit berjalan pertama unit itu tidak dinilai
+//    sekali per 3 hari. Dicatat di log dan di /api/mesin.
+//  - /api/unit mengirim `mesin` (true/false/null) supaya halaman menolak bacaan
+//    yang sama; /api/mesin baru merinci peta sensor dan nilainya per unit;
+//    /api/status mendapat ringkasan `mesin`.
+//
+// Aturan gerak v11, deteksi, jadwal cek, jejak, hapus/pulihkan v12, dan alamat
+// lama TIDAK berubah.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
 // berganti (bawaan: proyek MiningMalut, kunci anon publik yang sama dengan
@@ -596,12 +627,32 @@ const PENGEREMAN = 4;         // m/s²
 const PUNCAK_MS  = 20;        // m/s (72 km/jam), puncak dalam profil jarak terjauh
 const TEMPUH_TOL = 30;        // meter, galat GPS di dua ujung
 
+/* Versi 13 — mesin mati (lihat kepala berkas, §21.17). Sensor "engine operation"
+   tiap unit di Wialon dipetakan sedikit demi sedikit oleh blok A, lalu nilainya
+   dibaca dari pesan terakhir yang memang sudah ikut di jawaban flag 1024. */
+const MESIN_FLAG      = 4097;    // flag Wialon: 1 nama unit + 4096 daftar sensor
+const MESIN_SEGAR     = 86400;   // detik; peta sensor tiap unit diperiksa ulang sekali sehari
+const MESIN_ULANG     = 3600;    // detik; unit yang jawabannya galat dicoba lagi sejam kemudian
+const MESIN_PER_MENIT = 4;       // unit yang dipetakan per menit (satu panggilan kecil per unit)
+const MESIN_LMSG_TOL  = 60;      // detik; pesan terakhir tidak boleh lebih tua dari pesan posisi
+const MESIN_CURIGA    = 30;      // bacaan "bergerak, mesin mati" dalam sejam → sensor dicurigai macet
+const MESIN_JENDELA   = 3600;    // detik
+const MESIN_ABAIKAN   = 259200;  // detik (3 hari); sensor yang dicurigai macet diabaikan selama ini
+const MESIN_CACHE_MS  = 60000;   // salinan baris kv 'mesin' di memori isolate
+
 // Bertahan selama isolate hidup, jadi pekerjaan sekali-jalan tidak diulang
 // pada tiap permintaan.
 let tabelSiap = false;
 let sidCache = null;
 // true sampai pemanggilan cron pertama di isolate ini — untuk log (versi 10).
 let isolateBaru = true;
+/* Peta sensor mesin (versi 13), salinan baris kv 'mesin':
+     u[id] = { t, p, n, tb, lb, ub, ket }  — p null: tidak ada sensor yang bisa dipakai
+     x[id] = detik (epoch) sampai kapan sensor unit itu diabaikan karena dicurigai macet
+   `mesinUbah` menampung perubahan yang belum tersimpan; dikirim sebagai json_patch
+   supaya blok lain yang menulis di menit yang sama tidak saling menimpa. */
+let MESIN = { u: {}, x: {}, dimuat: 0 };
+let mesinUbah = { u: {}, x: {} };
 
 // Ringkasan shift untuk kartu Home dipakai bersama selama ini, lintas tab dan
 // lintas isolate (lewat baris `kv`), supaya jumlah penonton tidak melipatgandakan
@@ -759,6 +810,34 @@ async function login(env) {
    untuk unit di bawah BATAS_MIN. Mencocokkan di sini lebih dulu membatalkan
    penjaga anggaran tersebut — enam kali per menit, untuk seluruh armada. */
 async function ambilUnit(env, denganRuas = true) {
+  const kini = Math.floor(Date.now() / 1000);
+  return (await ambilItem(env)).map((it) => ({
+    id: it.id,
+    nama: it.nm,
+    lat: it.pos?.y ?? null,
+    lon: it.pos?.x ?? null,
+    kecepatan: it.pos?.s ?? null,
+    arah: it.pos?.c ?? null,
+    satelit: it.pos?.sc ?? null,
+    waktu: it.pos?.t ? it.pos.t * 1000 : null,
+    /* true nyala, false mati, null tidak diketahui / tanpa sensor / diabaikan
+       (versi 13). Cron hanya butuh status untuk bacaan ≥ KEC_CEK — di bawah itu
+       aturan mesin tidak berlaku — jadi unit lambat dan parkir tidak dihitung. */
+    mesin: (denganRuas || (it.pos && it.pos.s >= KEC_CEK)) ? mesinUnit(it, kini) : null,
+  })).map((u) => {
+    // Ruas dan batas yang berlaku ikut dikirim supaya layar tidak perlu
+    // menghitung sendiri dan tidak bisa berbeda dengan penilaian server.
+    if (!denganRuas) return u;
+    const rz = (u.lat != null && u.lon != null) ? cariRuas(u.lat, u.lon)
+                                                : { nama: null, batas: BATAS_LUAR };
+    u.ruas = rz.nama;
+    u.batas = rz.batas;
+    return u;
+  });
+}
+
+/* Jawaban mentah core/search_items (flag 1025) — dipakai ambilUnit dan /api/mesin. */
+async function ambilItem(env) {
   let sid = sidCache || (await ambilKV(env, "sid"));
   if (!sid) sid = await login(env);
   sidCache = sid;
@@ -791,25 +870,191 @@ async function ambilUnit(env, denganRuas = true) {
     }
   }
 
-  return (r.items || []).map((it) => ({
-    id: it.id,
-    nama: it.nm,
-    lat: it.pos?.y ?? null,
-    lon: it.pos?.x ?? null,
-    kecepatan: it.pos?.s ?? null,
-    arah: it.pos?.c ?? null,
-    satelit: it.pos?.sc ?? null,
-    waktu: it.pos?.t ? it.pos.t * 1000 : null,
-  })).map((u) => {
-    // Ruas dan batas yang berlaku ikut dikirim supaya layar tidak perlu
-    // menghitung sendiri dan tidak bisa berbeda dengan penilaian server.
-    if (!denganRuas) return u;
-    const rz = (u.lat != null && u.lon != null) ? cariRuas(u.lat, u.lon)
-                                                : { nama: null, batas: BATAS_LUAR };
-    u.ruas = rz.nama;
-    u.batas = rz.batas;
-    return u;
+  return r.items || [];
+}
+
+// ------------------------------------------------------------- mesin (v13)
+
+/* Baris kv 'mesin' dibaca paling sering sekali per menit per isolate. Galat baca
+   tidak dinaikkan: peta lama tetap dipakai, dan tanpa peta aturan mesin diam —
+   tidak menolak apa pun. */
+async function muatMesin(env, paksa = false) {
+  if (!paksa && MESIN.dimuat && Date.now() - MESIN.dimuat < MESIN_CACHE_MS) return;
+  try {
+    const d = JSON.parse((await ambilKV(env, "mesin")) || "{}") || {};
+    const obj = (x) => (x && typeof x === "object") ? x : {};
+    MESIN = { u: obj(d.u), x: obj(d.x), dimuat: Date.now() };
+    // Perubahan isolate ini yang belum sempat tersimpan tetap berlaku.
+    Object.assign(MESIN.u, mesinUbah.u);
+    for (const k in mesinUbah.x) {
+      if (mesinUbah.x[k] == null) delete MESIN.x[k]; else MESIN.x[k] = mesinUbah.x[k];
+    }
+  } catch (e) {
+    MESIN.dimuat = Date.now();
+  }
+}
+
+/* Perubahan peta dikirim sebagai merge patch (RFC 7396): kunci yang dikirim
+   ditimpa, yang tidak dikirim dibiarkan, null menghapus. Blok lain yang menulis
+   unit lain pada menit yang sama tidak tertimpa. Sengaja di luar batch state:
+   galat di sini tidak boleh menggagalkan penyimpanan state dan pelanggaran. */
+async function simpanMesin(env) {
+  if (!Object.keys(mesinUbah.u).length && !Object.keys(mesinUbah.x).length) return null;
+  const patch = mesinUbah;
+  mesinUbah = { u: {}, x: {} };
+  try {
+    await env.DB.prepare(
+      `INSERT INTO kv (k, v) VALUES ('mesin', ?)
+         ON CONFLICT(k) DO UPDATE SET
+           v = CASE WHEN json_valid(kv.v) THEN json_patch(kv.v, excluded.v) ELSE excluded.v END`
+    ).bind(JSON.stringify(patch)).run();
+    return null;
+  } catch (e) {
+    // Dikembalikan ke antrean; dicoba lagi di akhir blok berikutnya.
+    for (const k in patch.u) if (!(k in mesinUbah.u)) mesinUbah.u[k] = patch.u[k];
+    for (const k in patch.x) if (!(k in mesinUbah.x)) mesinUbah.x[k] = patch.x[k];
+    return String(e.message || e);
+  }
+}
+
+const angkaAtauNull = (v) => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v))) ? null : Number(v);
+
+/* Sensor mesin dari daftar sensor satu unit (flag 4096): jenis "engine operation"
+   — sensor kunci kontak/ignition Wialon. Hanya parameter tunggal yang dipakai:
+   nama parameter pesan (io_239, ign, acc, …) atau bit masukan/keluaran digital
+   (in1, out2, …). Rumus dilewati: lebih baik aturan diam daripada salah tafsir. */
+function definisiMesin(sens) {
+  const daftar = Object.values(sens || {})
+    .filter((x) => x && x.t === "engine operation")
+    .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+  if (!daftar.length) return { p: null, ket: "tanpa sensor mesin" };
+  const x = daftar[0];
+  const n = String(x.n || "").slice(0, 40);
+  const p = String(x.p || "").trim();
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(p)) return { p: null, n, ket: "parameter berupa rumus" };
+  const d = { p, n };
+  if (Array.isArray(x.tbl) && x.tbl.length) {
+    const tb = x.tbl.map((r) => [angkaAtauNull(r?.x), angkaAtauNull(r?.a), angkaAtauNull(r?.b)])
+      .filter((r) => r.every((v) => v !== null))
+      .sort((a, b) => a[0] - b[0]);
+    if (tb.length) d.tb = tb;
+  }
+  let c = null;
+  try { c = typeof x.c === "string" ? JSON.parse(x.c) : x.c; } catch (e) { c = null; }
+  const lb = angkaAtauNull(c?.lower_bound), ub = angkaAtauNull(c?.upper_bound);
+  // Batas 0/0 atau terbalik = tidak diatur.
+  if (lb !== null && ub !== null && lb >= ub) return d;
+  if (lb !== null) d.lb = lb;
+  if (ub !== null) d.ub = ub;
+  return d;
+}
+
+/* Nilai mentah sensor mesin dari pesan terakhir (lmsg, sudah ikut di jawaban
+   flag 1024): parameter pesan, atau bit in/out dari bilangan masukan/keluaran.
+   null bila tidak terbaca, atau bila pesan terakhir lebih tua dari pesan posisi.
+   Jalur panas (dipanggil per unit per putaran, sering di isolate dingin tanpa
+   JIT): tanpa alokasi objek, angka biasa langsung dipakai. */
+function nilaiMentahMesin(d, it) {
+  const m = it.lmsg;
+  if (!m) return null;
+  const tPos = it.pos ? it.pos.t : 0;
+  if (tPos && !(m.t >= tPos - MESIN_LMSG_TOL)) return null;
+  const v = m.p ? m.p[d.p] : undefined;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (v !== undefined) return angkaAtauNull(v);
+  const c = d.p.charCodeAt(0);
+  if (c !== 105 && c !== 111) return null;                    // bukan "in…"/"out…"
+  const r = /^(in|out)(\d{1,2})$/.exec(d.p);
+  if (!r) return null;
+  const semua = angkaAtauNull(r[1] === "in" ? m.i : m.o), bit = Number(r[2]);
+  return (semua !== null && bit >= 1 && bit <= 32) ? Math.floor(semua / 2 ** (bit - 1)) % 2 : null;
+}
+
+/* Status dari nilai mentah: tabel kalkulasi Wialon (y = a·x + b dari baris
+   terakhir yang x-nya ≤ nilai) → di luar batas bawah/atas: tidak diketahui →
+   y > 0 nyala, y = 0 mati. */
+function statusMesin(d, v) {
+  let y = v;
+  if (d.tb) {
+    let baris = null;
+    for (const r of d.tb) { if (r[0] <= v) baris = r; else break; }
+    if (!baris) return null;
+    y = baris[1] * v + baris[2];
+  }
+  if (d.lb != null && (v < d.lb || y < d.lb)) return null;
+  if (d.ub != null && (v > d.ub || y > d.ub)) return null;
+  return y > 0 ? true : (y === 0 ? false : null);
+}
+
+/* Untuk /api/mesin: nilai mentah dan statusnya. */
+function bacaMesin(d, it) {
+  if (!d || !d.p) return { v: null, nyala: null };
+  const v = nilaiMentahMesin(d, it);
+  return { v, nyala: v === null ? null : statusMesin(d, v) };
+}
+
+/* Yang dipakai deteksi dan /api/unit: null bila unit belum dipetakan, tidak
+   punya sensor mesin, atau sensornya sedang diabaikan karena dicurigai macet. */
+function mesinUnit(it, kini) {
+  const d = MESIN.u[it.id];
+  if (!d || !d.p) return null;
+  const abai = MESIN.x[it.id];
+  if (abai && abai > kini) return null;
+  const v = nilaiMentahMesin(d, it);
+  return v === null ? null : statusMesin(d, v);
+}
+
+/* Blok A: petakan sensor mesin beberapa unit per menit — yang belum pernah
+   dipetakan lebih dulu, lalu yang petanya paling tua. Satu unit satu panggilan
+   kecil (core/search_item, flag 4096), jadi biaya CPU per menit tetap kecil
+   walau armada bertambah. Mengembalikan jumlah perubahan peta. */
+async function petakanMesin(env, ids) {
+  const kini = Math.floor(Date.now() / 1000);
+  let n = 0;
+  // Masa abai yang sudah lewat dibuang dari baris kv (null = hapus pada merge patch).
+  for (const k of Object.keys(MESIN.x)) {
+    if (!(Number(MESIN.x[k]) > kini)) { delete MESIN.x[k]; mesinUbah.x[k] = null; n++; }
+  }
+  const calon = ids
+    .filter((id) => { const d = MESIN.u[id]; return !d || !(kini - (Number(d.t) || 0) < MESIN_SEGAR); })
+    .sort((a, b) => (Number(MESIN.u[a]?.t) || 0) - (Number(MESIN.u[b]?.t) || 0))
+    .slice(0, MESIN_PER_MENIT);
+  if (!calon.length) return n;
+  const sid = sidCache || (await ambilKV(env, "sid"));
+  if (!sid) return n;
+  const hasil = await Promise.all(calon.map((id) =>
+    wialon("core/search_item", { id: Number(id), flags: MESIN_FLAG }, sid).catch(() => null)));
+  hasil.forEach((r, i) => {
+    const id = calon[i];
+    if (!r) return;                                  // jaringan: coba lagi menit berikutnya
+    if (r.error === 1) return;                       // sesi basi: putaran berikutnya login ulang
+    let d;
+    if (r.error || !r.item) {
+      // Galat lain (mis. tanpa hak baca sensor): dicatat supaya tidak diulang tiap menit.
+      d = { p: null, ket: "galat Wialon " + (r.error ?? "tanpa item"), t: kini - MESIN_SEGAR + MESIN_ULANG };
+    } else {
+      d = definisiMesin(r.item.sens);
+      d.t = kini;
+    }
+    const lama = MESIN.u[id];
+    // Kolom kosong bisa tersimpan sebagai null atau tidak ada sama sekali — disamakan dulu.
+    const sama = (k) => JSON.stringify(lama?.[k] ?? null) === JSON.stringify(d[k] ?? null);
+    if (!lama || !["p", "n", "tb", "lb", "ub", "ket"].every(sama)) {
+      const nama = r.item?.nm ? ` (${r.item.nm})` : "";
+      console.log(`mesin unit=${id}${nama} ` + (d.p
+        ? `sensor="${d.n}" param=${d.p}${d.tb ? " tabel=" + d.tb.length : ""}${d.lb != null || d.ub != null ? ` batas=${d.lb ?? ""}..${d.ub ?? ""}` : ""}`
+        : d.ket));
+    }
+    MESIN.u[id] = d;
+    /* Merge patch MENGGABUNG objek: kolom lama yang tidak ikut dikirim akan
+       tertinggal (mis. tabel kalkulasi sensor lama). Karena itu semua kolom
+       dikirim, yang kosong sebagai null — null pada merge patch menghapusnya. */
+    const lengkap = {};
+    for (const kol of ["t", "p", "n", "tb", "lb", "ub", "ket"]) lengkap[kol] = d[kol] ?? null;
+    mesinUbah.u[id] = lengkap;
+    n++;
   });
+  return n;
 }
 
 // ------------------------------------------------------------------ deteksi
@@ -1191,6 +1436,8 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
     const k = String(u.id);
     if (!state[k]) state[k] = { t: 0, sah: null, buf: [], ov: 0, un: 0, ev: null, id: null };
     const st = state[k];
+    // Hitungan "bergerak dengan mesin mati" hanya berlaku sejam (versi 13).
+    if (st.mk && nowDetik - st.mk[0] >= MESIN_JENDELA) st.mk = undefined;
 
     if (u.waktu == null) continue;
     const t = Math.floor(u.waktu / 1000);
@@ -1201,7 +1448,23 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
     if (koordSah(u.lat, u.lon)) catatJejak(jejak, T0, u, t);
 
     const s = { t, lat: u.lat, lon: u.lon, speed: u.kecepatan ?? 0, sat: u.satelit, arah: u.arah };
-    const tolak = sampelSah(s, st.sah, nowDetik, st.m);
+    let tolak = sampelSah(s, st.sah, nowDetik, st.m);
+    /* Versi 13: lolos semua aturan gerak, tetapi sensor mesin melapor MATI —
+       pembacaan ≥ 15 km/jam dari mesin yang mati tidak sah. Hanya dinilai sesudah
+       aturan gerak, jadi alasan "mesin" menandai bacaan yang HANYA tertangkap
+       aturan ini. Sensor yang terus melapor mati padahal unitnya bergerak wajar
+       (≥ MESIN_CURIGA bacaan dalam sejam) dianggap macet dan diabaikan 3 hari,
+       supaya pelanggaran sungguhan unit itu tidak ikut hilang. */
+    if (!tolak && u.mesin === false && s.speed >= KEC_CEK) {
+      tolak = "mesin";
+      if (!st.mk) st.mk = [nowDetik, 0];
+      if (++st.mk[1] >= MESIN_CURIGA) {
+        MESIN.x[k] = mesinUbah.x[k] = nowDetik + MESIN_ABAIKAN;
+        st.mk = undefined;
+        console.log(`mesin unit=${k} (${u.nama}) sensornya diabaikan 3 hari: ` +
+                    `${MESIN_CURIGA} bacaan bergerak wajar dengan mesin mati dalam sejam`);
+      }
+    }
     if (tolak) {
       ditolak++; alasan[tolak] = (alasan[tolak] || 0) + 1;
       // Pesan yang ditolak menjadi pembanding `mentah` bagi pesan berikutnya.
@@ -1292,6 +1555,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
 async function periksa(env) {
   const s = await muatSimpanan(env);
   await sesuaikanJalan(env, s);
+  await muatMesin(env);
   const tunda = new Map();
   const h = await satuPutaran(env, s.u, tunda);
   await siramTunda(env, tunda);
@@ -1387,6 +1651,9 @@ async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [
     gagal.push(`tulis: ${String(e.message || e)}`);
     hasil = null;
   }
+  // Sensor yang baru dicurigai macet (versi 13) — terpisah dari batch di atas.
+  const gm = await simpanMesin(env);
+  if (gm) gagal.push(`mesin: ${gm}`);
 
   const teksAlasan = Object.keys(alasan).map((k) => k + ":" + alasan[k]).join(",");
   console.log(
@@ -1737,6 +2004,7 @@ export default {
       await segarkanJalan(env);
 
       if (url.pathname === "/api/unit") {
+        await muatMesin(env);   // paling sering sekali per menit per isolate
         const units = await ambilUnit(env);
         return json({
           jumlah: units.length,
@@ -1744,6 +2012,40 @@ export default {
           waktu_server: Date.now(),
           unit: units,
         });
+      }
+
+      /* Versi 13: rincian sensor mesin per unit, untuk memeriksa peta sensor dan
+         nilainya dari luar (dibaca manusia, berindentasi). Satu panggilan Wialon
+         yang sama dengan /api/unit; tidak menulis apa pun. */
+      if (url.pathname === "/api/mesin") {
+        await muatMesin(env, true);
+        const kini = Math.floor(Date.now() / 1000);
+        const hitung = { nyala: 0, mati: 0, tidak_terbaca: 0, tanpa_sensor: 0, belum_dipetakan: 0, diabaikan: 0 };
+        const unit = (await ambilItem(env)).map((it) => {
+          const d = MESIN.u[it.id];
+          const abai = Number(MESIN.x[it.id]) > kini ? Number(MESIN.x[it.id]) * 1000 : null;
+          const b = d && d.p ? bacaMesin(d, it) : { v: null, nyala: null };
+          const status = !d ? "belum dipetakan" : !d.p ? (d.ket || "tanpa sensor mesin")
+                       : abai ? "diabaikan (dicurigai macet)"
+                       : b.nyala === true ? "nyala" : b.nyala === false ? "mati" : "tidak terbaca";
+          if (!d) hitung.belum_dipetakan++;
+          else if (!d.p) hitung.tanpa_sensor++;
+          else if (abai) hitung.diabaikan++;
+          else if (b.nyala === true) hitung.nyala++;
+          else if (b.nyala === false) hitung.mati++;
+          else hitung.tidak_terbaca++;
+          return {
+            id: it.id, nama: it.nm, status,
+            sensor: d?.n || null, parameter: d?.p || null, nilai: b.v,
+            tabel: d?.tb ? d.tb.length : 0,
+            kecepatan: it.pos?.s ?? null,
+            waktu_posisi: it.pos?.t ? it.pos.t * 1000 : null,
+            waktu_pesan: it.lmsg?.t ? it.lmsg.t * 1000 : null,
+            dipetakan: d?.t ? d.t * 1000 : null,
+            diabaikan_sampai: abai,
+          };
+        }).sort((a, b) => String(a.nama).localeCompare(String(b.nama)));
+        return json({ jumlah: unit.length, ringkas: hitung, unit }, 200, true);
       }
 
       if (url.pathname === "/api/status") {
@@ -1782,8 +2084,17 @@ export default {
           blok[b.nama] = { menit_lalu: lalu, oleh, pemicu: klaim[b.nama]?.c ?? null };
           if (lalu === null || lalu > 1 || oleh !== b.nama) terbagi = false;
         }
+        /* Ringkasan peta sensor mesin (versi 13); rinciannya di /api/mesin. */
+        await muatMesin(env);
+        const detik = Math.floor(kini / 1000);
+        const petaMesin = Object.values(MESIN.u);
+        const mesin = {
+          dipetakan: petaMesin.length,
+          bersensor: petaMesin.filter((d) => d && d.p).length,
+          diabaikan: Object.values(MESIN.x).filter((t) => Number(t) > detik).length,
+        };
         return json({
-          versi_worker: 12,
+          versi_worker: 13,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
@@ -1797,6 +2108,7 @@ export default {
           jejak: JEJAK_HARI + " hari terakhir",
           terbagi,
           blok,
+          mesin,
         }, 200, true);
       }
 
@@ -2030,6 +2342,7 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
         return;
       }
       await sesuaikanJalan(env, s);
+      await muatMesin(env);
       if (saya !== "A") {
         await jalankanBlok(env, saya, T, saya, s);
         return;
@@ -2050,6 +2363,17 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
       });
       const ambilB = !!hasil && menang(hasil[0]);
       const ambilC = !!hasil && menang(hasil[1]);
+
+      /* Versi 13: sesudah blok A selesai (sesi Wialon pasti segar), petakan
+         sensor mesin beberapa unit. Dipakai mulai putaran berikutnya. */
+      try {
+        if (await petakanMesin(env, Object.keys(s.u))) {
+          const gm = await simpanMesin(env);
+          if (gm) console.log(`peta mesin gagal disimpan: ${gm}`);
+        }
+      } catch (e) {
+        console.log(`peta mesin gagal: ${String(e.message || e)}`);
+      }
 
       if (ambilB) {
         console.log("blok=B tidak diklaim pemiliknya pada menit ini — diambil alih A");
