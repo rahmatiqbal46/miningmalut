@@ -794,6 +794,7 @@ const App = {
   events: [],            // kejadian overspeed (terbaru di depan)
   rejects: [],           // sampel yang dibuang validasi
   admin: false,          // admin MiningMalut (op_is_admin) — tombol hapus kejadian
+  tglArsip: "",          // tanggal terpilih di tab Kejadian (YYYY-MM-DD), diisi blok arsip
   zones: [],             // geofence dari peta: ruas jalan dan areanya
   connected: false,
   demo: false,
@@ -817,6 +818,11 @@ function fmtTime(sec) {
   if (!sec) return "—";
   const d = new Date(sec * 1000);
   return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + " " + fmtClock(d);
+}
+/** Tanggal kalender lokal (YYYY-MM-DD) dari epoch detik — format tglLokal() blok arsip. */
+function tglDariDetik(sec) {
+  const d = new Date(sec * 1000);
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 }
 function fmtDur(sec) {
   sec = Math.max(0, Math.round(sec));
@@ -1908,7 +1914,13 @@ function renderEvents() {
     : '<tr><td colspan="6"><div class="empty"><b>Belum ada pelanggaran</b>Kejadian overspeed yang lolos validasi akan tampil di sini.</div></td></tr>';
 
   const fu = $("evUnitFilter").value, fs = num($("evMinSpeed").value, 0);
-  const rows = App.events.filter(ev => (!fu || String(ev.unitId) === fu) && ev.maxSpeed >= fs);
+  /* Hanya tanggal terpilih (App.tglArsip). Baris server membawa tanggal WIT-nya
+     sendiri; kejadian layar dinilai dari jam mulainya. Tanpa saringan ini daftar
+     bercampur tanggal sesudah tanggal diganti, karena App.events juga dipakai
+     daftar "Kejadian terakhir" dan peta, yang tetap memegang semuanya (§10.11). */
+  const tgl = App.tglArsip;
+  const rows = App.events.filter(ev => (!fu || String(ev.unitId) === fu) && ev.maxSpeed >= fs &&
+    (!tgl || (ev._tgl || tglDariDetik(ev.tStart)) === tgl));
   const thAksi = document.querySelector("#view-events thead th.aksi");
   if (thAksi) thAksi.hidden = !App.admin;
   $("allEvents").innerHTML = rows.length
@@ -3841,7 +3853,7 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
   function ubahBaris(r) {
     var mulai = Math.round(r.mulai / 1000), selesai = Math.round(r.selesai / 1000);
     return {
-      id: 'SV' + r.id, _sid: r.id,
+      id: 'SV' + r.id, _sid: r.id, _tgl: r.tanggal,
       unitId: r.unit_id, unitName: r.unit || '—', limit: r.batas,
       tStart: mulai, tEnd: selesai,
       maxSpeed: r.kecepatan_max,
@@ -3885,7 +3897,17 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
           return isFinite(e.tStart) && isFinite(e.lat) && isFinite(e.lon) && isFinite(e.maxSpeed);
         });
 
-        if (!susulan || !d.sebagian) { arsip.tgl = tgl; arsip.ids = {}; arsip.buka = {}; }
+        if (!susulan || !d.sebagian) {
+          arsip.tgl = tgl; arsip.ids = {}; arsip.buka = {};
+          /* Tarikan penuh memuat SELURUH baris tanggal itu, jadi baris server
+             bertanggal sama yang tidak ikut terkirim sudah tidak ada di server —
+             dihapus admin (§10.11). gabung() sengaja mempertahankan baris yang
+             tidak terkirim (benar untuk susulan), karena itu dibuang di sini,
+             hanya pada tarikan penuh. Baris tanggal lain tidak disentuh. */
+          var terkirim = {};
+          daftar.forEach(function (e) { terkirim[e._sid] = 1; });
+          App.events = App.events.filter(function (e) { return !e._sid || e._tgl !== tgl || terkirim[e._sid]; });
+        }
         mentah.forEach(function (r) {
           if (r.berjalan) arsip.buka[r.id] = 1; else delete arsip.buka[r.id];
         });
@@ -3948,8 +3970,12 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
 
     tglPilih = tglLokal(new Date());
     el('arsipTgl').value = tglPilih;
+    App.tglArsip = tglPilih;
     el('arsipTgl').addEventListener('change', function () {
       tglPilih = this.value || tglLokal(new Date());
+      // Daftar langsung mengikuti tanggal baru; isinya menyusul dari server.
+      App.tglArsip = tglPilih;
+      try { render(); } catch (e) {}
       tarikArsip(false, true);
     });
     // Muat selalu penuh: jalan pintas untuk menyegarkan seluruh hari dari server.
