@@ -334,6 +334,28 @@
   .btn[disabled]:hover{box-shadow:var(--shadow); color:var(--text);}
   .btn.primary[disabled]:hover{background:var(--accent); color:#fff;}
 
+  /* ---------- Kelola daftar operator (khusus admin) ----------
+     Tiga kolom: ID sempit, nama melebar, tombol selebar isinya. Di ponsel
+     bertumpuk. Spesifisitas .form-grid.op-form sengaja di atas .form-grid
+     supaya aturan media 900 px milik formulir lain tidak memecahnya. */
+  .form-grid.op-form{grid-template-columns:minmax(110px,170px) minmax(0,1fr) auto; align-items:end;}
+  @media(max-width:560px){.form-grid.op-form{grid-template-columns:1fr;}}
+  .op-info{font-size:var(--f-callout); line-height:var(--lh-callout); color:var(--text-muted);
+    margin-top:10px; min-height:var(--lh-callout); text-wrap:pretty;}
+  .op-info.ada{color:var(--accent); font-weight:560;}
+  .op-info.galat{color:var(--bad); font-weight:560;}
+  .op-id{font-family:var(--mono); font-size:var(--f-callout); white-space:nowrap;}
+  th.op-kol-id{width:1%; white-space:nowrap;}   /* selebar ID terpanjang, sisanya untuk nama */
+  .op-meta{font-size:var(--f-sub); line-height:var(--lh-sub); color:var(--text-muted); margin-top:2px;}
+  td.op-aksi{white-space:nowrap; text-align:right; width:1%;}
+  td.op-aksi .btn + .btn{margin-left:6px;}
+  .op-ringkas{margin:10px 2px 0; font-size:var(--f-callout); line-height:var(--lh-callout);
+    color:var(--text-muted); text-wrap:pretty;}
+  .op-minerva{margin:12px 0 30px;}
+  .op-minerva summary{cursor:pointer; width:fit-content; padding:4px 2px; border-radius:6px;
+    font-size:var(--f-callout); line-height:var(--lh-callout); font-weight:560; color:var(--accent);}
+  .op-minerva .table-wrap{margin-top:8px;}
+
   ::-webkit-scrollbar{height:10px; width:10px;}
   ::-webkit-scrollbar-thumb{background:#003c3c2e; border-radius:6px;}
   ::-webkit-scrollbar-thumb:hover{background:#003c3c4d;}
@@ -612,6 +634,42 @@
       <button class="btn sm ghost" id="kepClearAddedBtn">Reset Perubahan (site aktif)</button>
     </div>
     <div class="eyebrow" id="kepAddError" style="color:var(--bad); margin-bottom:30px;"></div>
+    <!-- Satu datalist bersama untuk kolom ID semua baris penilaian; diisi ulang
+         segarkanDatalistOperator() saat kelompok atau daftar operator berubah. -->
+    <datalist id="kepOpList"></datalist>
+
+    <!-- Kelola daftar operator: hanya tampil untuk admin (op_is_admin, daftar
+         Mining Bureau → Kelola Admin). Isian di sini sengaja diabaikan penjaga
+         formulir penilaian; lihat pasangPenjagaFormulir(). -->
+    <div id="kelolaOperator" hidden>
+      <div class="section-head">
+        <h2>Kelola Daftar Operator</h2>
+        <span class="eyebrow">Khusus admin. Operator yang ditambahkan di sini langsung bisa dinilai di semua perangkat, kelompok Antam maupun PCM.</span>
+      </div>
+      <div class="form-card">
+        <div class="form-grid op-form">
+          <div class="field"><label for="opBaruId">ID operator</label>
+            <input type="text" id="opBaruId" placeholder="Nomor badge" autocomplete="off" spellcheck="false" maxlength="20"></div>
+          <div class="field"><label for="opBaruNama">Nama operator</label>
+            <input type="text" id="opBaruNama" placeholder="Nama lengkap" autocomplete="off" maxlength="60"></div>
+          <div class="field"><button type="button" class="btn primary" id="opBaruSimpan">Tambahkan</button></div>
+        </div>
+        <div class="op-info" id="opBaruInfo" aria-live="polite"></div>
+      </div>
+      <div class="table-wrap"><div class="table-scroll">
+        <table><thead><tr><th class="op-kol-id">ID</th><th>Operator tambahan</th><th></th></tr></thead>
+        <tbody id="opTambahanBody"></tbody></table>
+      </div></div>
+      <div class="op-ringkas" id="opRingkas"></div>
+      <details class="op-minerva" id="opMinervaRinci" hidden>
+        <summary id="opMinervaJudul">Lihat operator yang dikenali dari Minerva</summary>
+        <div class="op-ringkas" id="opMinervaCatatan"></div>
+        <div class="table-wrap"><div class="table-scroll">
+          <table><thead><tr><th class="op-kol-id">ID</th><th>Nama</th><th>Terakhir tercatat</th></tr></thead>
+          <tbody id="opMinervaBody"></tbody></table>
+        </div></div>
+      </details>
+    </div>
   </section>
 
   <!-- ===================== LOG ISU ===================== -->
@@ -1372,6 +1430,8 @@ function applyRemote(rows){
         try{ kepBySite[site][tgl+'|'+sh]=JSON.parse(r.payload); }catch(e){}
       }
     }
+    // Baris `operator` sengaja diabaikan di sini; ditarik terpisah oleh
+    // tarikOpTambahan() (lihat DAFTAR OPERATOR).
   });
 
   /* PENGAMAN: server dianggap sumber kebenaran HANYA untuk jenis data yang
@@ -1424,6 +1484,10 @@ async function syncPull(silent){
 
     localStorage.setItem(SYNC_SEEDED_KEY,'1');
     applyRemote(rows);
+    // Tambahan operator dari admin lain. Gagal di sini tidak menggagalkan sinkron
+    // laporan; salinan lokal tetap dipakai sampai tarikan berikutnya.
+    try{ await tarikOpTambahan(); }catch(e){}
+    segarkanSemuaOperator();   // tidak membangun ulang formulir (§20.3)
     await flushPending();
     lastSyncAt=new Date();
     const n=Object.keys(getPending()).length;
@@ -1484,7 +1548,8 @@ function tandaiBersihLaporan(){ KOTOR.laporan=false; }
 function adaIsianBelumDisimpan(){ return KOTOR.kepatuhan || KOTOR.laporan; }
 function fokusDiFormulir(idView){
   const f=document.activeElement;
-  return !!(f && f.closest && f.closest('#'+idView) && /^(INPUT|SELECT|TEXTAREA)$/.test(f.tagName));
+  return !!(f && f.closest && f.closest('#'+idView) && !f.closest('#kelolaOperator')
+            && /^(INPUT|SELECT|TEXTAREA)$/.test(f.tagName));
 }
 /* Dipakai sinkronisasi latar. Sengaja tidak melihat tab mana yang sedang
    terbuka: isian yang belum disimpan tetap harus aman meski penggunanya
@@ -1497,8 +1562,9 @@ function formulirKepatuhanDipakai(){
     const v=document.getElementById(idView);
     if(!v) return;
     ['input','change'].forEach(ev=>v.addEventListener(ev, e=>{
-      // Panel unduh ada di tab yang sama tapi bukan isian laporan
-      if(e.target && e.target.closest && e.target.closest('#kartuUnduh')) return;
+      // Panel unduh dan Kelola Daftar Operator ada di tab yang sama tapi bukan
+      // isian laporan/penilaian. Yang kedua menyimpan sendiri saat tombolnya ditekan.
+      if(e.target && e.target.closest && e.target.closest('#kartuUnduh, #kelolaOperator')) return;
       tandai();
     }, true));
   };
@@ -2017,9 +2083,12 @@ function kepUnitOptions(sel){
   return '<option value="">Pilih unit</option>'+SEED.masterUnits.map(u=>
     `<option value="${escapeHtml(u.kode)}" data-tipe="${escapeHtml(u.tipe)}" ${u.kode===sel?'selected':''}>${escapeHtml(u.kode)} · ${escapeHtml(u.tipe)}</option>`).join('');
 }
+// Pilihan ID operator: gabungan data bawaan, tambahan admin, dan Minerva
+// (lihat DAFTAR OPERATOR di bawah), diurutkan menurut nama.
 function kepOpOptions(site){
-  const l=site==='PCM'?SEED.masterOperatorsPCM:SEED.masterOperatorsANTAM;
-  return l.map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.nama)}</option>`).join('');
+  return [...daftarOperator(site).values()]
+    .sort((a,b)=>a.nama.localeCompare(b.nama,'id'))
+    .map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.nama)}</option>`).join('');
 }
 function kepKetOptions(sel){
   const none=`<option value="${NO_KET}" ${(!sel)?'selected':''}>— Tidak ada keterangan (skor null) —</option>`;
@@ -2040,7 +2109,7 @@ function addKepRow(rec){
   tr.innerHTML=`
     <td><select class="k-unit">${kepUnitOptions(r.kode_unit)}</select></td>
     <td><input type="text" class="k-tipe" value="${escapeHtml(r.tipe_unit||'')}" disabled></td>
-    <td><input type="text" class="k-opid" list="kepOpList${n}" placeholder="ID" value="${escapeHtml(r.id_operator||'')}"><datalist id="kepOpList${n}">${kepOpOptions(kepSite)}</datalist></td>
+    <td><input type="text" class="k-opid" list="kepOpList" placeholder="ID" autocomplete="off" value="${escapeHtml(r.id_operator||'')}"></td>
     <td><input type="text" class="k-opname" value="${escapeHtml(r.nama_operator||'')}" disabled></td>
     <td><select class="k-ket">${kepKetOptions(r.keterangan)}</select></td>
     <td class="k-skor">${skorBadge(r.keterangan)}</td>
@@ -2051,11 +2120,7 @@ function addKepRow(rec){
     const o=e.target.options[e.target.selectedIndex];
     tr.querySelector('.k-tipe').value=o?(o.dataset.tipe||''):'';
   });
-  tr.querySelector('.k-opid').addEventListener('input',e=>{
-    const l=kepSite==='PCM'?SEED.masterOperatorsPCM:SEED.masterOperatorsANTAM;
-    const f=l.find(o=>String(o.id)===e.target.value.trim());
-    tr.querySelector('.k-opname').value=f?f.nama:'';
-  });
+  tr.querySelector('.k-opid').addEventListener('input',()=>isiNamaBaris(tr));
   tr.querySelector('.k-ket').addEventListener('change',e=>{
     const v=e.target.value===NO_KET?null:e.target.value;
     tr.querySelector('.k-skor').innerHTML=skorBadge(v);
@@ -2069,6 +2134,7 @@ function loadKepIntoForm(){
   const tgl=document.getElementById('kepInDate').value;
   const body=document.getElementById('kepAddRows');
   const banner=document.getElementById('kepEditBanner');
+  segarkanDatalistOperator();   // kelompok Antam/PCM bisa baru saja berganti
   body.innerHTML='';
   if(!tgl){ banner.innerHTML=''; addKepRow(); return; }
 
@@ -2101,17 +2167,25 @@ document.getElementById('kepAddSaveBtn').addEventListener('click',()=>{
   const records=[]; let bad=false;
   [...document.querySelectorAll('#kepAddRows tr')].forEach(tr=>{
     const kode=tr.querySelector('.k-unit').value;
-    const opid=tr.querySelector('.k-opid').value.trim();
+    const opidKetik=tr.querySelector('.k-opid').value.trim();
     const opnm=tr.querySelector('.k-opname').value;
-    if(!kode && !opid) return;
-    if(!kode || !opid || !opnm){ bad=true; return; }
+    if(!kode && !opidKetik) return;
+    if(!kode || !opidKetik || !opnm){ bad=true; return; }
+    // ID disimpan dalam tulisan baku daftar ("aa001" → "AA001"), supaya satu
+    // orang tidak terhitung dua kali di rekap per operator.
+    const f=cariOperator(opidKetik, kepSite);
+    const opid=f ? f.id : opidKetik;
     const ketRaw=tr.querySelector('.k-ket').value;
     const ket = ketRaw===NO_KET ? null : ketRaw;
     records.push({ tanggal:tgl, shift:kepInShift, kode_unit:kode,
       tipe_unit:tr.querySelector('.k-tipe').value, id_operator:opid, nama_operator:opnm,
       keterangan:ket, skor:kepScoreFor(ket) });
   });
-  if(bad){ err.textContent='Ada baris belum lengkap, atau ID operator tidak ada di master '+kepSite+'.'; return; }
+  if(bad){
+    err.textContent='Ada baris belum lengkap, atau ID operator belum terdaftar di daftar '+kepSite+'. '
+      +(ADMIN_SAYA ? 'Tambahkan lewat Kelola Daftar Operator di bawah.' : 'Minta admin menambahkannya ke daftar operator.');
+    return;
+  }
   err.textContent='';
 
   setKepSlot(kepSite, tgl, kepInShift, records);
@@ -2136,6 +2210,429 @@ document.getElementById('kepClearAddedBtn').addEventListener('click',()=>{
   loadKepIntoForm(); renderKepatuhan();
   showToast('Data '+kepSite+' dikembalikan ke data Excel');
 });
+
+/* ================= DAFTAR OPERATOR: BAWAAN + TAMBAHAN ADMIN + MINERVA =================
+   Kolom ID di penilaian keaktifan mengenali operator dari tiga sumber. Bila
+   satu ID ada di beberapa sumber, yang lebih atas menang:
+
+   1. Tambahan admin. Baris `dispatch|operator|<ID>` di tabel `dashboard`, satu
+      baris per operator supaya dua admin yang menambah bersamaan tidak saling
+      menimpa. Ditarik di setiap sinkron 60 detik lewat permintaan kecil
+      tersendiri (tarikOpTambahan), jadi muncul di semua perangkat dalam ±1
+      menit. Sengaja tidak menumpang tarikan besar `dispatch|*`: Supabase
+      memotong balasan di 1.000 baris, dan tarikan terpotong akan terbaca
+      seolah operator dihapus. Berlaku untuk kelompok Antam dan PCM
+      sekaligus, sama seperti data bawaan yang isi kedua kelompoknya hampir
+      kembar. ID yang sudah ada di data bawaan boleh ditambahkan: namanya
+      menggantikan nama bawaan, dan nama bawaan kembali bila tambahannya dihapus.
+   2. Data bawaan. SEED.masterOperatorsANTAM / PCM dari baris `dispatchseed|v1`
+      (Excel kontributor, 3 September 2026). Tidak pernah diubah dari sini.
+   3. Operator Performance. Tabel `op_operators`, terisi sendiri dari scorecard
+      Minerva pukul 07:00 dan 19:00 WIT. Badge di sana = ID di sini (4 digit
+      Antam, 5 digit PCM). Hanya yang tercatat dalam OP_MINERVA_HARI terakhir,
+      supaya ID salah ketik tidak jatuh ke orang yang sudah lama tidak bekerja.
+      Hanya dibaca; Dispatch tidak pernah menulis ke tabel itu.
+
+   Nama dari tambahan admin dan Minerva ditulis huruf besar seperti data bawaan,
+   supaya daftar pilihan dan rekap penilaian tetap seragam.
+
+   Penulisan tambahan admin sengaja TIDAK lewat pushItem(): admin harus tahu saat
+   itu juga apakah tersimpan, dan baris yang ditolak server tidak boleh berputar
+   di antrean tiap menit. Tombolnya hanya tampil untuk admin; penjagaan yang
+   sebenarnya di server: supabase/dispatch/01_daftar_operator.sql. */
+const OP_TAMBAHAN_KEY='dispatchOperatorTambahan_v1';
+const OP_MINERVA_KEY='dispatchOpMinerva_v1';
+const OP_MINERVA_HARI=180;
+const OP_MINERVA_SEGAR_MS=6*3600*1000;
+const OP_ID_SAH=/^[A-Z0-9][A-Z0-9-]{1,19}$/;   // juga menjaga kunci baris: tanpa "|"
+
+function normId(v){ return String(v==null?'':v).trim().toUpperCase(); }
+function normNama(v){ return String(v==null?'':v).replace(/\s+/g,' ').trim().toLocaleUpperCase('id-ID'); }
+function opKey(id){ return 'operator|'+id; }
+
+let VERSI_OP=0;                    // naik tiap kali salah satu sumber berubah
+let OP_TAMBAHAN=bacaOpTambahan();  // ID → {id, nama, ditambah, oleh, diubah}
+let OP_MINERVA={};                 // ID → {id, nama, perusahaan, terakhir}
+let opMinervaCap=0, opMinervaGalat='';
+let ADMIN_SAYA=false;
+bacaCacheOpMinerva();
+
+function bacaOpTambahan(){
+  try{
+    const o=JSON.parse(localStorage.getItem(OP_TAMBAHAN_KEY)||'{}');
+    return (o && typeof o==='object' && !Array.isArray(o)) ? o : {};
+  }catch(e){ return {}; }
+}
+function simpanOpTambahan(){ try{ localStorage.setItem(OP_TAMBAHAN_KEY, JSON.stringify(OP_TAMBAHAN)); }catch(e){} }
+function opTambahanDariPayload(p){
+  let o=p;
+  if(typeof o==='string'){ try{ o=JSON.parse(o); }catch(e){ return null; } }
+  if(!o || typeof o!=='object') return null;
+  const id=normId(o.id), nama=normNama(o.nama);
+  if(!OP_ID_SAH.test(id) || !nama) return null;
+  return { id, nama, ditambah:o.ditambah||'', oleh:o.oleh||'', diubah:o.diubah||'' };
+}
+function tandaOp(peta){
+  return Object.keys(peta).sort().map(k=>k+'\u0001'+peta[k].nama+'\u0001'+(peta[k].diubah||'')).join('\u0002');
+}
+// Mengganti isi lokal dengan isi server. true bila ada yang berubah.
+function gantiOpTambahan(baru){
+  if(tandaOp(baru)===tandaOp(OP_TAMBAHAN)) return false;
+  OP_TAMBAHAN=baru; simpanOpTambahan(); VERSI_OP++;
+  return true;
+}
+/* Tarik seluruh tambahan admin. Hanya dengan sesi login yang masih berlaku:
+   tanpa itu RLS mengembalikan daftar kosong yang tidak boleh terbaca sebagai
+   "semua operator dihapus". Galat dilempar ke pemanggil; isi lokal tidak
+   disentuh. */
+async function tarikOpTambahan(){
+  const tk=tokenSesi();
+  if(!tk) return false;
+  const r=await fetch(supaRest()+'?id=like.'+encodeURIComponent(SUPA.prefiks+'operator|*')+'&select=id,data',
+                      {headers:{apikey:SUPA.key, Authorization:'Bearer '+tk}});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  if(!Array.isArray(j)) throw new Error('balasan bukan daftar');
+  const baru={};
+  j.forEach(row=>{
+    const d=(row && row.data) || {};
+    if(d.type!=='operator') return;
+    const o=opTambahanDariPayload(d.payload);
+    if(o && String(row.id)===rowId(opKey(o.id))) baru[o.id]=o;
+  });
+  return gantiOpTambahan(baru);
+}
+
+function pasangOpMinerva(daftar){
+  const batas=addDays(todayISO(), -OP_MINERVA_HARI);
+  const p={};
+  (daftar||[]).forEach(o=>{
+    const id=normId(o.id), nama=normNama(o.nama);
+    if(!OP_ID_SAH.test(id) || !nama) return;
+    if(o.terakhir && String(o.terakhir)<batas) return;   // cache lama: buang yang sudah lewat
+    p[id]={ id, nama, perusahaan:o.perusahaan||'', terakhir:o.terakhir||'' };
+  });
+  OP_MINERVA=p; VERSI_OP++;
+}
+function bacaCacheOpMinerva(){
+  try{
+    const c=JSON.parse(localStorage.getItem(OP_MINERVA_KEY)||'null');
+    if(c && Array.isArray(c.daftar)){ pasangOpMinerva(c.daftar); opMinervaCap=+c.cap||0; }
+  }catch(e){}
+}
+// Token login shell yang masih berlaku, atau null. Tanpa login, tabel
+// op_operators terbaca kosong karena RLS; hasil kosong itu tidak boleh
+// menimpa cache.
+function tokenSesi(){
+  try{
+    const a=JSON.parse(localStorage.getItem(AUTH_KEY)||'null');
+    if(a && a.access_token && (!a.expires_at || a.expires_at*1000 > Date.now())) return a.access_token;
+  }catch(e){}
+  return null;
+}
+async function muatOpMinerva(paksa){
+  const tk=tokenSesi();
+  if(!tk) return false;
+  if(!paksa && opMinervaCap && Date.now()-opMinervaCap < OP_MINERVA_SEGAR_MS) return false;
+  const batas=addDays(todayISO(), -OP_MINERVA_HARI);
+  const dasar=SUPA.url.replace(/\/+$/,'')+'/rest/v1/op_operators?select=badge,name,company,last_seen'
+             +'&last_seen=gte.'+batas+'&order=badge.asc';
+  const HAL=1000, daftar=[];   // Supabase membatasi 1.000 baris per permintaan
+  try{
+    for(let off=0; off<50000; off+=HAL){
+      const r=await fetch(dasar+'&limit='+HAL+'&offset='+off, {headers:{apikey:SUPA.key, Authorization:'Bearer '+tk}});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j=await r.json();
+      if(!Array.isArray(j)) throw new Error('balasan bukan daftar');
+      j.forEach(o=>daftar.push({id:o.badge, nama:o.name, perusahaan:o.company, terakhir:o.last_seen}));
+      if(j.length<HAL) break;
+    }
+  }catch(e){ opMinervaGalat=e.message||String(e); return false; }
+  opMinervaGalat='';
+  pasangOpMinerva(daftar);
+  opMinervaCap=Date.now();
+  try{ localStorage.setItem(OP_MINERVA_KEY, JSON.stringify({cap:opMinervaCap, daftar})); }catch(e){}
+  return true;
+}
+
+// Peta ID → {id, nama, sumber} untuk satu kelompok, dihitung ulang hanya bila
+// salah satu sumber berubah.
+const _memoOp={};
+function daftarOperator(site){
+  const bawaan = site==='PCM' ? SEED.masterOperatorsPCM : SEED.masterOperatorsANTAM;
+  const m=_memoOp[site];
+  if(m && m.versi===VERSI_OP && m.bawaan===bawaan) return m.peta;
+  const peta=new Map();
+  Object.values(OP_MINERVA).forEach(o=>peta.set(o.id, {id:o.id, nama:o.nama, sumber:'minerva'}));
+  (bawaan||[]).forEach(o=>{
+    const id=normId(o.id);
+    if(id) peta.set(id, {id:String(o.id).trim(), nama:String(o.nama||'').trim(), sumber:'bawaan'});
+  });
+  Object.values(OP_TAMBAHAN).forEach(o=>peta.set(o.id, {id:o.id, nama:o.nama, sumber:'tambahan'}));
+  _memoOp[site]={versi:VERSI_OP, bawaan, peta};
+  return peta;
+}
+function cariOperator(id, site){
+  const k=normId(id);
+  return k ? (daftarOperator(site).get(k)||null) : null;
+}
+// Data bawaan kedua kelompok, karena tambahan admin berlaku untuk keduanya.
+function cariBawaan(id){
+  const k=normId(id);
+  if(!k) return null;
+  return SEED.masterOperatorsANTAM.find(o=>normId(o.id)===k)
+      || SEED.masterOperatorsPCM.find(o=>normId(o.id)===k) || null;
+}
+
+// Nama di satu baris penilaian mengikuti ID yang diketik.
+function isiNamaBaris(tr){
+  const idEl=tr.querySelector('.k-opid'), nmEl=tr.querySelector('.k-opname');
+  if(!idEl || !nmEl) return;
+  const v=idEl.value.trim();
+  const f=v ? cariOperator(v, kepSite) : null;
+  nmEl.value=f ? f.nama : '';
+  nmEl.placeholder=(v && !f) ? 'ID belum terdaftar' : '';
+}
+/* Dipanggil proses latar. Tidak membangun ulang formulir (§20.3): hanya
+   mengisi nama yang masih kosong, mis. operator yang baru ditambahkan admin
+   lain sementara dispatcher sudah mengetik ID-nya. */
+function lengkapiNamaBaris(){
+  document.querySelectorAll('#kepAddRows tr').forEach(tr=>{
+    const idEl=tr.querySelector('.k-opid'), nmEl=tr.querySelector('.k-opname');
+    if(idEl && nmEl && idEl.value.trim() && !nmEl.value) isiNamaBaris(tr);
+  });
+}
+let _tandaDatalist='';
+function segarkanDatalistOperator(){
+  const dl=document.getElementById('kepOpList');
+  if(!dl) return;
+  const bawaan = kepSite==='PCM' ? SEED.masterOperatorsPCM : SEED.masterOperatorsANTAM;
+  const tanda=kepSite+'|'+VERSI_OP+'|'+bawaan.length;
+  if(tanda===_tandaDatalist) return;   // tidak berubah: pilihan yang sedang terbuka tidak diganggu
+  _tandaDatalist=tanda;
+  dl.innerHTML=kepOpOptions(kepSite);
+}
+function segarkanSemuaOperator(){
+  segarkanDatalistOperator();
+  lengkapiNamaBaris();
+  if(ADMIN_SAYA) renderKelolaOperator();
+}
+
+/* ---- Admin: daftar yang sama dengan Mining Bureau → Kelola Admin ---- */
+async function cekAdminDispatch(){
+  const tk=tokenSesi();
+  if(!tk){ setAdmin(false); return; }
+  try{
+    const r=await fetch(SUPA.url.replace(/\/+$/,'')+'/rest/v1/rpc/op_is_admin', {method:'POST',
+      headers:{apikey:SUPA.key, Authorization:'Bearer '+tk, 'Content-Type':'application/json'}, body:'{}'});
+    if(r.status===401){ setAdmin(false); return; }
+    if(!r.ok) return;                 // galat server sesaat: keadaan lama dipertahankan
+    setAdmin((await r.json())===true);
+  }catch(e){ /* jaringan putus: keadaan lama dipertahankan */ }
+}
+function setAdmin(a){
+  const berubah = a!==ADMIN_SAYA;
+  ADMIN_SAYA=a;
+  const w=document.getElementById('kelolaOperator');
+  if(w) w.hidden=!a;
+  if(a){ renderKelolaOperator(); if(berubah) perbaruiInfoFormOperator(); }
+}
+
+function fmtTglPendek(iso){   // cap waktu penuh (teks ISO atau milidetik)
+  if(!iso) return '';
+  const d=new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+}
+// 'YYYY-MM-DD' → '23 Okt 2026', dirakit dari waktu lokal tanpa lewat UTC (§20.2)
+function fmtTglYmd(ymd){
+  const p=String(ymd||'').split('-').map(Number);
+  if(p.length!==3 || p.some(isNaN)) return ymd||'';
+  return new Date(p[0], p[1]-1, p[2]).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+}
+
+function renderKelolaOperator(){
+  const body=document.getElementById('opTambahanBody');
+  if(!body) return;
+  const daftar=Object.values(OP_TAMBAHAN).sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+  body.innerHTML = daftar.length ? daftar.map(o=>{
+    const b=cariBawaan(o.id);
+    const meta=['ditambahkan '+(fmtTglPendek(o.ditambah)||'—')+(o.oleh?' oleh '+o.oleh:'')];
+    if(b && normNama(b.nama)!==o.nama) meta.push('menggantikan nama bawaan '+b.nama);
+    return `<tr><td class="op-id">${escapeHtml(o.id)}</td>
+      <td>${escapeHtml(o.nama)}<div class="op-meta">${escapeHtml(meta.join(' · '))}</div></td>
+      <td class="op-aksi"><button type="button" class="btn sm ghost" data-op-ubah="${escapeHtml(o.id)}">Ubah</button><button type="button" class="btn sm ghost" data-op-hapus="${escapeHtml(o.id)}">Hapus</button></td></tr>`;
+  }).join('') : `<tr><td colspan="3" class="empty-hint">Belum ada operator tambahan.</td></tr>`;
+
+  // Ringkasan sumber daftar, dan operator yang hanya dikenal lewat Minerva
+  const idBawaan=new Set();
+  SEED.masterOperatorsANTAM.forEach(o=>idBawaan.add(normId(o.id)));
+  SEED.masterOperatorsPCM.forEach(o=>idBawaan.add(normId(o.id)));
+  const dariMinerva=Object.values(OP_MINERVA).filter(o=>!idBawaan.has(o.id) && !OP_TAMBAHAN[o.id])
+    .sort((a,b)=>String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama,'id'));
+  const bagian=[idBawaan.size.toLocaleString('id-ID')+' dari data bawaan', daftar.length+' tambahan admin'];
+  if(opMinervaCap) bagian.push(dariMinerva.length+' dikenali otomatis dari Minerva');
+  let teks='Daftar aktif: '+bagian.join(' · ')+'.';
+  if(opMinervaGalat) teks+=' Daftar Minerva belum terbaca ('+opMinervaGalat+')'
+    +(opMinervaCap ? '; yang dipakai salinan '+fmtTglPendek(opMinervaCap)+'.' : '.');
+  else if(opMinervaCap) teks+=' Daftar Minerva diambil '+fmtTglPendek(opMinervaCap)+' pukul '
+    +new Date(opMinervaCap).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})+'.';
+  else teks+=' Daftar Minerva sedang dimuat…';
+  document.getElementById('opRingkas').textContent=teks;
+
+  const rinci=document.getElementById('opMinervaRinci');
+  rinci.hidden=!dariMinerva.length;
+  document.getElementById('opMinervaJudul').textContent=
+    'Lihat '+dariMinerva.length+' operator yang dikenali dari Minerva';
+  document.getElementById('opMinervaCatatan').textContent=
+    'Tercatat di scorecard Minerva dalam '+OP_MINERVA_HARI+' hari terakhir dan tidak ada di data bawaan. '
+    +'Sudah bisa dinilai tanpa ditambahkan; tambahkan hanya bila namanya perlu diganti.';
+  document.getElementById('opMinervaBody').innerHTML=dariMinerva.map(o=>
+    `<tr><td class="op-id">${escapeHtml(o.id)}</td><td>${escapeHtml(o.nama)}</td><td>${escapeHtml(fmtTglYmd(o.terakhir))}</td></tr>`).join('');
+}
+
+/* ---- Formulir tambah / ubah ---- */
+let opNamaOtomatis=true;   // nama di formulir diisi sistem: boleh diganti saat ID berubah
+function infoOp(teks, jenis){
+  const el=document.getElementById('opBaruInfo');
+  el.textContent=teks||'';
+  el.className='op-info'+(jenis?' '+jenis:'');
+}
+function perbaruiInfoFormOperator(){
+  const idEl=document.getElementById('opBaruId'), nmEl=document.getElementById('opBaruNama');
+  const btn=document.getElementById('opBaruSimpan');
+  const id=normId(idEl.value);
+  const isiNama=n=>{ if(opNamaOtomatis || !nmEl.value.trim()){ nmEl.value=n; opNamaOtomatis=true; } };
+  btn.textContent='Tambahkan';
+  if(!id){
+    if(opNamaOtomatis) nmEl.value='';
+    infoOp('ID sama dengan nomor badge di Minerva: 4 digit Antam, 5 digit PCM.');
+    return;
+  }
+  if(!OP_ID_SAH.test(id)){ infoOp('ID hanya boleh huruf, angka, dan tanda hubung, 2–20 karakter.','galat'); return; }
+  const t=OP_TAMBAHAN[id], b=cariBawaan(id), m=OP_MINERVA[id];
+  if(t){
+    btn.textContent='Simpan perubahan'; isiNama(t.nama);
+    infoOp(id+' sudah ditambahkan sebagai '+t.nama+'. Ubah namanya lalu simpan.','ada');
+  } else if(b){
+    btn.textContent='Ganti nama'; isiNama(normNama(b.nama));
+    infoOp(id+' sudah ada di data bawaan sebagai '+b.nama+'. Simpan hanya bila namanya perlu diganti.','ada');
+  } else if(m){
+    isiNama(m.nama);
+    infoOp(id+' sudah dikenali otomatis dari Minerva sebagai '+m.nama+'. Tidak perlu ditambahkan, kecuali namanya perlu diganti.','ada');
+  } else {
+    if(opNamaOtomatis) nmEl.value='';
+    infoOp(id+' belum ada di daftar mana pun. Isi nama lalu tekan Tambahkan.');
+  }
+}
+function pesanHttpOp(status, isi){
+  if(status===401) return 'sesi login berakhir. Keluar lalu masuk lagi.';
+  if(status===403 || /row-level security/i.test(isi||'')) return 'ditolak server: akun ini tidak terdaftar sebagai admin.';
+  return 'HTTP '+status;
+}
+async function supaSimpanOperator(o){
+  const tk=tokenSesi();
+  if(!tk) throw new Error('sesi login berakhir. Keluar lalu masuk lagi.');
+  const r=await fetch(supaRest(), {method:'POST',
+    headers:{apikey:SUPA.key, Authorization:'Bearer '+tk, 'Content-Type':'application/json',
+             Prefer:'resolution=merge-duplicates,return=representation'},
+    body:JSON.stringify([{ id:rowId(opKey(o.id)),
+      data:{type:'operator', payload:o, updatedBy:syncUser()}, updated_at:new Date().toISOString() }])});
+  if(!r.ok) throw new Error(pesanHttpOp(r.status, await r.text().catch(()=>'')));
+  // Baris yang kembali adalah bukti tersimpan DAN terbaca lagi oleh pengguna login.
+  const j=await r.json().catch(()=>null);
+  if(!Array.isArray(j) || !j.length) throw new Error('server tidak mengembalikan baris yang disimpan.');
+}
+// Mengembalikan jumlah baris yang benar-benar terhapus. RLS yang menolak hapus
+// tidak memberi galat, hanya nol baris, jadi angkanya wajib diperiksa.
+async function supaHapusOperator(id){
+  const tk=tokenSesi();
+  if(!tk) throw new Error('sesi login berakhir. Keluar lalu masuk lagi.');
+  const r=await fetch(supaRest()+'?id=eq.'+encodeURIComponent(rowId(opKey(id))), {method:'DELETE',
+    headers:{apikey:SUPA.key, Authorization:'Bearer '+tk, Prefer:'return=representation'}});
+  if(!r.ok) throw new Error(pesanHttpOp(r.status, await r.text().catch(()=>'')));
+  const j=await r.json().catch(()=>null);
+  return Array.isArray(j) ? j.length : 0;
+}
+async function simpanOpBaru(){
+  const idEl=document.getElementById('opBaruId'), nmEl=document.getElementById('opBaruNama');
+  const btn=document.getElementById('opBaruSimpan');
+  if(btn.disabled) return;
+  const id=normId(idEl.value), nama=normNama(nmEl.value);
+  if(!OP_ID_SAH.test(id)){ infoOp('Isi ID operator: huruf, angka, atau tanda hubung, 2–20 karakter.','galat'); idEl.focus(); return; }
+  if(nama.length<3){ infoOp('Isi nama operator.','galat'); nmEl.focus(); return; }
+  const lama=OP_TAMBAHAN[id], b=cariBawaan(id);
+  if(lama && lama.nama===nama){ infoOp('Tidak ada perubahan untuk '+id+'.','ada'); return; }
+  if(!lama && b && normNama(b.nama)===nama){ infoOp(id+' sudah ada di data bawaan dengan nama yang sama. Tidak perlu disimpan.','ada'); return; }
+  const kini=new Date().toISOString();
+  const o={ id, nama,
+    ditambah: lama ? (lama.ditambah||kini) : kini,
+    oleh:     lama ? (lama.oleh||syncUser()) : syncUser(),
+    diubah:   kini };
+  btn.disabled=true; infoOp('Menyimpan…');
+  try{
+    await supaSimpanOperator(o);
+    OP_TAMBAHAN=Object.assign({}, OP_TAMBAHAN, {[id]:o});
+    simpanOpTambahan(); VERSI_OP++;
+    idEl.value=''; nmEl.value=''; opNamaOtomatis=true;
+    segarkanSemuaOperator();
+    infoOp(id+' · '+nama+' tersimpan dan bisa dipilih di semua perangkat.','ada');
+    showToast(lama ? 'Nama '+id+' diperbarui' : id+' · '+nama+' ditambahkan ke daftar operator');
+  }catch(e){
+    infoOp('Gagal menyimpan: '+e.message,'galat');
+  }finally{ btn.disabled=false; }
+}
+async function hapusOp(id){
+  const o=OP_TAMBAHAN[id];
+  if(!o) return;
+  const b=cariBawaan(id);
+  const akibat = b ? 'Namanya kembali ke data bawaan ('+b.nama+').'
+               : OP_MINERVA[id] ? 'ID ini tetap dikenali dari Minerva.'
+               : 'ID ini tidak bisa dipilih lagi saat penilaian.';
+  if(!confirm('Hapus '+id+' · '+o.nama+' dari daftar tambahan?\n'+akibat+' Penilaian yang sudah tersimpan tidak berubah.')) return;
+  try{
+    const n=await supaHapusOperator(id);
+    if(!n){
+      infoOp(id+' tidak terhapus di server: mungkin sudah dihapus admin lain, atau akun ini tidak diizinkan. Daftar dimuat ulang.','galat');
+      syncPull(true);
+      return;
+    }
+    const salin=Object.assign({}, OP_TAMBAHAN); delete salin[id];
+    OP_TAMBAHAN=salin; simpanOpTambahan(); VERSI_OP++;
+    segarkanSemuaOperator();
+    infoOp(id+' dihapus dari daftar tambahan.','ada');
+    showToast(id+' dihapus dari daftar operator');
+  }catch(e){ infoOp('Gagal menghapus: '+e.message,'galat'); }
+}
+
+document.getElementById('opBaruId').addEventListener('input', perbaruiInfoFormOperator);
+document.getElementById('opBaruNama').addEventListener('input', ()=>{ opNamaOtomatis=false; });
+document.getElementById('opBaruSimpan').addEventListener('click', simpanOpBaru);
+['opBaruId','opBaruNama'].forEach(k=>document.getElementById(k).addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); simpanOpBaru(); }
+}));
+document.getElementById('opTambahanBody').addEventListener('click', e=>{
+  const u=e.target.closest('[data-op-ubah]'), h=e.target.closest('[data-op-hapus]');
+  if(u){
+    const o=OP_TAMBAHAN[u.dataset.opUbah];
+    if(!o) return;
+    const idEl=document.getElementById('opBaruId'), nmEl=document.getElementById('opBaruNama');
+    idEl.value=o.id; nmEl.value=o.nama; opNamaOtomatis=false;
+    perbaruiInfoFormOperator();
+    idEl.scrollIntoView({block:'nearest'});
+    nmEl.focus(); nmEl.select();
+  } else if(h){
+    hapusOp(h.dataset.opHapus);
+  }
+});
+
+function initDaftarOperator(){
+  perbaruiInfoFormOperator();
+  const segarMinerva=()=>muatOpMinerva(false).then(()=>segarkanSemuaOperator());
+  cekAdminDispatch();
+  segarMinerva();
+  setInterval(()=>{ if(!document.hidden) cekAdminDispatch(); }, 10*60000);
+  setInterval(()=>{ if(!document.hidden) segarMinerva(); }, 30*60000);
+}
 /* ================= LOG ISU & KENDALA ================= */
 function buildIsuRows(){
   const rows=[];
@@ -2995,6 +3492,7 @@ function renderAll(){
   renderAll();
   initUnduhUI();
   initSyncUI();
+  initDaftarOperator();
 })();
 </script>
 </body>
