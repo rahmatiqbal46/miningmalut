@@ -4154,7 +4154,8 @@ async function smrSemua(pilih){
     const h=await smrHalaman(pilih,setelah,ke===0);
     if(ke===0)total=h.total;
     h.baris.forEach(b=>hasil.push(b));
-    if(!h.baris.length||(total!==null&&hasil.length>=total))return hasil;
+    // halaman penuh selalu dilanjutkan; berhenti di halaman kosong, atau halaman pendek sesudah total tercapai
+    if(!h.baris.length||(total!==null&&h.baris.length<SMR_HAL&&hasil.length>=total))return hasil;
     setelah=String(h.baris[h.baris.length-1].id);
   }
   throw new Error("penarikan SMR berhenti: lebih dari 500 halaman");
@@ -4280,9 +4281,11 @@ async function smrPollChanges(){
   const berubah=j.filter(x=>smrTs[x.id]!==x.updated_at).map(x=>x.id);
   const prev=loadSmrIds();
   const removed=Object.keys(prev).filter(id=>!now[id]).length;
-  smrIndexSig=sig;
-  if(!berubah.length&&!removed){saveSmrIds(now);return 0;}
-  if(berubah.length>150)return await smrPullAll();          // banyak berubah: tarik penuh bertahap
+  // smrIndexSig baru dipasang sesudah isinya berhasil ditarik. Kalau dipasang lebih
+  // dulu lalu penarikan gagal, pemeriksaan berikutnya melihat tanda tangan yang sama
+  // dan baris yang berubah tidak pernah diambil sampai ada perubahan lain.
+  if(!berubah.length&&!removed){smrIndexSig=sig;saveSmrIds(now);return 0;}
+  if(berubah.length>150)return await smrPullAll();          // banyak berubah: tarik penuh bertahap (memasang smrIndexSig sendiri)
   // Sedikit berubah: hanya baris itu yang ditarik isinya
   const rows=berubah.length?await smrAmbilId(berubah):[];
   const kembali={};rows.forEach(r=>{kembali[r.id]=1;});
@@ -4290,6 +4293,7 @@ async function smrPollChanges(){
   const perluBersih=[];
   const n=smrPasang(rows,now,perluBersih)+smrBuangHilang(now);
   saveSmrIds(now);
+  smrIndexSig=sig;
   try{localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}
   smrBersihkanServer(perluBersih);
   return n;

@@ -1392,37 +1392,41 @@ const AMBANG_TARIK_PENUH=150; // lebih dari ini baris berubah: tarik isi penuh b
 const CERMIN=new Map();       // id baris → {u: updated_at, data}
 
 // Satu halaman berkunci. Mengembalikan {baris, total}; total null bila tidak diketahui.
-async function supaHalaman(filter, pilih, setelah, hitung){
+// `h` = header yang sama untuk seluruh satu tarikan (lihat supaSelectAll).
+async function supaHalaman(filter, pilih, setelah, hitung, h){
   let url=supaRest()+'?'+filter+'&select='+pilih+'&order=id.asc&limit='+HAL_SUPA;
   if(setelah) url+='&id=gt.'+encodeURIComponent(setelah);
-  const r=await fetch(url, { headers: supaHeaders(hitung ? {Prefer:'count=exact'} : null) });
+  const r=await fetch(url, { headers: hitung ? Object.assign({}, h, {Prefer:'count=exact'}) : h });
   if(!r.ok) throw new Error('HTTP '+r.status);
   const baris=await r.json();
   if(!Array.isArray(baris)) throw new Error('balasan server bukan daftar');
   const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||'');   // "0-999/2345"
   return { baris, total: m ? +m[1] : null };
 }
-// Semua baris yang cocok dengan filter, halaman demi halaman.
-async function supaSemua(filter, pilih){
+// Semua baris yang cocok dengan filter, halaman demi halaman. Berhenti di halaman
+// kosong, atau di halaman PENDEK setelah jumlah total tercapai. Halaman penuh selalu
+// dilanjutkan: baris yang disisipkan sesudah jumlah dihitung bisa menggeser ekor
+// daftar ke halaman berikutnya, dan berhenti terlalu cepat akan membuatnya tampak terhapus.
+async function supaSemua(filter, pilih, h){
   const hasil=[];
   let setelah='', total=null;
   for(let ke=0; ke<500; ke++){
-    const h=await supaHalaman(filter, pilih, setelah, ke===0);
-    if(ke===0) total=h.total;
-    h.baris.forEach(b=>hasil.push(b));
-    if(!h.baris.length || (total!==null && hasil.length>=total)) return hasil;
-    setelah=String(h.baris[h.baris.length-1].id);
+    const hal=await supaHalaman(filter, pilih, setelah, ke===0, h);
+    if(ke===0) total=hal.total;
+    hal.baris.forEach(b=>hasil.push(b));
+    if(!hal.baris.length || (total!==null && hal.baris.length<HAL_SUPA && hasil.length>=total)) return hasil;
+    setelah=String(hal.baris[hal.baris.length-1].id);
   }
   throw new Error('penarikan berhenti: lebih dari 500 halaman');
 }
 // Isi beberapa baris menurut id, 40 per permintaan (jauh di bawah batas baris
 // dan panjang alamat). Nilai dikutip supaya "|" dan spasi aman di filter in.
-async function supaAmbilId(ids){
+async function supaAmbilId(ids, h){
   const out=[];
   for(let i=0; i<ids.length; i+=40){
     const daftar='('+ids.slice(i,i+40).map(x=>'"'+String(x).replace(/["\\]/g,'\\$&')+'"').join(',')+')';
     const r=await fetch(supaRest()+'?id=in.'+encodeURIComponent(daftar)+'&select=id,data,updated_at',
-                        { headers: supaHeaders() });
+                        { headers: h });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const j=await r.json();
     if(!Array.isArray(j)) throw new Error('balasan server bukan daftar');
@@ -1431,8 +1435,15 @@ async function supaAmbilId(ids){
   return out;
 }
 async function supaSelectAll(){
+  /* Satu token untuk seluruh tarikan. supaHeaders() diam-diam jatuh ke anon key
+     begitu sesi lewat expires_at. Kalau itu terjadi di tengah tarikan, permintaan
+     berikutnya kembali kosong (RLS), dan baris yang belum terbaca akan tampak
+     terhapus lalu dibuang dari salinan perangkat. Dengan token yang sama dari
+     awal, sesi yang habis di tengah jalan berakhir sebagai 401 dari server →
+     galat → syncPull() tidak mengubah apa pun. */
+  const h=supaHeaders();
   const filter='id=like.'+encodeURIComponent(SUPA.prefiks+'*');
-  const indeks=await supaSemua(filter, 'id,updated_at');
+  const indeks=await supaSemua(filter, 'id,updated_at', h);
   /* Indeks kosong: sesi habis (RLS menyembunyikan semuanya) atau server memang
      masih kosong. Sama dengan perilaku lama: kembalikan kosong dan jangan
      menyentuh CERMIN; pengaman di syncPull()/applyRemote() yang memutuskan. */
@@ -1448,8 +1459,8 @@ async function supaSelectAll(){
   [...CERMIN.keys()].forEach(id=>{ if(!ada.has(id)) CERMIN.delete(id); });   // dihapus di server
   if(perlu.length){
     const baris = (perlu.length>AMBANG_TARIK_PENUH || perlu.length===indeks.length)
-      ? await supaSemua(filter, 'id,data,updated_at')
-      : await supaAmbilId(perlu);
+      ? await supaSemua(filter, 'id,data,updated_at', h)
+      : await supaAmbilId(perlu, h);
     const kembali=new Set();
     baris.forEach(b=>{
       const id=String(b.id||'');
@@ -2375,9 +2386,11 @@ function gantiOpTambahan(baru){
    tanpa itu RLS mengembalikan daftar kosong yang tidak boleh terbaca sebagai
    "semua operator dihapus". Galat dilempar ke pemanggil; isi lokal tidak
    disentuh. */
+let opUbahLokal=0;   // naik di awal dan akhir tiap simpan/hapus admin di perangkat ini
 async function tarikOpTambahan(){
   const tk=tokenSesi();
   if(!tk) return false;
+  const ke=opUbahLokal;
   const r=await fetch(supaRest()+'?id=like.'+encodeURIComponent(SUPA.prefiks+'operator|*')+'&select=id,data',
                       {headers:{apikey:SUPA.key, Authorization:'Bearer '+tk}});
   if(!r.ok) throw new Error('HTTP '+r.status);
@@ -2390,6 +2403,9 @@ async function tarikOpTambahan(){
     const o=opTambahanDariPayload(d.payload);
     if(o && String(row.id)===rowId(opKey(o.id))) baru[o.id]=o;
   });
+  // Admin menyimpan/menghapus selagi tarikan ini berjalan: isinya mungkin sudah basi.
+  // Lewati saja; sinkron 60 detik berikutnya membawa keadaan server yang baru.
+  if(ke!==opUbahLokal) return false;
   return gantiOpTambahan(baru);
 }
 
@@ -2427,15 +2443,21 @@ async function muatOpMinerva(paksa){
   const batas=addDays(todayISO(), -OP_MINERVA_HARI);
   const dasar=SUPA.url.replace(/\/+$/,'')+'/rest/v1/op_operators?select=badge,name,company,last_seen'
              +'&last_seen=gte.'+batas+'&order=badge.asc';
-  const HAL=1000, daftar=[];   // Supabase membatasi 1.000 baris per permintaan
+  // Berkunci badge > badge terakhir (bukan offset), aturan berhenti sama dengan supaSemua().
+  const HAL=1000, daftar=[];
+  let setelah='', total=null;
   try{
-    for(let off=0; off<50000; off+=HAL){
-      const r=await fetch(dasar+'&limit='+HAL+'&offset='+off, {headers:{apikey:SUPA.key, Authorization:'Bearer '+tk}});
+    for(let ke=0; ke<100; ke++){
+      const hdr={apikey:SUPA.key, Authorization:'Bearer '+tk};
+      if(ke===0) hdr.Prefer='count=exact';
+      const r=await fetch(dasar+'&limit='+HAL+(setelah ? '&badge=gt.'+encodeURIComponent(setelah) : ''), {headers:hdr});
       if(!r.ok) throw new Error('HTTP '+r.status);
       const j=await r.json();
       if(!Array.isArray(j)) throw new Error('balasan bukan daftar');
+      if(ke===0){ const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||''); total=m ? +m[1] : null; }
       j.forEach(o=>daftar.push({id:o.badge, nama:o.name, perusahaan:o.company, terakhir:o.last_seen}));
-      if(j.length<HAL) break;
+      if(!j.length || (total!==null && j.length<HAL && daftar.length>=total)) break;
+      setelah=String(j[j.length-1].badge);
     }
   }catch(e){ opMinervaGalat=e.message||String(e); return false; }
   opMinervaGalat='';
@@ -2659,6 +2681,7 @@ async function simpanOpBaru(){
     oleh:     lama ? (lama.oleh||syncUser()) : syncUser(),
     diubah:   kini };
   btn.disabled=true; infoOp('Menyimpan…');
+  opUbahLokal++;
   try{
     await supaSimpanOperator(o);
     OP_TAMBAHAN=Object.assign({}, OP_TAMBAHAN, {[id]:o});
@@ -2669,7 +2692,7 @@ async function simpanOpBaru(){
     showToast(lama ? 'Nama '+id+' diperbarui' : id+' · '+nama+' ditambahkan ke daftar operator');
   }catch(e){
     infoOp('Gagal menyimpan: '+e.message,'galat');
-  }finally{ btn.disabled=false; }
+  }finally{ btn.disabled=false; opUbahLokal++; }
 }
 async function hapusOp(id){
   const o=OP_TAMBAHAN[id];
@@ -2679,6 +2702,7 @@ async function hapusOp(id){
                : OP_MINERVA[id] ? 'ID ini tetap dikenali dari Minerva.'
                : 'ID ini tidak bisa dipilih lagi saat penilaian.';
   if(!confirm('Hapus '+id+' · '+o.nama+' dari daftar tambahan?\n'+akibat+' Penilaian yang sudah tersimpan tidak berubah.')) return;
+  opUbahLokal++;
   try{
     const n=await supaHapusOperator(id);
     if(!n){
@@ -2692,6 +2716,7 @@ async function hapusOp(id){
     infoOp(id+' dihapus dari daftar tambahan.','ada');
     showToast(id+' dihapus dari daftar operator');
   }catch(e){ infoOp('Gagal menghapus: '+e.message,'galat'); }
+  finally{ opUbahLokal++; }
 }
 
 document.getElementById('opBaruId').addEventListener('input', perbaruiInfoFormOperator);

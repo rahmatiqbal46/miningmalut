@@ -1648,7 +1648,9 @@ if(authValid())showApp(); else document.getElementById('login').style.display='f
       return halaman(filter, pilih, setelah, ke === 0).then(function (h) {
         if (ke === 0) total = h.total;
         Array.prototype.push.apply(hasil, h.baris);
-        if (!h.baris.length || (total !== null && hasil.length >= total)) return hasil;
+        // Halaman penuh selalu dilanjutkan; berhenti di halaman kosong, atau halaman
+        // pendek sesudah jumlah total tercapai (sama dengan modul Dispatch).
+        if (!h.baris.length || (total !== null && h.baris.length < HAL && hasil.length >= total)) return hasil;
         return lanjut(String(h.baris[h.baris.length - 1].id), ke + 1);
       });
     }
