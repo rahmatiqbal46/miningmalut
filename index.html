@@ -145,6 +145,22 @@ body{
   font-size:9.5px;line-height:1.5;letter-spacing:.01em;color:#7ea6a5}
 .side-credit span{display:block}
 .side-credit b{display:block;font-size:var(--f-callout);line-height:1.35;font-weight:590;color:#bcd9d1}
+/* Tombol Tentang MiningMalut (24 Oktober 2026): baris kecil di antara kredit dan
+   baris akun, membuka tentang.html (tim, video tur, handbook, perjalanan).
+   Ikon info di kiri, chevron di kanan. Terpilih = pil amber seperti menu. */
+.side-tentang{flex:0 0 auto;display:flex;align-items:center;gap:8px;width:100%;margin:0 0 2px;padding:5px 8px;
+  border:0;border-radius:8px;cursor:pointer;text-align:left;font:inherit;font-size:var(--f-sub);line-height:var(--lh-sub);
+  font-weight:560;color:#cfe2e1;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+  transition:background .14s,color .14s}
+.side-tentang:hover{background:rgba(255,255,255,.12);color:#eaf5f4}
+.side-tentang:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.side-tentang .ik-info{width:14px;height:14px;flex:0 0 auto;stroke:#9cc4c2;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.side-tentang .t{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-tentang .chev-k{width:12px;height:12px;flex:0 0 auto;stroke:#7ea6a5;fill:none;stroke-width:2;transition:transform .16s}
+.side-tentang:hover .chev-k{transform:translateX(2px)}
+.side-tentang.active{background:linear-gradient(180deg, rgba(234,144,0,.97), rgba(212,128,4,.97));color:#1b1205;font-weight:590;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 1px 3px rgba(0,0,0,.18)}
+.side-tentang.active svg{stroke:#1b1205}
 
 /* Baris akun di kaki sidebar. Sejak 24 September 2026 langsung menjadi tombol
    Keluar: popover Setting dihapus karena Input Data pindah ke bilah atas Mine
@@ -474,7 +490,8 @@ iframe.page.show{display:block}
 @media (prefers-contrast: more){
   .side,.card-login{background:#00201f;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
   .card,.ph .ic{box-shadow:0 0 0 1px var(--muted)}
-  .item.active,.leaf.active{box-shadow:inset 0 0 0 1px #1b1205}
+  .item.active,.leaf.active,.side-tentang.active{box-shadow:inset 0 0 0 1px #1b1205}
+  .side-tentang:not(.active){box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
 }
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important}
@@ -503,6 +520,7 @@ iframe.page.show{display:block}
     <div class="sub"><button class="leaf" data-page="jadwal">Jadwal Mining Bureau</button><button class="leaf" data-page="asesmen">Asesmen Go/No-Go</button><button class="leaf" data-page="admin" hidden>Kelola Admin</button></div></div>
   </nav>
   <div class="side-credit"><span>FullStack Vibe Developer<b>Rahmat Iqbal</b></span><span>Speed Watcher contributor<b>Ariqsyah Rahman</b></span><span>Dispatch Monitoring contributor<b>Randy Caesario Simangunsong</b></span></div>
+  <button class="side-tentang" id="btnTentang" type="button" title="Tim, video tur, handbook, dan perjalanan MiningMalut"><svg class="ik-info" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></svg><span class="t">Tentang MiningMalut</span><svg class="chev-k" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
   <div class="setwrap">
    <button class="setbtn" id="setbtn" type="button" title="Keluar" aria-label="Keluar"><span class="ava" id="sideAva">RI</span><span class="t"><b id="sideGreet2">Rahmat Iqbal</b><span>Keluar</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </div>
@@ -543,6 +561,7 @@ iframe.page.show{display:block}
    <iframe class="page" id="if_dispatch" title="Dispatch Monitoring"></iframe>
    <iframe class="page" id="if_operator" title="Operator Performance"></iframe>
    <iframe class="page" id="if_oe1on1" title="Dashboard Produksi" allow="fullscreen" allowfullscreen></iframe>
+   <iframe class="page" id="if_tentang" title="Tentang MiningMalut" allow="fullscreen"></iframe>
    <!-- placeholders -->
    <div class="ph" id="ph"></div>
  </div></main>
@@ -834,13 +853,15 @@ const PAGES={
  admin:{iframe:'if_admin',url:'admin.html'},
  dispatch:{iframe:'if_dispatch',url:'dispatch-monitoring.html'},
  operator:{iframe:'if_operator',url:'operator-performance.html'},
- oe1on1:{iframe:'if_oe1on1',url:'data-1on1.html'}
+ oe1on1:{iframe:'if_oe1on1',url:'data-1on1.html'},
+ tentang:{iframe:'if_tentang',url:'tentang.html'}
 };
 const PH={};
 const MINEDEV={reklamasi:'rekla',smr:'smr',water:'wr',input:'input'}; let minedevLoaded=false;
 const loaded={};
 function showPage(key){
  document.querySelectorAll('#nav .item,#nav .leaf').forEach(b=>b.classList.toggle('active',b.dataset.page===key));
+ var btnT=document.getElementById('btnTentang');if(btnT){btnT.classList.toggle('active',key==='tentang');if(key==='tentang')btnT.setAttribute('aria-current','page');else btnT.removeAttribute('aria-current');}
  // expand group containing active leaf
  document.querySelectorAll('.grp').forEach(g=>{if(g.querySelector('.leaf[data-page="'+key+'"]'))g.classList.add('open');});
  document.getElementById('home').classList.toggle('show',key==='home');
@@ -878,6 +899,8 @@ function closeDrawer(){side.classList.remove('open');scrim.classList.remove('on'
 document.getElementById('burger').onclick=()=>{side.classList.toggle('open');scrim.classList.toggle('on');};
 scrim.onclick=closeDrawer;
 document.querySelectorAll('#nav .item,#nav .leaf').forEach(b=>b.addEventListener('click',closeDrawer));
+// tombol Tentang MiningMalut di kaki sidebar (24 Oktober 2026)
+document.getElementById('btnTentang').addEventListener('click',()=>{showPage('tentang');closeDrawer();});
 // baris akun = tombol Keluar (popover Setting dihapus 24 September 2026;
 // Input Data kini tombol di bilah atas Mine Development)
 /* Keluar juga mencabut sesi perangkat ini di server (scope=local; sesi di perangkat
