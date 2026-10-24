@@ -6653,9 +6653,12 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
   }
   var gridLokal = null, ruasLokal = null;
   function siapkanRuasLokal(j) {
-    // salinan pencocokan ruas Worker (grid 0,0005°, toleransi, batas terendah menang)
+    /* Salinan pencocokan ruas Worker versi 15: grid 0,0005°, toleransi, RUAS TERDEKAT
+       menang; dua jarak yang berselisih ≤ 1e-6 m dianggap sama, lalu batas terendah,
+       lalu nama (sampai 24 Oktober 2026: batas terendah menang). Pelebaran sel ikut
+       toleransi seperti padSel() di Worker, supaya toleransi di atas 23 m tetap utuh. */
     ruasLokal = j; gridLokal = new Map();
-    var SEL = 0.0005, PAD = 0.00025;
+    var SEL = 0.0005, PAD = Math.max(0.00025, (((j && j.toleransi_m) || 20) + 5) / 111000);
     (j.ruas || []).forEach(function (r, i) {
       for (var k = 0; k < r.p.length - 1; k++) {
         var x1 = r.p[k][0], y1 = r.p[k][1], x2 = r.p[k + 1][0], y2 = r.p[k + 1][1];
@@ -6670,16 +6673,24 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     var BL = (ruasLokal && ruasLokal.batas_luar) || 35, TOL = (ruasLokal && ruasLokal.toleransi_m) || 20;
     var arr = gridLokal && gridLokal.get(Math.floor(lon / 0.0005) + ':' + Math.floor(lat / 0.0005));
     if (!arr) return { nama: null, batas: BL };
-    var nama = null, batas = BL, mx = 111320 * Math.cos(lat * Math.PI / 180), my = 110540;
+    var mx = 111320 * Math.cos(lat * Math.PI / 180), my = 110540, dmin = Infinity, dRuas = {};
     for (var i = 0; i < arr.length; i++) {
-      var e = arr[i], r = ruasLokal.ruas[e[0]];
-      if (nama !== null && r.b >= batas) continue;
+      var e = arr[i];
       var px = (lon - e[1]) * mx, py = (lat - e[2]) * my, vx = (e[3] - e[1]) * mx, vy = (e[4] - e[2]) * my, L = vx * vx + vy * vy;
       var t = L > 0 ? (px * vx + py * vy) / L : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
-      if (Math.hypot(px - vx * t, py - vy * t) > TOL) continue;
-      nama = r.n; batas = r.b;
+      var d = Math.hypot(px - vx * t, py - vy * t);
+      if (d > TOL) continue;
+      if (!(e[0] in dRuas) || d < dRuas[e[0]]) dRuas[e[0]] = d;
+      if (d < dmin) dmin = d;
     }
-    return { nama: nama, batas: batas };
+    if (dmin === Infinity) return { nama: null, batas: BL };
+    var pilih = null;
+    for (var k in dRuas) {
+      if (dRuas[k] > dmin + 1e-6) continue;
+      var r = ruasLokal.ruas[k];
+      if (!pilih || r.b < pilih.b || (r.b === pilih.b && r.n < pilih.n)) pilih = r;
+    }
+    return { nama: pilih.n, batas: pilih.b };
   }
   function posisiPutar(P) {
     var t = P.t, out = [];
@@ -9704,7 +9715,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     });
     tb.appendChild(bd);
     samping.appendChild(kartu('Batas kecepatan', [h('div', { style: 'display:flex;gap:12px;flex-wrap:wrap' }, h('label', { class: 'isian' }, 'Di luar ruas (km/jam)', bl), h('label', { class: 'isian' }, 'Toleransi dari sumbu (m)', tl)),
-      h('div', { class: 'gulir-tabel' }, tb)], 'Sama dengan tabel batas di Speed Watcher. Di persimpangan, batas terendah yang berlaku.'));
+      h('div', { class: 'gulir-tabel' }, tb)], 'Sama dengan tabel batas di Speed Watcher. Di persimpangan, yang berlaku ruas yang paling dekat dengan posisi unit; bila sama dekat, batas terendah.'));
     // pemeriksaan
     var pk = periksaJalan(), cekW = h('div', { class: 'cek' });
     if (!pk.length) cekW.appendChild(cek('ok', 'Tidak ada masalah', 'Nama, batas, simpul, persilangan, dan kelandaian sudah diperiksa.'));

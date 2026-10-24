@@ -440,7 +440,7 @@ button{transition:background-color .15s cubic-bezier(.16,1,.3,1),box-shadow .15s
         <div class="v3ctl">
           <label><input type="checkbox" id="tgReal" checked> realisasi</label>
           <label><input type="checkbox" id="tgPlan" checked> rencana (rangka)</label>
-          <label class="tinggi">tinggi <input type="range" id="exag" min="1" max="8" step="0.5" value="2"> <span id="exagLab">2.0×</span></label>
+          <label class="tinggi">tinggi <input type="range" id="exag" min="1" max="8" step="0.5" value="2"> <span id="exagLab">2,0×</span></label>
         </div>
         <div class="leg3">
           <span><i style="background:#c0392b"></i>undercut (di atas rencana)</span>
@@ -935,7 +935,13 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
 const fmt = (v, d) => (v === null || v === undefined || !isFinite(v)) ? '—'
   : Number(v).toLocaleString('id-ID', { minimumFractionDigits: d === undefined ? 0 : d, maximumFractionDigits: d === undefined ? 0 : d });
-const pct = v => (v === null || v === undefined || !isFinite(v)) ? '—' : (v * 100).toFixed(1) + '%';
+/* Semua angka di layar memakai koma desimal (§17 butir 30): kartu dan tabel dulu
+   mencampur "12.0%" (toFixed) dengan "5,0%". `desimal` untuk koordinat, elevasi,
+   dan sumbu grafik — koma tanpa pemisah ribuan, supaya Easting/Northing tetap
+   terbaca sebagai koordinat. Ekspor Excel dan atribut isian tidak berubah. */
+const pct = v => (v === null || v === undefined || !isFinite(v)) ? '—' : fmt(v * 100, 1) + '%';
+const desimal = (v, d) => (v === null || v === undefined || !isFinite(v)) ? '—' : Number(v).toFixed(d).replace('.', ',');
+const angkaRes = v => (v === null || v === undefined || !isFinite(v)) ? '—' : Number(v).toLocaleString('id-ID', { maximumFractionDigits: 3 });
 const COL = { teal: '#0c6b60', tealD: '#06463e', gold: '#e6a23c', goldD: '#b9791d',
               red: '#c0392b', blue: '#2f80b6', green: '#1e9e8a', ink: '#0e2a25', muted: '#5e736d' };
 
@@ -956,7 +962,7 @@ let RESULT = null;
 const CONTOH_BERKAS = new WeakSet();
 const isContoh = f => !!f && CONTOH_BERKAS.has(f);
 
-function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : (n / 1024).toFixed(0) + ' KB'; }
+function kb(n) { return n >= 1048576 ? fmt(n / 1048576, 1) + ' MB' : fmt(n / 1024, 0) + ' KB'; }
 const escH = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const IKON_KOSONG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
 const IKON_ISI = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7.5 12.4l3 3 6-6.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -1095,7 +1101,7 @@ async function run() {
     if (B.length < 4) throw new Error('Boundary .str tidak terbaca sebagai poligon (titik kurang dari 3).');
     const grid = E.gridSetup(B, res);
     const areaD = E.surfacePlanarArea(planPts, planTris);
-    $('#steps').lastChild.textContent = '· Grid: ' + grid.nx + ' × ' + grid.ny + ' sel @ ' + res + ' m';
+    $('#steps').lastChild.textContent = '· Grid: ' + grid.nx + ' × ' + grid.ny + ' sel @ ' + angkaRes(res) + ' m';
     await yieldUI();
 
     step('Menghitung elevasi rencana…'); await yieldUI();
@@ -1153,7 +1159,7 @@ function renderResults(r) {
     card('Subtotal III', pct(r.subtotal_III), 'dari maksimum 25%') +
     card('Capaian', pct(r.capaian), 'Subtotal III ÷ 25%') +
     card('Grade', r.grade, 'berdasar capaian', gradeColor(r.grade)) +
-    card('Grid dinilai', fmt(r.nx * r.ny) + ' sel', r.res + ' m · ' + r.nx + '×' + r.ny);
+    card('Grid dinilai', fmt(r.nx * r.ny) + ' sel', angkaRes(r.res) + ' m · ' + r.nx + '×' + r.ny);
 
   $('#compTbl').innerHTML =
     '<table class="tbl"><thead><tr><th>Komponen</th><th>Rasio</th><th>Konversi</th><th>Bobot</th><th>Nilai</th></tr></thead><tbody>' +
@@ -1320,7 +1326,7 @@ function axes(x, w, h, pad, xr, yr, xl, yl) {
   for (let i = 0; i <= 4; i++) {
     const t = i / 4, py = h - pad.b - t * (h - pad.t - pad.b);
     x.beginPath(); x.moveTo(pad.l, py); x.lineTo(w - pad.r, py); x.stroke();
-    x.fillText((yr[0] + t * (yr[1] - yr[0])).toFixed(1), pad.l - 7, py);
+    x.fillText(desimal(yr[0] + t * (yr[1] - yr[0]), 1), pad.l - 7, py);
   }
   x.strokeStyle = COL.ink; x.lineWidth = 1.4;
   x.beginPath(); x.moveTo(pad.l, pad.t); x.lineTo(pad.l, h - pad.b); x.lineTo(w - pad.r, h - pad.b); x.stroke();
@@ -1389,13 +1395,13 @@ function drawProfile(cid, r, along, idx, label, xlabel) {
 }
 function drawX(r) {
   const j = +$('#secXpos').value;
-  $('#secXlab').textContent = 'Northing ' + r.gy[j].toFixed(2) + ' m';
-  drawProfile('#cvX', r, 'x', j, 'PENAMPANG X — irisan arah Easting @ N ' + r.gy[j].toFixed(2), 'Easting (m)');
+  $('#secXlab').textContent = 'Northing ' + desimal(r.gy[j], 2) + ' m';
+  drawProfile('#cvX', r, 'x', j, 'PENAMPANG X — irisan arah Easting @ N ' + desimal(r.gy[j], 2), 'Easting (m)');
 }
 function drawY(r) {
   const i = +$('#secYpos').value;
-  $('#secYlab').textContent = 'Easting ' + r.gx[i].toFixed(2) + ' m';
-  drawProfile('#cvY', r, 'y', i, 'PENAMPANG Y — irisan arah Northing @ E ' + r.gx[i].toFixed(2), 'Northing (m)');
+  $('#secYlab').textContent = 'Easting ' + desimal(r.gx[i], 2) + ' m';
+  drawProfile('#cvY', r, 'y', i, 'PENAMPANG Y — irisan arah Northing @ E ' + desimal(r.gx[i], 2), 'Northing (m)');
 }
 function isoLines(x, Z, r, level, color, X, Y, width) {
   x.strokeStyle = color; x.lineWidth = width || 2; x.beginPath();
@@ -1422,7 +1428,7 @@ function isoLines(x, Z, r, level, color, X, Y, width) {
 function drawZ(r) {
   const { x, w, h } = ctxOf('#cvZ');
   const level = parseFloat($('#secZpos').value);
-  $('#secZlab').textContent = 'Elevasi ' + level.toFixed(2) + ' m';
+  $('#secZlab').textContent = 'Elevasi ' + desimal(level, 2) + ' m';
   const e = r.ext, pad = { l: 56, r: 18, t: 26, b: 42 };
   const availW = w - pad.l - pad.r, availH = h - pad.t - pad.b;
   const spanX = (e[1] - e[0]) || 1, spanY = (e[3] - e[2]) || 1;
@@ -1452,7 +1458,7 @@ function drawZ(r) {
   x.stroke();
   axes(x, w, h, pad, [e[0], e[1]], [e[2], e[3]], 'Easting (m)', 'Northing (m)');
   x.fillStyle = COL.ink; x.font = '600 11px ui-sans-serif,system-ui'; x.textAlign = 'left'; x.textBaseline = 'top';
-  x.fillText('PENAMPANG Z — bidang datar @ elevasi ' + level.toFixed(2) + ' m', pad.l, 6);
+  x.fillText('PENAMPANG Z — bidang datar @ elevasi ' + desimal(level, 2) + ' m', pad.l, 6);
   x.font = '10px ui-monospace,monospace';
   x.fillStyle = COL.red; x.fillText('■ realisasi di ATAS bidang', pad.l, h - 26);
   x.fillStyle = COL.blue; x.fillText('■ di BAWAH bidang', pad.l + 150, h - 26);
@@ -1549,7 +1555,7 @@ function init3D(r) {
   el.addEventListener('touchend', () => { drag = false; });
 
   three = { renderer: renderer, scene: scene, camera: camera, group: group, apply: apply, gReal: gReal, gPlan: gPlan };
-  $('#exag').oninput = () => { const v = parseFloat($('#exag').value); group.scale.y = v; $('#exagLab').textContent = v.toFixed(1) + '×'; apply(); };
+  $('#exag').oninput = () => { const v = parseFloat($('#exag').value); group.scale.y = v; $('#exagLab').textContent = desimal(v, 1) + '×'; apply(); };
   $('#tgReal').onchange = () => { if (gReal) gReal.visible = $('#tgReal').checked; apply(); };
   $('#tgPlan').onchange = () => { if (gPlan) gPlan.visible = $('#tgPlan').checked; apply(); };
   group.scale.y = parseFloat($('#exag').value);

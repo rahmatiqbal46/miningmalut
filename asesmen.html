@@ -508,7 +508,7 @@ async function muat(paksa){
 function renderRingkas(){
   var D=S.data; if(!D){ el('isi').innerHTML='<div class="empty">Memuat…</div>'; return; }
   var tot=D.total||0, t1=tot||1;
-  var s=kartuPengingat()+heroTemuan()+'<div class="tiles">';
+  var s=(kartuPengingat()||kartuRetensi())+heroTemuan()+'<div class="tiles">';
   var w=D.menunggu;
   s+='<button class="tile wait" data-lompat="p-wait"><span class="lab"><span class="pill wait">Menunggu persetujuan</span></span><span class="n">'+w.length+'</span><span class="s">'+(w.length?'terlama '+lalu(w[0].dikirim)+' · saat ini':'tidak ada antrean · saat ini')+'</span></button>';
   s+='<button class="tile nogo" data-lompat="p-nogo"><span class="lab"><span class="pill nogo">Pekerjaan tidak dilanjutkan</span></span><span class="n">'+D.nogo+'</span><span class="s">'+D.unit_dihentikan+' unit dihentikan</span></button>';
@@ -682,8 +682,8 @@ async function bukaDetail(id){
 }
 function catatanDipindah(f){
   var c=f.cadangan||{}, jalur=esc(AKAR+' / '+f.tanggal.slice(0,7)+' / '+f.tanggal+' / '+folderForm(f)), tgl=c.tanggal?' pada '+tglWit(c.tanggal):'';
-  if(c.cara==='drive') return '<div class="mhapus">Foto form ini sudah dipindahkan ke <b>Google Drive Biro Mining</b>'+tgl+' (atau ke OneDrive kantor bila bulan itu sudah dipindah admin). Cari di folder <b>'+jalur+'</b>.</div>';
-  return '<div class="mhapus">Foto form ini sudah dipindahkan ke cadangan OneDrive'+tgl+'. Cari di folder <b>'+jalur+'</b>.</div>';
+  if(c.cara==='drive') return '<div class="mhapus">Foto form ini sudah dipindahkan ke <b>Google Drive Biro Mining</b>'+tgl+' (atau ke OneDrive kantor bila bulan itu sudah dipindah admin). Cari di folder <b>'+jalur+'</b>.'+teksMasaSimpan(f)+'</div>';
+  return '<div class="mhapus">Foto form ini sudah dipindahkan ke cadangan OneDrive'+tgl+'. Cari di folder <b>'+jalur+'</b>.'+teksMasaSimpan(f)+'</div>';
 }
 function renderDetail(){
   var f=DETAIL, t=f.pertanyaan.filter(function(q){return f.jawaban[q.id]==='T';});
@@ -718,7 +718,7 @@ function htmlForm(f,src,cetakOtomatis){
     baris+='<tr class="sek"><td colspan="4">'+sk+'. '+SEKSI[sk].toUpperCase()+'</td></tr>';
     qq.forEach(function(q){ var j=f.jawaban[q.id]; baris+='<tr><td class="c">'+q.no+'</td><td>'+esc(q.teks)+(j==='T'?'<div class="ket"><b>Keterangan:</b> '+esc((f.evidence[q.id]||{}).ket)+'</div>':'')+'</td><td class="c">'+(j==='Y'?'✓':'')+'</td><td class="c">'+(j==='T'?'✓':'')+'</td></tr>'; }); });
   var foto='', ada=0; f.pertanyaan.forEach(function(q){ var j=f.jawaban[q.id]; ((f.evidence[q.id]||{}).foto||[]).forEach(function(p,i){ var u=src(p,q,j,i); if(u){ ada++; foto+='<figure><img src="'+esc(u)+'"><figcaption>No. '+q.no+' · '+(j==='T'?'<b class="nogo">TIDAK</b>':'YA')+'</figcaption></figure>'; } }); });
-  var catFoto=!ada&&f.foto_dihapus?'<p>Foto form ini ada di folder cadangan OneDrive: '+esc(AKAR+' / '+f.tanggal.slice(0,7)+' / '+f.tanggal+' / '+folderForm(f))+'.</p>':'';
+  var catFoto=!ada&&f.foto_dihapus?'<p>Foto form ini ada di folder cadangan OneDrive: '+esc(AKAR+' / '+f.tanggal.slice(0,7)+' / '+f.tanggal+' / '+folderForm(f))+'.'+teksMasaSimpan(f)+'</p>':'';
   return '<!doctype html><html lang="id"><head><meta charset="utf-8"><title>'+esc(f.no)+'</title><style>@page{size:A4;margin:14mm}body{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;color:#111}h1{font-size:13pt;margin:0}h2{font-size:11pt;margin:2px 0 8px}.kop{border-bottom:2px solid #003c3c;padding-bottom:6px;margin-bottom:8px}.kop small{color:#444}table{width:100%;border-collapse:collapse}td,th{border:1px solid #999;padding:4px 6px;vertical-align:top}th{background:#003c3c;color:#fff}.c{text-align:center;width:36px}.sek td{background:#e8efee;font-weight:bold}.id td{border:0;padding:2px 4px}.ket{margin-top:3px;color:#8a1a12}.kep{margin-top:10px;border:1px solid #999;padding:8px}.kep b.go{color:#0f6b46}b.nogo{color:#a01c14}figure{display:inline-block;margin:6px 8px 0 0;text-align:center;page-break-inside:avoid}figure img{max-width:170px;max-height:128px;border:1px solid #999}figcaption{font-size:9pt}.foot{margin-top:10px;font-size:8.5pt;color:#555}</style></head><body>'+
     '<div class="kop"><small>PT ANTAM Tbk · UBP NIKEL MALUKU UTARA · BIRO MINING</small><h1>CEK AMAN SEBELUM BEKERJA · GO / NO-GO</h1><small>No. Dok: F-09.283.020.R0 · Form digital '+esc(f.no)+'</small></div>'+
     '<table class="id"><tr><td>Tanggal</td><td>: '+tglPanjang(f.tanggal)+'</td><td>Shift</td><td>: '+f.shift+'</td></tr><tr><td>Nama</td><td>: '+esc(f.nama)+' (NPP '+esc(f.npp)+')</td><td>Lokasi / front</td><td>: '+esc(f.lokasi)+'</td></tr><tr><td>Jenis alat</td><td>: '+esc(f.alat)+'</td><td>No. unit</td><td>: '+esc(f.unit)+'</td></tr><tr><td>Nama pengawas</td><td>: '+esc(f.keputusan_nama||'—')+'</td><td>Jam isi</td><td>: '+jam(f.diisi)+' WIT</td></tr></table><br>'+
@@ -779,7 +779,7 @@ function kotakManual(jenis){
   p.forEach(function(m){ s+='<tr><td><b>'+esc(m.teks)+'</b>'+(m.alat?'<span class="sub">'+esc(m.alat)+'</span>':'')+'</td><td>'+m.jumlah+'× dipakai<span class="sub">terakhir oleh '+esc(m.oleh||'-')+'</span></td><td><div class="act"><button class="mini" data-km="tambah|'+m.id+'">Tambahkan ke daftar</button><button class="mini m" data-km="abaikan|'+m.id+'">Abaikan</button></div></td></tr>'; });
   return s+'</tbody></table></div></div>';
 }
-var SUMBER={eva:'Master unit EVA',admin:'Admin',rtup:'Peta RTUP'};
+var SUMBER={eva:'Master unit EVA',admin:'Admin',rtup:'Peta RTUP (lama)'};
 function kUnit(){
   var D=S.k.data, s='<div class="khead"><div><h2>Unit</h2><p>Daftar awal diambil dari sheet master_unit_population di Excel EVA. Unit baru bisa ditambah satu per satu, atau ditempel sekaligus dari sheet yang sama.</p></div><div class="kact"><button class="btn2" data-ku="impor">Tempel dari Excel</button><button class="btn" data-ku="baru">Tambah unit</button></div></div>'+kotakManual('unit');
   s+='<div class="tbl"><table><thead><tr><th>Unit</th><th>Jenis alat</th><th>Model</th><th>Sumber</th><th>Status</th><th></th></tr></thead><tbody>';
@@ -787,7 +787,7 @@ function kUnit(){
   return s+'</tbody></table></div>';
 }
 function kLok(){
-  var D=S.k.data, s='<div class="khead"><div><h2>Lokasi / front</h2><p>Daftar awal dari kolom TOS / LOCATION di Excel EVA dan stasiun peta RTUP. Front kerja yang berpindah ditambah dan dinonaktifkan di sini.</p></div><div class="kact"><button class="btn2" data-kl="rtup">Tarik dari peta RTUP</button><button class="btn" data-kl="baru">Tambah lokasi</button></div></div>'+kotakManual('lokasi');
+  var D=S.k.data, s='<div class="khead"><div><h2>Lokasi / front</h2><p>Daftar awal dari kolom TOS / LOCATION di Excel EVA dan stasiun peta RTUP lama. Area kerja yang diterbitkan di Digital Twin bisa ditarik ke sini; front kerja yang berpindah ditambah dan dinonaktifkan di sini.</p></div><div class="kact"><button class="btn2" data-kl="twin">Tarik dari area kerja Digital Twin</button><button class="btn" data-kl="baru">Tambah lokasi</button></div></div>'+kotakManual('lokasi');
   s+='<div class="tbl"><table><thead><tr><th>Lokasi</th><th>Sumber</th><th>Status</th><th></th></tr></thead><tbody>';
   D.lokasi.forEach(function(l,i){ s+='<tr><td><b>'+esc(l.nama)+'</b></td><td><span class="tag">'+(SUMBER[l.sumber]||esc(l.sumber))+'</span></td><td><button class="tgl" data-kl="tgl|'+i+'" aria-pressed="'+l.aktif+'"><i></i>'+(l.aktif?'Aktif':'Nonaktif')+'</button></td><td><div class="act"><button class="mini" data-kl="ubah|'+i+'">Ubah</button></div></td></tr>'; });
   return s+'</tbody></table></div>';
@@ -900,6 +900,39 @@ function manualAksi(id,aksi){
     formModal('Tambahkan unit '+esc(m.teks),'<label for="fm-a">Jenis alat</label><select class="inp" id="fm-a">'+alat.map(function(a){return '<option'+(m.alat===a?' selected':'')+'>'+esc(a)+'</option>';}).join('')+'</select><div class="hint">Operator memilih '+esc(m.alat||'-')+' saat menulisnya.</div>',async function(){ await rpc('gng_manual_aksi',{p_id:id,p_aksi:'tambah',p_alat:el('fm-a').value}); return esc(m.teks)+' ditambahkan ke daftar unit.'; }); return; }
   rpc('gng_manual_aksi',{p_id:id,p_aksi:aksi,p_alat:null}).then(function(){ toast(aksi==='tambah'?esc(m.teks)+' ditambahkan ke daftar lokasi.':'Diabaikan.'); muatKelola(); }).catch(function(e){ toast(esc(e.message),true); });
 }
+/* Lokasi dari area kerja Digital Twin (§17 butir 55), pengganti stasiun peta RTUP lama
+   (baris rtup|jaringan|v1 tidak diperbarui lagi sejak Digital Twin, §26.8). Nama area di
+   versi area kerja yang aktif (gudang data site, site_data) yang belum ada di daftar —
+   tanpa membedakan huruf besar-kecil, juga yang sedang dinonaktifkan — ditambahkan satu
+   per satu lewat gng_simpan_lokasi, jadi tercatat bersumber Admin. Lokasi yang ada tidak
+   diubah, dan area yang dihapus di Digital Twin tidak menonaktifkan apa pun di sini. */
+async function tarikAreaTwin(tombol){
+  if(tombol) tombol.disabled=true;
+  try{
+    var r=await rpc('site_data',{p_jenis:'area',p_versi:null});
+    var area=(r&&r.data&&Array.isArray(r.data.area))?r.data.area:[];
+    if(!area.length){ toast('Belum ada area kerja yang diterbitkan di Digital Twin (Kelola data → Area kerja).',true); return; }
+    // nama dibandingkan dengan cara yang sama di kedua sisi: spasi dirapikan, huruf besar-kecil tidak dibedakan
+    var kunciNama=function(n){ return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase(); };
+    var ada={}; ((S.k.data&&S.k.data.lokasi)||[]).forEach(function(l){ ada[kunciNama(l.nama)]=1; });
+    var baru=[], lewat=[], sudah=0;
+    area.forEach(function(a){ var n=String((a&&a.nama)||'').replace(/\s+/g,' ').trim(), k=n.toLowerCase();
+      if(n.length<2||n.length>80){ if(n) lewat.push(n); return; }
+      if(ada[k]){ sudah++; return; } ada[k]=1; baru.push(n); });
+    var ok=0, gagal=[];
+    for(var i=0;i<baru.length;i++){
+      try{ await rpc('gng_simpan_lokasi',{p:{nama:baru[i]},p_nama_lama:null}); ok++; }
+      catch(e){ gagal.push(baru[i]+' ('+e.message+')'); }
+    }
+    var versi=r.versi?' v'+esc(String(r.versi)):'';
+    var kepala=ok?ok+' lokasi baru dari area kerja Digital Twin'+versi+'.'+(sudah?' '+sudah+' sudah ada di daftar.':''):
+      (!gagal.length&&!lewat.length)?'Semua '+area.length+' area kerja Digital Twin'+versi+' sudah ada di daftar.':
+      'Tidak ada lokasi baru dari area kerja Digital Twin'+versi+'.'+(sudah?' '+sudah+' sudah ada di daftar.':'');
+    toast(kepala+(gagal.length?' Gagal: '+esc(gagal.join(', '))+'.':'')+(lewat.length?' Dilewati (nama harus 2–80 huruf): '+esc(lewat.join(', '))+'.':''),gagal.length>0);
+    await muatKelola();
+  }catch(e){ toast(esc(e.message),true); }
+  finally{ if(tombol&&tombol.isConnected) tombol.disabled=false; }
+}
 async function ubahCepat(fn,args,pesan){ try{ await rpc(fn,args); if(pesan) toast(pesan); await muatKelola(); }catch(e){ toast(esc(e.message),true); } }
 
 /* =============================================================================
@@ -912,6 +945,26 @@ async function ubahCepat(fn,args,pesan){ try{ await rpc(fn,args); if(pesan) toas
    dan Cek Aman Go-No-Go / Rekap / Rekap_<dari>_sd_<sampai>.xlsx
    ============================================================================= */
 var AKAR='Cek Aman Go-No-Go';
+/* Masa simpan foto evidence (keputusan Iqbal 24 Oktober 2026, §17 butir 38): foto disimpan
+   1 tahun di arsip (OneDrive kantor); jawaban form, keputusan, dan Excel dashboard tetap
+   selamanya di MiningMalut. Tidak ada yang dihapus otomatis: admin yang menghapus folder
+   bulan yang sudah lewat 1 tahun dari OneDrive, diingatkan di Kelola → Cadangan dan — tujuh
+   hari pertama tiap bulan — di dashboard. Modul ini mulai dipakai September 2026. */
+var SIMPAN_FOTO_BULAN=12, BULAN_PERTAMA='2026-09';
+function bulanGeser(ym,n){ var a=String(ym).split('-'), t=(+a[0])*12+(+a[1]-1)+n; return Math.floor(t/12)+'-'+p2(t%12+1); }
+/* Bulan terakhir yang seluruh fotonya sudah berumur lebih dari 1 tahun (null bila belum ada). */
+function bulanLewatSimpan(){ var b=bulanGeser(hariIni().slice(0,7),-(SIMPAN_FOTO_BULAN+1)); return b>=BULAN_PERTAMA?b:null; }
+function teksMasaSimpan(f){
+  var ym=String(f.tanggal).slice(0,7), lewat=bulanLewatSimpan();
+  if(lewat&&ym<=lewat) return ' Masa simpan foto 1 tahun sudah lewat, jadi folder itu mungkin sudah dihapus dari OneDrive.';
+  return ' Foto disimpan 1 tahun: folder bulan itu boleh dihapus dari OneDrive mulai '+namaBulan(bulanGeser(ym,SIMPAN_FOTO_BULAN+1))+'.';
+}
+function kartuRetensi(){
+  if(!S.saya||!S.saya.admin) return ''; var b=bulanLewatSimpan(); if(!b||+hariIni().slice(8,10)>7) return '';
+  return '<div class="ingat lv-kuning" role="status"><div class="ic">'+IC.awan+'</div><div><h2>Arsip foto '+namaBulan(b)+' sudah lewat masa simpan 1 tahun</h2>'+
+    '<p>Folder <b>'+esc(AKAR+' / '+b)+'</b> dan bulan-bulan sebelumnya di OneDrive kantor boleh dihapus. Jawaban form, keputusan GO/NO-GO, dan Excel dashboard tetap lengkap di MiningMalut; tidak ada yang dihapus otomatis. Pengingat ini tampil tujuh hari pertama tiap bulan.</p></div>'+
+    '<div><button class="btn besar" data-ke-cadangan="1">'+IC.awan+'Lihat Cadangan</button></div></div>';
+}
 var BISA_FOLDER=typeof window.showDirectoryPicker==='function';
 var CAD={tahap:'siap',cara:null,pesan:'',sudah:0,total:0,hasil:null,folderLama:undefined};
 function amanNama(x){ return String(x==null?'':x).replace(/[\\/:*?"<>|\u0000-\u001f]/g,'-').replace(/\s+/g,' ').trim().slice(0,90)||'-'; }
@@ -974,7 +1027,7 @@ function idbFolder(simpan,val){ return new Promise(function(res){ try{ var o=ind
   o.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }
 
 function kCadangan(){
-  var c=S.cad, s='<div class="khead"><div><h2>Cadangan</h2><p>Semua form tetap tersimpan selamanya di MiningMalut. Yang dicadangkan adalah form lengkap dengan fotonya: otomatis tiap jam ke <b>Google Drive Biro Mining</b>, lalu admin memindahkannya ke <b>OneDrive kantor</b> kira-kira tiap 3 bulan. Foto yang sudah tercadang dihapus dari MiningMalut supaya penyimpanan tidak penuh.</p></div></div>';
+  var c=S.cad, s='<div class="khead"><div><h2>Cadangan</h2><p>Semua form tetap tersimpan selamanya di MiningMalut. Yang dicadangkan adalah form lengkap dengan fotonya: otomatis tiap jam ke <b>Google Drive Biro Mining</b>, lalu admin memindahkannya ke <b>OneDrive kantor</b> kira-kira tiap 3 bulan. Foto yang sudah tercadang dihapus dari MiningMalut supaya penyimpanan tidak penuh. Foto disimpan <b>1 tahun</b>: sesudah itu folder bulannya boleh dihapus dari OneDrive.</p></div></div>';
   if(!c){ muatCadangan().then(function(){ if(S.tab==='kelola'&&S.k.bagian==='cadangan') renderKelola(); }); return s+'<div class="empty">Memuat…</div>'; }
   if(BISA_FOLDER&&CAD.folderLama===undefined){ CAD.folderLama=null; idbFolder(false).then(function(h){ CAD.folderLama=h; if(h&&S.tab==='kelola'&&S.k.bagian==='cadangan') renderKelola(); }); }
   var L=levelCadangan(), A=c.aturan, d=c.drive||{}, D=L.drive;
@@ -1000,6 +1053,11 @@ function kCadangan(){
   s+='<details class="all" style="margin:0 16px 16px"'+(d.aktif?'':' open')+'><summary>Cadangan manual ke folder / ZIP'+(d.aktif?' (bila Google Drive bermasalah)':'')+'</summary><div style="padding-top:12px">'+kotakCadangan(c);
   if(c.siap_dihapus>0&&(CAD.tahap==='siap'||CAD.tahap==='beres')) s+='<div class="cbox lembut"><h3>Foto lama belum dihapus</h3><p>'+angka(c.siap_dihapus)+' form sudah dicadangkan, tetapi fotonya masih ada di MiningMalut.</p><button class="btn2" data-cad="hapus">Hapus foto lama</button></div>';
   s+='</div></details>';
+  var lewat=bulanLewatSimpan();
+  s+='<div class="cbox lembut"><h3>Masa simpan foto: 1 tahun</h3><p>'+(lewat
+      ?'Folder bulan <b>s.d. '+namaBulan(lewat)+'</b> di OneDrive kantor (<i>'+esc(AKAR)+' / YYYY-MM</i>) sudah lewat 1 tahun dan boleh dihapus. Bulan yang masih di Google Drive dipindah dulu seperti biasa.'
+      :'Belum ada folder yang lewat 1 tahun. Folder bulan tertua ('+namaBulan(BULAN_PERTAMA)+') boleh dihapus dari OneDrive mulai <b>'+namaBulan(bulanGeser(BULAN_PERTAMA,SIMPAN_FOTO_BULAN+1))+'</b>.')+
+    ' Jawaban form, keputusan GO/NO-GO, dan Excel dashboard tetap lengkap di MiningMalut; tidak ada yang dihapus otomatis.</p></div>';
   if(c.riwayat&&c.riwayat.length){ s+='<div class="tbl" style="padding:0 0 8px"><table><thead><tr><th>Dicadangkan</th><th>Oleh</th><th>Isi</th><th>Tanggal form</th><th>Disimpan ke</th></tr></thead><tbody>';
     c.riwayat.forEach(function(r){ s+='<tr><td>'+tglWit(r.tanggal)+'<span class="sub">'+jam(r.tanggal)+' WIT</span></td><td>'+esc(r.oleh)+'</td><td>'+angka(r.jumlah_form)+' form<span class="sub">'+angka(r.jumlah_foto)+' foto · '+ukuran(r.bytes)+'</span></td><td>'+(r.dari?tglPendek(r.dari)+(r.sampai&&r.sampai!==r.dari?' – '+tglPendek(r.sampai):''):'—')+'</td><td>'+esc(r.folder||'')+'<span class="sub">'+(r.cara==='zip'?'ZIP':r.cara==='drive'?'Otomatis':'Folder')+'</span></td></tr>'; });
     s+='</tbody></table></div>'; }
@@ -1166,7 +1224,7 @@ el('isi').addEventListener('click',function(e){
   if((b=t.closest('[data-ku]'))){ var u=b.dataset.ku.split('|'); if(u[0]==='baru') return editUnit(null); if(u[0]==='impor') return imporUnit(); var un=K.data.unit[+u[1]];
     if(u[0]==='tgl') return ubahCepat('gng_simpan_unit',{p:{nama:un.nama,alat:un.alat,aktif:!un.aktif},p_nama_lama:un.nama}); return editUnit(un); }
   if((b=t.closest('[data-kl]'))){ var l=b.dataset.kl.split('|'); if(l[0]==='baru') return editLok(null);
-    if(l[0]==='rtup') return rpc('gng_tarik_rtup').then(function(r){ toast(r.baru?r.baru+' lokasi baru dari peta RTUP.':'Semua stasiun peta RTUP sudah ada di daftar.'); muatKelola(); }).catch(function(e){ toast(esc(e.message),true); });
+    if(l[0]==='twin') return tarikAreaTwin(b);
     var lk=K.data.lokasi[+l[1]]; if(l[0]==='tgl') return ubahCepat('gng_simpan_lokasi',{p:{nama:lk.nama,aktif:!lk.aktif},p_nama_lama:lk.nama}); return editLok(lk); }
   if((b=t.closest('[data-km]'))){ var m=b.dataset.km.split('|'); return manualAksi(+m[1],m[0]); }
   if((b=t.closest('[data-kad]'))){ try{ if(parent&&parent!==window&&parent.showPage){ parent.showPage('admin'); return; } }catch(e){} location.href='admin.html'; return; }

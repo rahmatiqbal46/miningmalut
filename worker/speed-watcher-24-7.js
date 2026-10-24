@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 14 (24 Oktober 2026)
+// Versi 15 (24 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -478,6 +478,101 @@
 // tapi melihat pesan yang berbeda. Salinan pertamanya baris "berjalan" yang beku
 // dan ditutup pembersihan yatim harian; ia tidak bisa dikenali dari kuncinya.
 //
+// Versi 15 — RUAS TERDEKAT, PEMBAGIAN BLOK, DAN SISA TEMUAN VERSI 14
+// (24 Oktober 2026, keputusan Iqbal hari yang sama; §17 butir 36 dan 78–80).
+//
+//  1. Di persimpangan yang berlaku RUAS TERDEKAT, bukan lagi batas terendah.
+//     Penggal yang paling dekat dengan posisi unit menentukan ruas dan batasnya;
+//     dua jarak yang berselisih ≤ 1e-6 m dianggap seri, lalu batas terendah, lalu
+//     nama ruas. Aturan lama selalu memilih angka terkecil, jadi aturan baru hanya
+//     bisa MENAIKKAN batas di simpang, tidak pernah menurunkannya. Simulasi armada
+//     di jalan bawaan (12.442 pembacaan > 15 km/jam): nama ruas berubah pada 5,0%,
+//     batasnya pada 1,5% — mis. RD_Harmoni 30 → RD_Kasuari 35, RD_EFO 15 → RD_Alur1
+//     25 di simpangnya. speed-watcher.html (ruasBerlaku) dan putar ulang Digital
+//     Twin (cariRuasLokal) memakai aturan yang sama: identik dengan Worker pada
+//     300.000 titik, sepertiganya tepat di simpul. cariRuas() identik dengan
+//     pemeriksaan seluruh penggal pada 1.000.000 titik di 24 kombinasi jalan (asli,
+//     rapat 10 m, rapat 4 m) × toleransi (5/20/37/60 m) × batas (asli, acak).
+//     Biayanya tanpa JIT +1–4 µs per panggilan, karena potongan yang kotaknya
+//     sudah lebih jauh dari penggal terdekat dilewati. Halaman juga tidak lagi
+//     memotong batas ruas dengan batas umum, sama dengan server sejak versi 5.
+//
+//  2. PEMBAGIAN BLOK (butir 36). Pemicu kedua dan ketiga datang di detik ±21 dan
+//     ±23 (§21.14), sesudah A mengklaim B dan C di batch akhir bloknya (detik ±11),
+//     jadi satu pemanggilan selalu memikul keenam putaran. Sekarang A mencoba
+//     mengklaim B di detik 18 dan C di detik 38, satu per satu. Dengan jeda pemicu
+//     produksi, A memikul A+B dan pemicu kedua mendapat C; pemicu yang datang
+//     sebelum detik 18 mendapat B. Jadwal cek tidak berubah: B tetap mulai di detik
+//     20 dan C di detik 40, siapa pun pemiliknya. Pemanggilan terberat turun dari
+//     enam putaran ke empat (simulasi tanpa JIT, isolate dingin, p90 per
+//     pemanggilan, beberapa putaran ukur: jalan 493 titik 13,1–14,0 → 10,4–10,8
+//     ms; 2.612 titik 17,1–19,1 → 14,1–16,1 ms).
+//     State kini disimpan di akhir SETIAP blok, karena blok berikutnya bisa milik
+//     pemanggilan lain.
+//
+//  3. BLOK MENUNGGU SIMPANAN BLOK SEBELUMNYA (butir 78). Bila blok sebelumnya (A
+//     sebelum B, B sebelum C, C menit lalu sebelum A) sudah diklaim tetapi belum
+//     menyimpan, blok ini menunggu — kueri kecil tiap 0,75 detik — paling lama
+//     sampai 6 detik sesudah awal jendelanya, lalu berjalan dengan state yang ada
+//     seperti versi 14. Blok yang batch-nya ditolak D1 menandai klaimnya (`g`),
+//     jadi penunggunya tidak menunggu sia-sia. Klaim dibaca dalam batch yang sama
+//     dengan state: pada jalan normal tidak ada tunggu dan tidak ada panggilan D1
+//     tambahan. Lama tunggu dicatat di baris log blok (`tunggu=4.6s:tersimpan`).
+//
+//  4. /api/uji KERING (butir 80): dinilai dari state cron, tidak ada yang ditulis.
+//
+//  5. KEJADIAN TERBELAH (butir 79), dua lapis:
+//     a. Pembukaan kejadian meneruskan baris unit yang sama dengan batas yang sama
+//        yang tertinggal berjalan dan berakhir ≤ 25 detik sebelumnya (atau
+//        sesudahnya), bukan membuat baris kedua — kecuali state ini sendiri melihat
+//        unit itu melambat di antaranya, atau baris itu baru saja ia tutup sendiri
+//        di blok ini (satu sampel jatuh di ruas berbatas lain; lihat
+//        bukaPelanggaran).
+//     b. Sekali sehari di jalur HTTP, baris unit dan batas yang sama yang rentang
+//        waktunya bertumpang digabung ke satu baris; sisanya dipindah ke arsip
+//        terhapus (sistem, "Catatan terbelah · bagian dari kejadian #n"). Baris
+//        berurutan tanpa tumpang tindih tidak disentuh. Hasilnya di kv 'belah' dan
+//        /api/status (`belah`). /api/pulihkan menolak baris yang rentang waktunya
+//        bertumpang dengan baris lain unit itu berbatas sama (409), seperti
+//        salinan ganda versi 14.
+//
+//  6. Dari tinjauan terpisah (24 Oktober 2026): penutupan yang masih tertunda di
+//     blok yang sama tidak pernah diteruskan (5a); batch akhir blok yang ditolak
+//     dicoba sekali lagi sesudah 0,5 detik, dan blok yang dilewati karena state
+//     tidak terbaca ikut menandai `g`; pembersihan terbelah membuat tabel arsip
+//     lebih dulu dan mencatat galatnya tanpa tabel itu (jeda sejam tetap
+//     tersimpan), mengurutkan pasangan per unit dan menunda unit yang terpotong
+//     batas 300 pasangan, membaca `berikut` tanpa mengurai baris kv-nya, dan
+//     menyimpan `sebelum` paling banyak 200 nilai (90 hari).
+//
+// Diuji di simulator v14 (D1 tiruan di atas SQLite, Wialon dan Supabase tiruan,
+// jam virtual, isolate baru tiap pemanggilan):
+//  - Jalan normal, enam susunan pemicu (jeda produksi, serentak, 1 dan 2 pemicu,
+//    dingin dan hangat), 20 menit, 45 unit: tabel pelanggaran, state, dan jejak
+//    IDENTIK byte demi byte dengan versi 14 yang diberi aturan ruas terdekat.
+//    Butir 2–6 tidak mengubah apa pun pada jalan normal. Simpang RD_Harmoni
+//    dengan satu sampel di ujung RD_Atom atau di luar jalan: dua baris, sama
+//    dengan versi 14, di semua letak sampel dan susunan pemicu.
+//  - Gangguan, 30 menit (versi 14 → 15; pasangan bertumpang / baris beku yang
+//    disusul baris baru / baris tertinggal berjalan · kejadian tidak tercatat):
+//      Wialon lambat 14 dtk di putaran kedua A ....... 12/3/13·15 → 0/0/0·7
+//      /api/uji tiap ±37 dtk ........................ 1/0/0·0 → 0/0/0·0
+//      batch akhir blok ditolak D1 (1 dari 5) ....... 0/8/16·10 → 0/0/0·2
+//      pemanggilan mati sesudah membuka kejadian .... 1/1/7·88 → 1/0/2·75
+//    Baris tertinggal yang tersisa adalah kejadian tunggal yang penutupannya
+//    hilang bersama pemanggilannya; ditutup pembersihan kejadian yatim harian.
+//  - Pembersihan terbelah atas tabel buatan versi 14 (12 pasangan): 12 baris
+//    dipindah, 0 tersisa, baris lain tidak berubah; diulang dan dijalankan dua
+//    isolate berbarengan: tidak ada perubahan tambahan.
+//  - CPU per pemanggilan satu blok (tanpa JIT, isolate dingin, median): jalan 493
+//    titik 5,18 → 5,53 ms; 2.612 titik 8,83 → 9,26 ms — hampir seluruhnya aturan
+//    ruas terdekat.
+//
+// Sesudah deploy: /api/status → `versi_worker: 15`; `blok.C.oleh` "C" (pemicu
+// kedua mengambil C), `blok.B.oleh` biasanya "A", jadi `terbagi` tetap false
+// selama pemicu datang terlambat — bukan kerusakan. `belah.diperiksa` terisi
+// sesudah permintaan HTTP pertama; `belah.dipindah` = baris terbelah lama.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
 // berganti (bawaan: proyek MiningMalut, kunci anon publik yang sama dengan
@@ -884,6 +979,13 @@ async function siapkanTabel(env) {
        terbaca, jadi sesudah indeks itu ada pemeriksaan ini tidak memakan kueri
        tambahan sama sekali. */
     unikAda = adaIdx.has(IDX_UNIK) || await pastikanUnik(env);
+    /* Versi 15: catatan terbelah, sekali sehari (baris kv 'belah'). Butuh indeks
+       unik: pasangannya dicari lewat indeks itu, dan catatan ganda (mulai sama)
+       sudah dirapikan lebih dulu. */
+    if (unikAda) {
+      try { await rapikanBelah(env); }
+      catch (e) { console.log(`catatan terbelah: dilewati, dicoba isolate berikutnya: ${String(e.message || e).slice(0, 200)}`); }
+    }
   } catch (e) {
     console.log(`pemeriksaan indeks gagal: ${String(e.message || e)}`);
   }
@@ -1198,14 +1300,20 @@ function koordSah(lat, lon) {
 function skalaDerajat(lat) {
   return { x: 111320 * Math.cos((lat * Math.PI) / 180), y: 110540 };
 }
-function jarakKeSegmen(lon, lat, x1, y1, x2, y2) {
-  const m = skalaDerajat(lat);
-  const px = (lon - x1) * m.x, py = (lat - y1) * m.y;
-  const vx = (x2 - x1) * m.x, vy = (y2 - y1) * m.y;
+/* Versi 15: skala derajat dihitung pemanggilnya SEKALI per titik, bukan sekali
+   per penggal. Hasilnya sama persis — skala itu hanya bergantung pada lintang
+   titik — tetapi pencocokan ruas tidak lagi membayar Math.cos tiap penggal. */
+function jarakSkala(lon, lat, x1, y1, x2, y2, mx, my) {
+  const px = (lon - x1) * mx, py = (lat - y1) * my;
+  const vx = (x2 - x1) * mx, vy = (y2 - y1) * my;
   const L = vx * vx + vy * vy;
   let t = L > 0 ? (px * vx + py * vy) / L : 0;
   t = t < 0 ? 0 : t > 1 ? 1 : t;
   return Math.hypot(px - vx * t, py - vy * t);
+}
+function jarakKeSegmen(lon, lat, x1, y1, x2, y2) {
+  const m = skalaDerajat(lat);
+  return jarakSkala(lon, lat, x1, y1, x2, y2, m.x, m.y);
 }
 
 /* Ruas mana yang berlaku di satu titik.
@@ -1227,12 +1335,19 @@ function jarakKeSegmen(lon, lat, x1, y1, x2, y2) {
 
    Hasilnya identik dengan grid. Penggal yang berjarak ≤ toleransi pasti berada
    di dalam kotak potongannya (pelebaran > toleransi pada kedua sumbu), jadi
-   himpunan penggal yang lolos uji jarak sama persis; urutan pemeriksaannya juga
-   sama (ruas menaik, lalu penggal menaik), sehingga ruas yang menang pada batas
-   yang seri pun sama.
+   himpunan penggal yang lolos uji jarak sama persis.
 
    Bila beberapa ruas bertumpang tindih — hal biasa di persimpangan — yang
-   dipakai adalah BATAS TERENDAH, aturan yang sama dengan limitFor() di halaman. */
+   dipakai sejak versi 15 adalah RUAS TERDEKAT: penggal yang paling dekat dengan
+   titik menentukan ruas dan batasnya (keputusan Iqbal, 24 Oktober 2026). Sampai
+   versi 14 yang dipakai batas terendah, sehingga unit yang sudah keluar dari
+   simpang ke ruas 35 km/jam tetap dinilai 25 km/jam selama masih dalam
+   toleransi ruas sebelah. Dua jarak yang berselisih tidak lebih dari SERI_M
+   dianggap sama (mis. titik di luar ujung dua ruas yang bertemu di satu simpul:
+   jaraknya ke simpul itu sama); di situ batas terendah yang menang, lalu nama
+   ruas menurut abjad. Aturan ini tidak bergantung pada urutan ruas, jadi
+   ruasBerlaku() di speed-watcher.html dan cariRuasLokal() di Digital Twin yang
+   memeriksa ruas dengan urutan lain memberi hasil yang sama. */
 /* Batas terendah yang ada di tabel. Di bawah angka ini tidak ada yang bisa
    dilanggar, jadi pencocokan ruas boleh dilewati sama sekali. */
 let BATAS_MIN = RUAS.reduce((m, r) => Math.min(m, r.b), BATAS_LUAR);
@@ -1287,33 +1402,76 @@ function bangunIndeks() {
     const o = i * 4;
     kotakRuas[o] = rx0 - PAD; kotakRuas[o + 1] = ry0 - PAD; kotakRuas[o + 2] = rx1 + PAD; kotakRuas[o + 3] = ry1 + PAD;
   }
-  indeks = { nr, kotakRuas, c0, c1, kotak, dari, sampai };
+  /* dRuas/calon: ruang kerja cariRuas() (jarak tiap ruas calon dan nomornya),
+     disiapkan sekali supaya pencarian tidak membuat objek baru. */
+  indeks = { nr, kotakRuas, c0, c1, kotak, dari, sampai, pad: PAD,
+             dRuas: new Float64Array(nr), calon: new Int32Array(nr) };
 }
 
+/* Dua jarak (meter) yang selisihnya tidak lebih dari ini dianggap sama. Jauh di
+   bawah ketelitian GPS, jauh di atas galat pembulatan (±1e-12 m). */
+const SERI_M = 1e-6;
+
+/* Versi 15: ruas TERDEKAT dalam toleransi (lihat di atas). Dua lintasan: yang
+   pertama mencari jarak terdekat tiap ruas yang kotaknya memuat titik, yang kedua
+   memilih di antara ruas yang jaraknya seri dengan yang terdekat.
+
+   Potongan yang kotak aslinya (tanpa pelebaran) sudah lebih jauh dari jarak
+   terdekat yang ditemukan dilewati: semua penggal di dalamnya pasti lebih jauh,
+   jadi hasilnya sama dengan mengukur semuanya. Itulah yang menjaga biayanya dekat
+   versi 14, yang berhenti di penggal pertama yang kena. */
 function cariRuas(lat, lon) {
   if (!indeks) bangunIndeks();
-  const { nr, kotakRuas, c0, c1, kotak, dari, sampai } = indeks;
+  const { nr, kotakRuas, c0, c1, kotak, dari, sampai, pad, dRuas, calon } = indeks;
+  const sk = skalaDerajat(lat), mx = sk.x, my = sk.y;
+  const TOL = TOLERANSI_RUAS;
 
-  let nama = null, batas = BATAS_LUAR;
+  let n = 0, dmin = Infinity;
   for (let i = 0; i < nr; i++) {
-    const r = RUAS[i];
-    // Ruas yang tidak akan menurunkan batas tidak perlu diukur jaraknya.
-    if (nama !== null && r.b >= batas) continue;
     const q = i * 4;
     if (lon < kotakRuas[q] || lat < kotakRuas[q + 1] || lon > kotakRuas[q + 2] || lat > kotakRuas[q + 3]) continue;
-    const p = r.p;
-    let kena = false;
-    for (let c = c0[i]; c < c1[i] && !kena; c++) {
+    // Ruas yang kotak aslinya sudah lebih jauh dari yang terdekat tidak perlu diukur.
+    if (dmin < TOL && jauhKotak(kotakRuas, q, pad, lon, lat, mx, my, dmin + 2 * SERI_M)) continue;
+    const p = RUAS[i].p;
+    let di = Infinity;
+    for (let c = c0[i]; c < c1[i]; c++) {
       const o = c * 4;
       if (lon < kotak[o] || lat < kotak[o + 1] || lon > kotak[o + 2] || lat > kotak[o + 3]) continue;
+      /* Jarak ke kotak asli potongan ini = batas bawah jarak ke penggal mana pun di
+         dalamnya. Dilonggarkan SERI_M supaya galat pembulatan kotak tidak pernah
+         membuang penggal yang masih seri atau masih dalam toleransi. Sebelum ada
+         jarak pembanding, kotak berpelebaran di atas sudah menjadi saringannya. */
+      const ref = di < dmin ? di : dmin;
+      if (ref < TOL && jauhKotak(kotak, o, pad, lon, lat, mx, my, ref + 2 * SERI_M)) continue;
       for (let j = dari[c]; j < sampai[c]; j++) {
-        if (jarakKeSegmen(lon, lat, p[j][0], p[j][1], p[j + 1][0], p[j + 1][1]) > TOLERANSI_RUAS) continue;
-        nama = r.n; batas = r.b; kena = true;
-        break;   // penggal lain di ruas yang sama berbatas sama — tidak bisa menurunkannya
+        const d = jarakSkala(lon, lat, p[j][0], p[j][1], p[j + 1][0], p[j + 1][1], mx, my);
+        if (d < di) di = d;
       }
     }
+    if (!(di <= TOL)) continue;
+    dRuas[n] = di; calon[n++] = i;
+    if (di < dmin) dmin = di;
   }
-  return { nama, batas };
+  if (!n) return { nama: null, batas: BATAS_LUAR };
+
+  let r = null;
+  for (let k = 0; k < n; k++) {
+    if (dRuas[k] > dmin + SERI_M) continue;
+    const x = RUAS[calon[k]];
+    if (!r || x.b < r.b || (x.b === r.b && x.n < r.n)) r = x;
+  }
+  return { nama: r.n, batas: r.b };
+}
+
+/* Kotak k (berpelebaran `pad`) di larik `kotak`: apakah kotak aslinya lebih jauh
+   dari `lim` meter dari titik. Perbandingan kuadrat, tanpa akar dan tanpa objek. */
+function jauhKotak(kotak, k, pad, lon, lat, mx, my, lim) {
+  let bx = kotak[k] + pad - lon;
+  if (bx < 0) { bx = lon - kotak[k + 2] + pad; if (bx < 0) bx = 0; }
+  let by = kotak[k + 1] + pad - lat;
+  if (by < 0) { by = lat - kotak[k + 3] + pad; if (by < 0) by = 0; }
+  bx *= mx; by *= my;
+  return bx * bx + by * by > lim * lim;
 }
 
 /* Ruas TERDEKAT dari sebuah titik, tanpa batas jarak. Dipakai hanya untuk
@@ -1471,28 +1629,143 @@ function sampelSah(s, prev, nowDetik, mentah = null) {
    belum ada atau gagal dibuat.
 
    Mengembalikan baris yang dipakai { id, kecepatan_max, lat, lon } dan `baru`
-   = baris itu dibuat oleh panggilan ini. */
-async function bukaPelanggaran(env, u, ev) {
+   = baris itu dibuat oleh panggilan ini.
+
+   Versi 15 (§17 butir 79): kejadian yang TERBELAH. Bila pemanggilan terhenti
+   sesudah membuka kejadian, atau dua pemanggilan bekerja di atas state yang sama,
+   baris pembukanya tertinggal "berjalan" tanpa pemilik, dan state yang meneruskan
+   membuka kejadian kedua dengan waktu mulai lain — satu ngebut tercatat dua.
+   Karena itu, sebelum membuat baris baru, dicari baris unit yang SAMA dengan
+   batas yang sama yang masih berjalan, dimulai paling lama sejam sebelumnya dan
+   berakhir paling lama 25 detik sebelum kejadian ini dimulai (atau sesudahnya).
+   Bila ada, baris itu yang diteruskan (`terus`), tidak dibuat baris baru.
+
+   Kenapa 25 detik: dengan cek tiap 10 detik, kejadian sungguhan yang ditutup lalu
+   dibuka lagi butuh paling sedikit dua sampel di bawah batas di antaranya — jeda
+   dari sampel terakhir kejadian lama ke sampel pertama kejadian baru paling
+   sedikit tiga selang, ±30 detik (±24 detik bila jatuh di selang pendek awal blok
+   A). Di bawah itu dua baris praktis pasti satu kejadian. Diukur di simulator
+   (pemanggilan dimatikan sesudah membuka kejadian, 16 skenario, dinilai dari
+   pesan GPS sebenarnya): dengan jendela 60 detik, 16 dari 181 penyatuan ternyata
+   menyatukan dua kejadian — unitnya sempat berhenti di sela yang tidak terlihat
+   state ini; dengan 25 detik, 1 dari 158. Pasangan dengan sela lebih panjang
+   dibiarkan dua baris seperti versi 14, termasuk unit yang jarang mengirim posisi.
+
+   Pada jalan normal syarat itu tidak boleh terpenuhi: state yang membuka
+   kejadian baru tidak memegang kejadian lain unit itu, dan kejadian yang ia tutup
+   karena unitnya melambat sudah tersimpan berjalan=0 sebelum pembukaan berikutnya
+   (tutup butuh dua sampel di bawah batas, buka dua sampel di atasnya — selalu
+   melewati akhir blok). Satu-satunya penutupan yang bisa masih tertunda di blok
+   yang sama adalah pindah ruas: satu sampel jatuh di ruas berbatas lain (atau di
+   luar ruas), kejadian ditutup, dan sampel berikutnya di ruas semula langsung
+   membuka kejadian baru berbatas sama — sementara barisnya di D1 masih
+   berjalan=1 karena penutupannya baru ditulis di akhir blok. Versi 14 mencatatnya
+   dua baris; agar tetap begitu (dan tidak bergantung pada letak sampel di blok),
+   penutupan tertunda milik unit itu sendiri (`kecuali`, dari tutupSendiri())
+   dikecualikan. Temuan tinjauan terpisah 24 Oktober 2026: tanpa pengecualian ini
+   simpang RD_Harmoni (30) ↔ ujung RD_Atom (35) memberi satu baris atau dua
+   tergantung waktu pesan. Baris yang masih berjalan tanpa dipegang state ini
+   hanya ada bila ada yang putus atau berbarengan. Baris dengan unit dan `mulai`
+   yang sama (versi 14) tetap didahulukan. Semua di satu batch, jadi pemeriksaan
+   dan INSERT melihat keadaan tabel yang sama. */
+const TERUSKAN_DT_MS = 25000;      // baris lama berakhir paling lama 25 dtk sebelum kejadian baru
+const TERUSKAN_MAKS_MS = 3600000;  // dan dimulai paling lama sejam sebelumnya
+
+/* Waktu mulai (ms) kejadian unit ini yang DITUTUP di blok ini tetapi penutupannya
+   belum ditulis (masih di `tunda`). */
+function tutupSendiri(tunda, unitId) {
+  const out = [];
+  if (tunda) for (const t of tunda.values()) {
+    if (t.tutup && t.ev && String(t.unitId) === String(unitId)) out.push(t.ev.tStart * 1000);
+  }
+  return out;
+}
+
+/* Kecuali state ini sendiri sudah MELIHAT unit itu melambat di antaranya: dua
+   sampel sah terakhir sebelum kejadian baru sama-sama ≤ batas − HISTERESIS —
+   cukup untuk menutup kejadian lama menurut aturan tutup. Baris yang berakhir
+   sebelum sampel pertama dari keduanya adalah kejadian lain, jadi tidak
+   diteruskan. Mengembalikan batas bawah `selesai` (ms) yang masih boleh
+   diteruskan karena hal itu. (Kecepatan mentah, bukan median tiga: buffer state
+   hanya empat sampel. Diuji di simulator terhadap rujukan tanpa gangguan.) */
+function batasTeruskan(ev, buf) {
+  const sebelum = (buf || []).filter((x) => x.t < ev.tStart);
+  if (sebelum.length < KONFIRMASI) return 0;
+  const akhir = sebelum.slice(-KONFIRMASI);
+  return akhir.every((x) => x.speed <= ev.batas - HISTERESIS) ? akhir[0].t * 1000 : 0;
+}
+
+async function bukaPelanggaran(env, u, ev, buf = null, kecuali = null) {
   const mulai = ev.tStart * 1000;
-  const [isi, ada] = await env.DB.batch([
+  const syaratTerus =
+    `unit_id = ? AND batas = ? AND berjalan = 1 AND mulai < ? AND mulai >= ? AND selesai >= ?
+     AND mulai NOT IN (SELECT value FROM json_each(?))`;
+  const ikatTerus = [u.id, ev.batas, mulai, mulai - TERUSKAN_MAKS_MS,
+                     Math.max(mulai - TERUSKAN_DT_MS, batasTeruskan(ev, buf)),
+                     JSON.stringify(kecuali || [])];
+  const [lama, isi, ada] = await env.DB.batch([
+    env.DB.prepare(
+      `SELECT id, mulai, selesai, kecepatan_max, kecepatan_rata, sampel, lat, lon
+         FROM pelanggaran WHERE ${syaratTerus} ORDER BY mulai DESC, id DESC LIMIT 1`
+    ).bind(...ikatTerus),
     env.DB.prepare(
       `INSERT INTO pelanggaran
          (unit_id, unit, tanggal, mulai, selesai, kecepatan_max, kecepatan_rata,
           sampel, batas, ruas, ruas_dekat, jarak_ruas, lat, lon, berjalan)
        SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,1
-        WHERE NOT EXISTS (SELECT 1 FROM pelanggaran WHERE unit_id = ? AND mulai = ?)`
+        WHERE NOT EXISTS (SELECT 1 FROM pelanggaran WHERE unit_id = ? AND mulai = ?)
+          AND NOT EXISTS (SELECT 1 FROM pelanggaran WHERE ${syaratTerus})`
     ).bind(u.id, u.nama, tanggalWIT(mulai), mulai, ev.tEnd * 1000,
            ev.maxSpeed, ev.sum / ev.n, ev.n, ev.batas, ev.ruas, ev.ruasDekat, ev.jarak,
-           ev.lat, ev.lon, u.id, mulai),
+           ev.lat, ev.lon, u.id, mulai, ...ikatTerus),
     env.DB.prepare(
       `SELECT id, kecepatan_max, lat, lon FROM pelanggaran
         WHERE unit_id = ? AND mulai = ? ORDER BY id LIMIT 1`
     ).bind(u.id, mulai),
   ]);
   const b = ada && ada.results && ada.results[0];
-  if (!b) throw new Error("baris kejadian tidak terbaca sesudah dibuka");
-  b.baru = Number(isi?.meta?.changes || 0) > 0;
-  return b;
+  if (b) {
+    b.baru = Number(isi?.meta?.changes || 0) > 0;
+    return b;
+  }
+  const t = lama && lama.results && lama.results[0];
+  if (!t) throw new Error("baris kejadian tidak terbaca sesudah dibuka");
+  t.baru = false;
+  t.terus = true;
+  return t;
+}
+
+/* Versi 15: kejadian ini meneruskan baris `b` yang tertinggal berjalan (lihat
+   bukaPelanggaran). Waktu mulainya mundur ke baris itu, kecepatan tertinggi
+   (dengan posisinya) diambil yang terbesar. Bila baris itu berakhir SEBELUM
+   sampel pertama kejadian ini, sampelnya pasti lain, jadi jumlah dan rata-ratanya
+   digabung; bila tumpang tindih, sampel yang sama bisa terhitung dua kali, jadi
+   yang dipakai hanya milik state ini — aturan yang sama dengan gabungBarisLama(). */
+function teruskanBaris(ev, b) {
+  const mulaiB = Math.round(Number(b.mulai) / 1000), selesaiB = Number(b.selesai) / 1000;
+  const n = Number(b.sampel) || 0, rata = Number(b.kecepatan_rata);
+  if (selesaiB < ev.tStart && n > 0 && Number.isFinite(rata)) { ev.sum += rata * n; ev.n += n; }
+  gabungBarisLama(ev, b);
+  if (selesaiB > ev.tEnd) ev.tEnd = selesaiB;
+  if (mulaiB < ev.tStart) ev.tStart = mulaiB;
+}
+
+/* Hasil bukaPelanggaran() dipasang ke state. Dipakai pembukaan dan
+   lengkapiBaris(); `tunda` boleh null (pembaruannya ditulis pemanggil). */
+function pakaiBaris(tunda, u, st, b) {
+  st.id = b.id;
+  if (b.terus) {
+    const tLama = st.ev.tStart;
+    teruskanBaris(st.ev, b);
+    if (tunda) {
+      if (st.ev.tStart !== tLama) tunda.delete(u.id + ":" + tLama);
+      tundaTulis(tunda, u.id, st.ev, false);
+    }
+    console.log(`kejadian unit=${u.id} (${u.nama}) mulai=${tLama} meneruskan #${b.id} ` +
+                `(mulai=${st.ev.tStart}) yang tertinggal berjalan: tidak dibuat baris kedua`);
+  } else if (!b.baru) {
+    if (tunda) sudahTercatat(tunda, u, st, b); else gabungBarisLama(st.ev, b);
+  }
 }
 
 /* Versi 14: baris dengan unit dan `mulai` yang sama sudah ada — kejadian ini
@@ -1520,11 +1793,15 @@ function sudahTercatat(tunda, u, st, b) {
    jawabannya hilang (barisnya bisa tersimpan, bisa tidak). Karena pembukaan kini
    idempoten, cukup dibuka ulang. Galat tidak dinaikkan: dicoba lagi pada sampel
    berikutnya, dan unit lain di putaran ini tetap diperiksa. */
-async function lengkapiBaris(env, u, st) {
+async function lengkapiBaris(env, u, st, tunda = null) {
   try {
-    const b = await bukaPelanggaran(env, u, st.ev);
-    st.id = b.id;
-    if (!b.baru) gabungBarisLama(st.ev, b);
+    const b = await bukaPelanggaran(env, u, st.ev, st.buf, tutupSendiri(tunda, u.id));
+    /* Pemanggil menulis pembaruan sesudahnya. Bila baris diteruskan, kunci tunda
+       lama (waktu mulai sebelum mundur) dibuang lewat `tunda`. */
+    pakaiBaris(null, u, st, b);
+    if (b.terus && tunda) {
+      for (const [k, t] of tunda) if (t.ev === st.ev && k !== u.id + ":" + st.ev.tStart) tunda.delete(k);
+    }
   } catch (e) {
     console.log(`kejadian unit=${u.id} (${u.nama}) belum punya baris, dicoba lagi nanti: ${String(e.message || e)}`);
   }
@@ -1569,28 +1846,16 @@ function tundaTulis(tunda, unitId, ev, tutup) {
   tunda.set(unitId + ":" + ev.tStart, { unitId, ev, tutup });
 }
 
-async function siramTunda(env, tunda) {
-  if (!tunda.size) return 0;
-  const perintah = [];
-  for (const t of tunda.values()) perintah.push(perintahPerbarui(env, t.unitId, t.ev, t.tutup));
-  tunda.clear();
-  // Dipecah karena satu batch D1 punya batas jumlah perintah.
-  for (let i = 0; i < perintah.length; i += 50) {
-    await env.DB.batch(perintah.slice(i, i + 50));
-  }
-  return perintah.length;
-}
-
 /* State dibaca sekali di awal pemanggilan dan ditulis sekali di akhir. Membaca
    lalu menulis ulang ±25 KB JSON pada tiap putaran menghabiskan anggaran CPU
-   10 ms sebelum enam putaran selesai. */
-async function muatSimpanan(env) {
-  /* Galat baca D1 SENGAJA dibiarkan naik. Versi 5 membungkus pembacaan ini di
-     dalam try, sehingga saat kuota baca habis state dianggap kosong: cron lalu
-     berjalan tanpa ingatan dan bisa menimpa state tersimpan, dan kejadian yang
-     sedang terbuka tidak pernah ditutup. Yang boleh jatuh ke kosong hanya isi
-     yang rusak, bukan pembacaan yang gagal. */
-  const teks = await ambilKV(env, "state");
+   10 ms sebelum enam putaran selesai.
+
+   Galat baca D1 SENGAJA dibiarkan naik. Versi 5 membungkus pembacaan ini di
+   dalam try, sehingga saat kuota baca habis state dianggap kosong: cron lalu
+   berjalan tanpa ingatan dan bisa menimpa state tersimpan, dan kejadian yang
+   sedang terbuka tidak pernah ditutup. Yang boleh jatuh ke kosong hanya isi
+   yang rusak, bukan pembacaan yang gagal. */
+function uraiState(teks) {
   let simpan = {};
   try { simpan = JSON.parse(teks || "{}"); } catch (e) { simpan = {}; }
   if (!simpan || typeof simpan !== "object") simpan = {};
@@ -1599,18 +1864,79 @@ async function muatSimpanan(env) {
      pemicu mana — dibaca /api/status untuk memastikan ketiga pemicu hidup. */
   return { u: obj(simpan.u), blok: obj(simpan.blok), oleh: obj(simpan.oleh), jv: Number(simpan.jv) || 0 };
 }
+async function muatSimpanan(env) {
+  return uraiState(await ambilKV(env, "state"));
+}
 
-async function simpanState(env, s, jumlahUnit) {
-  await simpanKV(env, "state", JSON.stringify({
-    u: s.u, cek: Date.now(), jumlah: jumlahUnit, blok: s.blok, oleh: s.oleh, jv: JALAN.versi || s.jv || 0,
-  }));
+/* Versi 15 (§17 butir 78): blok membaca state SESUDAH blok sebelumnya menyimpan.
+
+   Tiap blok membaca state di awal jendelanya dan menulisnya di akhir. Bila blok
+   sebelumnya — A sebelum B, B sebelum C, C menit lalu sebelum A — terlambat
+   menyimpan (jawaban Wialon lambat, sesi basi dan login ulang), blok ini membaca
+   state lama, lalu salah satu simpanan menimpa yang lain: sampel, kejadian yang
+   sedang terbuka, dan hitungan konfirmasi satu blok hilang. Versi 14 hanya
+   mencegah akibatnya yang paling terlihat (baris ganda).
+
+   Sekarang: bila blok sebelumnya sudah DIKLAIM untuk menitnya (baris kv
+   'blok:X') tetapi state belum mencatatnya selesai (`blok.X`), blok ini menunggu
+   — memeriksa tiap TUNGGU_JEDA_MS dengan kueri kecil yang tidak membawa isi state
+   — paling lama sampai TUNGGU_SIMPAN_MS sesudah awal jendelanya. Lewat dari itu
+   blok berjalan dengan state yang ada, sama dengan versi 14: putaran tidak
+   pernah dikorbankan untuk menunggu, paling buruk putaran pertama blok mundur
+   enam detik. Blok yang tidak diklaim siapa pun, dan blok yang sudah menandai
+   klaimnya gagal menyimpan (`g`, lihat jalankanBlok), tidak ditunggu. Pada jalan
+   normal tidak ada tunggu sama sekali, dan klaim ikut dibaca dalam batch yang
+   sama dengan state, jadi tidak ada perjalanan D1 tambahan.
+
+   Mengembalikan state, dengan `tunggu` = lama menunggu (ms) dan `tungguSebab`. */
+const TUNGGU_SIMPAN_MS = 6000;
+const TUNGGU_JEDA_MS = 750;
+const SEBELUM = { A: ["C", -60000], B: ["A", 0], C: ["B", 0] };
+async function muatSimpananBlok(env, nama, T) {
+  const [p, geser] = SEBELUM[nama];
+  const Tp = T + geser;
+  const [rs, rk] = await env.DB.batch([
+    env.DB.prepare(`SELECT v FROM kv WHERE k = 'state'`),
+    env.DB.prepare(`SELECT json_extract(v, '$.m') AS m, json_extract(v, '$.g') AS g FROM kv WHERE k = ? AND json_valid(v)`)
+      .bind("blok:" + p),
+  ]);
+  let s = uraiState(rs?.results?.[0]?.v ?? null);
+  s.tunggu = 0;
+  const klaim = rk?.results?.[0];
+  if (Number(s.blok[p]) === Tp || Number(klaim?.m) !== Tp) return s;
+  if (Number(klaim?.g) === 1) { s.tungguSebab = "gagal-simpan"; return s; }
+
+  const awal = Date.now(), tenggat = T + BLOK_PETA[nama].mulai + TUNGGU_SIMPAN_MS;
+  // Pemicu yang datang sesudah tenggat tidak menunggu lagi; cukup dicatat di log.
+  if (awal >= tenggat) { s.tungguSebab = "belum-tersimpan"; return s; }
+  let sebab = "tenggat";
+  while (Date.now() < tenggat) {
+    await sleep(Math.min(TUNGGU_JEDA_MS, tenggat - Date.now()));
+    try {
+      const r = await env.DB.prepare(
+        `SELECT (SELECT json_extract(v, ?) FROM kv WHERE k = 'state' AND json_valid(v)) AS b,
+                (SELECT json_extract(v, '$.g') FROM kv WHERE k = ? AND json_valid(v)) AS g`
+      ).bind("$.blok." + p, "blok:" + p).first();
+      if (Number(r?.b) === Tp) { sebab = "tersimpan"; break; }
+      if (Number(r?.g) === 1) { sebab = "gagal-simpan"; break; }
+    } catch (e) { sebab = "galat"; break; }
+  }
+  s = await muatSimpanan(env);
+  s.tunggu = Date.now() - awal;
+  s.tungguSebab = Number(s.blok[p]) === Tp ? "tersimpan" : sebab;
+  return s;
 }
 
 /* Satu putaran pemeriksaan seluruh armada. `state` dibawa masuk dan diubah di
-   tempat; pemanggilnya yang bertanggung jawab menyimpannya. */
-async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
+   tempat; pemanggilnya yang bertanggung jawab menyimpannya.
+
+   `kering` (versi 15, /api/uji): penilaian sama persis, tetapi tidak ada yang
+   ditulis — tidak membuka baris pelanggaran dan tidak menandai sensor mesin —
+   supaya uji dari luar tidak pernah berebut state atau tabel dengan cron. */
+async function satuPutaran(env, state, tunda, jejak = null, T0 = 0, kering = false) {
   const units = await ambilUnit(env, false);
   const nowDetik = Math.floor(Date.now() / 1000);
+  const lengkapi = kering ? async () => {} : (u, st) => lengkapiBaris(env, u, st, tunda);
 
   let sah = 0, ditolak = 0, basi = 0, melanggar = 0;
   const alasan = {};   // jumlah penolakan per alasan (versi 11)
@@ -1641,7 +1967,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
     if (!tolak && u.mesin === false && s.speed >= KEC_CEK) {
       tolak = "mesin";
       if (!st.mk) st.mk = [nowDetik, 0];
-      if (++st.mk[1] >= MESIN_CURIGA) {
+      if (++st.mk[1] >= MESIN_CURIGA && !kering) {
         MESIN.x[k] = mesinUbah.x[k] = nowDetik + MESIN_ABAIKAN;
         st.mk = undefined;
         console.log(`mesin unit=${k} (${u.nama}) sensornya diabaikan 3 hari: ` +
@@ -1678,7 +2004,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
        pelanggaran harus terikat pada satu ruas dan satu angka batas, kalau tidak
        catatannya tidak bisa dipertanggungjawabkan. */
     if (st.ev && rz && st.ev.batas !== rz.batas) {
-      if (st.id == null) await lengkapiBaris(env, u, st);
+      if (st.id == null) await lengkapi(u, st);
       tundaTulis(tunda, u.id, st.ev, true);
       st.ev = null; st.id = null; st.un = 0; st.ov = 0;
     }
@@ -1703,13 +2029,14 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
         /* Versi 14: idempoten — baris yang sudah ada dipakai, bukan dibuat ganda.
            Galat D1 atau jawaban yang hilang tidak lagi menghentikan putaran untuk
            unit-unit berikutnya: kejadian tetap di state tanpa nomor baris dan
-           dilengkapi lengkapiBaris() pada sampel berikutnya. */
-        try {
-          const b = await bukaPelanggaran(env, u, st.ev);
-          st.id = b.id;
-          if (!b.baru) sudahTercatat(tunda, u, st, b);
-        } catch (e) {
-          console.log(`kejadian unit=${u.id} (${u.nama}) belum punya baris, dicoba lagi nanti: ${String(e.message || e)}`);
+           dilengkapi lengkapiBaris() pada sampel berikutnya. Versi 15: baris yang
+           tertinggal berjalan dari kejadian yang sama diteruskan (pakaiBaris). */
+        if (!kering) {
+          try {
+            pakaiBaris(tunda, u, st, await bukaPelanggaran(env, u, st.ev, st.buf, tutupSendiri(tunda, u.id)));
+          } catch (e) {
+            console.log(`kejadian unit=${u.id} (${u.nama}) belum punya baris, dicoba lagi nanti: ${String(e.message || e)}`);
+          }
         }
         melanggar++;
       } else if (st.ev) {
@@ -1717,7 +2044,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
         if (s.speed >= st.ev.maxSpeed) { st.ev.lat = s.lat; st.ev.lon = s.lon; }
         st.ev.maxSpeed = Math.max(st.ev.maxSpeed, s.speed);
         st.ev.sum += s.speed; st.ev.n++;
-        if (st.id == null) await lengkapiBaris(env, u, st);
+        if (st.id == null) await lengkapi(u, st);
         tundaTulis(tunda, u.id, st.ev, false);
         melanggar++;
       }
@@ -1726,7 +2053,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
       if (st.ev && nilai <= st.ev.batas - HISTERESIS) {
         st.un++;
         if (st.un >= KONFIRMASI) {
-          if (st.id == null) await lengkapiBaris(env, u, st);
+          if (st.id == null) await lengkapi(u, st);
           tundaTulis(tunda, u.id, st.ev, true);
           st.ev = null; st.id = null; st.un = 0;
         }
@@ -1743,7 +2070,7 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
          tidak hilang saat ditutup. Nama unit dari daftar putaran ini, atau — bila unit
          itu sudah tidak ada di daftar Wialon — nama yang dicatat saat kejadian dibuka. */
       if (st.id == null) {
-        await lengkapiBaris(env, units.find((x) => String(x.id) === k) || { id: Number(k), nama: st.ev.nama ?? null }, st);
+        await lengkapi(units.find((x) => String(x.id) === k) || { id: Number(k), nama: st.ev.nama ?? null }, st);
       }
       tundaTulis(tunda, Number(k), st.ev, true);
       st.ev = null; st.id = null; st.ov = 0; st.un = 0;
@@ -1753,15 +2080,20 @@ async function satuPutaran(env, state, tunda, jejak = null, T0 = 0) {
   return { unit: units.length, sah, ditolak, basi, melanggar, alasan };
 }
 
-/* Dipakai /api/uji: satu putaran lengkap berikut baca dan tulis state. */
+/* Dipakai /api/uji. Sampai versi 14 ini satu putaran lengkap berikut baca dan
+   TULIS state, di luar klaim blok — jadi bisa berbarengan dengan cron dan
+   menimpa state-nya (§17 butir 80; simulasi v14: 5 pasangan ganda). Sejak versi
+   15 putarannya KERING: state dibaca dan dinilai seperti cron, hasilnya
+   dikembalikan, tetapi tidak ada yang disimpan dan tidak ada baris yang dibuka.
+   Tidak dipakai halaman mana pun; tetap ada untuk memeriksa Worker dari luar. */
 async function periksa(env) {
   const s = await muatSimpanan(env);
   await sesuaikanJalan(env, s);
   await muatMesin(env);
-  const tunda = new Map();
-  const h = await satuPutaran(env, s.u, tunda);
-  await siramTunda(env, tunda);
-  await simpanState(env, s, h.unit);
+  const h = await satuPutaran(env, s.u, new Map(), null, 0, true);
+  h.kering = true;
+  h.catatan = "uji kering: dinilai dari state cron, tidak ada yang disimpan; " +
+              "`melanggar` = pembacaan yang melewati batas di putaran ini";
   return h;
 }
 
@@ -1786,6 +2118,15 @@ function perintahKlaim(env, nama, m, oleh, cron) {
 }
 const menang = (r) => Number(r?.meta?.changes || 0) > 0;
 
+/* Versi 15: A mencoba mengklaim blok `nama` sesaat sebelum jendelanya. Galat D1
+   dianggap kalah: pemicu lain yang datang sesudahnya masih bisa mengklaimnya. */
+const AMBIL_ALIH_MS = 2000;
+async function ambilAlih(env, nama, T, cron) {
+  await tidurSampai(T + BLOK_PETA[nama].mulai - AMBIL_ALIH_MS);
+  try { return menang(await perintahKlaim(env, nama, T, "A", cron).run()); }
+  catch (e) { console.log(`blok=${nama} klaim ambil alih gagal: ${String(e.message || e)}`); return false; }
+}
+
 /* Pembaruan pelanggaran yang tertunda, sebagai daftar perintah — supaya bisa
    dikirim dalam SATU batch bersama penyimpanan state dan klaim blok. */
 function ambilPerintahTunda(env, tunda) {
@@ -1803,14 +2144,31 @@ function perintahSimpanState(env, s, jumlahUnit) {
   }));
 }
 
+/* Versi 15: klaim blok `nama` menit T ditandai selesai TANPA simpanan (`g`) —
+   batch akhirnya ditolak D1, atau blok itu dilewati karena state tidak terbaca —
+   supaya blok berikutnya tidak menunggu sampai tenggat untuk simpanan yang tidak
+   akan datang. Klaim menit berikutnya menimpa seluruh isi baris, jadi tanda ini
+   hilang sendiri. Bila penulisan ini pun gagal, penunggu berhenti di tenggat. */
+async function tandaiTanpaSimpan(env, nama, T) {
+  try {
+    await env.DB.prepare(
+      `UPDATE kv SET v = json_set(v, '$.g', 1) WHERE k = ? AND json_valid(v) AND json_extract(v, '$.m') = ?`
+    ).bind("blok:" + nama, T).run();
+  } catch (e) { /* tenggat tetap berlaku */ }
+}
+
+const ULANG_SIMPAN_MS = 500;      // jeda sebelum batch akhir blok yang ditolak dicoba lagi
+
 /* Dua putaran satu blok, dengan state `s` yang dibawa masuk.
 
-   Semua penulisan akhir blok — pembaruan pelanggaran, `tambahan` (klaim ambil
-   alih milik A), dan penyimpanan state bila `simpan` — dikirim dalam SATU
-   batch D1. Satu batch adalah satu transaksi: state dan baris pelanggaran
-   tidak pernah tersimpan setengah. Mengembalikan hasil untuk `tambahan`,
-   atau null bila penulisan gagal. */
-async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [], jalan = [] } = {}) {
+   Semua penulisan akhir blok — pembaruan pelanggaran, jalan versi baru (blok A),
+   jejak, dan penyimpanan state — dikirim dalam SATU batch D1. Satu batch adalah
+   satu transaksi: state dan baris pelanggaran tidak pernah tersimpan setengah.
+   Sejak versi 15 state SELALU disimpan di akhir blok (versi 14 melewatinya bila
+   A memikul B dan C sekaligus), karena blok berikutnya bisa dijalankan pemanggilan
+   lain yang menunggu simpanan ini (muatSimpananBlok). Klaim ambil alih tidak lagi
+   ikut batch ini (lihat scheduled). Mengembalikan true bila batch tersimpan. */
+async function jalankanBlok(env, nama, T, oleh, s, { jalan = [] } = {}) {
   const b = BLOK_PETA[nama];
   const tunda = new Map();
   const jejak = new Map();
@@ -1838,34 +2196,59 @@ async function jalankanBlok(env, nama, T, oleh, s, { simpan = true, tambahan = [
 
   const perintah = ambilPerintahTunda(env, tunda);
   const ditulis = perintah.length;
-  perintah.push(...tambahan);
   perintah.push(...jalan);
   const pj = perintahJejak(env, T, nama, jejak);
   if (pj) perintah.push(pj);
-  if (simpan) perintah.push(perintahSimpanState(env, s, s.jumlah || 0));
+  perintah.push(perintahSimpanState(env, s, s.jumlah || 0));
 
-  let hasil = [];
-  try {
-    for (let i = 0; i < perintah.length; i += 50) {
-      hasil.push(...(await env.DB.batch(perintah.slice(i, i + 50))));
+  /* Versi 15: batch yang ditolak dicoba SEKALI lagi sesudah jeda singkat. Sejak
+     blok dibagi ke beberapa pemanggilan, blok berikutnya memuat state dari D1 —
+     simpanan yang gagal berarti sampel blok ini hilang baginya (versi 14 membawa
+     state di memori karena satu pemanggilan memikul semua blok). Semua pernyataan
+     di sini idempoten (pembaruan berkunci unit + mulai, upsert state, jejak, dan
+     jalan), jadi mengulang potongan yang mungkin sebenarnya sudah tersimpan tidak
+     mengubah hasil — selama ulangannya mendarat sebelum blok berikutnya menyimpan.
+     Bila ulangan itu tertahan lama (D1 lambat ±20 detik) dan mendarat sesudahnya,
+     simpanan blok berikutnya tertimpa; tabel tetap utuh (tidak ada baris yatim
+     atau bertumpang), hanya sampel blok mana yang hilang yang tertukar (diuji di
+     simulator tinjauan terpisah). */
+  let tersimpan = true;
+  const ulang = [];
+  for (let i = 0; i < perintah.length && tersimpan; i += 50) {
+    const potong = perintah.slice(i, i + 50);
+    try {
+      await env.DB.batch(potong);
+    } catch (e) {
+      await sleep(ULANG_SIMPAN_MS);
+      try {
+        await env.DB.batch(potong);
+        ulang.push(String(e.message || e));     // pulih: dicatat terpisah dari "gagal"
+      } catch (e2) {
+        gagal.push(`tulis: ${String(e2.message || e2)}`);
+        tersimpan = false;
+      }
     }
-  } catch (e) {
-    gagal.push(`tulis: ${String(e.message || e)}`);
-    hasil = null;
   }
+  if (!tersimpan) await tandaiTanpaSimpan(env, nama, T);
   // Sensor yang baru dicurigai macet (versi 13) — terpisah dari batch di atas.
   const gm = await simpanMesin(env);
   if (gm) gagal.push(`mesin: ${gm}`);
 
+  /* Versi 15: lama menunggu simpanan blok sebelumnya (muatSimpananBlok), hanya
+     bila memang menunggu atau blok sebelumnya belum tersimpan. Dicatat sekali:
+     state yang sama dibawa A ke blok yang diambil alihnya. */
+  const tunggu = s.tungguSebab ? ` tunggu=${Math.round((s.tunggu || 0) / 100) / 10}s:${s.tungguSebab}` : "";
+  s.tunggu = 0; s.tungguSebab = undefined;
   const teksAlasan = Object.keys(alasan).map((k) => k + ":" + alasan[k]).join(",");
   console.log(
     `blok=${nama}${oleh !== nama ? ` oleh=${oleh}` : ""} unit=${unit} ` +
     `sah=${deretSah.join(",")} tolak=${deretTolak.join(",")} ` +
     (teksAlasan ? `alasan=${teksAlasan} ` : "") +
-    `langgar=${langgar} tulis=${ditulis} jejak=${jejak.size} jalan=v${JALAN.versi}` +
+    `langgar=${langgar} tulis=${ditulis} jejak=${jejak.size} jalan=v${JALAN.versi}${tunggu}` +
+    (ulang.length ? ` | tulis diulang dan berhasil (${ulang.join(" ; ")})` : "") +
     (gagal.length ? ` | gagal ${gagal.join(" ; ")}` : "")
   );
-  return hasil ? hasil.slice(ditulis, ditulis + tambahan.length) : null;
+  return tersimpan;
 }
 
 async function bersihkan(env) {
@@ -2147,25 +2530,45 @@ async function pulihkanKejadian(env, req) {
      itu. Syaratnya di dalam INSERT sendiri, jadi tetap benar walau indeks unik
      belum ada; arsip hanya dihapus bila barisnya benar-benar kembali. */
   const unitId = r.unit_id ?? null, mulai = r.mulai ?? null;
+  /* Versi 15: juga ditolak bila rentang waktunya bertumpang dengan baris lain unit
+     itu berbatas sama — mis. catatan terbelah yang dipindah sistem, yang rentangnya
+     sudah digabung ke baris yang disimpan. Dua baris bertumpang (bahkan bersentuhan)
+     untuk satu unit tidak mungkin dua kejadian, karena kejadian baru selalu mulai
+     di sampel sesudah yang lama berakhir; dipulihkan, keduanya terhitung dua kali
+     sampai pembersihan harian memindahkannya lagi (temuan tinjauan terpisah). */
+  const batas = r.batas ?? null, selesai = r.selesai ?? null;
+  const syaratTumpang = `unit_id = ? AND batas = ? AND mulai <= ? AND selesai >= ? AND id <> ?`;
+  const ikatTumpang = [unitId, batas, selesai, mulai, id];
   let hasil;
   try {
     hasil = await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO pelanggaran (${KOLOM_PELANGGARAN.join(", ")})
          SELECT ${KOLOM_PELANGGARAN.map(() => "?").join(", ")}
-          WHERE NOT EXISTS (SELECT 1 FROM pelanggaran WHERE unit_id = ? AND mulai = ?)`
-      ).bind(...KOLOM_PELANGGARAN.map((k) => (r[k] === undefined ? null : r[k])), unitId, mulai),
+          WHERE NOT EXISTS (SELECT 1 FROM pelanggaran WHERE unit_id = ? AND mulai = ?)
+            AND NOT EXISTS (SELECT 1 FROM pelanggaran WHERE ${syaratTumpang})`
+      ).bind(...KOLOM_PELANGGARAN.map((k) => (r[k] === undefined ? null : r[k])), unitId, mulai, ...ikatTumpang),
       env.DB.prepare(`DELETE FROM pelanggaran_dihapus WHERE id = ? AND EXISTS (SELECT 1 FROM pelanggaran WHERE id = ?)`).bind(id, id),
       perintahBuangRingkas(env),
       env.DB.prepare(`SELECT id, unit, mulai FROM pelanggaran WHERE unit_id = ? AND mulai = ? AND id <> ? ORDER BY id LIMIT 1`)
         .bind(unitId, mulai, id),
+      env.DB.prepare(`SELECT id, unit, mulai, selesai FROM pelanggaran WHERE ${syaratTumpang} ORDER BY mulai, id LIMIT 1`)
+        .bind(...ikatTumpang),
     ]);
   } catch (e) {
     if (/UNIQUE|constraint/i.test(String(e.message || e))) return json({ error: "Kejadian dengan nomor ini sudah ada di daftar." }, 409);
     throw e;
   }
   if (!(Number(hasil[0]?.meta?.changes || 0) > 0)) {
-    const ada = hasil[3]?.results?.[0];
+    const ada = hasil[3]?.results?.[0], tumpang = hasil[4]?.results?.[0];
+    if (!ada && tumpang) {
+      console.log(`pulihkan id=${id} ditolak: rentangnya dicakup kejadian #${tumpang.id} (unit dan batas sama) oleh=${a.email}`);
+      return json({
+        error: `Kejadian #${tumpang.id} (${tumpang.unit || r.unit || "unit ini"} · ${waktuWIT(tumpang.mulai)}–${waktuWIT(tumpang.selesai)} WIT) ` +
+               `dengan batas yang sama bertumpang waktu dengan kejadian ini. Yang ini bagian dari kejadian itu, jadi tidak dipulihkan.`,
+        bagian_dari: tumpang.id,
+      }, 409);
+    }
     if (!ada) return json({ error: "Kejadian dengan nomor ini sudah ada di daftar." }, 409);
     console.log(`pulihkan id=${id} ditolak: sama dengan kejadian #${ada.id} (unit dan waktu mulai sama) oleh=${a.email}`);
     return json({
@@ -2414,6 +2817,240 @@ async function pastikanUnik(env) {
   return false;
 }
 
+// ------------------------------------------- catatan terbelah (versi 15)
+
+/* §17 butir 79: satu kejadian yang terlanjur tersimpan dua baris atau lebih
+   dengan waktu mulai BERBEDA — tidak bisa dikenali dari kunci (unit_id, mulai)
+   seperti catatan ganda versi 14. Sejak versi 15 pembukaan kejadian meneruskan
+   baris yang tertinggal (bukaPelanggaran), jadi yang dirapikan di sini adalah
+   sisa lama dan yang lolos dari aturan itu.
+
+   Yang dikenali hanya yang PASTI satu kejadian: dua baris unit yang sama dengan
+   batas yang sama yang rentang waktunya bertumpang (yang satu mulai sebelum yang
+   lain selesai). Unit yang sama tidak mungkin punya dua kejadian sekaligus —
+   kejadian baru hanya dibuka sesudah yang lama ditutup — jadi tumpang tindih
+   hanya bisa datang dari dua state yang berjalan sendiri-sendiri. Baris yang
+   berurutan tanpa tumpang tindih TIDAK disentuh: dari tabel saja tidak bisa
+   dibedakan dari dua kejadian sungguhan yang berdekatan.
+
+   Satu kelompok hanya dirapikan bila semua barisnya sudah ditutup atau lebih dari
+   sejam tidak diperbarui (baris yang masih dipegang cron dibiarkan). Baris yang
+   DISIMPAN: sampel terbanyak, lalu selesai paling akhir, lalu yang sudah ditutup,
+   lalu nomor terkecil — sama dengan catatan ganda. Waktu mulainya mundur ke yang
+   paling awal (tanggalnya ikut), selesainya maju ke yang paling akhir, kecepatan
+   tertinggi diambil dari seluruh kelompok berikut posisinya, dan baris itu
+   ditutup. Jumlah sampel dan rata-ratanya tetap milik baris itu: sampel kedua
+   state bisa sama, jadi tidak dijumlahkan. Baris lain dipindah ke arsip terhapus
+   (dihapus_oleh "sistem", alasan "Catatan terbelah · bagian dari kejadian #n"),
+   jadi bisa dilihat dan dipulihkan admin; nilai baris yang disimpan sebelum
+   diubah dicatat di baris kv 'belah' (`sebelum`).
+
+   Jalur HTTP (siapkanTabel), sekali sehari, bukan di putaran cron. Satu lintasan
+   atas tabel, pasangannya dicari lewat indeks unik (unit_id, mulai). Semua
+   perubahan satu batch D1 (satu transaksi) dengan syarat di dalam pernyataannya,
+   jadi aman diulang dan aman berbarengan: pemanggilan kedua tidak menemukan apa
+   pun untuk dipindah, dan catatan di kv 'belah' dihitung dari isi arsip. */
+const ALASAN_BELAH = "Catatan terbelah · bagian dari kejadian #";
+const BELAH_ULANG_MS = 86400000;   // diperiksa sekali sehari
+const BELAH_LANJUT_MS = 300000;    // pasangan melebihi BELAH_MAKS: sisanya 5 menit lagi
+const BELAH_GAGAL_MS = 3600000;    // sesudah galat: sejam lagi
+const BELAH_MAKS = 300;            // pasangan per pemeriksaan
+const BELAH_SEBELUM_MAKS = 200;    // `sebelum` di kv 'belah': paling banyak 200 nilai terbaru
+const BELAH_SEBELUM_MS = 90 * 86400000;   // dan paling tua 90 hari
+
+async function rapikanBelah(env) {
+  const kini = Date.now();
+  /* Hanya `berikut` dan `waktu` yang dibutuhkan di sini; isi lain baris itu (`sebelum`,
+     `rincian`) tidak diurai di Worker, karena permintaan HTTP pertama tiap isolate
+     sampai di sini. */
+  let lama = {};
+  try {
+    const r = await env.DB.prepare(
+      `SELECT json_extract(v, '$.berikut') AS berikut, json_extract(v, '$.waktu') AS waktu
+         FROM kv WHERE k = 'belah' AND json_valid(v)`
+    ).first();
+    if (r) lama = { berikut: r.berikut, waktu: r.waktu };
+  } catch (e) { lama = {}; }
+  if (Number(lama.berikut) > kini) return;
+  const diam = kini - YATIM_MS;
+  const L = ALASAN_BELAH.length;
+
+  /* Baris kv 'belah', dibaca /api/status. `dipindah`/`kejadian`/`rincian` dihitung
+     dari arsip; `sebelum` = nilai baris yang disimpan sebelum diubah, ditambahkan
+     ke daftar lama; `waktu` = terakhir ada yang dipindah, `berikut` = pemeriksaan
+     berikutnya paling cepat. */
+  const perintahRekam = (o) => env.DB.prepare(
+    `INSERT INTO kv (k, v) VALUES ('belah', json_object(
+       'dipindah', (SELECT COUNT(*) FROM pelanggaran_dihapus
+                     WHERE dihapus_oleh = 'sistem' AND substr(alasan, 1, ?) = ?),
+       'kejadian', (SELECT COUNT(DISTINCT alasan) FROM pelanggaran_dihapus
+                     WHERE dihapus_oleh = 'sistem' AND substr(alasan, 1, ?) = ?),
+       'waktu', ?, 'diperiksa', ?, 'berikut', ?, 'dilewati', ?, 'galat', ?,
+       'rincian', json((SELECT json_group_array(t) FROM (
+           SELECT '#' || id || ' → #' || substr(alasan, ?) AS t FROM pelanggaran_dihapus
+            WHERE dihapus_oleh = 'sistem' AND substr(alasan, 1, ?) = ? ORDER BY id LIMIT 50))),
+       'sebelum', json((SELECT json_group_array(json(value)) FROM (
+           SELECT value FROM (
+             SELECT value, json_extract(value, '$.dicatat') AS w, 0 AS g, key AS i
+               FROM json_each(COALESCE((SELECT json_extract(v, '$.sebelum') FROM kv
+                                         WHERE k = 'belah' AND json_valid(v)), '[]'))
+             UNION ALL
+             SELECT value, json_extract(value, '$.dicatat'), 1, key
+               FROM json_each(COALESCE((SELECT v FROM kv
+                                         WHERE k = 'belah:sebelum' AND json_valid(v)), '[]')))
+            WHERE w >= ?
+            ORDER BY w DESC, g DESC, i LIMIT ?)))
+     )) ON CONFLICT(k) DO UPDATE SET v = excluded.v`
+  ).bind(L, ALASAN_BELAH, L, ALASAN_BELAH, o.waktu ?? null, kini, o.berikut, o.dilewati || 0, o.galat ?? null,
+         L + 1, L, ALASAN_BELAH, kini - BELAH_SEBELUM_MS, BELAH_SEBELUM_MAKS);
+  /* Catatan galat TIDAK bergantung pada tabel arsip (perintahRekam membacanya): bila
+     tabel itu yang bermasalah, jeda sejam tetap tersimpan — tanpanya tiap isolate
+     baru memindai ulang seluruh tabel (pola kuota baca September, §21.8). */
+  const catatGagal = async (galat) => {
+    try {
+      await env.DB.prepare(
+        `INSERT INTO kv (k, v) VALUES ('belah', json_object('berikut', ?, 'diperiksa', ?, 'galat', ?, 'waktu', ?))
+           ON CONFLICT(k) DO UPDATE SET v = CASE WHEN json_valid(kv.v)
+             THEN json_set(kv.v, '$.berikut', ?, '$.diperiksa', ?, '$.galat', ?) ELSE excluded.v END`
+      ).bind(kini + BELAH_GAGAL_MS, kini, galat, lama.waktu ?? null, kini + BELAH_GAGAL_MS, kini, galat).run();
+    } catch (e) {}
+    console.log(`catatan terbelah: pemeriksaan gagal, dicoba lagi sejam lagi: ${galat}`);
+  };
+
+  let pasang, baris, penuh = false;
+  try {
+    await env.DB.prepare(SQL_ARSIP).run();     // perintahRekam membaca tabel arsip
+    /* CROSS JOIN menahan urutan: `a` dipindai sekali, pasangannya `b` dicari lewat
+       indeks unik (unit_id, mulai) — unit sama, mulai di dalam rentang `a`. Urut
+       unit, supaya bila batas BELAH_MAKS tercapai yang terpotong hanya kelompok
+       unit terakhir — dan unit itu ditunda ke pemeriksaan berikutnya (5 menit),
+       jadi syarat "kelompok yang masih berjalan dilewati" selalu menilai kelompok
+       utuh. */
+    pasang = (await env.DB.prepare(
+      `SELECT a.id AS a, b.id AS b, a.unit_id AS u
+         FROM pelanggaran AS a CROSS JOIN pelanggaran AS b
+           ON b.unit_id = a.unit_id AND b.mulai > a.mulai AND b.mulai <= a.selesai AND b.batas = a.batas
+        WHERE a.unit_id IS NOT NULL AND a.mulai IS NOT NULL AND a.selesai IS NOT NULL
+        ORDER BY a.unit_id, a.mulai
+        LIMIT ?`
+    ).bind(BELAH_MAKS).all()).results || [];
+    penuh = pasang.length >= BELAH_MAKS;
+    if (penuh) {
+      const uAkhir = pasang[pasang.length - 1].u, sisa = pasang.filter((x) => x.u !== uAkhir);
+      if (sisa.length) pasang = sisa;     // satu unit saja melebihi batas: dikerjakan sebagian
+    }
+    if (!pasang.length) {
+      await perintahRekam({ waktu: lama.waktu, berikut: kini + BELAH_ULANG_MS }).run();
+      return;
+    }
+    const ids = [...new Set(pasang.flatMap((x) => [x.a, x.b]))];
+    baris = (await env.DB.prepare(
+      `SELECT * FROM pelanggaran WHERE id IN (SELECT value FROM json_each(?))`
+    ).bind(JSON.stringify(ids)).all()).results || [];
+  } catch (e) {
+    return catatGagal(String(e.message || e).slice(0, 300));
+  }
+
+  // Kelompok = komponen terhubung pasangan (a–b, b–c → a, b, c).
+  const induk = new Map();
+  const akar = (x) => { while (induk.has(x) && induk.get(x) !== x) x = induk.get(x); return x; };
+  for (const { a, b } of pasang) { const ra = akar(a), rb = akar(b); if (ra !== rb) induk.set(ra, rb); }
+  const kelompok = new Map();
+  for (const r of baris) {
+    const k = akar(r.id);
+    if (kelompok.has(k)) kelompok.get(k).push(r); else kelompok.set(k, [r]);
+  }
+
+  const angka = (v) => Number(v) || 0;
+  const target = [], buang = [];
+  let dilewati = 0;
+  for (const a of kelompok.values()) {
+    if (a.length < 2) continue;
+    if (a.some((r) => angka(r.berjalan) === 1 && !(angka(r.selesai) < diam))) { dilewati++; continue; }
+    a.sort((x, y) => angka(y.sampel) - angka(x.sampel) || angka(y.selesai) - angka(x.selesai) ||
+                     angka(x.berjalan) - angka(y.berjalan) || x.id - y.id);
+    const simpan = a[0];
+    let awal = simpan, cepat = simpan, akhir = angka(simpan.selesai);
+    for (const r of a) {
+      if (angka(r.mulai) < angka(awal.mulai)) awal = r;
+      if (angka(r.kecepatan_max) > angka(cepat.kecepatan_max)) cepat = r;
+      if (angka(r.selesai) > akhir) akhir = angka(r.selesai);
+    }
+    target.push({ id: simpan.id, mulai: awal.mulai, tanggal: awal.tanggal, selesai: akhir,
+                  km: cepat.kecepatan_max, lat: cepat.lat, lon: cepat.lon });
+    for (const r of a.slice(1)) buang.push({ id: r.id, simpan: simpan.id, data: JSON.stringify(r) });
+  }
+  const berikut = kini + (penuh ? BELAH_LANJUT_MS : BELAH_ULANG_MS);
+  if (!buang.length) {
+    try { await perintahRekam({ waktu: lama.waktu, berikut, dilewati }).run(); }
+    catch (e) { return catatGagal(String(e.message || e).slice(0, 300)); }
+    return;
+  }
+
+  const daftarTarget = JSON.stringify(target), daftarBuang = JSON.stringify(buang);
+  try {
+    await env.DB.batch([
+      // Nilai baris yang disimpan sebelum diubah (baris sementara, dihapus di akhir).
+      env.DB.prepare(
+        `INSERT INTO kv (k, v)
+         SELECT 'belah:sebelum', json_group_array(json_object('id', p.id, 'unit', p.unit, 'tanggal', p.tanggal,
+                  'mulai', p.mulai, 'selesai', p.selesai, 'kecepatan_max', p.kecepatan_max,
+                  'lat', p.lat, 'lon', p.lon, 'berjalan', p.berjalan, 'dicatat', ?))
+           FROM json_each(?) AS j JOIN pelanggaran AS p ON p.id = json_extract(j.value, '$.id')
+          WHERE p.mulai IS NOT json_extract(j.value, '$.mulai') OR p.selesai IS NOT json_extract(j.value, '$.selesai')
+             OR p.tanggal IS NOT json_extract(j.value, '$.tanggal')
+             OR p.kecepatan_max IS NOT json_extract(j.value, '$.km') OR COALESCE(p.berjalan, 0) <> 0
+         ON CONFLICT(k) DO UPDATE SET v = excluded.v`
+      ).bind(kini, daftarTarget),
+      env.DB.prepare(
+        `INSERT OR REPLACE INTO pelanggaran_dihapus
+           (id, unit, tanggal, mulai, data, dihapus_pada, dihapus_oleh, alasan)
+         SELECT p.id, p.unit, p.tanggal, p.mulai, json_extract(j.value, '$.data'), ?, 'sistem',
+                ? || json_extract(j.value, '$.simpan')
+           FROM json_each(?) AS j JOIN pelanggaran AS p ON p.id = json_extract(j.value, '$.id')
+          WHERE EXISTS (SELECT 1 FROM pelanggaran AS k
+                         WHERE k.id = json_extract(j.value, '$.simpan') AND k.id <> p.id AND k.unit_id IS p.unit_id)`
+      ).bind(kini, ALASAN_BELAH, daftarBuang),
+      env.DB.prepare(
+        `DELETE FROM pelanggaran
+          WHERE id IN (SELECT json_extract(value, '$.id') FROM json_each(?))
+            AND id IN (SELECT id FROM pelanggaran_dihapus WHERE dihapus_oleh = 'sistem')`
+      ).bind(daftarBuang),
+      /* Sesudah salinan dihapus, baris yang disimpan boleh memakai waktu mulai salah
+         satunya tanpa melanggar indeks unik. Bila salinan itu ternyata tidak
+         terhapus, barisnya dilewati, bukan menggagalkan batch. */
+      env.DB.prepare(
+        `WITH j AS (SELECT json_extract(value, '$.id') AS id, json_extract(value, '$.mulai') AS mulai,
+                           json_extract(value, '$.tanggal') AS tanggal, json_extract(value, '$.selesai') AS selesai,
+                           json_extract(value, '$.km') AS km, json_extract(value, '$.lat') AS lat,
+                           json_extract(value, '$.lon') AS lon
+                      FROM json_each(?))
+         UPDATE pelanggaran SET
+           mulai = (SELECT j.mulai FROM j WHERE j.id = pelanggaran.id),
+           tanggal = (SELECT j.tanggal FROM j WHERE j.id = pelanggaran.id),
+           selesai = (SELECT j.selesai FROM j WHERE j.id = pelanggaran.id),
+           kecepatan_max = (SELECT j.km FROM j WHERE j.id = pelanggaran.id),
+           lat = (SELECT j.lat FROM j WHERE j.id = pelanggaran.id),
+           lon = (SELECT j.lon FROM j WHERE j.id = pelanggaran.id),
+           berjalan = 0
+         WHERE id IN (SELECT id FROM j)
+           AND NOT EXISTS (SELECT 1 FROM j, pelanggaran AS x
+                            WHERE j.id = pelanggaran.id AND x.unit_id IS pelanggaran.unit_id
+                              AND x.mulai = j.mulai AND x.id <> pelanggaran.id)`
+      ).bind(daftarTarget),
+      perintahRekam({ waktu: kini, berikut, dilewati }),
+      env.DB.prepare(`DELETE FROM kv WHERE k = 'belah:sebelum'`),
+      perintahBuangRingkas(env),
+    ]);
+  } catch (e) {
+    return catatGagal(String(e.message || e).slice(0, 300));
+  }
+  ringkasMem.clear();
+  console.log(`catatan terbelah: ${buang.length} baris dipindah ke arsip terhapus (${target.length} kejadian)` +
+              (dilewati ? `, ${dilewati} kelompok masih berjalan dilewati` : "") + " · " +
+              buang.slice(0, 50).map((x) => `#${x.id} → #${x.simpan}`).join(", "));
+}
+
 // ---------------------------------------------------------------- titik masuk
 
 export default {
@@ -2538,8 +3175,17 @@ export default {
           ganda = { dipindah: 0, kelompok: 0, waktu: null, indeks: false, percobaan: 0, coba_lagi: null, catatan: "belum dijalankan" };
         }
         ganda.indeks_ada = unikAda;
+        /* Versi 15: catatan terbelah (baris kv 'belah', lihat rapikanBelah).
+           `dipindah`/`kejadian`/`rincian` dari arsip terhapus milik 'sistem';
+           `sebelum` = nilai baris yang disimpan sebelum diubah; `diperiksa` dan
+           `berikut` = pemeriksaan terakhir dan berikutnya (sekali sehari). */
+        let belah = null;
+        try { belah = JSON.parse((await ambilKV(env, "belah")) || "null"); } catch (e) { belah = null; }
+        if (!belah || typeof belah !== "object") {
+          belah = { dipindah: 0, kejadian: 0, waktu: null, diperiksa: null, berikut: null, catatan: "belum dijalankan" };
+        }
         return json({
-          versi_worker: 14,
+          versi_worker: 15,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
@@ -2555,6 +3201,7 @@ export default {
           blok,
           mesin,
           ganda,
+          belah,
         }, 200, true);
       }
 
@@ -2750,17 +3397,16 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
     }
   },
 
-  /* Tiap menit beberapa pemicu menyala bersamaan. Masing-masing mengklaim blok
-     kosong pertama (A → B → C) dan menjalankannya dengan jatah CPU 10 ms
-     sendiri (§21.11). Tulisan ekspresi cron-nya tidak berpengaruh. */
+  /* Tiap menit beberapa pemicu menyala. Masing-masing mengklaim blok kosong
+     pertama (A → B → C) dan menjalankannya dengan jatah CPU 10 ms sendiri
+     (§21.11). Tulisan ekspresi cron-nya tidak berpengaruh. */
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       const cron = String(event.cron ?? "");
       // Diratakan ke awal menit, supaya semua pemicu sepakat menit mana yang dikerjakan.
       const T = Math.floor((Number(event.scheduledTime) || Date.now()) / 60000) * 60000;
 
-      /* Klaim SEKARANG, di detik 0, jauh sebelum pemegang A mencoba mengambil
-         alih blok kosong di detik ±10. Tiap klaim satu langkah atomik di D1,
+      /* Klaim SEKARANG, begitu pemicu datang. Tiap klaim satu langkah atomik di D1,
          jadi dua pemanggilan tidak pernah memegang blok yang sama. */
       let saya = null;
       try {
@@ -2778,13 +3424,15 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
       console.log(`blok=${saya} diklaim pemicu "${cron}" isolate=${isolateBaru ? "baru" : "lama"}`);
       isolateBaru = false;
 
-      // Blok sendiri. Kalau state tidak terbaca, menit ini dilewati utuh (§21.8).
+      /* Blok sendiri. State dibaca sesudah blok sebelumnya menyimpan (versi 15).
+         Kalau state tidak terbaca, menit ini dilewati utuh (§21.8). */
       await tidurSampai(T + BLOK_PETA[saya].mulai);
       let s;
       try {
-        s = await muatSimpanan(env);
+        s = await muatSimpananBlok(env, saya, T);
       } catch (e) {
         console.log(`blok=${saya} dilewati, state tidak terbaca: ${String(e.message || e)}`);
+        await tandaiTanpaSimpan(env, saya, T);
         return;
       }
       await sesuaikanJalan(env, s);
@@ -2798,17 +3446,7 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
          baru. Versi baru langsung dipakai putaran blok ini, dan disimpan ke kv
          dalam batch yang sama dengan state supaya blok B/C ikut memakainya. */
       const jalan = (new Date(T).getUTCMinutes() % JALAN_TIAP_MENIT === 0) ? await periksaGudangJalan(env) : [];
-
-      /* A: bloknya sendiri, lalu percobaan mengambil alih B dan C — ikut dalam
-         batch yang sama dengan penyimpanan state A. Pemilik yang hadir sudah
-         mengklaim di detik 0, jadi percobaan ini gagal dan tidak terjadi apa-apa.
-         State tetap disimpan di batch itu karena pemilik B memuatnya di detik 20. */
-      const hasil = await jalankanBlok(env, "A", T, "A", s, {
-        tambahan: ["B", "C"].map((x) => perintahKlaim(env, x, T, "A", cron)),
-        jalan,
-      });
-      const ambilB = !!hasil && menang(hasil[0]);
-      const ambilC = !!hasil && menang(hasil[1]);
+      await jalankanBlok(env, "A", T, "A", s, { jalan });
 
       /* Versi 13: sesudah blok A selesai (sesi Wialon pasti segar), petakan
          sensor mesin beberapa unit. Dipakai mulai putaran berikutnya. */
@@ -2821,20 +3459,32 @@ if (url.pathname === "/api/uji") return json(await periksa(env));
         console.log(`peta mesin gagal: ${String(e.message || e)}`);
       }
 
-      if (ambilB) {
-        console.log("blok=B tidak diklaim pemiliknya pada menit ini — diambil alih A");
-        // Tidak ada pemicu lain yang menyentuh state di antaranya: yang dipegang masih segar.
-        await jalankanBlok(env, "B", T, "A", s, { simpan: !ambilC });
+      /* Versi 15 (§17 butir 36): A mengambil alih B dan C SATU PER SATU, sesaat
+         sebelum jendela masing-masing (detik 18 dan 38), bukan sekaligus di akhir
+         bloknya (detik ±11) seperti versi 8–14. Cloudflare menyalakan pemicu
+         dengan selisih 5–23 detik (§21.14): pemicu kedua dan ketiga baru datang di
+         detik ±21 dan ±23, saat B dan C sudah diklaim A — jadi satu pemanggilan
+         selalu memikul keenam putaran. Sekarang pemicu yang datang sebelum detik
+         38 masih mendapat C, dan yang datang sebelum detik 18 mendapat B. Jadwal
+         cek tidak berubah: B tetap mulai di detik 20 dan C di detik 40, siapa pun
+         pemiliknya. Klaimnya satu langkah atomik seperti biasa. */
+      let pegangB = false;
+      if (await ambilAlih(env, "B", T, cron)) {
+        console.log("blok=B tidak diklaim pemiliknya sampai detik 18 — diambil alih A");
+        // Tidak ada pemanggilan lain yang menyentuh state di antaranya: yang dipegang masih segar.
+        await jalankanBlok(env, "B", T, "A", s);
+        pegangB = true;
       }
-      if (ambilC) {
-        console.log("blok=C tidak diklaim pemiliknya pada menit ini — diambil alih A");
-        if (!ambilB) {
-          // B dijalankan pemiliknya di antaranya: state yang dipegang sudah basi.
+      if (await ambilAlih(env, "C", T, cron)) {
+        console.log("blok=C tidak diklaim pemiliknya sampai detik 38 — diambil alih A");
+        if (!pegangB) {
+          // B dijalankan pemanggilan lain: state dibaca ulang sesudah B menyimpan.
           await tidurSampai(T + BLOK_PETA.C.mulai);
-          try { s = await muatSimpanan(env); await sesuaikanJalan(env, s); }
+          try { s = await muatSimpananBlok(env, "C", T); await sesuaikanJalan(env, s); }
           catch (e) { console.log(`blok=C dilewati, state tidak terbaca: ${String(e.message || e)}`); s = null; }
         }
         if (s) await jalankanBlok(env, "C", T, "A", s);
+        else await tandaiTanpaSimpan(env, "C", T);
       }
 
       const d = new Date(T);

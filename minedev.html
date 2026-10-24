@@ -2891,13 +2891,37 @@ function applyMode(){
     :'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
   $("#modeChip").className="mode-chip "+S.mode;
   $("#modeChipTxt").textContent=edit?"Mode Edit":"Tampilan";
-  $$("#sec-input .inp").forEach(el=>el.disabled=!edit);
-  $$("#sf_list .inp, #road_list .inp, #road_list button.condbtn").forEach(el=>el.disabled=!edit);
+  terapkanKunci();
   $("#editBanner").classList.toggle("hidden",edit);
   $("#gantt_edit_hint").classList.toggle("hidden",!edit);
   document.body.classList.toggle("editmode",edit);
+  buildSMRSavedList();   // tombol × hapus tanggal hanya ada di mode Edit
   buildGantt();
   renderFeatureDetail();
+}
+/* Kunci mode Tampilan (§17 butir 32). Dulu kunci hanya dipasang saat mode diganti,
+   jadi isian yang dibangun ulang sesudahnya — sinkron online tiap 20 detik, bagi
+   rata, data SMR baru — terbuka lagi di mode Tampilan (63 dari 146 isian). Sekarang
+   dipasang juga tiap kali isian dibangun (buildInputs, setupSMRInput), dan isian
+   mengabaikan ketikan di luar mode Edit. Yang tetap bisa dipakai: filter bulan
+   tanggal tersimpan, pilihan shift dan mode SMR (hanya menampilkan), lapisan peta,
+   Keluar, dan Aktifkan Edit. Realisasi bulan berjalan selalu terkunci (otomatis
+   dari realisasi mingguan); detail perbaikan jalan hanya terbuka untuk jalan yang
+   butuh perbaikan. */
+function terapkanKunci(){
+  const edit=S.mode==="edit";
+  $$("#sec-input input, #sec-input select, #sec-input textarea").forEach(el=>{
+    if(el.id==="smr_month")return;
+    if(el.id==="rin_cur"){el.disabled=true;return;}
+    if(el.matches("#road_list .inp.tl")){
+      const nm=el.id.slice(5);
+      el.disabled=!edit||(S.road[nm]||{}).status!=="Butuh Perbaikan";
+      return;
+    }
+    el.disabled=!edit;
+  });
+  $$("#r_seed_btn, #smr_migrate_btn, #cloud_connect, #cloud_disconnect, #smr_paste_apply, #smr_patch_apply, #road_list button.condbtn")
+    .forEach(el=>el.disabled=!edit);
 }
 $("#lockBtn").onclick=()=>{S.mode=S.mode==="edit"?"view":"edit";save();applyMode();};
 $("#bannerEdit").onclick=()=>{S.mode="edit";save();applyMode();};
@@ -2911,7 +2935,7 @@ $("#r_ytd_mon").textContent=MONTHS_ELAPSED>0?MONTHS[MONTHS_ELAPSED-1]:"—";
 /* =================================================================
    INPUT BINDINGS (Input Data page)
 ================================================================= */
-function bindInput(el,get,set){ if(!el)return; el.value=get()??""; el.addEventListener("input",()=>{set(el.value);save();recalcAll();}); }
+function bindInput(el,get,set){ if(!el)return; el.value=get()??""; el.addEventListener("input",()=>{if(S.mode!=="edit")return;set(el.value);save();recalcAll();}); }
 
 function buildInputs(){
   bindInput($("#r_annual"),()=>S.rekla.annual,v=>S.rekla.annual=v);
@@ -2982,9 +3006,10 @@ function buildInputs(){
     });
     const di=$("#rdet_"+CSS.escape(r.name));
     di.value=(S.road[r.name]||{}).detail||"";
-    di.addEventListener("input",()=>{S.road[r.name]=S.road[r.name]||{status:"Baik"};S.road[r.name].detail=di.value;save();renderFeatureDetail();});
+    di.addEventListener("input",()=>{if(S.mode!=="edit")return;S.road[r.name]=S.road[r.name]||{status:"Baik"};S.road[r.name].detail=di.value;save();renderFeatureDetail();});
     updateRoadDetailState(r.name,d);
   });
+  terapkanKunci();
 }
 function updateRoadDetailState(name,el){
   const need=(S.road[name]||{}).status==="Butuh Perbaikan";
@@ -3183,6 +3208,7 @@ function setupSMRInput(){
   $("#smr_patch_apply").onclick=applySMRPatch;
   ["#smr_paste","#smr_paste_apply","#smr_patch","#smr_patch_apply"].forEach(s=>{const el=$(s);if(el)el.disabled=S.mode!=="edit";});
   buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();
+  terapkanKunci();
 }
 function updateSMRDateInfo(){
   const n=Object.keys(S.smr.byDate||{}).length;
@@ -3206,7 +3232,7 @@ function buildSMRInputGrid(){
     const e=el.dataset.e,k=el.dataset.k;
     el.value=(data[e]&&data[e][k])??"";
     el.disabled=S.mode!=="edit";
-    el.addEventListener("input",()=>{ensureShift(SMR_DATE,SMR_SHIFT)[e][k]=el.value;smrMark(SMR_DATE,SMR_SHIFT);save();recalcAll();renderSMRTotals();});
+    el.addEventListener("input",()=>{if(S.mode!=="edit")return;ensureShift(SMR_DATE,SMR_SHIFT)[e][k]=el.value;smrMark(SMR_DATE,SMR_SHIFT);save();recalcAll();renderSMRTotals();});
   });
   renderSMRTotals();
 }
@@ -3264,6 +3290,7 @@ function buildSMRSavedList(){
   host.querySelectorAll(".deldate").forEach(x=>{
     x.onclick=ev=>{
       ev.stopPropagation();const d=x.dataset.d;
+      if(S.mode!=="edit"){buildSMRSavedList();return;}   // tombol × yang tertinggal dari mode Edit
       if(confirm("Hapus seluruh data tanggal "+fmtDateID(d)+" (semua shift)?")){
         delete S.smr.byDate[d];if(SMR_DATE===d)SMR_DATE=TODAY_ISO;
         save();$("#smr_date").value=SMR_DATE;buildSMRInputGrid();updateSMRDateInfo();buildSMRSavedList();recalcAll();
@@ -3695,7 +3722,14 @@ function build3D(){
   }
   TH.focus=focusOn;
   TH.snapshot=()=>{try{renderer.render(scene,cam);return renderer.domElement.toDataURL("image/png");}catch(e){return null;}};
+  /* Peta 3D hanya digambar selagi tampil (§17 butir 63): bagian Water & Road aktif,
+     halaman terlihat, dan kanvasnya berukuran (iframe yang disembunyikan shell
+     berukuran 0). Di luar itu satu bingkai hanya memeriksa tiga syarat ini, jadi
+     GPU dan baterai tidak lagi dipakai menggambar 60 kali per detik di belakang
+     layar. Animasi fokus dan aliran berhenti di tempat lalu berlanjut saat tampil. */
+  const secWr=document.getElementById("sec-wr");
   (function animate(){requestAnimationFrame(animate);
+    if(document.hidden||(secWr&&!secWr.classList.contains("active"))||!host.clientWidth||!host.clientHeight)return;
     if(focusT){focusT.t=Math.min(1,focusT.t+0.06);const e=focusT.t*(2-focusT.t);
       controls.target.lerpVectors(focusT.ft,focusT.tt,e);cam.position.lerpVectors(focusT.fc,focusT.tc,e);if(focusT.t>=1)focusT=null;}
     controls.update();updateFlowAnim();

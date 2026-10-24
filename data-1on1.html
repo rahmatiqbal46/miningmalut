@@ -693,7 +693,7 @@
             </div>
 
             <div class="adv-p kunci-sibuk" id="adv-koreksi" hidden>
-              <div class="section-head"><h2>Koreksi ore QAQC</h2><span class="eyebrow">Total ore sebulan mengikuti <b>Produksi Pakal</b> (QAQC). Pembagian ANTAM/PCM dan angka per hari mengikuti <b>Laporan Harian Produksi</b> bulan itu. Hanya untuk bulan yang sudah tutup.</span></div>
+              <div class="section-head"><h2>Koreksi ore QAQC</h2><span class="eyebrow">Total ore sebulan mengikuti <b>Produksi Pakal</b> (QAQC). Pembagian ANTAM/PCM dan angka per hari mengikuti <b>Laporan Harian Produksi</b> bulan itu. Bulan berjalan: koreksi berlaku s.d. pile terakhir Produksi Pakal; hari sesudahnya tetap laporan harian, isian pagi, lalu Minerva.</span></div>
               <div class="card">
                 <div class="kecil muted" style="margin:0 0 10px">Pilih sekaligus berkas Produksi Pakal (satu sheet per bulan) dan Laporan Harian Produksi bulan-bulan yang ingin dikoreksi. Bulan laporan harian dibaca dari nama berkasnya (mis. "Laporan Harian … April 2026"). Laporan harian yang sudah diunggah di langkah 2 bulan itu tidak perlu dipilih lagi.</div>
                 <div class="baris-btn">
@@ -1381,7 +1381,7 @@ const OE1 = (function () {
     return out;
   }
   const WM_JUMLAH_SUMP = 20;            // sheet WM template v2 = 20 sump modul Water & Road
-  const TEMPLATE_VERSI = 9;             // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
+  const TEMPLATE_VERSI = 10;            // penanda MiningMalut_Versi di workbook.xml template (versi terbaru)
   const TEMPLATE_VERSI_MIN = 2;         // di bawah ini tata letak sel isian berbeda: menyusun Excel ditolak
   const SHEETS = { PLAN: 'PLAN', ACT: 'ACT', COST: 'COST', PORT: 'PORT', DRA: 'DRA', WM: 'WM', WFW: 'WF WEEKLY',
     EXCA: 'Minerva Exca', TRUCK: 'Minerva Trucks', BARGE: 'Minerva Barges' };
@@ -1481,7 +1481,8 @@ const OE1 = (function () {
     const versi = versiTemplate(await z.text('xl/workbook.xml'));
     if (versi < TEMPLATE_VERSI_MIN) throw new Error(`Template di penyimpanan masih versi ${versi || 1}, butuh versi ${TEMPLATE_VERSI} (sheet WM 20 sump Water & Road). ` +
       'Admin: unggah oe1on1_template_v1.xlsx terbaru di tab Data → Advanced Data → Template.');
-    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi terbaru (${TEMPLATE_VERSI}) ` + ['menghitung SCS SJI tanpa pembagi 1,7 (sama dengan Operational Excellence di dashboard), ECM mining dalam WMT, dan mengisi penjualan Januari–Agustus 2026 di WF YTD dari data pengapalan',
+    if (versi < TEMPLATE_VERSI && Array.isArray(data.catatan)) data.catatan.push(`Template versi ${versi}; versi terbaru (${TEMPLATE_VERSI}) ` + ['menghitung 9PS05 sebagai loader kelas 40 T di sheet PTY,UA (sama dengan EXC_27) dan sebagai loader di ACT',
+      versi < 9 ? 'menghitung SCS SJI tanpa pembagi 1,7 (sama dengan Operational Excellence di dashboard), ECM mining dalam WMT, dan mengisi penjualan Januari–Agustus 2026 di WF YTD dari data pengapalan' : '',
       versi < 8 ? 'menyimpan jarak angkut Januari–Agustus 2026 dari laporan Excel (Sarmut & 1on1 HO) untuk kartu Jarak YTD' : '',
       versi < 7 ? 'menghitung jarak angkut hanya dari baris Minerva berjarak sah (di atas 0 dan di bawah 5 km) dan tanpa hari/minggu yang tidak berjarak' : '',
       versi < 6 ? 'menambah sheet WF YTD (waterfall year-to-date dengan data Januari-Agustus 2026)' : '',
@@ -5300,13 +5301,18 @@ const DASH = (function () {
    * harian × faktor, faktor = total ÷ Σ ore laporan harian sebulan (ANTAM + BUMD), jadi jumlah sebulan = total QAQC.
    * q = isian qaqc, ym = 'YYYY-MM' (hari di luar bulan itu tidak dihitung). null bila tidak ada koreksi atau laporan harian
    * bulan itu tanpa ore (tidak ada dasar pembagian).
+   * Koreksi yang disimpan selagi bulannya berjalan (keputusan Iqbal 24 Oktober 2026) membawa `sampai` = pile terakhir Produksi
+   * Pakal: faktor dihitung dari laporan harian s.d. tanggal itu dan hanya berlaku untuk hari ≤ sampai; hari sesudahnya tetap
+   * aturan biasa (berkas QAQC → isian pagi → Minerva). Tanpa `sampai` koreksi berlaku sebulan penuh seperti sebelumnya.
    */
   function koreksiOre(q, ym) {
     const i = koreksiInfo(q, ym);
     if (!i || !(i.lhpA + i.lhpB > 0) || i.basi) return null;
     const f = i.total / (i.lhpA + i.lhpB);
-    return { total: i.total, faktor: f, lhpA: i.lhpA, lhpB: i.lhpB, antam: i.lhpA * f, bumd: i.lhpB * f };
+    return { total: i.total, faktor: f, lhpA: i.lhpA, lhpB: i.lhpB, antam: i.lhpA * f, bumd: i.lhpB * f, sampai: i.sampai };
   }
+  /** Apakah koreksi `kor` (hasil koreksiOre) berlaku untuk hari d: selalu, kecuali koreksi bulan berjalan untuk hari sesudah `sampai`. */
+  function koreksiBerlaku(kor, d) { return !!kor && (!kor.sampai || d <= kor.sampai); }
   /**
    * Keadaan koreksi ore QAQC bulan ym, juga bila tidak dipakai: {total, lhpA, lhpB, akhirL (hari terakhir berore laporan
    * harian), akhirQ (pile terakhir Produksi Pakal saat diimpor), basi} atau null bila tidak ada koreksi.
@@ -5318,23 +5324,27 @@ const DASH = (function () {
     const isNum = v => typeof v === 'number' && isFinite(v);
     const K = q && q.koreksiOre, H = (q && q.hari) || {};
     if (!K || typeof K !== 'object' || !isNum(K.total) || K.total < 0) return null;
+    // koreksi bulan berjalan: berlaku s.d. `sampai` (tanggal di bulan itu); selain itu sebulan penuh
+    const sampai = typeof K.sampai === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(K.sampai) && (!ym || K.sampai.slice(0, 7) === ym) ? K.sampai : '';
     let a = 0, b = 0, akhirL = '';
     for (const d of Object.keys(H)) {
       if (ym && d.slice(0, 7) !== ym) continue;
       const x = H[d] || {}; let ada = false;
-      if (isNum(x.antamOre) && x.antamOre > 0) { a += x.antamOre; ada = true; }
-      if (isNum(x.bumdOre) && x.bumdOre > 0) { b += x.bumdOre; ada = true; }
+      const dalam = !sampai || d <= sampai;
+      if (isNum(x.antamOre) && x.antamOre > 0) { if (dalam) a += x.antamOre; ada = true; }
+      if (isNum(x.bumdOre) && x.bumdOre > 0) { if (dalam) b += x.bumdOre; ada = true; }
       if (ada && d > akhirL) akhirL = d;
     }
     const s = K.sumber && typeof K.sumber.akhir === 'string' ? K.sumber.akhir : '';
     const akhirQ = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
-    return { total: K.total, lhpA: a, lhpB: b, akhirL, akhirQ, basi: !!(akhirQ && akhirL && akhirL > geser(akhirQ, 1)) };
+    // aturan basi hanya untuk koreksi sebulan penuh: koreksi bulan berjalan memang berhenti di `sampai`
+    return { total: K.total, lhpA: a, lhpB: b, akhirL, akhirQ, sampai, basi: !sampai && !!(akhirQ && akhirL && akhirL > geser(akhirQ, 1)) };
   }
 
   /**
    * Sumber angka produksi per hari untuk dashboard (Excel 1on1 tidak memakai aturan ini untuk waste):
-   * ore  = koreksi ore QAQC bila bulan itu punya (laporan harian × faktor; hari tanpa laporan harian = 0)
-   *        → berkas QAQC → isian pagi → Minerva (sementara)
+   * ore  = koreksi ore QAQC bila bulan itu punya (laporan harian × faktor; hari tanpa laporan harian = 0; koreksi bulan
+   *        berjalan hanya s.d. `sampai`) → berkas QAQC → isian pagi → Minerva (sementara)
    * waste = berkas QAQC → Minerva (sementara)
    * q = S.data.qaqc (hari, oreManual, lgoKeWaste, koreksiOre), mat = agregatMinerva(...).mat, barging(d) = barging BUMD hari itu
    */
@@ -5346,7 +5356,8 @@ const DASH = (function () {
     for (const d of hari) {
       const x = Q[d] || {}, m = M[d] || {};
       const a = (mat.A && mat.A[d]) || { ore: 0, lgo: 0, waste: 0 }, b = (mat.B && mat.B[d]) || { ore: 0, lgo: 0, waste: 0 };
-      const ore = (fileV, pagiV, mv) => kor ? [isNum(fileV) && fileV > 0 ? fileV * kor.faktor : 0, 'koreksi'] :
+      const pakaiKor = koreksiBerlaku(kor, d);
+      const ore = (fileV, pagiV, mv) => pakaiKor ? [isNum(fileV) && fileV > 0 ? fileV * kor.faktor : 0, 'koreksi'] :
         isNum(fileV) ? [fileV, 'qaqc'] : isNum(pagiV) ? [pagiV, 'pagi'] : [mv.ore + (lgo ? 0 : mv.lgo), 'minerva'];
       const wst = (fileV, lgoRs, mv) => isNum(fileV) ? [fileV + (lgo ? (lgoRs || 0) : 0), 'qaqc'] : [mv.waste + (lgo ? mv.lgo : 0), 'minerva'];
       const oA = ore(x.antamOre, m.antam, a), oB = ore(x.bumdOre, m.bumd, b);
@@ -5354,7 +5365,7 @@ const DASH = (function () {
       qa[d] = { antamOre: oA[0], antamWaste: wA[0], bumdOre: oB[0], bumdWaste: wB[0], barging: barging ? barging(d) : 0 };
       sumber[d] = { oA: oA[1], oB: oB[1], wA: wA[1], wB: wB[1] };
     }
-    return { qa, sumber, koreksi: kor ? { total: kor.total, faktor: kor.faktor, lhpA: kor.lhpA, lhpB: kor.lhpB } : null,
+    return { qa, sumber, koreksi: kor ? { total: kor.total, faktor: kor.faktor, lhpA: kor.lhpA, lhpB: kor.lhpB, sampai: kor.sampai || '' } : null,
       koreksiBasi: info && info.basi ? { total: info.total, akhirQ: info.akhirQ, akhirL: info.akhirL } : null };
   }
 
@@ -6406,9 +6417,16 @@ const DASH = (function () {
     if (D.sementara.wst.length) bits.push(`<span class="d-chip warn">Waste sementara (Minerva): ${escH(rentang(D.sementara.wst))}</span>`);
     // koreksi ore QAQC (§30): keterangan, bukan peringatan (snapshot bisa ditulis semua pengguna login: angka dipaksa bilangan)
     const KO = M.koreksi, kTot = KO ? +KO.total : NaN, kF = KO ? +KO.faktor : NaN, kL = KO ? (+KO.lhpA || 0) + (+KO.lhpB || 0) : NaN;
-    if (isFinite(kTot) && isFinite(kF) && kF > 0 && isFinite(kL)) bits.push(`<span class="d-chip" tabindex="0" data-tt="${daftarTip([{ t: 'Ore = total QAQC Produksi Pakal' },
-      { v: fmt(kTot) + ' WMT', l: 'total ore QAQC sebulan' }, { v: fmt(kL) + ' WMT', l: 'laporan harian, dasar pembagian ANTAM/PCM dan per hari' },
-      { v: '× ' + fmt(kF, 3), l: 'faktor ore tiap hari' }])}">Ore = total QAQC Produksi Pakal</span>`);
+    // koreksi bulan berjalan: berlaku s.d. pile terakhir Produksi Pakal (KO.sampai); hari sesudahnya berkas QAQC → isian pagi → Minerva
+    const kS = KO && typeof KO.sampai === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(KO.sampai) ? KO.sampai : '';
+    const kJudul = kS ? 'Ore s.d. ' + tglP(kS) + ' = total QAQC Produksi Pakal' : 'Ore = total QAQC Produksi Pakal';
+    // bulan sudah tutup (snapshot s.d. hari terakhir, dihitung sesudah 07.00 WIT) tetapi koreksinya masih koreksi bulan berjalan
+    const hAkhir = Array.isArray(M.hari) && M.hari.length ? M.hari[M.hari.length - 1] : '';
+    const kTutup = !!kS && kS < hAkhir && M.cutoff === hAkhir && !!(M.sidik && M.sidik.lengkap);
+    if (isFinite(kTot) && isFinite(kF) && kF > 0 && isFinite(kL)) bits.push(`<span class="d-chip${kTutup ? ' warn' : ''}" tabindex="0" data-tt="${daftarTip([{ t: kJudul },
+      { v: fmt(kTot) + ' WMT', l: kS ? 'total ore QAQC 1–' + tglP(kS) : 'total ore QAQC sebulan' },
+      { v: fmt(kL) + ' WMT', l: 'laporan harian' + (kS ? ' s.d. ' + tglP(kS) : '') + ', dasar pembagian ANTAM/PCM dan per hari' },
+      { v: '× ' + fmt(kF, 3), l: 'faktor ore tiap hari' }].concat(kS ? [{ l: 'Sesudah ' + tglP(kS) + ': laporan harian, lalu isian pagi, lalu Minerva. Admin: impor Produksi Pakal ' + (kTutup ? 'lengkap (bulan sudah tutup)' : 'terbaru') + ' di Data → Advanced Data → Koreksi ore QAQC.' }] : []))}">${escH(kJudul + (kTutup ? ' · bulan sudah tutup' : ''))}</span>`);
     const KB = M.koreksiBasi, tgl = x => (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) ? tglP(x) : '—');
     if (KB && typeof KB === 'object') bits.push(`<span class="d-chip warn" tabindex="0" data-tt="${daftarTip([{ t: 'Koreksi ore QAQC tidak dipakai' },
       { v: tgl(KB.akhirQ), l: 'pile terakhir Produksi Pakal yang tersimpan' }, { v: tgl(KB.akhirL), l: 'ore terakhir laporan harian' },
@@ -6417,7 +6435,7 @@ const DASH = (function () {
     if ((M.mvKosong || []).length) bits.push(`<span class="d-chip">Minerva tanpa data: ${escH(rentang(M.mvKosong.slice().sort()))}</span>`);
     // template Excel lebih lama dari halaman (snapshot bisa ditulis semua pengguna login: angka dipaksa bilangan bulat)
     const TL = M.tplLama, tv = TL ? Math.floor(+TL.versi) : 0, tb = TL ? Math.floor(+TL.terbaru) : 0;
-    if (tv > 0 && tb > tv && tb < 1000) bits.push(`<span class="d-chip warn" tabindex="0" data-tt="${daftarTip([{ t: 'Template Excel versi ' + tv }, { l: 'Admin: unggah oe1on1_template_v1.xlsx versi ' + tb + ' di tab Data → Advanced Data → Template. Sampai itu Excel memakai rumus versi ' + tv + (tv < 9 ? ' (mis. SCS SJI masih dibagi 1,7).' : '.') }])}">Template Excel versi ${tv} · terbaru ${tb}</span>`);
+    if (tv > 0 && tb > tv && tb < 1000) bits.push(`<span class="d-chip warn" tabindex="0" data-tt="${daftarTip([{ t: 'Template Excel versi ' + tv }, { l: 'Admin: unggah oe1on1_template_v1.xlsx versi ' + tb + ' di tab Data → Advanced Data → Template. Sampai itu Excel memakai rumus versi ' + tv + (tv < 9 ? ' (mis. SCS SJI masih dibagi 1,7).' : tv < 10 ? ' (mis. 9PS05 masih dihitung loader kelas 30 T).' : '.') }])}">Template Excel versi ${tv} · terbaru ${tb}</span>`);
     return bits.length ? '<div class="d-chips">' + bits.join('') + '</div>' : '';
   }
 
@@ -6488,7 +6506,7 @@ const DASH = (function () {
     return c.D;
   }
 
-  return { VERSI, VERSI_MIN, agregatMinerva, pasangOpex, bacaWorkbook, aturanSumber, koreksiOre, koreksiInfo, ewhRencana, susunModel, turunan, pareto, render,
+  return { VERSI, VERSI_MIN, agregatMinerva, pasangOpex, bacaWorkbook, aturanSumber, koreksiOre, koreksiInfo, koreksiBerlaku, ewhRencana, susunModel, turunan, pareto, render,
     hariBulan, jumlahHari, geser, parseAngka, OPEX, BASELINE_BAWAAN, namaBln,
     JARAK, ATURAN_JARAK, KUNCI_JARAK, jarakExcel, bobotJarak, jarakRencana, jarakKosong, jumlahJarak, tambahJarak, jarakBulanSah, gambarUlangKartu };
 })();
@@ -7092,9 +7110,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     });
   }
   function qaqcLengkap(d) { return !qaqcKurang(d).length; }
-  // koreksi ore QAQC bulan yang dibuka (§30): {total, faktor, lhpA, lhpB, antam, bumd} atau null
+  // koreksi ore QAQC bulan yang dibuka (§30): {total, faktor, lhpA, lhpB, antam, bumd, sampai} atau null
   function koreksiBulan() { return DASH.koreksiOre(S.data.qaqc, S.bulan); }
-  // ore yang dipakai hari d bila bulan ini punya koreksi: ore laporan harian × faktor
+  // koreksi berlaku untuk hari d? (koreksi bulan berjalan hanya s.d. kor.sampai)
+  function korBerlaku(kor, d) { return DASH.koreksiBerlaku(kor, d); }
+  // ore yang dipakai hari d bila koreksi berlaku hari itu: ore laporan harian × faktor
   function oreKoreksi(d, kor) { var x = S.data.qaqc.hari[d] || {}; return { antam: x.antamOre > 0 ? x.antamOre * kor.faktor : 0, bumd: x.bumdOre > 0 ? x.bumdOre * kor.faktor : 0 }; }
   // label bulan di berkas QAQC menyebut bulan/tahun lain -> teks label (untuk peringatan); cocok atau tidak terbaca -> ''
   var NAMA_BLN = [['januari', 'january', 'jan'], ['februari', 'february', 'feb'], ['maret', 'march', 'mar'], ['april', 'apr'], ['mei', 'may'], ['juni', 'june', 'jun'],
@@ -7158,14 +7178,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var OM = Q.oreManual || {}, kor = koreksiBulan(), sumK = { antam: 0, bumd: 0 };
     // koreksi ore QAQC (§30): ore yang dipakai = laporan harian × faktor; kolom ore di tabel tetap angka laporan harian (dasar pembagian)
     var nk = el('qaqcKoreksi'), KS = Q.koreksiOre, KI = DASH.koreksiInfo(Q, S.bulan);
-    if (kor) { nk.hidden = false; nk.innerHTML = 'Ore bulan ini mengikuti total QAQC Produksi Pakal <b>' + angka(kor.total) + ' WMT</b>: ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) +
+    if (kor && kor.sampai) { nk.hidden = false; nk.innerHTML = 'Ore ' + esc(tglPendek(mulai())) + '–' + esc(tglPendek(kor.sampai)) + ' mengikuti total QAQC Produksi Pakal <b>' + angka(kor.total) + ' WMT</b>: ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) +
+      '. Pembagian dan angka per hari dari laporan harian s.d. ' + esc(tglPendek(kor.sampai)) + ' (' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + '). Hari sesudahnya: laporan harian, lalu isian pagi, lalu Minerva.' +
+      (bulanTutup(S.bulan) && kor.sampai < akhirBulan(S.bulan) ? ' <b>Bulan sudah tutup: impor Produksi Pakal lengkap di Advanced Data → Koreksi ore QAQC.</b>' : ''); }
+    else if (kor) { nk.hidden = false; nk.innerHTML = 'Ore bulan ini mengikuti total QAQC Produksi Pakal <b>' + angka(kor.total) + ' WMT</b>: ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) +
       '. Pembagian dan angka per hari dari laporan harian (' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + ').'; }
     else if (KI && KI.basi) { nk.hidden = false; nk.innerHTML = '<span style="color:var(--bad)">Koreksi ore QAQC (' + angka(KI.total) + ' WMT) tidak dipakai: ore laporan harian sampai ' + esc(tglPendek(KI.akhirL)) +
       ', sedangkan Produksi Pakal yang tersimpan hanya sampai ' + esc(tglPendek(KI.akhirQ)) + '. Impor ulang Produksi Pakal terbaru di Advanced Data → Koreksi ore QAQC; sampai itu ore bulan ini dari laporan harian.</span>'; }
     else if (KS && typeof KS.total === 'number') { nk.hidden = false; nk.innerHTML = '<span style="color:var(--bad)">Total QAQC Produksi Pakal ' + angka(KS.total) + ' WMT tersimpan, tetapi laporan harian bulan ini belum berisi ore, jadi koreksi belum berlaku.</span>'; }
     else { nk.hidden = true; nk.innerHTML = ''; }
     var h = '<thead><tr><th>Tanggal</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + k[1] + ' (WMT)</th>'; }).join('') + '<th class="num">Waste ke ACT</th>' +
-      (kor ? '<th class="num" title="Ore laporan harian × ' + esc(angka(kor.faktor, 3)) + '; jumlah sebulan = total QAQC Produksi Pakal">Ore dipakai ANTAM · PCM</th>' : '') +
+      (kor ? '<th class="num" title="' + (kor.sampai ? 'Ore laporan harian × ' + esc(angka(kor.faktor, 3)) + ' s.d. ' + esc(tglPendek(kor.sampai)) + ' (jumlahnya = total QAQC Produksi Pakal); sesudahnya laporan harian, lalu isian pagi' :
+        'Ore laporan harian × ' + esc(angka(kor.faktor, 3)) + '; jumlah sebulan = total QAQC Produksi Pakal') + '">Ore dipakai ANTAM · PCM</th>' : '') +
       '<th class="num" title="Diisi di tab Dashboard; dipakai hanya bila hari itu belum ada di berkas QAQC">Ore isian pagi ANTAM · PCM</th></tr></thead><tbody>';
     var sum = {};
     hariBulan(S.bulan).forEach(function (d) {
@@ -7177,10 +7201,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
         h += '<td class="num' + (perlu ? ' perlu' : '') + '"' + (perlu ? ' title="Wajib diisi; isi 0 bila tidak ada"' : '') + '><input class="num" data-k="' + k[0] + '" value="' + (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ',')) + '"' +
           (man ? ' style="background:#fff8d6" title="Isian manual"' : '') + (S.admin ? '' : ' disabled') + '></td>'; });
       var w = (x.antamWaste || 0) + (Q.lgoKeWaste !== false ? (x.antamLgoRs || 0) : 0);
-      var om = OM[d], adaOm = om && (om.antam != null || om.bumd != null), omMati = adaOm && (oreBerkas(d) || kor);
+      var om = OM[d], adaOm = om && (om.antam != null || om.bumd != null), berlaku = korBerlaku(kor, d), omMati = adaOm && (oreBerkas(d) || berlaku);
       h += '<td class="num muted">' + (Q.hari[d] ? angka(w) : '—') + '</td>';
-      if (kor) { var ok = oreKoreksi(d, kor); if (!lewat) { sumK.antam += ok.antam; sumK.bumd += ok.bumd; } h += '<td class="num">' + (Q.hari[d] ? angka(ok.antam) + ' · ' + angka(ok.bumd) : '—') + '</td>'; }
-      h += '<td class="num' + (omMati ? ' muted' : '') + '"' + (omMati ? ' title="Tidak dipakai: ' + (kor ? 'ore bulan ini mengikuti total QAQC Produksi Pakal' : 'hari ini sudah ada di berkas QAQC') + '"' : '') + '>' +
+      if (berlaku) { var ok = oreKoreksi(d, kor); if (!lewat) { sumK.antam += ok.antam; sumK.bumd += ok.bumd; } h += '<td class="num">' + (Q.hari[d] ? angka(ok.antam) + ' · ' + angka(ok.bumd) : '—') + '</td>'; }
+      else if (kor) {
+        // sesudah batas koreksi bulan berjalan: per sisi ore laporan harian apa adanya, lalu isian pagi, lalu Minerva
+        // (sama dengan dashboard dan Excel; satu sisi bisa dari laporan harian dan sisi lain dari isian pagi)
+        var isN = function (v) { return typeof v === 'number' && isFinite(v); };
+        var sisi = function (fv, pv) { return isN(fv) ? [fv, 'laporan harian'] : isN(pv) ? [pv, 'isian pagi'] : [null, 'Minerva (dashboard)']; };
+        var sA = sisi(x.antamOre, om && om.antam), sB = sisi(x.bumdOre, om && om.bumd);
+        if (!lewat) { if (sA[0] != null) sumK.antam += sA[0]; if (sB[0] != null) sumK.bumd += sB[0]; }
+        h += '<td class="num muted" title="Sesudah ' + esc(tglPendek(kor.sampai)) + ': ' + (sA[1] === sB[1] ? sA[1] : 'ANTAM ' + sA[1] + ', PCM ' + sB[1]) + '">' +
+          (sA[0] == null && sB[0] == null ? '—' : (sA[0] != null ? angka(sA[0]) : '—') + ' · ' + (sB[0] != null ? angka(sB[0]) : '—')) + '</td>';
+      }
+      h += '<td class="num' + (omMati ? ' muted' : '') + '"' + (omMati ? ' title="Tidak dipakai: ' + (berlaku ? 'ore hari ini mengikuti total QAQC Produksi Pakal' : 'hari ini sudah ada di berkas QAQC') + '"' : '') + '>' +
         (adaOm ? angka(om.antam) + ' · ' + angka(om.bumd) + (oreBerkas(d) ? ' <span class="kecil">(ada berkas)</span>' : '') : '') + '</td></tr>';
     });
     h += '</tbody><tfoot><tr><th>Jumlah s.d. ' + tglPendek(S.cutoff) + '</th>' + KOL_QAQC.map(function (k) { return '<th class="num">' + angka(sum[k[0]] || 0) + '</th>'; }).join('') + '<th></th>' +
@@ -7629,19 +7663,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       });
     });
     var qa = {}, lgo = D.qaqc.lgoKeWaste !== false, BM = D.qaqc.bargingManual || {};
-    // koreksi ore QAQC (§30): ore = laporan harian × faktor (total sebulan = total Produksi Pakal); isian pagi tidak dipakai
+    // koreksi ore QAQC (§30): ore = laporan harian × faktor (total = total Produksi Pakal); isian pagi tidak dipakai.
+    // Koreksi bulan berjalan hanya untuk hari s.d. kor.sampai; hari sesudahnya laporan harian, lalu isian pagi.
     var kor = DASH.koreksiOre(D.qaqc, S.bulan);
     Object.keys(D.qaqc.hari || {}).forEach(function (d) {
-      var x = D.qaqc.hari[d];
-      qa[d] = { antamOre: kor ? (x.antamOre > 0 ? x.antamOre * kor.faktor : 0) : x.antamOre || 0, antamWaste: (x.antamWaste || 0) + (lgo ? x.antamLgoRs || 0 : 0),
-        bumdOre: kor ? (x.bumdOre > 0 ? x.bumdOre * kor.faktor : 0) : x.bumdOre || 0, bumdWaste: (x.bumdWaste || 0) + (lgo ? x.bumdLgoRs || 0 : 0), barging: BM[d] != null ? BM[d] : x.barging || 0 };
+      var x = D.qaqc.hari[d], k = korBerlaku(kor, d);
+      qa[d] = { antamOre: k ? (x.antamOre > 0 ? x.antamOre * kor.faktor : 0) : x.antamOre || 0, antamWaste: (x.antamWaste || 0) + (lgo ? x.antamLgoRs || 0 : 0),
+        bumdOre: k ? (x.bumdOre > 0 ? x.bumdOre * kor.faktor : 0) : x.bumdOre || 0, bumdWaste: (x.bumdWaste || 0) + (lgo ? x.bumdLgoRs || 0 : 0), barging: BM[d] != null ? BM[d] : x.barging || 0 };
     });
     // hari yang hanya punya isian manual barging: sel ore/waste tetap kosong
     Object.keys(BM).forEach(function (d) { if (!qa[d] && dalamBulan(d) && BM[d] != null) qa[d] = { barging: BM[d] }; });
     // ore QC isian pagi (tab Dashboard) untuk hari yang belum ada di berkas QAQC; waste hari itu tetap kosong
-    var OM = kor ? {} : D.qaqc.oreManual || {};
+    var OM = kor && !kor.sampai ? {} : D.qaqc.oreManual || {};
     Object.keys(OM).forEach(function (d) {
-      if (!dalamBulan(d)) return;
+      if (!dalamBulan(d) || korBerlaku(kor, d)) return;
       var m = OM[d] || {}, x = D.qaqc.hari[d] || {};
       if (typeof m.antam === 'number' && typeof x.antamOre !== 'number') { qa[d] = qa[d] || {}; qa[d].antamOre = m.antam; }
       if (typeof m.bumd === 'number' && typeof x.bumdOre !== 'number') { qa[d] = qa[d] || {}; qa[d].bumdOre = m.bumd; }
@@ -7882,9 +7917,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var kosongQ = hari.filter(function (d) { return !S.data.qaqc.hari[d]; });
     if (kosongQ.length) baris.push('QAQC kosong: ' + kosongQ.map(tglPendek).join(', '));
     var kor = koreksiBulan(), ki = DASH.koreksiInfo(S.data.qaqc, S.bulan);
-    if (kor) baris.push('Ore = total QAQC Produksi Pakal ' + angka(kor.total) + ' WMT (ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) + '): ore laporan harian ' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + ' per hari');
+    if (kor && kor.sampai) baris.push('Ore ' + tglPendek(mulai()) + '–' + tglPendek(kor.sampai) + ' = total QAQC Produksi Pakal ' + angka(kor.total) + ' WMT (ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) + '): ore laporan harian ' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + ' per hari; sesudah ' + tglPendek(kor.sampai) + ' ore dari laporan harian' +
+      (bulanTutup(S.bulan) && kor.sampai < akhirBulan(S.bulan) ? '. BULAN SUDAH TUTUP: impor Produksi Pakal lengkap di Advanced Data → Koreksi ore QAQC' : ''));
+    else if (kor) baris.push('Ore = total QAQC Produksi Pakal ' + angka(kor.total) + ' WMT (ANTAM ' + angka(kor.antam) + ' · PCM ' + angka(kor.bumd) + '): ore laporan harian ' + angka(kor.lhpA + kor.lhpB) + ' WMT × ' + angka(kor.faktor, 3) + ' per hari');
     else if (ki && ki.basi) baris.push('KOREKSI ORE QAQC TIDAK DIPAKAI: ore laporan harian sampai ' + tglPendek(ki.akhirL) + ', Produksi Pakal tersimpan hanya sampai ' + tglPendek(ki.akhirQ) + '; impor ulang Produksi Pakal terbaru (ore Excel ini dari laporan harian)');
-    var oreP = kor ? [] : hari.filter(function (d) { var m = (S.data.qaqc.oreManual || {})[d]; return !oreBerkas(d) && m && (m.antam != null || m.bumd != null); });
+    var oreP = kor && !kor.sampai ? [] : hari.filter(function (d) { var m = (S.data.qaqc.oreManual || {})[d]; return !korBerlaku(kor, d) && !oreBerkas(d) && m && (m.antam != null || m.bumd != null); });
     if (oreP.length) baris.push('Ore dari isian pagi (belum ada di berkas QAQC; waste hari itu kosong): ' + oreP.map(tglPendek).join(', '));
     var nMan = hari.filter(function (d) { return bargingManual()[d] != null; }).length;
     if (nMan) baris.push('Barging BUMD dari isian manual: ' + nMan + ' hari');
@@ -8127,7 +8164,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   /* ================================================================ ARSIP BULAN */
   // yang tersimpan hanya isian (tabel oe_1on1); Excel bulan lalu disusun ulang saat diunduh
   async function muatArsip() {
-    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by,rk:data->ringkasan->>dihitung,kor:data->qaqc->koreksiOre->>total,korw:data->qaqc->koreksiOre->>waktu,koro:data->qaqc->koreksiOre->>oleh,kora:data->qaqc->koreksiOre->sumber->>akhir&order=bulan.desc', { method: 'GET' }) || []; }
+    try { S.arsip = await rest('/rest/v1/oe_1on1?select=bulan,updated_at,updated_by,rk:data->ringkasan->>dihitung,kor:data->qaqc->koreksiOre->>total,korw:data->qaqc->koreksiOre->>waktu,koro:data->qaqc->koreksiOre->>oleh,kora:data->qaqc->koreksiOre->sumber->>akhir,kors:data->qaqc->koreksiOre->>sampai&order=bulan.desc', { method: 'GET' }) || []; }
     catch (e) { S.arsip = null; S.arsipGalat = pesan(e); }
     renderArsip(); renderRingkas(); renderKoreksiAda();
   }
@@ -8163,8 +8200,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   // dikoreksi. Per bulan: total = baris Total Production Summary; pembagian ANTAM/PCM dan angka per hari = laporan harian
   // (berkas yang dipilih, atau yang sudah ada di sistem). Disimpan ke baris bulan itu: qaqc.koreksiOre, ditambah qaqc.hari
   // dan qaqc.berkas bila laporan hariannya ikut dipilih (sama dengan unggah di langkah 2). Isian lain tidak disentuh.
-  // Dashboard dan Excel menghitung ore = laporan harian × (total ÷ Σ laporan harian) (DASH.koreksiOre). Hanya bulan
-  // yang sudah tutup.
+  // Dashboard dan Excel menghitung ore = laporan harian × (total ÷ Σ laporan harian) (DASH.koreksiOre). Bulan berjalan
+  // (keputusan Iqbal 24 Oktober 2026): koreksi disimpan dengan `sampai` = pile terakhir Produksi Pakal dan hanya berlaku
+  // s.d. tanggal itu; laporan harian wajib sudah sampai tanggal itu. Bulan tutup: sebulan penuh seperti sebelumnya.
   function bulanTutup(ym) { return Date.now() >= lengkapPada(akhirBulan(ym)); }
   function infoKoreksi(html) { el('koreksiInfo').innerHTML = html; }
   async function bacaBerkasKoreksi(files) {
@@ -8196,28 +8234,37 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var hari = it.hariBaru || Q0.hari || {};
     it.sumberLh = L ? 'berkas' : Object.keys(Q0.hari || {}).length ? 'sistem' : '';
     it.gantiLh = !!(L && Object.keys(Q0.hari || {}).length);    // laporan harian di sistem diganti berkas yang dipilih
-    it.kor = P.ambigu ? null : DASH.koreksiOre({ koreksiOre: { total: P.total }, hari: hari }, ym);
+    // bulan berjalan: koreksi berlaku s.d. pile terakhir Produksi Pakal (it.sampai); bulan tutup: sebulan penuh
+    var berjalan = !bulanTutup(ym);
+    it.berjalan = berjalan;
+    it.sampai = berjalan && /^\d{4}-\d{2}-\d{2}$/.test(P.akhir || '') && P.akhir.slice(0, 7) === ym ? P.akhir : '';
+    it.kor = P.ambigu || (berjalan && !it.sampai) ? null : DASH.koreksiOre({ koreksiOre: { total: P.total, sampai: it.sampai || undefined }, hari: hari }, ym);
     it.lama = Q0.koreksiOre && typeof Q0.koreksiOre.total === 'number' && isFinite(Q0.koreksiOre.total) ? Q0.koreksiOre.total : null;
     var akhirSimpan = (Q0.koreksiOre && Q0.koreksiOre.sumber && Q0.koreksiOre.sumber.akhir) || '';
+    var sampaiSimpan = (Q0.koreksiOre && typeof Q0.koreksiOre.sampai === 'string' && Q0.koreksiOre.sampai) || '';
     // hari terakhir berore di laporan harian vs pile terakhir di Produksi Pakal: Produksi Pakal yang diekspor sebelum
     // bulannya selesai (pile berhenti lebih dari sehari sebelum ore laporan harian) tidak boleh dipakai sebagai total sebulan
     var akhirOre = function (H) { return Object.keys(H || {}).filter(function (d) { var x = H[d]; return d.slice(0, 7) === ym && x && (x.antamOre > 0 || x.bumdOre > 0); }).sort().pop() || ''; };
     var akhirLh = akhirOre(hari), akhirLama = it.gantiLh ? akhirOre(Q0.hari) : '';
-    var ppLama = !!(P.akhir && akhirLh && P.akhir < geser(akhirLh, -1));
+    // hari terakhir yang ADA di laporan harian (ore boleh 0, mis. hari hujan): dasar syarat bulan berjalan
+    var akhirData = Object.keys(hari || {}).filter(function (d) { var x = hari[d]; return d.slice(0, 7) === ym && x && (typeof x.antamOre === 'number' || typeof x.bumdOre === 'number'); }).sort().pop() || '';
+    var ppLama = !berjalan && !!(P.akhir && akhirLh && P.akhir < geser(akhirLh, -1));
+    // bulan berjalan: laporan harian harus sudah sampai pile terakhir, supaya tidak ada hari dalam koreksi yang kosong
+    var lhKurang = berjalan && !!(it.sampai && (!akhirData || akhirData < it.sampai));
     // laporan harian yang dipilih berakhir lebih awal dari yang sudah di sistem: kemungkinan berkas lama, jangan menggantikannya
     var lhLama = !!(akhirLama && akhirLh && akhirLh < akhirLama);
     if (P.ambigu) it.catatan.push('beberapa sheet untuk bulan ini: ' + P.ambigu.join(', ') + '; sisakan satu sheet bernama "' + namaBulan(ym) + '"');
     if (lhLama) it.catatan.push('laporan harian yang dipilih hanya s.d. ' + tglPendek(akhirLh) + ', yang di sistem s.d. ' + tglPendek(akhirLama));
-    if (!bulanTutup(ym)) it.status = 'belum';
-    else if (P.ambigu) it.status = 'ambigu';
+    if (P.ambigu) it.status = 'ambigu';
     else if (!(P.total > 0) || !P.pile) it.status = 'tanpaQaqc';
     else if (!P.akhir) it.status = 'tanpaTanggal';
     else if (!it.sumberLh) it.status = 'tanpaLh';
     else if (lhLama) it.status = 'lhLama';
+    else if (lhKurang) it.status = 'lhKurang';
     else if (!it.kor) it.status = 'lhNol';
     else if (ppLama) it.status = 'ppLama';
-    // sama = total, pile terakhir yang tercatat (dasar aturan basi), dan laporan harian tidak berubah
-    else if (it.lama === P.total && akhirSimpan === (P.akhir || '') && (!L || kanon(it.hariBaru) === kanon(Q0.hari || {}))) it.status = 'sama';
+    // sama = total, pile terakhir yang tercatat (dasar aturan basi), batas koreksi bulan berjalan, dan laporan harian tidak berubah
+    else if (it.lama === P.total && akhirSimpan === (P.akhir || '') && sampaiSimpan === it.sampai && (!L || kanon(it.hariBaru) === kanon(Q0.hari || {}))) it.status = 'sama';
     else it.status = 'siap';
     it.siap = it.status === 'siap';
     if (P.ambigu) { /* sudah dicatat di atas */ }
@@ -8225,8 +8272,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     else if (!P.akhir) it.catatan.push('tanggal di ID pile tidak terbaca, jadi kelengkapan Produksi Pakal tidak bisa diperiksa');
     else if (!P.adaTotal) it.catatan.push('tanpa baris Total; dipakai jumlah rincian pile');
     else if (Math.abs(P.total - P.rincian) > 0.5) it.catatan.push('rincian pile ' + angka(P.rincian) + ' t, dipakai baris Total');
-    if (P.akhir && akhirLh && akhirLh < P.akhir) it.catatan.push('ore laporan harian hanya s.d. ' + tglPendek(akhirLh) + ', pile QAQC s.d. ' + tglPendek(P.akhir));
-    if (P.akhir && akhirLh && P.akhir < akhirLh) it.catatan.push('pile QAQC hanya s.d. ' + tglPendek(P.akhir) + ', ore laporan harian s.d. ' + tglPendek(akhirLh) + (ppLama ? ': pakai Produksi Pakal terbaru' : ''));
+    if (berjalan) {
+      if (it.sampai) it.catatan.push('bulan berjalan: koreksi berlaku s.d. ' + tglPendek(it.sampai) + ' (pile terakhir QAQC); hari sesudahnya tetap laporan harian, isian pagi, lalu Minerva');
+      if (lhKurang) it.catatan.push('laporan harian baru sampai ' + (akhirData ? tglPendek(akhirData) : '—') + ': unggah laporan harian s.d. ' + tglPendek(it.sampai) + ' dulu (bisa dipilih bersama Produksi Pakal)');
+    } else {
+      if (P.akhir && akhirLh && akhirLh < P.akhir) it.catatan.push('ore laporan harian hanya s.d. ' + tglPendek(akhirLh) + ', pile QAQC s.d. ' + tglPendek(P.akhir));
+      if (P.akhir && akhirLh && P.akhir < akhirLh) it.catatan.push('pile QAQC hanya s.d. ' + tglPendek(P.akhir) + ', ore laporan harian s.d. ' + tglPendek(akhirLh) + (ppLama ? ': pakai Produksi Pakal terbaru' : ''));
+    }
     return it;
   }
   async function pratinjauKoreksi(files) {
@@ -8250,13 +8302,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
   }
   var STATUS_KOREKSI = { siap: ['ok', 'siap disimpan'], sama: ['', 'sudah sama'], belum: ['warn', 'bulan belum tutup'], tanpaQaqc: ['err', 'tanpa data QAQC'],
     ambigu: ['err', 'sheet ganda'], tanpaTanggal: ['err', 'tanggal pile tidak terbaca'], tanpaLh: ['err', 'perlu laporan harian'],
-    lhLama: ['err', 'laporan harian lebih lama dari di sistem'], lhNol: ['err', 'laporan harian tanpa ore'], ppLama: ['err', 'Produksi Pakal belum lengkap'] };
+    lhLama: ['err', 'laporan harian lebih lama dari di sistem'], lhNol: ['err', 'laporan harian tanpa ore'], ppLama: ['err', 'Produksi Pakal belum lengkap'],
+    lhKurang: ['err', 'laporan harian belum sampai pile terakhir'] };
   function renderKoreksi() {
     var K = S.koreksi, box = el('koreksiPratinjau');
     if (!K) { box.hidden = true; el('tblKoreksi').innerHTML = ''; return; }
     box.hidden = false;
     var jum = { total: 0, antam: 0, bumd: 0 };
-    var h = '<thead><tr><th>Bulan</th><th class="num">Total QAQC</th><th class="num">Ore ANTAM</th><th class="num">Ore PCM</th><th class="num" title="Total QAQC ÷ ore laporan harian sebulan">Faktor</th>' +
+    var h = '<thead><tr><th>Bulan</th><th class="num">Total QAQC</th><th class="num">Ore ANTAM</th><th class="num">Ore PCM</th><th class="num" title="Total QAQC ÷ ore laporan harian sebulan (bulan berjalan: s.d. pile terakhir)">Faktor</th>' +
       '<th class="num">Laporan harian ANTAM · PCM</th><th>Status</th></tr></thead><tbody>';
     K.daftar.forEach(function (it) {
       var kor = it.kor, st = STATUS_KOREKSI[it.status] || ['', it.status];
@@ -8268,7 +8321,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
         '<td class="num">' + (kor ? angka(kor.antam) : '—') + '</td><td class="num">' + (kor ? angka(kor.bumd) : '—') + '</td>' +
         '<td class="num">' + (kor ? angka(kor.faktor, 3) : '—') + '</td>' +
         '<td class="num">' + (kor ? angka(kor.lhpA) + ' · ' + angka(kor.lhpB) : '—') + (asal ? '<div class="kecil muted">' + asal + '</div>' : '') + '</td>' +
-        '<td><span class="pil' + (st[0] ? ' ' + st[0] : '') + '">' + esc(st[1]) + '</span></td></tr>';
+        '<td><span class="pil' + (st[0] ? ' ' + st[0] : '') + '">' + esc(st[1] + ((it.siap || it.status === 'sama') && it.sampai ? ' · s.d. ' + tglPendek(it.sampai) : '')) + '</span></td></tr>';
     });
     var n = K.daftar.filter(function (x) { return x.siap; }).length;
     h += '</tbody>' + (n ? '<tfoot><tr><th>Disimpan (' + n + ' bulan)</th><th class="num">' + angka(jum.total) + '</th><th class="num">' + angka(jum.antam) + '</th><th class="num">' + angka(jum.bumd) + '</th><th></th><th></th><th></th></tr></tfoot>' : '');
@@ -8284,11 +8337,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
       if (coba) { var rr = await rest('/rest/v1/oe_1on1?bulan=eq.' + it.ym + '&select=bulan,data,updated_at', { method: 'GET' }); row = (rr && rr[0]) || null; }
       var data = Object.assign({}, (row && row.data) || {}), q = Object.assign({}, data.qaqc || {}), kini = new Date().toISOString();
       if (it.hariBaru) { q.hari = it.hariBaru; q.berkas = { nama: it.berkasLh, waktu: kini, label: it.labelLh }; }
-      var kor = DASH.koreksiOre({ koreksiOre: { total: it.P.total }, hari: q.hari || {} }, it.ym);
+      var kor = DASH.koreksiOre({ koreksiOre: { total: it.P.total, sampai: it.sampai || undefined }, hari: q.hari || {} }, it.ym);
       if (!kor) throw new Error('laporan harian ' + namaBulan(it.ym) + ' di sistem tidak berisi ore; pilih berkas laporan hariannya');
+      if (it.sampai && !Object.keys(q.hari || {}).some(function (d) { var x = q.hari[d]; return d >= it.sampai && d.slice(0, 7) === it.ym && x && (typeof x.antamOre === 'number' || typeof x.bumdOre === 'number'); }))
+        throw new Error('laporan harian ' + namaBulan(it.ym) + ' di sistem belum sampai ' + tglPendek(it.sampai) + '; pilih berkas laporan hariannya');
       q.koreksiOre = { v: 1, bulan: it.ym, total: it.P.total, waktu: kini, oleh: emailLogin(),
         sumber: { berkas: namaPP, sheet: it.P.sheet, rincian: it.P.rincian, pile: it.P.pile, adaTotal: !!it.P.adaTotal, akhir: it.P.akhir || '' },
         lhp: { antam: kor.lhpA, bumd: kor.lhpB, berkas: (q.berkas && q.berkas.nama) || '' } };
+      // bulan berjalan: koreksi hanya berlaku s.d. pile terakhir Produksi Pakal (DASH.koreksiInfo)
+      if (it.sampai) q.koreksiOre.sampai = it.sampai;
       data.qaqc = q;
       if (row) {
         var r = await rest('/rest/v1/oe_1on1?bulan=eq.' + it.ym + '&updated_at=eq.' + encodeURIComponent(row.updated_at) + '&select=updated_at',
@@ -8342,6 +8399,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     w.innerHTML = '<div class="table-wrap" style="border:0"><table><thead><tr><th>Bulan</th><th class="num">Total ore QAQC (WMT)</th><th>Pile QAQC s.d.</th><th>Disimpan</th></tr></thead><tbody>' +
       ada.map(function (r) {
         var ak = /^\d{4}-\d{2}-\d{2}$/.test(r.kora || '') ? tglPendek(r.kora) : '—';
+        // koreksi yang disimpan selagi bulannya berjalan: berlaku s.d. tanggal itu saja
+        // (s.d. hari terakhir bulan = sudah sebulan penuh: tidak perlu impor lagi)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(r.kors || '')) ak += ' · berlaku s.d. ' + tglPendek(r.kors) + (bulanTutup(r.bulan) && r.kors < akhirBulan(r.bulan) ? ' (impor Produksi Pakal lengkap)' : '');
         return '<tr><td>' + esc(namaBulan(r.bulan)) + '</td><td class="num">' + angka(korArsip(r)) + '</td><td>' + esc(ak) + '</td><td class="kecil muted">' + (r.korw ? esc(jamWit(r.korw)) : '') + (r.koro ? ' · ' + esc(r.koro) : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
@@ -8466,6 +8526,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     if (M.cutoff !== S.cutoff) return 'data s.d. ' + tglPendek(M.cutoff) + ', sekarang s.d. ' + tglPendek(S.cutoff);
     var sd = M.sidik || {};
     if ((sd.isian || null) !== (S.updatedAt || null)) return 'isian bulan ini berubah sejak dihitung';
+    // koreksi ore QAQC yang dipakai snapshot harus sama dengan aturan sekarang (§30.10): snapshot yang dihitung halaman
+    // sebelum 24 Oktober 2026 tidak mengenal `sampai`, jadi koreksi bulan berjalan dianggapnya basi atau sebulan penuh
+    var KO = DASH.koreksiOre(S.data && S.data.qaqc, M.bulan), MK = M.koreksi && typeof M.koreksi === 'object' ? M.koreksi : null;
+    if ((KO ? KO.total + '|' + KO.sampai : '') !== (MK ? MK.total + '|' + (MK.sampai || '') : '')) return 'koreksi ore QAQC belum ikut dihitung';
     if (S.tplJanji) { try { await S.tplJanji; } catch (e) { /* diperiksa lagi saat hitung */ } }
     if (S.tplWaktu && sd.tpl && sd.tpl !== S.tplWaktu) return 'template Excel diganti';
     var w = await waktuYtd(M.bulan), a = sd.ytd || {};
@@ -8820,8 +8884,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
 
   /* ---------- ore QC pagi (admin): satu baris; diringkas bila semua hari s.d. tanggal data sudah terisi ---------- */
   function hariKurangOre() {
-    if (koreksiBulan()) return [];                    // ore bulan ini mengikuti total QAQC Produksi Pakal (§30)
-    return hariBulan(S.bulan).filter(function (x) { if (x > S.cutoff) return false; var mm = oreManual()[x]; return !oreBerkas(x) && !(mm && (mm.antam != null || mm.bumd != null)); });
+    var kor = koreksiBulan();
+    if (kor && !kor.sampai) return [];                // ore bulan ini mengikuti total QAQC Produksi Pakal (§30)
+    // koreksi bulan berjalan: hari s.d. kor.sampai sudah mengikuti Produksi Pakal
+    return hariBulan(S.bulan).filter(function (x) { if (x > S.cutoff || korBerlaku(kor, x)) return false; var mm = oreManual()[x]; return !oreBerkas(x) && !(mm && (mm.antam != null || mm.bumd != null)); });
   }
   function renderPagi() {
     var w = el('dPagi');
@@ -8856,7 +8922,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var a = el('dPagiA'), b = el('dPagiB'), btn = el('btnDPagi');
     var tulis = function (inp, v) { if (document.activeElement !== inp) inp.value = v == null ? '' : angka(v, v % 1 ? 2 : 0); };
     var kor = dalamBulan(d) ? koreksiBulan() : null;
-    if (kor) {
+    if (korBerlaku(kor, d)) {
       var ok = oreKoreksi(d, kor);
       tulis(a, Math.round(ok.antam)); tulis(b, Math.round(ok.bumd)); a.disabled = b.disabled = btn.disabled = true;
       info.className = 'd-pagi-info ok'; info.textContent = 'Total QAQC Produksi Pakal';
@@ -8880,7 +8946,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DASH;
     var d = el('dPagiTgl').value, info = el('dPagiInfo');
     var salah = function (t) { info.className = 'd-pagi-info err'; info.textContent = t; };
     if (!d || !dalamBulan(d) || d > S.cutoff) return salah('Pilih tanggal ' + tglPendek(mulai()) + '–' + tglPendek(S.cutoff));
-    if (oreBerkas(d) || koreksiBulan()) return;
+    if (oreBerkas(d) || korBerlaku(koreksiBulan(), d)) return;
     if (isianBelumSiap()) return salah(isianBelumSiap());
     var a = angkaTempel(el('dPagiA').value), b = angkaTempel(el('dPagiB').value);
     if ((a != null && (isNaN(a) || a < 0)) || (b != null && (isNaN(b) || b < 0))) return salah('Angka tidak terbaca. Contoh: 2.250');

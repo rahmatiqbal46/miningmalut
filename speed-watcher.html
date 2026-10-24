@@ -635,7 +635,7 @@ button{transition:background .14s,border-color .14s,box-shadow .14s,color .14s,f
 
     <details class="grp">
       <summary>Ruas jalan <span class="tag" id="zoneCount">0</span>
-        <span class="info" tabindex="0" data-tip="Batas per ruas diambil dari geofence Wialon. Bila unit berada di ruas berbatas, yang berlaku adalah angka terendah antara batas ruas, batas unit, dan batas umum.">i</span>
+        <span class="info" tabindex="0" data-tip="Batas tiap ruas diatur admin di Digital Twin dan sama dengan yang dipakai server. Di persimpangan, yang berlaku ruas yang paling dekat dengan posisi unit; bila sama dekat, batas terendah. Di luar semua ruas berlaku batas umum.">i</span>
       </summary>
       <div class="grp-body">
         <label class="sw"><input type="checkbox" id="cfgZones" checked><span>Pakai geofence sebagai nama lokasi dan batas</span></label>
@@ -1104,24 +1104,54 @@ function zonesAt(lat, lon) {
   return App.zones.filter(z => pointInZone(lat, lon, z));
 }
 
+/* Ruas yang BERLAKU di satu titik — aturan yang sama dengan cariRuas() di Worker
+   versi 15 (keputusan Iqbal, 24 Oktober 2026): dari semua ruas yang memuat titik,
+   yang garisnya paling dekat. Dua jarak yang berselisih tidak lebih dari
+   SERI_RUAS_M dianggap sama (mis. titik di luar ujung dua ruas yang bertemu di satu
+   simpul); di situ batas terendah, lalu nama menurut abjad. Aturan ini tidak
+   bergantung pada urutan App.zones, jadi hasilnya sama dengan server walau server
+   memeriksa ruas dengan urutan lain. Sampai 24 Oktober 2026 yang dipakai batas
+   terendah di antara semua ruas yang memuat titik.
+   Ruas tanpa angka batas hanya dipakai untuk nama bila tidak ada ruas berbatas
+   yang memuat titik. Zona bukan garis (lingkaran, poligon) berjarak 0 bila titik
+   ada di dalamnya. */
+const SERI_RUAS_M = 1e-6;
+function jarakZona(lat, lon, z) {
+  return z.type === 1 ? distToPolyline(lon, lat, z.points) : 0;
+}
+function ruasBerlaku(lat, lon) {
+  const hits = zonesAt(lat, lon);
+  if (!hits.length) return null;
+  const berbatas = hits.filter(z => z.limit > 0);
+  const calon = (berbatas.length ? berbatas : hits).map(z => ({ z, d: jarakZona(lat, lon, z) }));
+  let dmin = Infinity;
+  calon.forEach(c => { if (c.d < dmin) dmin = c.d; });
+  const batasDari = (z) => (z.limit > 0 ? z.limit : Infinity);
+  let pilih = null;
+  calon.forEach(c => {
+    if (c.d > dmin + SERI_RUAS_M) return;
+    if (!pilih || batasDari(c.z) < batasDari(pilih) ||
+        (batasDari(c.z) === batasDari(pilih) && c.z.name < pilih.name)) pilih = c.z;
+  });
+  return pilih;
+}
+
 /**
- * Batas yang berlaku untuk sebuah pembacaan.
- * Bila unit berada di ruas berbatas, yang dipakai adalah angka terendah antara
- * batas ruas dan batas unit — pilihan paling aman untuk alat keselamatan.
+ * Batas yang berlaku untuk sebuah pembacaan — sama dengan server: di ruas, batas
+ * ruas yang berlaku (ruasBerlaku); di luar semua ruas, batas umum. Batas khusus
+ * unit dari setelan lama (kini terkunci) tetap dipakai bila lebih rendah.
+ * Sampai 24 Oktober 2026 batas ruas juga dipotong batas umum, sehingga ruas yang
+ * batasnya di atas batas umum dinilai lebih ketat di layar daripada di server.
  */
 function limitFor(u, s, cfg) {
   let limit = unitLimit(u, cfg);
   let zone = null;
 
   if (cfg.useZones && s && validCoord(s.lat, s.lon)) {
-    const hits = zonesAt(s.lat, s.lon);
-    if (hits.length) {
-      zone = hits[0].name;
-      const berbatas = hits.filter(z => z.limit > 0).sort((a, b) => a.limit - b.limit);
-      if (berbatas.length) {
-        limit = Math.min(limit, berbatas[0].limit);
-        zone = berbatas[0].name;
-      }
+    const z = ruasBerlaku(s.lat, s.lon);
+    if (z) {
+      zone = z.name;
+      if (z.limit > 0) limit = u.limitOverride > 0 ? Math.min(u.limitOverride, z.limit) : z.limit;
     }
   }
   return { limit, zone };
@@ -3828,9 +3858,10 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
   function labelRuas(ev) {
     if (ev.zone) return;
     try {
-      if (typeof zonesAt === 'function') {
-        var h = zonesAt(ev.lat, ev.lon);
-        if (h && h.length) ev.zone = h[0].name;
+      // Ruas yang berlaku menurut aturan server (ruas terdekat), bukan ruas pertama di daftar.
+      if (typeof ruasBerlaku === 'function') {
+        var z = ruasBerlaku(ev.lat, ev.lon);
+        if (z) ev.zone = z.name;
       }
     } catch (e) {}
   }
