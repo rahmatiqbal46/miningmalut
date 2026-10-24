@@ -217,6 +217,7 @@ select.pilih[disabled]{opacity:.55;cursor:not-allowed}
 .fld input:-webkit-autofill{-webkit-text-fill-color:var(--text);transition:background-color 100000s 0s}
 .fld input:autofill{-webkit-text-fill-color:var(--text);transition:background-color 100000s 0s}
 .fld .h{font-size:var(--f-sub);line-height:var(--lh-sub);color:var(--text-muted);margin-top:4px}
+.fld .h.galat{color:var(--bad);font-weight:600}
 .satuan{position:relative;display:block}
 .satuan input{padding-right:44px}
 .satuan i{position:absolute;right:10px;top:0;height:var(--h-kontrol);display:flex;align-items:center;font-style:normal;
@@ -466,8 +467,8 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
             <div class="fields2">
               <label class="fld"><span class="lbl">Front</span><input id="front" type="text" placeholder="Mafia Barat" autocomplete="off" list="daftarFront"></label>
               <label class="fld"><span class="lbl">Periode</span><input id="periode" type="text" placeholder="15–22 Jun 2026" autocomplete="off"></label>
-              <label class="fld"><span class="lbl">Volume KKM</span><span class="satuan"><input id="volKKM" type="number" step="1" min="0" inputmode="numeric" placeholder="20000"><i>BCM</i></span>
-                <div class="h">kapasitas rencana — untuk komponen 1</div></label>
+              <label class="fld"><span class="lbl">Volume KKM</span><span class="satuan"><input id="volKKM" type="text" inputmode="decimal" autocomplete="off" placeholder="20.000" aria-describedby="kkmBaca"><i>BCM</i></span>
+                <div class="h" id="kkmBaca" aria-live="polite">kapasitas rencana — untuk komponen 1</div></label>
               <div class="fld"><span class="lbl" id="lblRes">Resolusi grid</span>
                 <div class="seg" role="radiogroup" aria-labelledby="lblRes">
                   <label title="Lebih halus"><input type="radio" name="res" value="0.5"><span>0,5 m</span></label>
@@ -536,23 +537,23 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
       <div class="kepala-hasil"><h2 id="jPenampang">Penampang X · Y · Z</h2><span class="ket">klik peta untuk memindah letak penampang</span></div>
       <div class="panel isi-panel" style="padding-top:14px">
         <div class="baris-tab">
-          <div class="tabs" role="tablist">
-            <button class="tabbtn on" data-t="x" type="button">Penampang X (arah Easting)</button>
-            <button class="tabbtn" data-t="y" type="button">Penampang Y (arah Northing)</button>
-            <button class="tabbtn" data-t="z" type="button">Penampang Z (bidang datar)</button>
+          <div class="tabs" role="tablist" aria-label="Pilih penampang">
+            <button class="tabbtn on" data-t="x" type="button" role="tab" id="tab-x" aria-controls="pane-x" aria-selected="true">Penampang X (arah Easting)</button>
+            <button class="tabbtn" data-t="y" type="button" role="tab" id="tab-y" aria-controls="pane-y" aria-selected="false" tabindex="-1">Penampang Y (arah Northing)</button>
+            <button class="tabbtn" data-t="z" type="button" role="tab" id="tab-z" aria-controls="pane-z" aria-selected="false" tabindex="-1">Penampang Z (bidang datar)</button>
           </div>
         </div>
-        <div class="tabpane" id="pane-x">
+        <div class="tabpane" id="pane-x" role="tabpanel" aria-labelledby="tab-x">
           <canvas class="sec" id="cvX"></canvas>
           <div class="sctl"><span class="lb" id="secXlab">—</span><input type="range" id="secXpos" min="0" max="10" step="1" value="5" aria-label="Letak penampang X">
             <button class="btn" id="pngX" type="button">⤓ PNG</button></div>
         </div>
-        <div class="tabpane" id="pane-y" hidden>
+        <div class="tabpane" id="pane-y" role="tabpanel" aria-labelledby="tab-y" hidden>
           <canvas class="sec" id="cvY"></canvas>
           <div class="sctl"><span class="lb" id="secYlab">—</span><input type="range" id="secYpos" min="0" max="10" step="1" value="5" aria-label="Letak penampang Y">
             <button class="btn" id="pngY" type="button">⤓ PNG</button></div>
         </div>
-        <div class="tabpane" id="pane-z" hidden>
+        <div class="tabpane" id="pane-z" role="tabpanel" aria-labelledby="tab-z" hidden>
           <canvas class="sec" id="cvZ"></canvas>
           <div class="sctl"><span class="lb" id="secZlab">—</span><input type="range" id="secZpos" min="0" max="10" step="0.1" value="5" aria-label="Elevasi penampang Z">
             <button class="btn" id="pngZ" type="button">⤓ PNG</button></div>
@@ -561,7 +562,7 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
     </section>
 
     <section class="hasil" aria-labelledby="j3d">
-      <div class="kepala-hasil"><h2 id="j3d">Tampilan 3D</h2><span class="ket">geser untuk memutar, gulir untuk zoom</span></div>
+      <div class="kepala-hasil"><h2 id="j3d">Tampilan 3D</h2><span class="ket">geser untuk memutar, gulir atau cubit untuk zoom</span></div>
       <div class="panel isi-panel" style="padding-top:14px">
         <div id="view3d"></div>
         <div class="v3ctl">
@@ -620,12 +621,14 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
        Twin (GudangSite.bacaDTG), dipilih dari versi yang sudah diunggah admin;
      - desain: Surpac .str (biner atau teks), TANPA .dtm — permukaannya dibentuk
        di sini dengan triangulasi Delaunay berkendala (tiap ruas string menjadi
-       garis patah), lalu dipotong ke string tertutup.
+       garis patah), lalu dipotong ke string tertutup. String yang seluruh
+       titiknya berelevasi 0 (garis penanda) dibuang lebih dulu.
 
    Batas tertambang tidak diunggah. Ketentuan (keputusan Iqbal 24 Oktober 2026,
    tetap, bukan setelan — lihat KETENTUAN): sel yang turun ≥ 0,5 m antara topo
    awal dan topo akhir, paling jauh 50 m dari batas desain, yang menyambung ke
-   area desain; celah ≤ ±4 m dirapatkan, lubang ≤ 400 m² diisi, serpihan
+   area desain atau berjarak ≤ 10 m darinya (galian tepat di luar pit limit
+   tetap dinilai); celah ≤ ±4 m dirapatkan, lubang ≤ 400 m² diisi, serpihan
    < 20 m² dibuang.
 
    Rumus komponen dan konversi skor SAMA dengan mesin lama (mining_compliance.py
@@ -642,6 +645,7 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
   var KETENTUAN = Object.freeze({
     ambang: 0.5,        // m, penurunan minimum topo awal → akhir
     jangkauan: 50,      // m, jarak terjauh dari batas desain
+    dekat: 10,          // m, galian yang tidak menyambung tetap dinilai bila sejauh ini dari desain
     tutup: 2,           // m, radius perapatan celah (closing)
     minLuas: 20,        // m², bagian lebih kecil dibuang
     lubangMaks: 400,    // m², lubang tak tergali di dalamnya yang diisi
@@ -656,7 +660,10 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
      di string ≥ 256. Rekaman string 0 = pemisah segmen; deskripsi "END" = akhir. */
   function bacaSTR(buf, nama) {
     var u8 = new Uint8Array(buf), n = u8.length, a1 = -1, a2 = -1, i;
-    for (i = 0; i < Math.min(n, 8000); i++) if (u8[i] === 10) { if (a1 < 0) a1 = i; else { a2 = i; break; } }
+    /* akhir baris: LF, CRLF, atau CR saja (berkas teks Mac lama) */
+    for (i = 0; i < Math.min(n, 8000); i++) {
+      if (u8[i] === 10 || (u8[i] === 13 && u8[i + 1] !== 10)) { if (a1 < 0) a1 = i; else { a2 = i; break; } }
+    }
     if (a1 < 0 || a2 < 0) throw new Error('Berkas ' + (nama || '') + ' bukan string Surpac: dua baris kepala tidak ditemukan.');
     var kepala = teksLatin1(u8, 0, a1).replace(/\r$/, '');
     var biner = false;
@@ -685,14 +692,14 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
         tambah(s, x, y, z);
       }
     } else {
-      var L = teksLatin1(u8, 0, n).split(/\r?\n/);
+      var L = teksLatin1(u8, 0, n).split(/\r\n|\r|\n/);
       for (var li = 2; li < L.length; li++) {
         var t = L[li].trim(); if (!t) continue;
         var f = t.indexOf(',') >= 0 ? t.split(',') : t.split(/\s+/);
         var sn = parseInt(f[0], 10);
         if (!isFinite(sn)) continue;
         rekaman++;
-        if (sn === 0) { tutup(); if (/END/i.test(f.slice(4).join(','))) break; continue; }
+        if (sn === 0) { tutup(); if (f.length > 4 && /^END\b/i.test(String(f[4]).trim())) break; continue; }
         var yy = parseFloat(f[1]), xx = parseFloat(f[2]), zz = parseFloat(f[3]);
         if (!isFinite(xx) || !isFinite(yy) || !isFinite(zz)) continue;
         tambah(sn, xx, yy, zz);
@@ -758,9 +765,21 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
      (Constrainautor) supaya segitiga tidak memotong crest/toe. Segitiga dipakai bila
      titik beratnya di dalam salah satu string tertutup; tanpa string tertutup, tepi
      cembung yang panjang dikupas. */
-  function desainTIN(D, Delaunator, Constrainautor) {
+  function desainTIN(D0, Delaunator, Constrainautor) {
+    /* string yang seluruh titiknya berelevasi 0 (penanda atau garis tanpa elevasi) dibuang */
+    var nolStr = {}, nolTitik = 0, i, k;
+    var D = { x: [], y: [], z: [], seg: [] };
+    D0.seg.forEach(function (g) {
+      var semuaNol = true;
+      for (var q = g.a; q < g.b; q++) if (Math.abs(D0.z[q]) > 0.001) { semuaNol = false; break; }
+      if (semuaNol) { nolStr[g.s] = 1; nolTitik += g.b - g.a; return; }
+      var a = D.x.length;
+      for (q = g.a; q < g.b; q++) { D.x.push(D0.x[q]); D.y.push(D0.y[q]); D.z.push(D0.z[q]); }
+      D.seg.push({ s: g.s, a: a, b: D.x.length, tutup: g.tutup });
+    });
     var n = D.x.length, peta = new Map(), ux = [], uy = [], uz = [], uid = new Int32Array(n);
-    var kembar = 0, bedaZ = 0, i, k;
+    var kembar = 0, bedaZ = 0;
+    if (!n) throw new Error('Semua string desain berelevasi 0 — tidak ada permukaan desain yang bisa dibentuk.');
     for (i = 0; i < n; i++) {
       var kunci = Math.round(D.x[i] * 1000) + ':' + Math.round(D.y[i] * 1000), u = peta.get(kunci);
       if (u === undefined) { u = ux.length; peta.set(kunci, u); ux.push(D.x[i]); uy.push(D.y[i]); uz.push(D.z[i]); }
@@ -801,8 +820,25 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
       var P = siapkanPoligon(px, py); P.luas = L; P.s = g.s;
       pol.push(P);
     });
-    var pakai = new Uint8Array(nt), cara;
+    var pakai = new Uint8Array(nt), cara, terbukaLuar = 0, bingkai = null;
     if (pol.length) {
+      /* titik string terbuka di luar semua string tertutup (mis. crest yang tidak ditutup) */
+      var dipolygon = new Uint8Array(m);
+      D.seg.forEach(function (g) { if (g.tutup) for (var q = g.a; q < g.b; q++) dipolygon[uid[q]] = 1; });
+      D.seg.forEach(function (g) {
+        if (g.tutup) return;
+        for (var q = g.a; q < g.b; q++) {
+          var u = uid[q]; if (dipolygon[u]) continue;
+          var di = false;
+          for (var kk = 0; kk < pol.length; kk++) if (dalamSiap(pol[kk], D.x[q], D.y[q])) { di = true; break; }
+          if (!di) terbukaLuar++;
+        }
+      });
+      /* string tertutup terluar yang tampak seperti bingkai gambar: ≤ 5 titik dan ≥ 4× luas string lain */
+      if (pol.length > 1) {
+        var urut = pol.slice().sort(function (p, q) { return q.luas - p.luas; });
+        if (urut[0].px.length <= 5 && urut[0].luas >= 4 * urut[1].luas) bingkai = { s: urut[0].s, titik: urut[0].px.length, luas: urut[0].luas };
+      }
       cara = 'string tertutup';
       for (var t = 0; t < nt; t++) {
         var a0 = T[3 * t], b0 = T[3 * t + 1], c0 = T[3 * t + 2];
@@ -859,7 +895,8 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
       x: Float64Array.from(ux), y: Float64Array.from(uy), z: Float64Array.from(uz), tri: Uint32Array.from(tri),
       luas: luasD, tepi: Float64Array.from(tepi), ext: ex, zmin: zmin, zmax: zmax,
       info: { titik: n, titikUnik: m, kembar: kembar, kembarBedaZ: bedaZ, kendala: kendala, kendalaGagal: gagal,
-              segitiga: tri.length / 3, segitigaDibuang: dibuang, batas: cara, stringTertutup: pol.length }
+              segitiga: tri.length / 3, segitigaDibuang: dibuang, batas: cara, stringTertutup: pol.length,
+              stringNol: Object.keys(nolStr).map(Number), titikNol: nolTitik, terbukaDiLuar: terbukaLuar, bingkai: bingkai }
     };
   }
 
@@ -1000,10 +1037,13 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
     var Mt = tutupMorf(M, nx, ny, Math.round(K.tutup / G.res));
     if (jd) for (k = 0; k < N; k++) if (Mt[k] && jd[k] > rj2) Mt[k] = 0;
     var kp = komponen(Mt, nx, ny, 1, true), sentuh = new Uint8Array(kp.daftar.length);
-    for (k = 0; k < N; k++) if (kp.lab[k] && Dm[k]) sentuh[kp.lab[k]] = 1;
-    var minSel = K.minLuas / ca, B = new Uint8Array(N), dibuang = 0, luasDibuang = 0;
+    var rd = K.dekat / G.res, rd2 = rd * rd;
+    for (k = 0; k < N; k++) if (kp.lab[k] && (Dm[k] || (jd && jd[k] <= rd2))) sentuh[kp.lab[k]] = 1;
+    var minSel = K.minLuas / ca, B = new Uint8Array(N), dibuang = 0, luasDibuang = 0, terpisah = 0, luasTerpisah = 0;
     for (var id = 1; id < kp.daftar.length; id++) {
-      if (!sentuh[id] || kp.daftar[id].luasSel < minSel) { dibuang++; luasDibuang += kp.daftar[id].luasSel * ca; }
+      var Ls = kp.daftar[id].luasSel;
+      if (!sentuh[id] || Ls < minSel) { dibuang++; luasDibuang += Ls * ca; }
+      if (!sentuh[id] && Ls >= minSel) { terpisah++; luasTerpisah += Ls * ca; }   // galian lain: > 10 m dari desain
     }
     for (k = 0; k < N; k++) { var L = kp.lab[k]; if (L && sentuh[L] && kp.daftar[L].luasSel >= minSel) B[k] = 1; }
     /* lubang: latar (4 arah) yang dikelilingi B dan tidak menyentuh tepi grid */
@@ -1020,8 +1060,9 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
       luas++;
       if (jd) { if (jd[k] > rt2) diTepi++; if (jd[k] > jauh) jauh = jd[k]; }
     }
-    return { B: B, info: { ambang: K.ambang, jangkauan: K.jangkauan, selTurun: selTurun, luasTurunDiLuarJangkauan: selTurunLuar * ca,
+    return { B: B, info: { ambang: K.ambang, jangkauan: K.jangkauan, dekat: K.dekat, selTurun: selTurun, luasTurunDiLuarJangkauan: selTurunLuar * ca,
                            luas: luas * ca, lubangDiisi: isi * ca, komponenDibuang: dibuang, luasDibuang: luasDibuang,
+                           komponenTerpisah: terpisah, luasTerpisah: luasTerpisah,
                            luasDiTepi: diTepi * ca, jarakTerjauh: Math.sqrt(jauh) * G.res } };
   }
 
@@ -1064,7 +1105,7 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
       }
       if (adaO && adaR) { var cut = zo - zr; if (cut > 0) { volAll += cut * ca; if (adaP) volIn += cut * ca; } }
     }
-    var volOut = volAll - volIn, volKKM = opsi.volKKM || null, vP = volPlan || null;
+    var volOut = volAll - volIn, volKKM = opsi.volKKM || null, vP = volPlan || null;   // vP 0 → rasio tak terhitung (seperti mesin lama)
     var rasio = {
       vol_vs_kkm: (vP && volKKM) ? vP / volKKM : null,
       area_in: areaB ? areaIn / areaB : null,
@@ -1085,7 +1126,7 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
     return {
       kelas: kelas, dz: dz,
       geom: { area_tertambang_m2: areaB, boundary_plan_m2: opsi.luasDesain, area_in_m2: areaIn, area_out_m2: areaOut,
-              undercut_bcm: under, overcut_bcm: over, vol_kkm_bcm: volKKM, vol_plan_bcm: vP,
+              undercut_bcm: under, overcut_bcm: over, vol_kkm_bcm: volKKM, vol_plan_bcm: volPlan,
               vol_allboundary_bcm: volAll, vol_inside_bcm: volIn, vol_outside_bcm: volOut },
       ratios: rasio, conv: konv, weighted: nilai, subtotal_III: sub, capaian: capaian, grade: grade(capaian), complete: isi === 5
     };
@@ -1096,7 +1137,8 @@ footer{text-align:center;font-size:var(--f-foot);line-height:var(--lh-foot);colo
   function evaluasi(desain, topoAwal, topoAkhir, opsi) {
     var res = opsi.res || 1, K = Object.assign({}, KETENTUAN, opsi.uji || {});
     var G = bingkaiAnalisis(desain.ext, K.jangkauan, res);
-    if (G.nx * G.ny > 16e6) throw new Error('Area hitung terlalu besar untuk resolusi ' + String(res).replace('.', ',') + ' m (' + Math.round(G.nx * G.ny / 1e6) + ' juta sel). Pilih resolusi yang lebih kasar.');
+    var maksSel = opsi.maksSel || 8e6;
+    if (G.nx * G.ny > maksSel) throw new Error('Area hitung terlalu besar untuk resolusi ' + String(res).replace('.', ',') + ' m (' + Math.round(G.nx * G.ny / 1e6) + ' juta sel, batas ' + Math.round(maksSel / 1e6) + ' juta). Pilih resolusi yang lebih kasar.');
     var Zp = rasterTIN(desain, G), Zo = sampelTopo(topoAwal, G), Zr = sampelTopo(topoAkhir, G);
     var bt = batasOtomatis({ G: G, Zo: Zo, Zr: Zr, Zp: Zp, uji: opsi.uji });
     var r = metrik(G, bt.B, Zp, Zr, Zo, { volKKM: opsi.volKKM, luasDesain: desain.luas });
@@ -1778,7 +1820,7 @@ function rentang(a, b) {
 }
 
 /* ---------------- warna data (tidak ikut palet, §23.2) ---------------- */
-const COL = { teal: '#0c6b60', ink: '#0e2a25', muted: '#5e736d', red: '#c0392b', blue: '#2f80b6', green: '#1e9e8a', gold: '#e6a23c', awal: '#8fa6a0' };
+const COL = { teal: '#0c6b60', ink: '#0e2a25', muted: '#5e736d', red: '#c0392b', blue: '#2f80b6', green: '#1e9e8a', gold: '#e6a23c', awal: '#5e7872' };
 const RGB_KELAS = { 1: [192, 57, 43], 2: [47, 128, 182], 3: [230, 162, 60], 4: [30, 158, 138] };
 const NAMA_KELAS = { 1: 'undercut', 2: 'overcut', 3: 'di luar desain', 4: 'sesuai desain' };
 const HEX_KELAS = { 1: COL.red, 2: COL.blue, 3: COL.gold, 4: COL.green };
@@ -1801,6 +1843,8 @@ const S = {
   grid: new Map(),           // kunci versi → {status, persen, g, galat, p}
   desain: null,              // {file, nama, ukuran, D, tin, contoh, peringatan}
   hasil: null, basi: false, sibuk: false,
+  giliran: 0,                // nomor jalan hitung; menaikkannya membatalkan jalan yang sedang menunggu
+  dibatalkan: false,         // jalan terakhir dibatalkan karena masukan berubah
   pratinjau: null, lapis: null, T: null,
   periodeAuto: ''
 };
@@ -1947,6 +1991,11 @@ function perbaruiPeriodeAuto() {
 }
 
 /* ================================================================ DESAIN */
+/* Batas ukuran: desain mingguan biasanya ratusan sampai beberapa ribu titik. */
+const DESAIN_MAKS = 60000, DESAIN_BANYAK = 20000;
+/* Batas sel analisis per jalan; perangkat dengan RAM ≤ 4 GB dibatasi lebih ketat. */
+function maksSel() { const g = navigator.deviceMemory; return g && g <= 4 ? 3e6 : 6e6; }
+function selUntuk(res) { if (!S.desain) return 0; const G = M.bingkaiAnalisis(S.desain.tin.ext, K.jangkauan, res); return G.nx * G.ny; }
 async function pakaiDesain(file, contoh) {
   $('#errBox').hidden = true;
   try {
@@ -1955,6 +2004,7 @@ async function pakaiDesain(file, contoh) {
     const buf = await file.arrayBuffer();
     const D = M.bacaSTR(buf, file.name);
     if (!D.x.length) throw new Error('Tidak ada titik yang terbaca di ' + file.name + '.');
+    if (D.x.length > DESAIN_MAKS) throw new Error('Berkas ini berisi ' + fmt(D.x.length) + ' titik — terlalu banyak untuk desain mingguan (batas ' + fmt(DESAIN_MAKS) + '). Isinya lebih mirip topo atau DTM; pastikan yang diunggah adalah desain front.');
     let dalam = 0;
     for (let i = 0; i < D.x.length; i++) {
       if (D.x[i] > SITE.e0 - SITE.sela && D.x[i] < SITE.e1 + SITE.sela && D.y[i] > SITE.n0 - SITE.sela && D.y[i] < SITE.n1 + SITE.sela) dalam++;
@@ -1962,8 +2012,13 @@ async function pakaiDesain(file, contoh) {
     if (dalam < D.x.length * 0.5) throw new Error('Koordinat desain di luar bingkai site Pulau Pakal. Pastikan .str memakai UTM 52N (kolom Y = Northing, X = Easting).');
     const tin = M.desainTIN(D, Del, Con);
     if (!tin.tri.length) throw new Error('Permukaan desain kosong: tidak ada segitiga di dalam string tertutup.');
-    const pr = [];
+    const pr = [], ti = tin.info;
+    if (D.x.length > DESAIN_BANYAK) pr.push('Desain berisi ' + fmt(D.x.length) + ' titik, jauh lebih banyak dari desain mingguan biasa. Pastikan ini bukan topo.');
     if (dalam < D.x.length) pr.push(fmt(D.x.length - dalam) + ' titik desain berada di luar bingkai site.');
+    if (ti.stringNol.length) pr.push(fmt(ti.stringNol.length) + ' string berelevasi 0 (string ' + ti.stringNol.slice(0, 5).join(', ') + (ti.stringNol.length > 5 ? ', …' : '') + ') diabaikan — biasanya garis penanda tanpa elevasi.');
+    if (ti.bingkai) pr.push('String ' + ti.bingkai.s + ' (' + ti.bingkai.titik + ' titik, ' + fmt(ti.bingkai.luas) + ' m²) jauh lebih luas dari string lain dan tampak seperti bingkai gambar. Bila itu bukan batas desain, hapus dari .str — kalau tidak, seluruh isinya dihitung sebagai desain.');
+    else if (tin.luas > 1e6) pr.push('Luas desain ' + fmt(tin.luas) + ' m² (lebih dari 1 km²), jauh di atas desain mingguan biasa. Periksa apakah ada string bingkai atau batas IUP yang ikut.');
+    if (ti.terbukaDiLuar) pr.push(fmt(ti.terbukaDiLuar) + ' titik string terbuka berada di luar string tertutup dan tidak ikut dihitung sebagai desain. Bila crest belum ditutup, tutup string-nya di Surpac.');
     if (tin.info.batas === 'kupas tepi') pr.push('Desain tidak punya string tertutup; batas desain ditaksir dari tepi sebaran titik. Periksa garis desain di peta.');
     if (tin.info.kendalaGagal) pr.push(fmt(tin.info.kendalaGagal) + ' ruas string bersilangan tanpa titik bersama; ruas itu tidak dijadikan garis patah.');
     if (tin.info.kembarBedaZ) pr.push(fmt(tin.info.kembarBedaZ) + ' titik bertumpuk dengan elevasi berbeda; dipakai elevasi yang muncul lebih dulu, sama dengan Surpac.');
@@ -2017,7 +2072,26 @@ function gambarThumb(t) {
 
 /* ================================================================ KETERANGAN */
 const resTerpilih = () => { const r = document.querySelector('input[name="res"]:checked'); return r ? parseFloat(r.value) : 1; };
-const kkm = () => { const v = parseFloat($('#volKKM').value); return isFinite(v) && v > 0 ? v : null; };
+/* Angka gaya Indonesia: titik pemisah ribuan, koma desimal — "20.000" = dua puluh ribu, "1.250,5".
+   Gaya Inggris "1,250.5" juga terbaca. Mengembalikan null bila kosong, NaN bila tidak terbaca. */
+function bacaAngkaID(t) {
+  let s = String(t || '').replace(/[\s\u00a0]/g, '').replace(/bcm$/i, '');
+  if (!s) return null;
+  if (!/^[0-9.,]+$/.test(s)) return NaN;
+  const koma = s.lastIndexOf(','), titik = s.lastIndexOf('.');
+  if (koma >= 0 && titik > koma) s = s.replace(/,/g, '');                         // 1,250.5
+  else if (koma >= 0) s = s.replace(/\./g, '').replace(',', '.');                  // 1.250,5 · 20,5
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');              // 20.000 · 1.250.000
+  const v = Number(s);
+  return isFinite(v) ? v : NaN;
+}
+const kkm = () => { const v = bacaAngkaID($('#volKKM').value); return v !== null && isFinite(v) && v > 0 ? v : null; };
+function renderKKM() {
+  const el = $('#kkmBaca'), v = bacaAngkaID($('#volKKM').value);
+  if (v === null) { el.textContent = 'kapasitas rencana — untuk komponen 1'; el.className = 'h'; }
+  else if (!isFinite(v) || v <= 0) { el.textContent = 'angka tidak terbaca — contoh 20.000'; el.className = 'h galat'; }
+  else { el.textContent = 'terbaca ' + fmt(v, v % 1 ? 1 : 0) + ' BCM'; el.className = 'h'; }
+}
 function renderDaftarFront() {
   const f = bacaPref().front || [];
   $('#daftarFront').innerHTML = f.map(n => '<option value="' + escH(n) + '"></option>').join('');
@@ -2052,9 +2126,12 @@ function syncReady() {
   const kurang = [];
   if (ct) kurang.push(ct.diam ? 'daftar topo (masih dimuat)' : 'topo awal dan akhir');
   if (!S.desain) kurang.push('desain .str');
+  const res = resTerpilih(), nSel = selUntuk(res), besar = nSel > maksSel();
   const btn = $('#runBtn');
-  btn.disabled = kurang.length > 0 || S.sibuk;
+  btn.disabled = kurang.length > 0 || S.sibuk || besar;
   $('#readyNote').innerHTML = kurang.length ? 'Masih perlu: <b>' + kurang.join(' dan ') + '</b>'
+    : besar ? 'Grid ' + angkaRes(res) + ' m terlalu rapat untuk desain seluas ini (' + fmt(nSel / 1e6, 1) + ' juta sel, batas ' + fmt(maksSel() / 1e6) + ' juta). <b>Pilih resolusi yang lebih kasar.</b>'
+    : S.dibatalkan && !S.sibuk ? 'Masukan berubah saat menghitung, jadi evaluasi tadi dibatalkan. Tekan <b>Jalankan evaluasi</b> lagi.'
     : topoMuat ? 'Topo masih dimuat — boleh langsung dijalankan.'
     : kkm() ? 'Lengkap — 5 komponen Subtotal III dapat dinilai.'
     : 'Volume KKM belum diisi — komponen 1 tidak akan terhitung.';
@@ -2069,35 +2146,49 @@ function tampilGalat(judul, err) {
   $('#errBox .t').textContent = judul || 'Tidak dapat memproses';
   $('#errText').textContent = (err && err.message) ? err.message : String(err);
 }
-function tandaMasukan() { return [S.awal, S.akhir, S.desain ? S.desain.nama + '|' + S.desain.ukuran + '|' + (S.desain.file && S.desain.file.lastModified) : '-', resTerpilih()].join('§'); }
+/* Topo, desain, atau resolusi berubah. Jalan yang sedang menunggu dibatalkan
+   (hasilnya tidak akan cocok dengan masukan di layar); hasil lama ditandai basi. */
 function tandaiBasi() {
+  if (S.sibuk) batalkanJalan(true);
   if (!S.hasil || S.basi) return;
   S.basi = true; $('#basi').hidden = false; S.lapis = null;
   gambarPeta();
 }
 
 /* ================================================================ JALANKAN */
+/* Membatalkan jalan yang sedang menunggu topo: nomor giliran dinaikkan, jadi
+   jalan itu berhenti diam-diam saat unduhan selesai. Unduhan topo tetap
+   diteruskan dan disimpan untuk jalan berikutnya. */
+function batalkanJalan(karenaMasukan) {
+  if (!S.sibuk) return;
+  S.giliran++; S.sibuk = false; S.dibatalkan = !!karenaMasukan;
+  tombolSibuk(false); syncReady();
+}
 async function run() {
   if (S.sibuk) return;
   $('#errBox').hidden = true;
   const ct = cekTopo();
   if (ct) { tampilGalat('Topo belum siap', new Error(ct.teks)); return; }
   if (!S.desain) { tampilGalat('Desain belum ada', new Error('Unggah desain .str dulu.')); return; }
-  S.sibuk = true; syncReady(); tombolSibuk(true, 'Memuat topo…');
-  /* Masukan bisa berubah selama topo masih diunduh: hasil yang selesai sesudahnya ditandai basi. */
-  const tanda = tandaMasukan(), desain = S.desain;
+  /* Masukan dikunci saat tombol ditekan. Mengubah topo, desain, atau resolusi selama
+     menunggu — atau menekan Mulai baru — membatalkan jalan ini lewat S.giliran. */
+  const gil = ++S.giliran, desain = S.desain, a = entri(S.awal), b = entri(S.akhir), res = resTerpilih();
+  S.sibuk = true; S.dibatalkan = false; syncReady(); tombolSibuk(true, 'Memuat topo…');
   try {
-    const a = entri(S.awal), b = entri(S.akhir);
+    const nSel = selUntuk(res);
+    if (nSel > maksSel()) throw galatValidasi('Grid ' + angkaRes(res) + ' m terlalu rapat untuk desain seluas ini (' + fmt(nSel / 1e6, 1) + ' juta sel, batas ' + fmt(maksSel() / 1e6) + ' juta). Pilih resolusi yang lebih kasar.');
     const gg = await Promise.all([ambilGrid(a), ambilGrid(b)]);
+    if (gil !== S.giliran) return;
     tombolSibuk(true, 'Menghitung…'); await jeda();
-    const res = resTerpilih(), t0 = performance.now();
-    const r = M.evaluasi(desain.tin, gg[0], gg[1], { res: res, volKKM: kkm() });
+    if (gil !== S.giliran) return;
+    const t0 = performance.now();
+    const r = M.evaluasi(desain.tin, gg[0], gg[1], { res: res, volKKM: kkm(), maksSel: maksSel() });
     r.waktu = performance.now() - t0;
     const c = r.cakupan;
-    if (c.selDesain && c.tanpaAkhir >= c.selDesain) throw galatValidasi('Topo akhir (' + b.judul + ') tidak mencakup area desain. Pilih topo akhir yang memuat survei front ini.');
-    if (c.selDesain && c.tanpaAwal >= c.selDesain) throw galatValidasi('Topo awal (' + a.judul + ') tidak mencakup area desain.');
-    if (!r.geom.area_tertambang_m2) throw galatValidasi('Tidak ada area yang turun ≥ ' + desimal(K.ambang, 1) + ' m di sekitar desain antara ' + tgl(a.tanggal) + ' dan ' + tgl(b.tanggal) +
-      '. Periksa pilihan topo — mungkin topo akhir belum memuat survei front ini, atau desainnya milik front lain.');
+    if (!c.selDesain) throw galatValidasi('Desain lebih kecil dari satu sel grid ' + angkaRes(res) + ' m, jadi tidak ada sel yang bisa dinilai. Pilih resolusi yang lebih halus.');
+    if (c.tanpaAkhir >= c.selDesain) throw galatValidasi('Topo akhir (' + b.judul + ') tidak mencakup area desain. Pilih topo akhir yang memuat survei front ini.');
+    if (c.tanpaAwal >= c.selDesain) throw galatValidasi('Topo awal (' + a.judul + ') tidak mencakup area desain.');
+    if (!r.geom.area_tertambang_m2) throw galatValidasi(pesanTanpaTambang(r.batas, a, b));
     r.tepiDesain = desain.tin.tepi;
     r.garisB = garisBatas(r.B, r.G);
     r.meta = {
@@ -2110,15 +2201,25 @@ async function run() {
     S.hasil = r; S.basi = false; S.lapis = null;
     ingatFront(r.meta.front);
     renderHasil(r);
-    if (tandaMasukan() !== tanda) { S.basi = true; $('#basi').hidden = false; }
     gambarPeta();
     requestAnimationFrame(() => { const el = $('#results'); if (el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   } catch (err) {
+    if (gil !== S.giliran) return;                 // jalan sudah dibatalkan: galatnya tidak relevan lagi
     tampilGalat('Tidak dapat memproses', err);
     if (!err || !err.validasi) console.error(err);
   } finally {
-    S.sibuk = false; tombolSibuk(false); syncReady();
+    if (gil === S.giliran) { S.sibuk = false; tombolSibuk(false); syncReady(); }
   }
+}
+/* Pesan saat tidak ada satu sel pun yang dinilai sebagai area tertambang. */
+function pesanTanpaTambang(bt, a, b) {
+  const antara = ' antara ' + tgl(a.tanggal) + ' dan ' + tgl(b.tanggal), amb = desimal(K.ambang, 1) + ' m';
+  if (bt.luasTerpisah > 0) return 'Ada ' + fmt(bt.luasTerpisah) + ' m² area yang turun ≥ ' + amb + antara + ', tetapi letaknya lebih dari ' + K.dekat +
+    ' m dari desain, jadi tidak dianggap galian front ini. Periksa apakah desain dan topo yang dipilih milik front yang sama.';
+  if (bt.luasDibuang > 0) return 'Penurunan ≥ ' + amb + ' di sekitar desain' + antara + ' hanya berupa serpihan kecil (masing-masing di bawah ' + K.minLuas +
+    ' m²) yang dianggap derau survei. Periksa pilihan topo — mungkin topo akhir belum memuat survei front ini.';
+  return 'Tidak ada area yang turun ≥ ' + amb + ' dalam ' + K.jangkauan + ' m dari desain' + antara +
+    '. Periksa pilihan topo — mungkin topo akhir belum memuat survei front ini, atau desainnya milik front lain.';
 }
 
 /* ================================================================ HASIL */
@@ -2180,7 +2281,7 @@ function renderSkor(r) {
     ['kel', 'Volume'],
     ['Volume Undercut', fmt(g.undercut_bcm, 1) + ' BCM'],
     ['Volume Overcut', fmt(g.overcut_bcm, 1) + ' BCM'],
-    ['Volume Plan (topo awal → desain)', g.vol_plan_bcm === null ? '—' : fmt(g.vol_plan_bcm, 1) + ' BCM'],
+    ['Volume Plan (topo awal → desain)', fmt(g.vol_plan_bcm, 1) + ' BCM'],
     ['Volume KKM', g.vol_kkm_bcm === null ? '—' : fmt(g.vol_kkm_bcm, 1) + ' BCM'],
     ['Volume tergali total (dalam batas tertambang)', fmt(g.vol_allboundary_bcm, 1) + ' BCM'],
     ['Volume tergali di dalam desain', fmt(g.vol_inside_bcm, 1) + ' BCM'],
@@ -2189,7 +2290,7 @@ function renderSkor(r) {
     ['Topo awal', escH(m.awal.judul) + ' · ' + tgl(m.awal.tanggal), 1],
     ['Topo akhir', escH(m.akhir.judul) + ' · ' + tgl(m.akhir.tanggal), 1],
     ['Desain', escH(m.desain.nama) + ' · ' + fmt(di.titikUnik) + ' titik · ' + fmt(di.segitiga) + ' segitiga', 1],
-    ['Batas tertambang', 'turun ≥ ' + desimal(K.ambang, 1) + ' m · ≤ ' + K.jangkauan + ' m dari desain', 1]
+    ['Batas tertambang', 'turun ≥ ' + desimal(K.ambang, 1) + ' m · ≤ ' + K.jangkauan + ' m dari desain · menyambung atau ≤ ' + K.dekat + ' m dari desain', 1]
   ];
   $('#geomTbl').innerHTML = '<table class="tbl kv"><tbody>' + rows.map(x => x[0] === 'kel'
     ? '<tr class="kel"><td colspan="2">' + x[1] + '</td></tr>'
@@ -2202,7 +2303,9 @@ function renderPeringatan(r) {
   if (b.luasDiTepi >= 5) out.push(['warn', 'Area tertambang menyambung sampai batas jangkauan <b>' + K.jangkauan + ' m dari desain</b> (' + fmt(b.luasDiTepi) + ' m² di tepi). Galian yang lebih jauh tidak dinilai. Bila itu milik front lain, komponen 2 dan 5 ikut terpengaruh — periksa di peta.']);
   if (c.tanpaAkhir) out.push(['warn', fmt(c.tanpaAkhir * ca) + ' m² area desain tidak tercakup topo akhir dan tidak dinilai.']);
   if (c.tanpaAwal) out.push(['warn', fmt(c.tanpaAwal * ca) + ' m² area desain tidak tercakup topo awal dan tidak dinilai.']);
-  if (r.geom.vol_plan_bcm === null) out.push(['warn', 'Volume Plan nol: di seluruh area tertambang topo awal sudah di bawah desain, jadi komponen 1, 3, dan 4 tidak terhitung.']);
+  if (r.geom.area_tertambang_m2 && !r.geom.area_in_m2) out.push(['warn', 'Tidak ada galian di dalam footprint desain: seluruh area tertambang (' + fmt(r.geom.area_tertambang_m2) + ' m²) berada di luar desain, sehingga capaian rendah. Periksa apakah desain yang diunggah memang untuk front ini.']);
+  if (b.luasTerpisah >= 50) out.push(['info', fmt(b.luasTerpisah) + ' m² penurunan ≥ ' + desimal(K.ambang, 1) + ' m lain dalam ' + K.jangkauan + ' m dari desain <b>tidak dinilai</b> karena terpisah lebih dari ' + K.dekat + ' m dari desain — kemungkinan front lain atau pengupasan.']);
+  if (!r.geom.vol_plan_bcm) out.push(['warn', 'Volume Plan nol: di seluruh area tertambang topo awal sudah di bawah desain, jadi komponen 1, 3, dan 4 tidak terhitung.']);
   if (r.geom.vol_kkm_bcm === null) out.push(['info', 'Komponen 1 tidak dihitung karena <b>Volume KKM</b> belum diisi. Isi kolomnya — skor langsung diperbarui tanpa menghitung ulang.']);
   $('#peringatan').innerHTML = out.map(x => '<div class="catatan ' + x[0] + '">' + x[1] + '</div>').join('');
 }
@@ -2399,7 +2502,7 @@ function renderKetPeta(src) {
   chip.hidden = false;
   if (src.mode === 'hasil') {
     chip.textContent = 'turun ≥ ' + desimal(K.ambang, 1) + ' m · ≤ ' + K.jangkauan + ' m dari desain';
-    el.innerHTML = '<span>Batas tertambang dibaca otomatis: area yang turun ≥ <b>' + desimal(K.ambang, 1) + ' m</b> antara topo awal dan akhir, paling jauh <b>' + K.jangkauan + ' m</b> dari batas desain, dan menyambung ke area desain.</span><span>Arahkan kursor untuk membaca elevasi · klik untuk memindah penampang.</span>';
+    el.innerHTML = '<span>Batas tertambang dibaca otomatis: area yang turun ≥ <b>' + desimal(K.ambang, 1) + ' m</b> antara topo awal dan akhir, paling jauh <b>' + K.jangkauan + ' m</b> dari batas desain, dan menyambung ke area desain atau berjarak ≤ <b>' + K.dekat + ' m</b> darinya.</span><span>Arahkan kursor untuk membaca elevasi · klik untuk memindah penampang.</span>';
   } else {
     const p = src.p;
     chip.textContent = p.asal ? (p.per === 'akhir' ? 'topo akhir · ' : 'topo awal · ') + tgl(p.asal.tanggal) : 'topo belum termuat';
@@ -2548,9 +2651,26 @@ function profil(r, arah, idx) {
   if (a < 0) { a = 0; b = n - 1; } else { a = Math.max(0, a - tepi); b = Math.min(n - 1, b + tepi); }
   return { A: A, P: P, R: R, O: O, B: Bm, a: a, b: b };
 }
+/* Legenda kanvas yang membungkus ke baris berikutnya bila lebar tidak cukup.
+   items: [[warna, teks]]; mengembalikan [{warna, teks, x, baris}] dan jumlah baris. */
+function aturLegenda(x, items, x0, lebar) {
+  const out = []; let lx = x0, br = 0;
+  items.forEach(L => {
+    const tw = x.measureText(L[1]).width;
+    if (lx > x0 && lx + tw > x0 + lebar) { lx = x0; br++; }
+    out.push({ warna: L[0], teks: L[1], x: lx, baris: br }); lx += tw + 14;
+  });
+  return { item: out, baris: br + 1 };
+}
 function gambarProfil(cid, r, arah, idx, judul, xlabel) {
   const c = ctxOf(cid), x = c.x, w = c.w, h = c.h;
-  const pr = profil(r, arah, idx), pad = { l: 56, r: 16, t: 28, b: 40 };
+  /* judul dan legenda satu baris bila muat; di layar sempit legenda turun ke baris kedua */
+  x.font = '600 11px ui-sans-serif,system-ui'; const lJudul = x.measureText(judul).width;
+  x.font = '10px ui-monospace,monospace';
+  const leg = [[COL.teal, '▬ Desain'], [COL.ink, '▬ Topo akhir'], [COL.awal, '┅ Topo awal']];
+  const lLeg = leg.reduce((t, L) => t + x.measureText(L[1]).width + 12, 0);
+  const duaBaris = 56 + lJudul + 20 + lLeg > w - 16;
+  const pr = profil(r, arah, idx), pad = { l: 56, r: 16, t: duaBaris ? 42 : 28, b: 40 };
   let z0 = Infinity, z1 = -Infinity, ada0 = false;
   for (let t = pr.a; t <= pr.b; t++) [pr.P[t], pr.R[t], pr.O[t]].forEach(v => { if (v !== null) { ada0 = true; if (v < z0) z0 = v; if (v > z1) z1 = v; } });
   if (!ada0) { x.fillStyle = COL.muted; x.font = '12px ui-sans-serif'; x.textAlign = 'center'; x.fillText('Tidak ada data topo atau desain pada posisi ini.', w / 2, h / 2); return; }
@@ -2585,10 +2705,14 @@ function gambarProfil(cid, r, arah, idx, judul, xlabel) {
   garis(pr.R, COL.ink, 2);
   x.fillStyle = COL.ink; x.font = '600 11px ui-sans-serif,system-ui'; x.textAlign = 'left'; x.textBaseline = 'top';
   x.fillText(judul, pad.l, 7);
-  const leg = [['Desain', COL.teal], ['Topo akhir', COL.ink], ['Topo awal', COL.awal]];
-  let lx = w - pad.r;
-  x.textAlign = 'right'; x.font = '10px ui-monospace,monospace';
-  leg.reverse().forEach(L => { x.fillStyle = L[1]; x.fillText('▬ ' + L[0], lx, 9); lx -= (x.measureText('▬ ' + L[0]).width + 12); });
+  x.font = '10px ui-monospace,monospace';
+  if (duaBaris) {
+    const L = aturLegenda(x, leg, pad.l, w - pad.l - pad.r);
+    L.item.forEach(it => { x.fillStyle = it.warna; x.fillText(it.teks, it.x, 23 + it.baris * 13); });
+  } else {
+    let lx = w - pad.r; x.textAlign = 'right';
+    leg.slice().reverse().forEach(L => { x.fillStyle = L[0]; x.fillText(L[1], lx, 9); lx -= (x.measureText(L[1]).width + 12); });
+  }
 }
 function drawX(r) {
   const j = Math.min(r.G.ny - 1, Math.max(0, +$('#secXpos').value)), n = r.G.Y0 + (j + 0.5) * r.G.res;
@@ -2628,7 +2752,10 @@ function drawZ(r) {
   if (i1 < 0) return;
   const tp = Math.round(6 / G.res); i0 = Math.max(0, i0 - tp); j0 = Math.max(0, j0 - tp); i1 = Math.min(G.nx - 1, i1 + tp); j1 = Math.min(G.ny - 1, j1 + tp);
   const e = [G.X0 + i0 * G.res, G.X0 + (i1 + 1) * G.res, G.Y0 + j0 * G.res, G.Y0 + (j1 + 1) * G.res];
-  const pad = { l: 56, r: 18, t: 28, b: 44 }, aw = w - pad.l - pad.r, ah = h - pad.t - pad.b;
+  x.font = '10px ui-monospace,monospace';
+  const leg = [[COL.red, '■ topo akhir di ATAS bidang'], [COL.blue, '■ di BAWAH bidang'], [COL.ink, '▬ kontur topo akhir'], [COL.teal, '▬ kontur desain'], [COL.ink, '┅ batas tertambang']];
+  const L = aturLegenda(x, leg, 56, w - 56 - 18);
+  const pad = { l: 56, r: 18, t: 28, b: 44 + (L.baris - 1) * 13 }, aw = w - pad.l - pad.r, ah = h - pad.t - pad.b;
   const spX = e[1] - e[0], spY = e[3] - e[2], sc = Math.min(aw / spX, ah / spY);
   const ox = pad.l + (aw - spX * sc) / 2, oy = pad.t + (ah - spY * sc) / 2;
   const X = v => ox + (v - e[0]) * sc, Y = v => oy + (e[3] - v) * sc;
@@ -2654,12 +2781,10 @@ function drawZ(r) {
   x.fillStyle = COL.ink; x.font = '600 11px ui-sans-serif,system-ui'; x.textAlign = 'left'; x.textBaseline = 'top';
   x.fillText('PENAMPANG Z — bidang datar @ elevasi ' + desimal(level, 2) + ' m', pad.l, 7);
   x.font = '10px ui-monospace,monospace';
-  const leg = [[COL.red, '■ topo akhir di ATAS bidang'], [COL.blue, '■ di BAWAH bidang'], [COL.ink, '▬ kontur topo akhir'], [COL.teal, '▬ kontur desain'], [COL.ink, '┅ batas tertambang']];
-  let lx = pad.l;
-  leg.forEach(L => { x.fillStyle = L[0]; x.fillText(L[1], lx, h - 26); lx += x.measureText(L[1]).width + 14; });
+  L.item.forEach(it => { x.fillStyle = it.warna; x.fillText(it.teks, it.x, h - 26 - (L.baris - 1 - it.baris) * 13); });
 }
 function aktifkanTab(t) {
-  $$('.tabbtn').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  $$('.tabbtn').forEach(x => { const on = x.dataset.t === t; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false'); x.tabIndex = on ? 0 : -1; });
   $$('.tabpane').forEach(p => { p.hidden = p.id !== 'pane-' + t; });
   const r = S.hasil; if (!r) return;
   if (t === 'x') drawX(r); if (t === 'y') drawY(r); if (t === 'z') drawZ(r);
@@ -2667,9 +2792,19 @@ function aktifkanTab(t) {
 
 /* ================================================================ 3D */
 let tiga = null;
+/* Lepas adegan lama sepenuhnya: geometri, material, dan konteks WebGL.
+   Tanpa forceContextLoss peramban menumpuk konteks dan membuang yang tertua sesudah ±16 kali hitung. */
+function buang3D() {
+  if (!tiga) return;
+  try {
+    tiga.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    tiga.renderer.dispose(); tiga.renderer.forceContextLoss();
+  } catch (e) { /* konteks sudah hilang */ }
+  tiga = null; $('#view3d').innerHTML = '';
+}
 function init3D(r) {
   const host = $('#view3d');
-  if (tiga && tiga.renderer) { tiga.renderer.dispose(); tiga = null; }
+  buang3D();
   host.innerHTML = '';
   if (!window.THREE) { host.innerHTML = '<div class="pad">Modul 3D tidak tersedia.</div>'; return; }
   let renderer;
@@ -2737,12 +2872,33 @@ function init3D(r) {
   el.style.cursor = 'grab'; el.style.display = 'block';
   el.addEventListener('mousedown', ev => { tiga.seret = true; tiga.lx = ev.clientX; tiga.ly = ev.clientY; el.style.cursor = 'grabbing'; });
   el.addEventListener('wheel', ev => { ev.preventDefault(); tiga.radius *= ev.deltaY > 0 ? 1.1 : 0.9; tiga.radius = Math.max(tiga.span * 0.25, Math.min(tiga.span * 8, tiga.radius)); tiga.apply(); }, { passive: false });
-  el.addEventListener('touchstart', ev => { if (ev.touches[0]) { tiga.seret = true; tiga.lx = ev.touches[0].clientX; tiga.ly = ev.touches[0].clientY; } }, { passive: true });
+  /* Sentuh: geser mendatar memutar (lalu boleh miring), geser tegak tetap menggulir halaman,
+     cubit dua jari untuk zoom. touch-action pan-y menyerahkan gulir tegak ke peramban. */
+  el.style.touchAction = 'pan-y';
+  let sentuh = null;
+  const jarakDua = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1;
+  el.addEventListener('touchstart', ev => {
+    const t = ev.touches;
+    if (t.length === 1) sentuh = { n: 1, x: t[0].clientX, y: t[0].clientY, arah: null };
+    else if (t.length === 2) sentuh = { n: 2, d: jarakDua(t) };
+  }, { passive: true });
   el.addEventListener('touchmove', ev => {
-    if (!tiga.seret || !ev.touches[0]) return; ev.preventDefault();
-    putar(ev.touches[0].clientX - tiga.lx, ev.touches[0].clientY - tiga.ly, 0.008); tiga.lx = ev.touches[0].clientX; tiga.ly = ev.touches[0].clientY;
+    if (!sentuh || !tiga) return;
+    const t = ev.touches;
+    if (sentuh.n === 1 && t.length === 1) {
+      const dx = t[0].clientX - sentuh.x, dy = t[0].clientY - sentuh.y;
+      if (!sentuh.arah) { if (Math.abs(dx) + Math.abs(dy) < 8) return; sentuh.arah = Math.abs(dx) > Math.abs(dy) ? 'putar' : 'gulir'; }
+      if (sentuh.arah !== 'putar') return;
+      if (ev.cancelable) ev.preventDefault();
+      putar(dx, dy, 0.008); sentuh.x = t[0].clientX; sentuh.y = t[0].clientY;
+    } else if (sentuh.n === 2 && t.length === 2) {
+      if (ev.cancelable) ev.preventDefault();
+      const d = jarakDua(t);
+      tiga.radius = Math.max(tiga.span * 0.25, Math.min(tiga.span * 8, tiga.radius * sentuh.d / d)); sentuh.d = d; tiga.apply();
+    }
   }, { passive: false });
-  el.addEventListener('touchend', () => { tiga.seret = false; });
+  el.addEventListener('touchend', ev => { if (!ev.touches.length) sentuh = null; });
+  el.addEventListener('touchcancel', () => { sentuh = null; });
   $('#exag').oninput = () => { const v = parseFloat($('#exag').value); group.scale.y = v; $('#exagLab').textContent = desimal(v, 1) + '×'; tiga.apply(); };
   $('#tgReal').onchange = () => { if (gReal) gReal.visible = $('#tgReal').checked; tiga.apply(); };
   $('#tgPlan').onchange = () => { if (gPlan) gPlan.visible = $('#tgPlan').checked; tiga.apply(); };
@@ -2776,7 +2932,7 @@ function exportXLSX() {
     ['Topo akhir', m.akhir.judul + (m.akhir.contoh ? '' : ' (v' + m.akhir.versi + ')') + ' · ' + (m.akhir.tanggal || '—') + tc(m.akhir)],
     ['Desain', m.desain.nama + tc(m.desain)],
     ['Resolusi grid (m)', r.res],
-    ['Batas tertambang', 'otomatis: turun ≥ ' + String(K.ambang).replace('.', ',') + ' m antara topo awal dan akhir, ≤ ' + K.jangkauan + ' m dari batas desain, menyambung ke area desain'],
+    ['Batas tertambang', 'otomatis: turun ≥ ' + String(K.ambang).replace('.', ',') + ' m antara topo awal dan akhir, ≤ ' + K.jangkauan + ' m dari batas desain, menyambung ke area desain atau ≤ ' + K.dekat + ' m darinya'],
     ['Dibuat', new Date().toLocaleString('id-ID')], [],
     ['Komponen', 'Rasio', 'Konversi', 'Bobot', 'Nilai']];
   COMP.forEach(c => S1.push([c[1], r.ratios[c[0]], r.conv[c[0]], 0.05, r.weighted[c[0]]]));
@@ -2800,6 +2956,8 @@ function exportXLSX() {
     ['Sel dinilai', Math.round(g.area_tertambang_m2 / ca), 'sel'],
     ['Ambang turun batas tertambang', K.ambang, 'm'],
     ['Jangkauan dari batas desain', K.jangkauan, 'm'],
+    ['Jarak galian terpisah yang tetap dinilai', K.dekat, 'm'],
+    ['Galian terpisah lebih jauh (tidak dinilai)', r.batas.luasTerpisah, 'm2'],
     ['Luas tertambang di tepi jangkauan', r.batas.luasDiTepi, 'm2'],
     ['Area desain tanpa topo awal', r.cakupan.tanpaAwal * ca, 'm2'],
     ['Area desain tanpa topo akhir', r.cakupan.tanpaAkhir * ca, 'm2'],
@@ -2862,12 +3020,13 @@ async function pakaiContoh() {
 
 /* ================================================================ MULAI BARU */
 function mulaiBaru() {
+  batalkanJalan(false); S.dibatalkan = false;
   S.desain = null; S.hasil = null; S.basi = false; S.pratinjau = null; S.lapis = null; S.T = null;
   S.daftar = S.daftar.filter(e => !e.contoh);
   pilihBawaan();
-  $('#berkasDesain').value = ''; $('#front').value = ''; $('#periode').value = ''; S.periodeAuto = ''; $('#volKKM').value = '';
+  $('#berkasDesain').value = ''; $('#front').value = ''; $('#periode').value = ''; S.periodeAuto = ''; $('#volKKM').value = ''; renderKKM();
   $('#results').hidden = true; $('#errBox').hidden = true; $('#bacaPeta').hidden = true;
-  if (tiga && tiga.renderer) { tiga.renderer.dispose(); tiga = null; $('#view3d').innerHTML = ''; }
+  buang3D();
   renderTopo(); renderDesain(); ambilTerpilih(); perbaruiPratinjau(); syncReady();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2900,7 +3059,7 @@ function pasang() {
   $('#hapusDesain').addEventListener('click', hapusDesain);
   $('#front').addEventListener('input', () => { syncReady(); if (S.hasil) { S.hasil.meta.front = $('#front').value.trim() || 'Front'; renderKetHasil(S.hasil); } });
   $('#periode').addEventListener('input', () => { syncReady(); if (S.hasil) { S.hasil.meta.periode = $('#periode').value.trim() || '—'; renderKetHasil(S.hasil); } });
-  $('#volKKM').addEventListener('input', () => { syncReady(); perbaruiKKM(); });
+  $('#volKKM').addEventListener('input', () => { renderKKM(); syncReady(); perbaruiKKM(); });
   $$('input[name="res"]').forEach(r => r.addEventListener('change', () => { const p = bacaPref(); p.res = r.value; simpanPref(p); tandaiBasi(); syncReady(); }));
   $('#runBtn').addEventListener('click', run);
   $('#resetBtn').addEventListener('click', mulaiBaru);
@@ -2912,6 +3071,12 @@ function pasang() {
   $('#png3d').addEventListener('click', save3D);
   $('#pngPeta').addEventListener('click', petaPNG);
   $$('.tabbtn').forEach(b => b.addEventListener('click', () => aktifkanTab(b.dataset.t)));
+  $('.tabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return;
+    const tb = $$('.tabbtn'), i = tb.findIndex(b => b.classList.contains('on'));
+    const j = e.key === 'Home' ? 0 : e.key === 'End' ? tb.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tb.length) % tb.length;
+    e.preventDefault(); aktifkanTab(tb[j].dataset.t); tb[j].focus();
+  });
   const cv = $('#cvPeta');
   cv.addEventListener('mousemove', bacaTitik);
   cv.addEventListener('mouseleave', () => { $('#bacaPeta').hidden = true; });
@@ -2929,7 +3094,7 @@ function pasang() {
       }
     }, 150);
   });
-  renderDesain(); gambarPeta(); syncReady();
+  renderDesain(); renderKKM(); gambarPeta(); syncReady();
   muatDaftarTopo().catch(err => { console.error(err); S.sumber = 'awal'; S.alasan = 'awal'; renderTopo(); });
 }
 window.SpatialCompliance = { keadaan: S, run: run, pakaiContoh: pakaiContoh };
