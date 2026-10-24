@@ -1,114 +1,27 @@
 {
-  "_petunjuk": "Dibaca tentang.html (Tentang MiningMalut › Perjalanan) sebagai kartu yang digeser. Setiap pembaruan besar: tambahkan satu entri di AKHIR 'tonggak', lalu ubah 'diperbarui' dan 'commit'. Satu entri = satu pembaruan yang terasa oleh pengguna. 'judul' paling banyak empat kata; 'isi' satu atau dua kalimat pendek (±110 huruf), bahasa sehari-hari, tanpa istilah teknis dan tanpa em dash. 'gambar' (opsional) = berkas 800x500 di data/tentang/perjalanan/ plus 'alt'; tanpa gambar, isi 'ikon' dengan awan, jam, grafik, teliti, atau bintang. 'modul' (opsional) = kunci halaman shell untuk tombol Buka modul. 'label' (opsional) menggantikan tampilan tanggal. Panduan lengkap: Dokumentasi Pengembangan §31.3.",
-  "versi": 2,
+  "_petunjuk": "Dibaca tentang.html (Tentang MiningMalut › Perjalanan) sebagai linimasa tegak. Setiap pembaruan besar: tambahkan satu entri di AKHIR 'tonggak', lalu ubah 'diperbarui' dan 'commit.total'. Satu entri = satu pembaruan yang terasa oleh pengguna. 'judul' paling banyak empat kata; 'isi' satu atau dua kalimat pendek (±110 huruf), bahasa sehari-hari, tanpa istilah teknis dan tanpa em dash. 'ikon' salah satu dari: tunas, lapis, modul, awan, truk, jam, piala, kilau, hp, gunung, grafik, target, peta, info, bintang. 'label' (opsional) menggantikan tanggal tampil, tanpa tahun (tahun sudah ada di judul kelompok bulan). Panduan lengkap: Dokumentasi Pengembangan §31.3.",
+  "versi": 3,
   "diperbarui": "2026-10-24",
   "awal": "2026-06-16",
-  "angka": { "modul": 12 },
-  "commit": { "total": 104, "sejak": "2026-08-27" },
+  "angka": {"modul": 12},
+  "commit": {"total": 105, "sejak": "2026-08-27"},
   "periode": [
-    { "label": "Juni–Agustus", "pendek": "Jun–Agu", "dari": "2026-06-01", "sampai": "2026-08-31" }
+    {"label": "Juni–Agustus", "dari": "2026-06-01", "sampai": "2026-08-31"}
   ],
   "tonggak": [
-    {
-      "tanggal": "2026-06-16", "label": "Juni 2026",
-      "judul": "Tiga tab pertama",
-      "isi": "Dashboard Reklamasi, Water Management, dan Road Management untuk Mine Development. Ketiganya masih dipakai sampai sekarang.",
-      "gambar": "perjalanan/tiga-tab.webp", "alt": "Tiga jendela: Capaian Reklamasi, Jam Kerja SMR, dan peta 3D Water & Road",
-      "modul": "reklamasi"
-    },
-    {
-      "tanggal": "2026-07-01", "label": "Juni–Agustus 2026",
-      "judul": "Login dan menu baru",
-      "isi": "Satu login untuk semua pengguna, lalu AMORA dan Jadwal Biro Mining masuk ke menu.",
-      "gambar": "perjalanan/amora.webp", "alt": "AMORA: panel perhitungan dan rute angkut di peta Pulau Pakal",
-      "modul": "amora"
-    },
-    {
-      "tanggal": "2026-08-01", "label": "Agustus 2026",
-      "judul": "Home dan Speed Watcher",
-      "isi": "Semua modul kini berawal dari Home. Speed Watcher karya Ariqsyah ikut masuk untuk memantau kecepatan unit.",
-      "gambar": "perjalanan/speed-watcher.webp", "alt": "Speed Watcher: peta jalan tambang dan daftar unit yang melewati batas kecepatan",
-      "modul": "speed"
-    },
-    {
-      "tanggal": "2026-09-03",
-      "judul": "Pindah ke Cloudflare",
-      "isi": "Kuota gratis Netlify habis dan situs sempat mati. Lewat tengah malam MiningMalut tayang lagi di Cloudflare, tetap gratis.",
-      "ikon": "awan"
-    },
-    {
-      "tanggal": "2026-09-03",
-      "judul": "Dispatch Monitoring bergabung",
-      "isi": "Karya Randy: ritase Minerva dibandingkan dengan hitungan checker, lengkap dengan kepatuhan operator.",
-      "gambar": "perjalanan/dispatch.webp", "alt": "Dispatch Monitoring: deviasi Minerva dan grafik ritase Minerva lawan checker",
-      "modul": "dispatch"
-    },
-    {
-      "tanggal": "2026-09-04",
-      "judul": "Speed Watcher merekam 24 jam",
-      "isi": "Pelanggaran kecepatan tetap tercatat walau tidak ada satu pun orang yang membuka web.",
-      "ikon": "jam",
-      "modul": "speed"
-    },
-    {
-      "tanggal": "2026-09-17",
-      "judul": "Operator Performance",
-      "isi": "Peringkat operator terbaik tiap shift ditarik otomatis dari Minerva, lengkap dengan poster juaranya.",
-      "gambar": "perjalanan/operator.webp", "alt": "Poster Operator Terbaik bulan Agustus 2026",
-      "modul": "operator"
-    },
-    {
-      "tanggal": "2026-09-18", "label": "18–19 September 2026",
-      "judul": "Tampilan baru",
-      "isi": "Semua modul dirombak dalam dua hari dengan warna logo ANTAM. Fiturnya tetap, tampilannya berganti.",
-      "gambar": "perjalanan/home.webp", "alt": "Home MiningMalut dengan sidebar dan ringkasan operasi",
-      "modul": "home"
-    },
-    {
-      "tanggal": "2026-09-19",
-      "judul": "Cek Aman pindah ke HP",
-      "isi": "Form kertas Cek Aman Sebelum Bekerja kini diisi operator di HP, lalu pengawas memberi GO atau NO-GO.",
-      "gambar": "perjalanan/cek-aman.webp", "alt": "Tiga layar HP aplikasi Cek Aman",
-      "modul": "asesmen"
-    },
-    {
-      "tanggal": "2026-09-23",
-      "judul": "Digital Twin 3D",
-      "isi": "Pulau Pakal tampil dalam 3D, lengkap dengan posisi unit yang bergerak langsung.",
-      "gambar": "perjalanan/digital-twin.webp", "alt": "Digital Twin: Pulau Pakal dalam 3D dengan unit live",
-      "modul": "rtup"
-    },
-    {
-      "tanggal": "2026-09-24",
-      "judul": "Dashboard Produksi",
-      "isi": "Laporan MTD dan YTD yang dulu disusun di Excel tiap pagi kini terhitung sendiri.",
-      "ikon": "grafik",
-      "modul": "oe1on1"
-    },
-    {
-      "tanggal": "2026-10-20", "label": "Oktober 2026",
-      "judul": "Angka yang lebih teliti",
-      "isi": "Total ore kini mengikuti QAQC, dan Speed Watcher menolak bacaan GPS yang mustahil.",
-      "ikon": "teliti"
-    },
-    {
-      "tanggal": "2026-10-24",
-      "judul": "Spatial Compliance v2",
-      "isi": "Topo awal dan akhir kini diambil dari Digital Twin, dan batas area yang sudah ditambang terhitung sendiri.",
-      "gambar": "perjalanan/spatial-compliance.webp", "alt": "Spatial Compliance: langkah masukan dan peta kepatuhan terhadap desain",
-      "modul": "evaluasi"
-    },
-    {
-      "tanggal": "2026-10-24",
-      "judul": "Halaman Tentang",
-      "isi": "Tim, video tur, handbook, dan perjalanan ini kini terkumpul di satu halaman.",
-      "gambar": "perjalanan/tentang.webp", "alt": "Bagian atas halaman Tentang MiningMalut"
-    }
-  ],
-  "dulu_sekarang": [
-    ["Dashboard 3 tab", "12 modul dan aplikasi HP", "modul"],
-    ["Form kertas", "Cek Aman di HP", "hp"],
-    ["Excel pagi manual", "Dashboard Produksi", "grafik"],
-    ["Real Time Unit Position", "Digital Twin 3D", "gunung"]
+    {"tanggal": "2026-06-16", "label": "Juni", "judul": "Tiga tab pertama", "isi": "Dashboard Reklamasi, Water Management, dan Road Management untuk Mine Development. Ketiganya masih dipakai sampai sekarang.", "ikon": "tunas"},
+    {"tanggal": "2026-07-01", "label": "Juni–Agustus", "judul": "Login dan menu baru", "isi": "Satu login untuk semua pengguna, lalu AMORA dan Jadwal Biro Mining masuk ke menu.", "ikon": "lapis"},
+    {"tanggal": "2026-08-01", "label": "Agustus", "judul": "Home dan Speed Watcher", "isi": "Semua modul kini berawal dari Home. Speed Watcher karya Ariqsyah ikut masuk untuk memantau kecepatan unit.", "ikon": "modul"},
+    {"tanggal": "2026-09-03", "judul": "Pindah ke Cloudflare", "isi": "Kuota gratis Netlify habis dan situs sempat mati. Lewat tengah malam MiningMalut tayang lagi di Cloudflare, tetap gratis.", "ikon": "awan"},
+    {"tanggal": "2026-09-03", "judul": "Dispatch Monitoring bergabung", "isi": "Karya Randy: ritase Minerva dibandingkan dengan hitungan checker, lengkap dengan kepatuhan operator.", "ikon": "truk"},
+    {"tanggal": "2026-09-04", "judul": "Speed Watcher merekam 24 jam", "isi": "Pelanggaran kecepatan tetap tercatat walau tidak ada satu pun orang yang membuka web.", "ikon": "jam"},
+    {"tanggal": "2026-09-17", "judul": "Operator Performance", "isi": "Peringkat operator terbaik tiap shift ditarik otomatis dari Minerva, lengkap dengan poster juaranya.", "ikon": "piala"},
+    {"tanggal": "2026-09-18", "label": "18–19 September", "judul": "Tampilan baru", "isi": "Semua modul dirombak dalam dua hari dengan warna logo ANTAM. Fiturnya tetap, tampilannya berganti.", "ikon": "kilau"},
+    {"tanggal": "2026-09-19", "judul": "Cek Aman pindah ke HP", "isi": "Form kertas Cek Aman Sebelum Bekerja kini diisi operator di HP, lalu pengawas memberi GO atau NO-GO.", "ikon": "hp"},
+    {"tanggal": "2026-09-23", "judul": "Digital Twin 3D", "isi": "Pulau Pakal tampil dalam 3D, lengkap dengan posisi unit yang bergerak langsung.", "ikon": "gunung"},
+    {"tanggal": "2026-09-24", "judul": "Dashboard Produksi", "isi": "Laporan MTD dan YTD yang dulu disusun di Excel tiap pagi kini terhitung sendiri.", "ikon": "grafik"},
+    {"tanggal": "2026-10-20", "label": "20–23 Oktober", "judul": "Angka yang lebih teliti", "isi": "Total ore kini mengikuti QAQC, dan Speed Watcher menolak bacaan GPS yang mustahil.", "ikon": "target"},
+    {"tanggal": "2026-10-24", "judul": "Spatial Compliance v2", "isi": "Topo awal dan akhir kini diambil dari Digital Twin, dan batas area yang sudah ditambang terhitung sendiri.", "ikon": "peta"},
+    {"tanggal": "2026-10-24", "judul": "Halaman Tentang", "isi": "Tim, video tur, handbook, dan perjalanan ini kini terkumpul di satu halaman.", "ikon": "info"}
   ]
 }
