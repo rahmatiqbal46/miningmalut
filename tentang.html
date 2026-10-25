@@ -109,7 +109,6 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
 .bagian{margin-top:72px;scroll-margin-top:64px}
 .kepala-bagian{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;margin-bottom:20px}
 .kepala-bagian h2{margin:0;font-size:var(--f-large);line-height:var(--lh-large);font-weight:700;letter-spacing:-.022em;text-wrap:balance}
-.kepala-bagian p{margin:6px 0 0;font-size:var(--f-baca);line-height:var(--lh-baca);color:var(--text-secondary);max-width:68ch}
 .kepala-bagian .kiri{min-width:0;flex:1 1 420px}
 
 /* ---------------------------------------------------------------- tombol */
@@ -340,12 +339,89 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
 .pn-rol img{height:54px;width:auto;aspect-ratio:360/509;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.2)}
 .pn-rol button.aktif img{box-shadow:0 0 0 2px var(--amber)}
 
+/* ============================================================ SISTEM */
+/* "Di balik layar": peta sistem interaktif. Sengaja setingkat gambaran besar:
+   tidak ada nama tabel, alamat layanan, kunci, atau jadwal teknis, karena
+   tujuannya memperlihatkan kerumitan, bukan cara membuatnya ulang. Panel
+   solid gelap bermotif cetak biru; tidak ada kaca di lapisan isi. */
+.sis-panggung{position:relative;overflow:hidden;border-radius:var(--r-panel);color:var(--gelap-teks);isolation:isolate;padding:28px 28px 26px;
+  background:
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/28px 28px,
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/28px 28px,
+    radial-gradient(60% 80% at 100% 0%,rgba(10,90,86,.85) 0%,rgba(10,90,86,0) 62%),
+    radial-gradient(50% 60% at 0% 100%,rgba(234,144,0,.12) 0%,rgba(234,144,0,0) 60%),
+    linear-gradient(165deg,#00302f 0%,#001f1f 75%);
+  box-shadow:0 18px 48px rgba(0,31,31,.22)}
+.sis-angka{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 18px;margin:0 0 26px;padding:0}
+.sis-angka div{display:flex;flex-direction:column-reverse;justify-content:flex-end;padding:0 0 0 14px;border-left:2px solid rgba(255,181,71,.55)}
+.sis-angka dd{margin:0;font-size:30px;line-height:34px;font-weight:750;letter-spacing:-.03em;color:#fff;white-space:nowrap}
+.sis-angka dt{margin-top:4px;font-size:14px;line-height:19px;color:var(--gelap-teks-2)}
+.sis-alur{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.sis-alur button{appearance:none;border:0;cursor:pointer;height:34px;padding:0 15px;border-radius:var(--r-pil);font-family:var(--font);font-size:14px;font-weight:600;
+  color:#dcefed;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+  transition:background-color .2s var(--ease),color .2s var(--ease),box-shadow .2s var(--ease)}
+.sis-alur button:hover{background:rgba(255,255,255,.14)}
+.sis-alur button[aria-pressed="true"]{background:var(--amber);color:var(--di-amber);box-shadow:0 6px 18px rgba(234,144,0,.3)}
+.sis-peta{position:relative;margin:0 -6px}
+.sis-peta svg{display:block;width:100%;height:auto;overflow:visible;-webkit-user-select:none;user-select:none}
+.sis-lajur rect{fill:rgba(255,255,255,.03);stroke:rgba(255,255,255,.07);stroke-width:1}
+.sis-lajur text{font-family:var(--font);font-size:15px;font-weight:650;fill:var(--amber-terang);letter-spacing:.005em}
+.sis-garis{fill:none;stroke:rgba(143,186,184,.34);stroke-width:1.6;stroke-linecap:round;transition:stroke .3s var(--ease),stroke-width .3s var(--ease),opacity .3s var(--ease)}
+.sis-paket{fill:var(--amber-terang);transition:opacity .3s var(--ease)}
+.sis-simpul{cursor:pointer;outline:none}
+.sis-simpul .kotak{fill:#0b3d3a;stroke:rgba(255,255,255,.16);stroke-width:1;transition:fill .3s var(--ease),stroke .3s var(--ease)}
+.sis-simpul text{transition:fill .3s var(--ease)}
+.sis-simpul .ikon-bg{fill:rgba(143,186,184,.15);transition:fill .25s var(--ease)}
+.sis-simpul .ikon{fill:none;stroke:#cfe5e3;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:stroke .25s var(--ease)}
+.sis-simpul text{font-family:var(--font);font-size:15px;font-weight:620;fill:#fff;pointer-events:none}
+.sis-simpul:hover .kotak,.sis-simpul:focus-visible .kotak{fill:#0f4945;stroke:rgba(255,181,71,.8)}
+.sis-simpul:focus-visible .kotak{stroke-width:2}
+/* Fokus: simpul terpilih, tetangga, dan garisnya menyala; sisanya meredup. */
+.sis-peta.fokus .sis-garis{opacity:.1}
+.sis-peta.fokus .sis-paket{opacity:0}
+.sis-peta.fokus .sis-garis.nyala{opacity:1;stroke:var(--amber-terang);stroke-width:2.4}
+.sis-peta.fokus .sis-paket.nyala{opacity:1}
+.sis-peta.fokus .sis-simpul:not(.nyala):not(.pusat) .kotak{fill:#082f2d;stroke:rgba(255,255,255,.07)}
+.sis-peta.fokus .sis-simpul:not(.nyala):not(.pusat) text{fill:rgba(234,245,244,.46)}
+.sis-peta.fokus .sis-simpul:not(.nyala):not(.pusat) .ikon{stroke:rgba(207,229,227,.4)}
+.sis-peta.fokus .sis-simpul:not(.nyala):not(.pusat) .ikon-bg{fill:rgba(143,186,184,.06)}
+.sis-simpul.pusat .kotak{fill:var(--amber);stroke:var(--amber)}
+.sis-simpul.pusat text{fill:var(--di-amber)}
+.sis-simpul.pusat .ikon-bg{fill:rgba(58,32,0,.16)}
+.sis-simpul.pusat .ikon{stroke:var(--di-amber)}
+.sis-simpul.dilalui .kotak{stroke:var(--amber-terang);stroke-width:2}
+.sis-komet{fill:#fff6e6}
+.sis-komet-ekor{fill:var(--amber-terang);opacity:.45}
+.sis-ket{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;gap:6px;min-height:150px;margin-top:20px;padding:18px 20px;border-radius:var(--r-inner);
+  background:rgba(0,20,20,.38);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.sis-ket .lajur-nama{font-size:14px;line-height:19px;font-weight:620;color:var(--amber-terang)}
+.sis-ket h3{margin:0;font-size:19px;line-height:25px;font-weight:700;letter-spacing:-.015em;color:#fff}
+.sis-ket p{margin:0;max-width:72ch;font-size:15px;line-height:24px;color:var(--gelap-teks-2)}
+.sis-ket p b{color:#fff;font-weight:620}
+.sis-langkah{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 14px;counter-reset:lk}
+.sis-langkah li{position:relative;padding:0 0 0 38px;font-size:15px;line-height:22px;color:var(--gelap-teks-2);counter-increment:lk;transition:color .3s var(--ease)}
+.sis-langkah li::before{content:counter(lk);position:absolute;left:0;top:-2px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  font-size:14px;font-weight:700;color:#cfe5e3;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+  transition:background-color .3s var(--ease),color .3s var(--ease)}
+.sis-langkah li.kini{color:#fff}
+.sis-langkah li.kini::before{background:var(--amber);color:var(--di-amber);box-shadow:0 0 0 5px rgba(234,144,0,.2)}
+.sis-langkah li.lewat::before{background:rgba(255,181,71,.25);color:#fff}
+.js .sis-panggung .sis-peta{opacity:0;transform:translateY(16px)}
+.sis-panggung.tampak .sis-peta{opacity:1;transform:none;transition:opacity .8s var(--ease) .15s,transform .9s var(--ease) .15s}
+@media (max-width:760px){
+  .sis-panggung{padding:22px 16px 18px}
+  .sis-angka{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}
+  .sis-angka dd{font-size:26px;line-height:30px}
+  .sis-peta{margin:0}
+  .sis-ket{padding:16px}
+}
+
 /* ======================================================== PERJALANAN */
 /* Linimasa tegak, digulir ke bawah. Satu rel (di tengah pada layar lebar, di
    kiri pada layar sempit), satu simpul berikon per pembaruan besar, judul dan
    satu kalimat. Rel terisi mengikuti gulir; simpul yang sudah dilewati menyala
    teal, simpul terbaru amber. Tanpa kartu dan tanpa tulisan kecil. */
-.lini-wrap{--rel-x:50%;position:relative}
+.lini-wrap{--rel-x:50%;position:relative;overflow-x:clip}
 .lini-wrap .rel{position:absolute;top:6px;bottom:24px;left:var(--rel-x);width:3px;margin-left:-1.5px;border-radius:3px;background:var(--border)}
 .lini-wrap .rel i{position:absolute;inset:0;border-radius:3px;background:linear-gradient(180deg,var(--amber),var(--t600));
   transform-origin:top;transform:scaleY(var(--k,0))}
@@ -430,12 +506,13 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
 @media (max-width:760px){
   .bilah-isi{padding:6px 12px;gap:10px}
   .merek-kecil > span:not(.ubin){display:none}
+  .merek-kecil{display:none}
+  .tab-btn{padding:0 8px}
   nav.tabs{flex:1 1 auto;min-width:0;margin:0}
   .tab-btn{padding:0 10px;flex:1 0 auto;justify-content:center}
   main{padding:12px 14px 32px}
   .bagian{margin-top:52px}
   .kepala-bagian h2{font-size:var(--f-t1);line-height:28px}
-  .kepala-bagian p{font-size:15px;line-height:23px}
   .hero{padding:30px 22px 26px;min-height:0;display:block}
   .kontur{top:-6%;right:-38%;width:128%;height:74%;opacity:.7;
     -webkit-mask-image:linear-gradient(180deg,#000 40%,transparent 96%);mask-image:linear-gradient(180deg,#000 40%,transparent 96%)}
@@ -470,6 +547,8 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
   .orang,.hb{box-shadow:0 0 0 1px var(--text-muted)}
   .lini-item .simpul{box-shadow:inset 0 0 0 2px var(--t700)}
   .lini-wrap .rel{background:var(--text-muted)}
+  .sis-simpul .kotak{stroke:#fff}
+  .sis-garis{stroke:rgba(207,229,227,.6)}
   .kontur .kt{stroke:rgba(180,212,210,.5)}
 }
 @media (prefers-reduced-motion:reduce){
@@ -480,6 +559,7 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
   .js .hero .gores .kt{stroke-dasharray:none;stroke-dashoffset:0}
   .orang{transform:none!important}
   .js .lini-item .isi,.js .lini-item .simpul svg,.js .lini-grup h3{opacity:1;transform:none}
+  .js .sis-panggung .sis-peta{opacity:1;transform:none}
 }
 </style>
 </head>
@@ -496,6 +576,7 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
       <a class="tab-btn" href="#tim" data-bagian="tim">Tim</a>
       <a class="tab-btn" href="#video" data-bagian="video">Video</a>
       <a class="tab-btn" href="#handbook" data-bagian="handbook">Handbook</a>
+      <a class="tab-btn" href="#sistem" data-bagian="sistem">Sistem</a>
       <a class="tab-btn" href="#perjalanan" data-bagian="perjalanan">Perjalanan</a>
     </nav>
   </div>
@@ -535,7 +616,6 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
     <div class="kepala-bagian">
       <div class="kiri">
         <h2 id="timJudul">Yang membangun MiningMalut</h2>
-        <p>Iqbal menulis platform dan sebagian besar modulnya. Ariqsyah dan Randy menyumbang dua modul ROC yang sudah berjalan sebelum bergabung ke MiningMalut.</p>
       </div>
     </div>
     <ul class="tim" id="daftarTim">
@@ -614,7 +694,6 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
     <div class="kepala-bagian">
       <div class="kiri">
         <h2 id="videoJudul">Tur dua menit</h2>
-        <p>Dua belas modul dalam 120 detik, direkam dari tampilan asli web dengan data contoh. Pilih bab untuk langsung melompat ke modul yang ingin dilihat.</p>
       </div>
     </div>
     <div class="teater" data-muncul>
@@ -642,7 +721,6 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
     <div class="kepala-bagian">
       <div class="kiri">
         <h2 id="hbJudul">Handbook Fitur</h2>
-        <p>Edisi September 2026, 16 halaman A4. Tiap modul dijelaskan dengan tangkapan layar dari kode asli dan data contoh, jadi cocok dibagikan ke rekan yang baru memakai MiningMalut.</p>
       </div>
     </div>
     <div class="hb" data-muncul>
@@ -672,12 +750,26 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
     </div>
   </section>
 
+  <!-- ========================================================== SISTEM -->
+  <section class="bagian" id="sistem" aria-labelledby="sisJudul">
+    <div class="kepala-bagian">
+      <div class="kiri">
+        <h2 id="sisJudul">Di balik layar</h2>
+      </div>
+    </div>
+    <div class="sis-panggung" id="sisPanggung">
+      <dl class="sis-angka" id="sisAngka"></dl>
+      <div class="sis-alur" id="sisAlur" role="group" aria-label="Alur data"></div>
+      <div class="sis-peta" id="sisPeta"></div>
+      <div class="sis-ket" id="sisKet" aria-live="polite"></div>
+    </div>
+  </section>
+
   <!-- ====================================================== PERJALANAN -->
   <section class="bagian" id="perjalanan" aria-labelledby="jpJudul">
     <div class="kepala-bagian">
       <div class="kiri">
         <h2 id="jpJudul">Dari tiga tab menjadi dua belas modul</h2>
-        <p>Pembaruan besar sejak Juni 2026, dari yang paling awal. Terakhir diperbarui <span id="jpTanggal">24 Oktober 2026</span>.</p>
       </div>
     </div>
     <div id="jpGalat" hidden></div>
@@ -850,7 +942,7 @@ if('IntersectionObserver' in window){
   var io=new IntersectionObserver(function(es){
     es.forEach(function(e){if(e.isIntersecting)aktifkan(e.target.id);});
   },{rootMargin:'-42% 0px -52% 0px'});
-  ['tim','video','handbook','perjalanan'].forEach(function(id){var s=document.getElementById(id);if(s)io.observe(s);});
+  ['tim','video','handbook','sistem','perjalanan'].forEach(function(id){var s=document.getElementById(id);if(s)io.observe(s);});
   new IntersectionObserver(function(es){if(es[0].isIntersecting)aktifkan('');},{rootMargin:'0px 0px -60% 0px'}).observe(document.getElementById('atas'));
 }
 /* Munculan: isi masuk pelan saat digulir ke layar. Elemen buatan skrip
@@ -1142,6 +1234,452 @@ addEventListener('resize',function(){
 });
 })();
 </script>
+<script type="application/json" id="dataSistem">
+{
+  "_petunjuk": "Peta Di balik layar (tentang.html). Gambaran besar saja: jangan menulis nama tabel, alamat layanan, kunci, nama proyek, atau jadwal teknis. Angka diperbarui bila arsitektur berubah (Dokumentasi §31.3).",
+  "angka": [
+    {"n": 57, "akhiran": " ribu", "label": "baris kode"},
+    {"n": 15, "label": "halaman web"},
+    {"n": 29, "label": "tabel data"},
+    {"n": 14, "label": "layanan server 24 jam"},
+    {"n": 4, "label": "gudang berkas"},
+    {"n": 3, "label": "jadwal otomatis"},
+    {"n": 3, "label": "fungsi awan"},
+    {"n": 3, "label": "sistem luar tersambung"}
+  ],
+  "lajur": ["Di layar pengguna", "Cloudflare", "Supabase", "Sistem luar"],
+  "simpul": [
+    {"id": "shell",   "lajur": 0, "label": "Home dan menu",   "ikon": "modul",   "ket": "Pintu masuk tunggal. Sekali login, semua modul dibuka dari sidebar tanpa memuat ulang halaman."},
+    {"id": "modul",   "lajur": 0, "label": "12 modul",        "ikon": "lapis",   "ket": "Mine Production, Mine Development, Mine Plan, ROC, dan Mining Bureau. Tiap modul halaman sendiri yang baru dimuat saat dibuka."},
+    {"id": "hp",      "lajur": 0, "label": "Cek Aman di HP",  "ikon": "hp",      "ket": "Aplikasi HP untuk operator dan pengawas, berdiri sendiri di luar sidebar dan tetap bisa dibuka tanpa sinyal."},
+    {"id": "antrean", "lajur": 0, "label": "Antrean di HP",   "ikon": "antrean", "ket": "Isian yang belum terkirim menunggu di HP, lalu dikirim sendiri begitu sinyal kembali."},
+    {"id": "pages",   "lajur": 1, "label": "Hosting halaman", "ikon": "awan",    "ket": "Setiap perubahan di GitHub tayang sendiri dalam sekitar 40 detik, tanpa biaya bulanan."},
+    {"id": "worker",  "lajur": 1, "label": "Server 24 jam",   "ikon": "server",  "ket": "Membaca posisi armada tiap 10 detik dan mencatat pelanggaran kecepatan, walau tidak ada satu pun tab yang terbuka."},
+    {"id": "d1",      "lajur": 1, "label": "Log kecepatan",   "ikon": "spido",   "ket": "Basis data kecil khusus kejadian kecepatan, ringan dibaca Speed Watcher dan Home."},
+    {"id": "auth",    "lajur": 2, "label": "Login dan peran", "ikon": "kunci",   "ket": "Satu akun untuk semua modul. Admin, Mining, pengawas, dan operator melihat menu dan izin yang berbeda."},
+    {"id": "db",      "lajur": 2, "label": "Basis data",      "ikon": "db",      "ket": "Isian harian, penilaian operator, jadwal, Cek Aman, dan versi data site, dijaga aturan akses per peran."},
+    {"id": "edge",    "lajur": 2, "label": "Fungsi awan",     "ikon": "petir",   "ket": "Fungsi kecil di server yang menjembatani Minerva dan foto Cek Aman, tanpa membuka kunci ke peramban."},
+    {"id": "storage", "lajur": 2, "label": "Gudang berkas",   "ikon": "folder",  "ket": "Topo, citra satelit, foto Cek Aman, dan template Excel, dibagi ke empat gudang."},
+    {"id": "cron",    "lajur": 2, "label": "Jadwal otomatis", "ikon": "jadwal",  "ket": "Pekerjaan yang berjalan sendiri tanpa ada yang menekan tombol, misalnya sinkron scorecard pagi dan malam."},
+    {"id": "minerva", "lajur": 3, "label": "Minerva FMS",     "ikon": "truk",    "ket": "Sistem manajemen armada: ritase, tonase, status unit, dan scorecard operator."},
+    {"id": "wialon",  "lajur": 3, "label": "Wialon GPS",      "ikon": "gps",     "ket": "Posisi dan kecepatan armada secara langsung."},
+    {"id": "google",  "lajur": 3, "label": "Google Drive",    "ikon": "arsip",   "ket": "Cadangan foto Cek Aman, disalin otomatis tiap jam."}
+  ],
+  "garis": [
+    ["pages", "shell"], ["pages", "modul"], ["pages", "hp"], ["shell", "auth"], ["modul", "db", 2], ["storage", "modul"],
+    ["worker", "modul"], ["hp", "antrean"], ["antrean", "db"], ["db", "hp", 2], ["hp", "edge"], ["wialon", "worker"],
+    ["worker", "d1"], ["minerva", "pages"], ["cron", "edge"], ["minerva", "edge"], ["edge", "db"], ["edge", "storage"],
+    ["storage", "google"], ["auth", "db"]
+  ],
+  "alur": [
+    {"id": "kecepatan", "judul": "Rekam kecepatan", "langkah": [
+      {"teks": "Wialon GPS mengirim posisi armada tiap 10 detik", "jalan": [["wialon", "worker"]]},
+      {"teks": "Server 24 jam memeriksa batas kecepatan tiap ruas", "denyut": "worker"},
+      {"teks": "Pelanggaran tercatat di log kecepatan", "jalan": [["worker", "d1"]]},
+      {"teks": "Speed Watcher dan Home menampilkannya", "jalan": [["d1", "worker"], ["worker", "modul"]]}
+    ]},
+    {"id": "operator", "judul": "Scorecard operator", "langkah": [
+      {"teks": "Pagi dan malam, jadwal otomatis memanggil fungsi awan", "jalan": [["cron", "edge"]]},
+      {"teks": "Fungsi awan menarik scorecard dari Minerva", "jalan": [["edge", "minerva"], ["minerva", "edge"]]},
+      {"teks": "Nilai harian operator disimpan", "jalan": [["edge", "db"]]},
+      {"teks": "Operator Performance menyusun peringkat dan poster juara", "jalan": [["db", "modul"]]}
+    ]},
+    {"id": "site", "judul": "Data site", "langkah": [
+      {"teks": "Admin mengunggah topo dan citra baru di Digital Twin", "jalan": [["modul", "storage"]]},
+      {"teks": "Versi yang aktif dicatat di basis data", "jalan": [["modul", "db"]]},
+      {"teks": "Digital Twin, Speed Watcher, AMORA, dan Water & Road membaca versi yang sama", "jalan": [["db", "modul"], ["storage", "modul"]]}
+    ]},
+    {"id": "produksi", "judul": "Dashboard Produksi", "langkah": [
+      {"teks": "Dashboard Produksi meminta ritase dan tonase", "jalan": [["modul", "pages"]]},
+      {"teks": "Cloudflare meneruskan permintaan ke Minerva", "jalan": [["pages", "minerva"]]},
+      {"teks": "Data kembali dan dihitung menjadi MTD, YTD, dan OE", "jalan": [["minerva", "pages"], ["pages", "modul"]]},
+      {"teks": "Isian pagi dan hasilnya disimpan, siap diunduh sebagai Excel 1on1", "jalan": [["modul", "db"]]}
+    ]},
+    {"id": "cekaman", "judul": "Cek Aman", "langkah": [
+      {"teks": "Operator menjawab 27 pertanyaan dan memotret di HP", "denyut": "hp"},
+      {"teks": "Tanpa sinyal, isian menunggu di antrean HP", "jalan": [["hp", "antrean"]]},
+      {"teks": "Begitu sinyal ada, isian terkirim", "jalan": [["antrean", "db"]]},
+      {"teks": "Pengawas memberi GO atau NO-GO dari HP-nya", "jalan": [["db", "hp"], ["hp", "db"]]},
+      {"teks": "Foto disimpan lewat fungsi awan dan dicadangkan ke Google Drive", "jalan": [["hp", "edge"], ["edge", "storage"], ["storage", "google"]]},
+      {"teks": "Biro Mining memantau semuanya di Asesmen Go/No-Go", "jalan": [["db", "modul"]]}
+    ]}
+  ]
+}
+</script>
+<script>
+/* ===== Sistem: peta lapisan, sambungan, dan alur data ===== */
+(function(){
+'use strict';
+var T=window.TENTANG, NS='http://www.w3.org/2000/svg';
+var D=null; try{D=JSON.parse(document.getElementById('dataSistem').textContent);}catch(e){D=null;}
+var panggung=document.getElementById('sisPanggung'), peta=document.getElementById('sisPeta'), ket=document.getElementById('sisKet');
+var alurEl=document.getElementById('sisAlur'), angkaEl=document.getElementById('sisAngka');
+if(!D||!panggung)return;
+
+var IKON={
+  modul:'<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+  lapis:'<path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/>',
+  hp:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
+  antrean:'<path d="M4 13.5 6.5 5h11l2.5 8.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20"/>',
+  awan:'<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+  server:'<rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+  spido:'<path d="M4.5 17.5a8 8 0 1 1 15 0"/><path d="m12 14 3.6-4.2"/><circle cx="12" cy="14.5" r="1.3"/>',
+  kunci:'<circle cx="8" cy="15.5" r="4"/><path d="m10.9 12.6 8.1-8.1M16 7.5l2.5 2.5M13.8 9.7l2 2"/>',
+  db:'<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
+  petir:'<path d="M13 3 5 13.5h6l-1 7.5 8-10.5h-6z"/>',
+  folder:'<path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2.5h8a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18z"/>',
+  jadwal:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14h3M8 17h6"/>',
+  truk:'<path d="M3 6.5h11v9H3zM14 9.5h3.5l3 3v3H14"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+  gps:'<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+  arsip:'<rect x="3.5" y="4.5" width="17" height="4.5" rx="1"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4"/>'
+};
+var SIMPUL={}; D.simpul.forEach(function(s){SIMPUL[s.id]=s;});
+var GARIS=D.garis.map(function(g,i){return {i:i,a:g[0],b:g[1],dua:g[2]===2};});
+function cariGaris(x,y){for(var i=0;i<GARIS.length;i++){var g=GARIS[i];if((g.a===x&&g.b===y)||(g.a===y&&g.b===x))return g;}return null;}
+
+/* ---- angka ---- */
+angkaEl.innerHTML=D.angka.map(function(a,i){
+  return '<div><dt>'+T.esc(a.label)+'</dt><dd><span data-n="'+a.n+'">0</span>'+T.esc(a.akhiran||'')+'</dd></div>';
+}).join('');
+
+/* ---- tombol alur ---- */
+alurEl.innerHTML='<button type="button" data-alur="" aria-pressed="true">Semua sambungan</button>'+
+  D.alur.map(function(a){return '<button type="button" data-alur="'+T.esc(a.id)+'" aria-pressed="false">'+T.esc(a.judul)+'</button>';}).join('');
+
+/* ---- tata letak: lebar (empat lajur berdampingan) atau tegak (lajur bertumpuk) ----
+   Digambar dalam piksel nyata supaya huruf tetap 15 px di layar mana pun. */
+var Y_LEBAR={shell:100,modul:186,hp:272,antrean:358,pages:143,worker:307,d1:401,auth:100,db:186,edge:272,storage:358,cron:444,minerva:143,wialon:307,google:401};
+var TEGAK=[ /* per lajur: baris berisi [kolom kiri, kolom kanan] */
+  [['shell','modul'],['hp','antrean']],
+  [['pages','worker'],[null,'d1']],
+  [['auth','db'],['cron','edge'],[null,'storage']],
+  [['minerva','wialon'],[null,'google']]
+];
+var L=null;
+function susun(W){
+  var o={W:W,pos:{},lajur:[]};
+  if(W>=880){
+    o.lebar=true;
+    var LW=W/4, NW=Math.min(212,LW-30), NH=52; o.H=494;
+    D.lajur.forEach(function(j,i){o.lajur.push({x:i*LW+5,y:0,w:LW-10,h:o.H,judul:j,tx:i*LW+20,ty:30});});
+    D.simpul.forEach(function(s){var cx=(s.lajur+.5)*LW;o.pos[s.id]={x:cx-NW/2,y:Y_LEBAR[s.id]-NH/2,w:NW,h:NH,lajur:s.lajur};});
+  }else{
+    o.lebar=false;
+    var G=12, NW2=(W-G*3)/2, NH2=46, PITCH=58, y=0;
+    TEGAK.forEach(function(baris,i){
+      var y0=y; y+=44;
+      baris.forEach(function(b){
+        b.forEach(function(id,k){if(id)o.pos[id]={x:G+k*(NW2+G),y:y,w:NW2,h:NH2,lajur:i};});
+        y+=PITCH;
+      });
+      y+=6;
+      o.lajur.push({x:0,y:y0,w:W,h:y-y0,judul:D.lajur[i],tx:14,ty:y0+28});
+      y+=18;
+    });
+    o.H=y-18;
+  }
+  return o;
+}
+function tengah(p){return [p.x+p.w/2,p.y+p.h/2];}
+function antara(a,b){ /* simpul lain di lajur yang sama, di antara a dan b (tata letak lebar) */
+  var lo=Math.min(a.y,b.y), hi=Math.max(a.y,b.y);
+  return Object.keys(L.pos).some(function(id){var p=L.pos[id];return p!==a&&p!==b&&p.lajur===a.lajur&&p.y>lo&&p.y<hi;});
+}
+/* Rute garis. Lebar: lajur bersebelahan memakai lengkung S di parit antarlajur;
+   garis yang melompati satu lajur berbelok di parit pertama lalu lurus melewati
+   celah antar-kotak, jadi tidak pernah menembus kotak lain. Tegak (HP): garis
+   antarbaris lewat "tulang" di celah tengah antara dua kolom. */
+function jalur(g){return L.lebar?jalurLebar(g,L.pos[g.a],L.pos[g.b]):jalurTegak(g,L.pos[g.a],L.pos[g.b]);}
+function sudut(sx,sy,bx,ex,ey,r,arahA,arahB){ /* H ke bx, belok, V ke ey, belok, H ke ex */
+  var t=ey>sy?1:-1; r=Math.min(r,Math.abs(ey-sy)/2);
+  return 'M'+sx+' '+sy+'H'+(bx-r*arahA)+'Q'+bx+' '+sy+' '+bx+' '+(sy+r*t)+'V'+(ey-r*t)+'Q'+bx+' '+ey+' '+(bx+r*arahB)+' '+ey+'H'+ex;
+}
+function jalurLebar(g,a,b){
+  var ca=tengah(a), cb=tengah(b);
+  if(a.lajur===b.lajur){
+    if(antara(a,b)){var sx=a.x+a.w,ex=b.x+b.w;return 'M'+sx+' '+ca[1]+'C'+(sx+30)+' '+ca[1]+' '+(ex+30)+' '+cb[1]+' '+ex+' '+cb[1];}
+    return a.y<b.y?'M'+ca[0]+' '+(a.y+a.h)+'V'+b.y:'M'+ca[0]+' '+a.y+'V'+(b.y+b.h);
+  }
+  var kanan=b.lajur>a.lajur, sx2=kanan?a.x+a.w:a.x, ex2=kanan?b.x:b.x+b.w, sy=ca[1], ey=cb[1];
+  if(Math.abs(ey-sy)<1)return 'M'+sx2+' '+sy+'H'+ex2;
+  if(Math.abs(b.lajur-a.lajur)===1){var c=(sx2+ex2)/2;return 'M'+sx2+' '+sy+'C'+c+' '+sy+' '+c+' '+ey+' '+ex2+' '+ey;}
+  var LW=L.W/4, NW=a.w, ujung=kanan?(a.lajur+1.5)*LW-NW/2:(a.lajur-.5)*LW+NW/2;
+  var bx=sx2+(ujung-sx2)*(L.belok[g.i]||.5);
+  return sudut(sx2,sy,bx,ex2,ey,10,kanan?1:-1,kanan?1:-1);
+}
+function jalurTegak(g,a,b){
+  var ca=tengah(a), cb=tengah(b), mid=L.W/2, kA=ca[0]<mid?0:1, kB=cb[0]<mid?0:1;
+  var sx=kA===0?a.x+a.w:a.x, ex=kB===0?b.x+b.w:b.x;
+  if(Math.abs(ca[1]-cb[1])<4)return 'M'+sx+' '+ca[1]+'H'+ex;
+  if(kA===kB&&a.lajur===b.lajur&&!antaraKolom(a,b))return a.y<b.y?'M'+ca[0]+' '+(a.y+a.h)+'V'+b.y:'M'+ca[0]+' '+a.y+'V'+(b.y+b.h);
+  var bx=mid+((g.i%3)-1)*3;
+  return sudut(sx,ca[1],bx,ex,cb[1],5,kA===0?1:-1,kB===0?-1:1);
+}
+function antaraKolom(a,b){
+  var lo=Math.min(a.y,b.y), hi=Math.max(a.y,b.y);
+  return Object.keys(L.pos).some(function(id){var p=L.pos[id];return p!==a&&p!==b&&Math.abs(p.x-a.x)<2&&p.y>lo&&p.y<hi;});
+}
+/* Garis yang melompati lajur berbelok di parit yang sama; titik beloknya
+   disebar supaya tidak menumpuk. */
+function aturBelok(){
+  L.belok={}; if(!L.lebar)return;
+  var per={};
+  GARIS.forEach(function(g){
+    var a=L.pos[g.a], b=L.pos[g.b];
+    if(Math.abs(a.lajur-b.lajur)<2||Math.abs(tengah(a)[1]-tengah(b)[1])<1)return;
+    var k=Math.min(a.lajur,b.lajur)+(b.lajur>a.lajur?'k':'i')+a.lajur; (per[k]=per[k]||[]).push(g.i);
+  });
+  Object.keys(per).forEach(function(k){var d=per[k];d.forEach(function(i,n){L.belok[i]=d.length<2?.5:.28+.44*n/(d.length-1);});});
+}
+var svg=null, gerak=!T.gerakKurang.matches;
+function gambar(){
+  var W=Math.floor(peta.clientWidth); if(W<200)return;
+  L=susun(W); aturBelok();
+  ukurKet();
+  var s='<svg width="'+W+'" height="'+L.H+'" viewBox="0 0 '+W+' '+L.H+'" role="group" aria-label="Peta sistem MiningMalut">';
+  L.lajur.forEach(function(j){
+    s+='<g class="sis-lajur" aria-hidden="true"><rect x="'+j.x+'" y="'+j.y+'" width="'+j.w+'" height="'+j.h+'" rx="14"/><text x="'+j.tx+'" y="'+j.ty+'">'+T.esc(j.judul)+'</text></g>';
+  });
+  s+='<g aria-hidden="true">';
+  GARIS.forEach(function(g){s+='<path class="sis-garis" id="sisG'+g.i+'" data-g="'+g.i+'" d="'+jalur(g)+'"/>';});
+  if(gerak){
+    GARIS.forEach(function(g){
+      var dur=(2.6+((g.i*37)%17)/10).toFixed(1), mulai=-((g.i*53)%29)/10;
+      s+='<circle class="sis-paket" data-g="'+g.i+'" r="2.8"><animateMotion dur="'+dur+'s" begin="'+mulai+'s" repeatCount="indefinite" calcMode="linear"><mpath href="#sisG'+g.i+'"/></animateMotion></circle>';
+      if(g.dua)s+='<circle class="sis-paket" data-g="'+g.i+'" r="2.8"><animateMotion dur="'+dur+'s" begin="'+(mulai-1.3)+'s" repeatCount="indefinite" calcMode="linear" keyPoints="1;0" keyTimes="0;1"><mpath href="#sisG'+g.i+'"/></animateMotion></circle>';
+    });
+  }
+  s+='</g>';
+  D.simpul.forEach(function(n){
+    var p=L.pos[n.id], c=tengah(p), ik=L.lebar, tx=p.x+(ik?50:14);
+    s+='<g class="sis-simpul" data-id="'+n.id+'" role="button" tabindex="0" aria-label="'+T.esc(n.label+', '+D.lajur[n.lajur])+'">'+
+      '<rect class="kotak" x="'+p.x+'" y="'+p.y+'" width="'+p.w+'" height="'+p.h+'" rx="12"/>'+
+      (ik?'<circle class="ikon-bg" cx="'+(p.x+26)+'" cy="'+c[1]+'" r="16"/><g class="ikon" transform="translate('+(p.x+17)+' '+(c[1]-9)+') scale(.75)">'+(IKON[n.ikon]||'')+'</g>':'')+
+      '<text x="'+tx+'" y="'+(c[1]+.5)+'" dominant-baseline="central">'+T.esc(n.label)+'</text></g>';
+  });
+  s+='<g id="sisKometLapis" aria-hidden="true"></g></svg>';
+  peta.innerHTML=s;
+  svg=peta.querySelector('svg');
+  if(!tampak&&svg.pauseAnimations)try{svg.pauseAnimations();}catch(e){}
+  terapkan();
+}
+
+/* ---- keadaan: ringkasan, fokus simpul, atau alur ---- */
+var keadaan={simpul:null,kunci:false,alur:null,olehTur:false};
+function el(sel){return svg?svg.querySelectorAll(sel):[];}
+function bersihkan(){
+  peta.classList.remove('fokus');
+  T.$$('.nyala,.pusat,.dilalui',peta).forEach(function(e){e.classList.remove('nyala','pusat','dilalui');});
+}
+function terapkan(){
+  if(!svg)return;
+  bersihkan();
+  if(keadaan.alur){terapkanAlur();return;}
+  if(keadaan.simpul){
+    var id=keadaan.simpul, tetangga=[];
+    peta.classList.add('fokus');
+    var n=svg.querySelector('.sis-simpul[data-id="'+id+'"]'); if(n)n.classList.add('pusat');
+    GARIS.forEach(function(g){
+      if(g.a!==id&&g.b!==id)return;
+      var lain=g.a===id?g.b:g.a; tetangga.push(lain);
+      T.$$('[data-g="'+g.i+'"]',svg).forEach(function(e){e.classList.add('nyala');});
+      var m=svg.querySelector('.sis-simpul[data-id="'+lain+'"]'); if(m)m.classList.add('nyala');
+    });
+    ket.innerHTML=isiSimpul(id);
+    return;
+  }
+  ket.innerHTML=isiRingkas();
+}
+function tetanggaDari(id){var t=[];GARIS.forEach(function(g){if(g.a===id)t.push(g.b);else if(g.b===id)t.push(g.a);});return t;}
+function isiSimpul(id){
+  var s=SIMPUL[id];
+  return '<span class="lajur-nama">'+T.esc(D.lajur[s.lajur])+'</span><h3>'+T.esc(s.label)+'</h3><p>'+T.esc(s.ket)+'</p>'+
+    '<p><b>Tersambung dengan:</b> '+tetanggaDari(id).map(function(t){return T.esc(SIMPUL[t].label);}).join(', ')+'.</p>';
+}
+function isiRingkas(){
+  return '<span class="lajur-nama">Gambaran besar</span><h3>'+D.simpul.length+' bagian, '+GARIS.length+' sambungan</h3>'+
+    '<p>Halaman tampil di peramban dan HP, disajikan Cloudflare. Supabase menyimpan data, mengatur login, dan menjalankan pekerjaan terjadwal. Minerva, Wialon, dan Google Drive memasok serta menyimpan data dari luar.</p>';
+}
+function isiAlur(a){
+  return '<span class="lajur-nama">Alur data</span><h3>'+T.esc(a.judul)+'</h3><ol class="sis-langkah">'+
+    a.langkah.map(function(l){return '<li>'+T.esc(l.teks)+'</li>';}).join('')+'</ol>';
+}
+/* Tinggi panel keterangan dikunci ke isi terpanjang, supaya bagian di bawahnya
+   tidak melompat saat tur berpindah alur. */
+function ukurKet(){
+  var w=ket.clientWidth; if(!w)return;
+  var uji=document.createElement('div'); uji.className='sis-ket'; uji.setAttribute('aria-hidden','true');
+  uji.style.cssText='position:absolute;visibility:hidden;left:-9999px;top:0;min-height:0;width:'+w+'px';
+  panggung.appendChild(uji);
+  var isi=[isiRingkas()].concat(D.alur.map(isiAlur)).concat(D.simpul.map(function(n){return isiSimpul(n.id);})), maks=0;
+  isi.forEach(function(h){uji.innerHTML=h;maks=Math.max(maks,uji.offsetHeight);});
+  uji.remove(); ket.style.minHeight=maks+'px';
+}
+
+/* ---- alur: rute menyala, komet berjalan per langkah ---- */
+var putar=null; /* {alur, langkah, seg, t0, raf, tunggu} */
+function rute(a){var r={simpul:{},garis:{}};a.langkah.forEach(function(l){
+  (l.jalan||[]).forEach(function(j){r.simpul[j[0]]=1;r.simpul[j[1]]=1;var g=cariGaris(j[0],j[1]);if(g)r.garis[g.i]=1;});
+  if(l.denyut)r.simpul[l.denyut]=1;});return r;}
+function cariAlur(id){for(var i=0;i<D.alur.length;i++)if(D.alur[i].id===id)return D.alur[i];return null;}
+function terapkanAlur(){
+  var a=cariAlur(keadaan.alur); if(!a)return;
+  var r=rute(a);
+  peta.classList.add('fokus');
+  Object.keys(r.simpul).forEach(function(id){var n=svg.querySelector('.sis-simpul[data-id="'+id+'"]');if(n)n.classList.add('nyala');});
+  Object.keys(r.garis).forEach(function(i){var p=svg.querySelector('#sisG'+i);if(p)p.classList.add('nyala');});
+  ket.innerHTML=isiAlur(a);
+  if(gerak)mulaiAlur(a); else T.$$('.sis-langkah li',ket).forEach(function(li){li.classList.add('lewat');});
+}
+function hentikanAlur(){if(putar){cancelAnimationFrame(putar.raf);clearTimeout(putar.tunggu);putar=null;}var k=svg&&svg.querySelector('#sisKometLapis');if(k)k.innerHTML='';}
+function mulaiAlur(a){
+  hentikanAlur();
+  putar={alur:a,langkah:-1,seg:0,raf:0,tunggu:0,putaran:0};
+  var lapis=svg.querySelector('#sisKometLapis');
+  lapis.innerHTML='<circle class="sis-komet-ekor" r="9"/><circle class="sis-komet" r="4.5"/>';
+  lanjutLangkah();
+}
+function tandaiLangkah(i){
+  T.$$('.sis-langkah li',ket).forEach(function(li,k){li.classList.toggle('kini',k===i);li.classList.toggle('lewat',k<i);});
+}
+function denyut(id){
+  T.$$('.sis-simpul.pusat',svg).forEach(function(n){n.classList.remove('pusat');});
+  var n=svg.querySelector('.sis-simpul[data-id="'+id+'"]'); if(n)n.classList.add('pusat','dilalui');
+}
+function lanjutLangkah(){
+  if(!putar)return;
+  var a=putar.alur; putar.langkah++; putar.seg=0;
+  if(putar.langkah>=a.langkah.length){
+    putar.putaran++;
+    putar.tunggu=setTimeout(function(){
+      if(!putar)return;
+      if(tur.aktif&&putar.putaran>=1){tur.lanjut();return;}
+      T.$$('.sis-simpul.dilalui,.sis-simpul.pusat',svg).forEach(function(n){n.classList.remove('dilalui','pusat');});
+      putar.langkah=-1; lanjutLangkah();
+    },1600);
+    return;
+  }
+  tandaiLangkah(putar.langkah);
+  var l=a.langkah[putar.langkah];
+  if(l.denyut&&!(l.jalan&&l.jalan.length)){
+    denyut(l.denyut); var k=svg.querySelector('#sisKometLapis'); if(k)k.style.opacity='0';
+    putar.tunggu=setTimeout(lanjutLangkah,1300); return;
+  }
+  jalankanSegmen();
+}
+function jalankanSegmen(){
+  if(!putar)return;
+  var l=putar.alur.langkah[putar.langkah], seg=(l.jalan||[])[putar.seg];
+  if(!seg){putar.tunggu=setTimeout(lanjutLangkah,450);return;}
+  var g=cariGaris(seg[0],seg[1]), p=g&&svg.querySelector('#sisG'+g.i);
+  if(!p){putar.seg++;jalankanSegmen();return;}
+  var maju=g.a===seg[0], pj=p.getTotalLength(), dur=Math.max(700,Math.min(1500,pj*2.4)), t0=0;
+  var lapis=svg.querySelector('#sisKometLapis'); lapis.style.opacity='1';
+  var komet=lapis.querySelector('.sis-komet'), ekor=lapis.querySelector('.sis-komet-ekor');
+  T.$$('.sis-simpul.pusat',svg).forEach(function(n){n.classList.remove('pusat');});
+  var asal=svg.querySelector('.sis-simpul[data-id="'+seg[0]+'"]'); if(asal)asal.classList.add('dilalui');
+  function langkah(t){
+    if(!putar)return;
+    if(!t0)t0=t;
+    var k=Math.min(1,(t-t0)/dur), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    var q=p.getPointAtLength((maju?e:1-e)*pj), q2=p.getPointAtLength(Math.max(0,Math.min(pj,(maju?e-.06:1-e+.06)*pj)));
+    komet.setAttribute('cx',q.x.toFixed(1)); komet.setAttribute('cy',q.y.toFixed(1));
+    ekor.setAttribute('cx',q2.x.toFixed(1)); ekor.setAttribute('cy',q2.y.toFixed(1));
+    if(k<1){putar.raf=requestAnimationFrame(langkah);return;}
+    denyut(seg[1]); putar.seg++; putar.tunggu=setTimeout(jalankanSegmen,180);
+  }
+  putar.raf=requestAnimationFrame(langkah);
+}
+
+/* ---- tur otomatis: berjalan sendiri sampai pengguna menyentuh panel ---- */
+var tur={aktif:false,i:-1,tunggu:0,
+  mulai:function(){if(!gerak||tur.aktif||tersentuh)return;tur.aktif=true;tur.i=-1;tur.lanjut();},
+  lanjut:function(){
+    if(!tur.aktif)return;
+    clearTimeout(tur.tunggu);
+    tur.i=(tur.i+1)%(D.alur.length+1);
+    if(tur.i===D.alur.length){pilihAlur(null,true);tur.tunggu=setTimeout(tur.lanjut,4500);return;}
+    pilihAlur(D.alur[tur.i].id,true);
+  },
+  henti:function(){tur.aktif=false;clearTimeout(tur.tunggu);}
+};
+var tersentuh=false;
+function disentuh(){if(tersentuh)return;tersentuh=true;tur.henti();}
+
+function pilihAlur(id,dariTur){
+  if(!dariTur)disentuh();
+  hentikanAlur();
+  keadaan.alur=id||null; keadaan.simpul=null; keadaan.kunci=false; keadaan.olehTur=!!dariTur;
+  T.$$('button',alurEl).forEach(function(b){b.setAttribute('aria-pressed',(b.dataset.alur||null)===(id||null)?'true':'false');});
+  terapkan();
+}
+alurEl.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('button'); if(!b)return;
+  var id=b.dataset.alur||null;
+  /* Menekan alur yang sedang dipilih pengguna menutupnya; alur yang sedang
+     diputar tur justru dipegang, bukan ditutup. */
+  pilihAlur(id&&keadaan.alur===id&&!keadaan.olehTur?null:id,false);
+});
+
+function fokusSimpul(id,kunci){
+  hentikanAlur();
+  keadaan.alur=null; keadaan.simpul=id; keadaan.kunci=!!kunci;
+  T.$$('button',alurEl).forEach(function(b){b.setAttribute('aria-pressed',b.dataset.alur===''&&!id?'true':'false');});
+  terapkan();
+}
+peta.addEventListener('pointerover',function(e){
+  if(e.pointerType!=='mouse')return;
+  var n=e.target.closest&&e.target.closest('.sis-simpul'); if(!n||keadaan.kunci)return;
+  disentuh(); fokusSimpul(n.dataset.id,false);
+});
+peta.addEventListener('pointerout',function(e){
+  if(e.pointerType!=='mouse'||keadaan.kunci)return;
+  var n=e.target.closest&&e.target.closest('.sis-simpul'); if(!n)return;
+  if(e.relatedTarget&&n.contains(e.relatedTarget))return;
+  if(keadaan.simpul===n.dataset.id)fokusSimpul(null,false);
+});
+peta.addEventListener('click',function(e){
+  var n=e.target.closest&&e.target.closest('.sis-simpul');
+  disentuh();
+  if(!n){if(keadaan.kunci)fokusSimpul(null,false);return;}
+  var id=n.dataset.id;
+  if(keadaan.kunci&&keadaan.simpul===id)fokusSimpul(null,false); else fokusSimpul(id,true);
+});
+peta.addEventListener('keydown',function(e){
+  var n=e.target.closest&&e.target.closest('.sis-simpul');
+  if(e.key==='Escape'){disentuh();fokusSimpul(null,false);return;}
+  if(!n)return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();disentuh();var id=n.dataset.id;if(keadaan.kunci&&keadaan.simpul===id)fokusSimpul(null,false);else fokusSimpul(id,true);}
+});
+panggung.addEventListener('pointerdown',disentuh);
+panggung.addEventListener('focusin',function(e){if(e.target.closest&&e.target.closest('.sis-simpul,.sis-alur'))disentuh();});
+
+/* ---- terlihat atau tidak: animasi hanya berjalan saat panel di layar ---- */
+var tampak=false, sudahHitung=false;
+function setelTampak(v){
+  tampak=v&&T.bingkaiTampil();
+  if(svg&&svg.pauseAnimations){try{if(tampak&&gerak)svg.unpauseAnimations();else svg.pauseAnimations();}catch(e){}}
+  if(tampak){
+    panggung.classList.add('tampak');
+    if(!sudahHitung){sudahHitung=true;T.$$('[data-n]',angkaEl).forEach(function(sp,i){setTimeout(function(){T.hitungNaik(sp,+sp.dataset.n,1100);},i*70);});}
+    /* Alur yang dipilih pengguna dilanjutkan; tanpa sentuhan, tur otomatis mulai. */
+    if(keadaan.alur&&gerak&&!putar&&tersentuh){var a=cariAlur(keadaan.alur);if(a)mulaiAlur(a);}
+    if(!tersentuh)setTimeout(function(){if(tampak)tur.mulai();},900);
+  }else{
+    tur.henti(); hentikanAlur();
+  }
+}
+if('IntersectionObserver' in window){
+  new IntersectionObserver(function(es){setelTampak(es[0].isIntersecting);},{threshold:.3}).observe(panggung);
+}else setelTampak(true);
+setInterval(function(){if(tampak&&!T.bingkaiTampil())setelTampak(false);},1500);
+
+gambar();
+var lebarLama=peta.clientWidth, tUkur=0;
+function ukurUlang(){var w=peta.clientWidth;if(Math.abs(w-lebarLama)<2)return;lebarLama=w;clearTimeout(tUkur);tUkur=setTimeout(function(){hentikanAlur();gambar();},120);}
+if('ResizeObserver' in window)new ResizeObserver(ukurUlang).observe(peta); else addEventListener('resize',ukurUlang);
+})();
+</script>
 <script>
 /* ===== Perjalanan: linimasa dari data/tentang/perjalanan.json ===== */
 (function(){
@@ -1188,8 +1726,6 @@ function kelompok(t){
 }
 
 function gambar(){
-  var tgl=D.diperbarui||(ENTRI.length?ENTRI[ENTRI.length-1]._t:'');
-  if(tgl)document.getElementById('jpTanggal').textContent=T.fmtTgl(tgl);
   var c=D.commit||{};
   if(c.total){
     T.hitungNaik(document.getElementById('angkaCommit'),c.total,1200);
