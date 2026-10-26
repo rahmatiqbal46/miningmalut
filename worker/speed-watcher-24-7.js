@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 16.1 (26 Oktober 2026)
+// Versi 16.2 (26 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -719,7 +719,11 @@ let segarTerakhir = 0;
    Keduanya dibaca sekaligus (KUERI_KUNCI_JALAN). Bila nomornya tidak sama —
    versi 15 sesudah rollback menulis 'jalan:versi' tanpa tahu 'jalan:kunci' —
    'jalan:versi' yang menang, dengan aktif 0 (tidak diketahui). */
-const KUERI_KUNCI_JALAN = `SELECT k, v FROM kv WHERE k IN ('jalan:versi', 'jalan:kunci')`;
+/* Versi 16.2: dua pencarian kunci utama yang terpisah, BUKAN `k IN (...)`. Di D1 produksi
+   `IN` memindai seluruh tabel kv (±14.900 baris tiap panggilan, terukur 26 Okt 2026),
+   sedangkan `k = ?` membaca satu baris. */
+const KUERI_KUNCI_JALAN =
+  `SELECT k, v FROM kv WHERE k = 'jalan:versi' UNION ALL SELECT k, v FROM kv WHERE k = 'jalan:kunci'`;
 function kunciJalan(versi, aktif) {
   return String(Number(versi) || 0) + "@" + String(Math.round(Number(aktif) || 0));
 }
@@ -3368,7 +3372,8 @@ export default {
         const klaim = {};
         try {
           const { results } = await env.DB.prepare(
-            `SELECT k, v FROM kv WHERE k IN ('blok:A', 'blok:B', 'blok:C')`
+            `SELECT k, v FROM kv WHERE k = 'blok:A' UNION ALL SELECT k, v FROM kv WHERE k = 'blok:B'
+             UNION ALL SELECT k, v FROM kv WHERE k = 'blok:C'`
           ).all();
           for (const r of results || []) {
             try { klaim[String(r.k).slice(5)] = JSON.parse(r.v); } catch (e) {}
@@ -3415,7 +3420,7 @@ export default {
           belah = { dipindah: 0, kejadian: 0, waktu: null, diperiksa: null, berikut: null, catatan: "belum dijalankan" };
         }
         return json({
-          versi_worker: 16.1,
+          versi_worker: 16.2,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
