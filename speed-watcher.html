@@ -3603,7 +3603,10 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
           BATAS.aktif_jalan = aktif;
           terapkanBatas(); kunciSetelanBatas();
         }
-        S.aktifRuas = aktif;
+        /* Jawaban Worker lama tidak menghapus waktu aktif yang sudah diketahui:
+           selama isolate lama dan baru masih sama-sama hidup (sesaat sesudah
+           deploy), layar tidak terus menarik ulang jalan (temuan tinjauan). */
+        if (adaAktif) S.aktifRuas = aktif;
         if (versi === (S.versiRuas || 0)) return;
         var ke = {};
         S.ruas = ruas.map(function (r) {

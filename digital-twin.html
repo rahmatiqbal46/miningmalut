@@ -9780,7 +9780,9 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
     try {
       var r = await fetch(A().KONFIG.worker + '/api/jalan/segarkan', { method: 'POST', cache: 'no-store' });
       if (r.status === 404) return { lama: true };
-      return await r.json();
+      // Jawaban bukan JSON (mis. Cloudflare menghentikan pemanggilan karena batas CPU): sebut kodenya.
+      var d = await r.json().catch(function () { return null; });
+      return d || { gagal: r.status };
     } catch (e) { return null; }
   }
   function sebaranJalan(v) {
@@ -9817,6 +9819,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
           else if (d && d.ok === false && /^ditolak/.test(d.hasil || '')) {
             baris.worker.s.textContent = 'menolak v' + v + ' (' + d.hasil + ') · tetap v' + d.versi; baris.worker.i.style.background = 'var(--bad)'; return;
           }
+          else if (d && d.gagal) baris.worker.s.textContent = 'Worker menjawab HTTP ' + d.gagal + ' · mencoba lagi';
           else baris.worker.s.textContent = d ? 'masih v' + d.versi + ' · mencoba lagi' : 'Worker tidak terjangkau · mencoba lagi';
         } else {
           // Worker lama (memeriksa gudang sendiri tiap 5 menit) atau permintaan di atas belum berhasil.
