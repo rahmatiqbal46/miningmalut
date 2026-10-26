@@ -1447,7 +1447,11 @@ else document.getElementById('login').style.display='flex';
       })
       .catch(function (e) {
         kunciTerakhir = '';
-        pesan('Data tidak terbaca (' + esc(e && e.message ? e.message : e) + ').');
+        /* Galat teknis (mis. HTTP 500 saat jatah baca D1 harian habis) tidak
+           ditampilkan; rinciannya tetap di konsol. Kartu mencoba lagi sendiri
+           pada hometick berikutnya, jadi pulih tanpa muat ulang. */
+        try { console.warn('Kartu Pelanggaran Kecepatan:', e); } catch (x) {}
+        pesan('Sedang maintenance.');
       })
       .then(function () { sibuk = false; });
   }
@@ -1572,9 +1576,10 @@ else document.getElementById('login').style.display='flex';
       })
       .catch(function (e) {
         if (simpan[kunci]) return;               // isi lama masih sah di layar
+        if (!(e && e.kedaluwarsa)) { try { console.warn('Kartu Top Operator:', e); } catch (x) {} }
         pesan(e && e.kedaluwarsa
           ? 'Sesi login sudah kedaluwarsa. Keluar lalu masuk lagi untuk memuat data terbaru.'
-          : 'Data tidak terbaca (' + esc(e && e.message ? e.message : e) + ').');
+          : 'Sedang maintenance.');
       })
       .then(function () { sibuk = false; });
   }
@@ -2685,7 +2690,8 @@ else document.getElementById('login').style.display='flex';
   /* ------------------------------------------------------------ penarikan */
   function pesanGalat(e) {
     if (e && e.kedaluwarsa) return 'Sesi login sudah kedaluwarsa. Keluar lalu masuk lagi untuk memuat data terbaru.';
-    return 'Data tidak terbaca (' + esc(e && e.message ? e.message : e) + ').';
+    try { console.warn('Kartu Home:', e); } catch (x) {}
+    return 'Sedang maintenance.';
   }
   function tampilGagalTotal(e) {
     var msg = '<div class="rk-kosong">' + pesanGalat(e) + '</div>';
@@ -2921,7 +2927,10 @@ else document.getElementById('login').style.display='flex';
         kosongkan();
         if (g && g.status === 401) ket('Sesi login berakhir: keluar lalu masuk lagi untuk memuat angka ' + TAUTAN + '.');
         else if (g && g.belumAda) ket('Tabel ' + TAUTAN + ' (oe_dasbor) belum ada di Supabase.');
-        else ket('Angka ' + TAUTAN + ' tidak terbaca (' + (g && g.status ? 'HTTP ' + (+g.status) : 'jaringan') + ').');
+        else {
+          try { console.warn('Angka Dashboard Produksi:', g); } catch (x) {}
+          ket('Angka ' + TAUTAN + ' sedang maintenance.');
+        }
       })
       .then(function () { sibuk = false; });
   }
