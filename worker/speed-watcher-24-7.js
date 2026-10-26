@@ -1,6 +1,6 @@
 // =============================================================================
 // Speed Watcher 24/7 — Cloudflare Worker
-// Versi 15 (24 Oktober 2026)
+// Versi 16 (26 Oktober 2026)
 //
 // Perubahan dari versi 1:
 //  - Batas 40 → 35 km/jam, sama dengan batas umum Pulau Pakal di halaman.
@@ -573,6 +573,68 @@
 // selama pemicu datang terlambat — bukan kerusakan. `belah.diperiksa` terisi
 // sesudah permintaan HTTP pertama; `belah.dipindah` = baris terbelah lama.
 //
+// Versi 16 — JALAN BARU DIPAKAI SEKETIKA (26 Oktober 2026).
+// Batas yang diterbitkan admin di Digital Twin pukul 09.10 WIT baru tampil di
+// Speed Watcher belasan menit kemudian. Tiga jeda lima menit bertumpuk: blok A
+// hanya bertanya ke gudang di menit kelipatan lima, jalur HTTP membaca nomor
+// versi di kv paling sering tiap lima menit per isolate, dan halaman menarik
+// /api/jalan tiap lima menit. Ketiganya dipangkas:
+//
+//  1. /api/jalan/segarkan (GET/POST, tanpa login). Digital Twin memanggilnya
+//     sesaat sesudah Terbitkan atau Pulihkan jalan. Worker bertanya ke gudang
+//     saat itu juga (isi lengkap, p_versi null), memeriksanya dengan
+//     periksaJalan(), memasangnya, lalu menulis kv 'jalan' + 'jalan:versi'. Bila
+//     penulisan kv gagal, isolate kembali ke jalan sebelumnya: isolate tidak
+//     pernah melayani versi yang tidak tersimpan. Pemanggil hanya bisa membuat
+//     Worker menyamakan diri dengan gudang; isi gudang tetap hanya bisa diubah
+//     admin. Paling sering sekali per SEGAR_JEDA_MS per isolate. Pemeriksaan
+//     blok A di menit kelipatan lima tetap ada sebagai cadangan.
+//  2. Blok cron membaca baris kv 'jalan:versi' dalam batch yang sama dengan
+//     state (muatSimpananBlok): tanpa perjalanan D1 tambahan, satu baris terbaca
+//     lebih per blok. Versi baru dipakai menilai pelanggaran mulai blok berikutnya.
+//  3. Jalur HTTP membaca nomor versi di kv paling sering tiap 30 detik (dulu
+//     lima menit): satu baris terbaca per isolate per 30 detik.
+//  4. Waktu aktif. 'jalan:versi' kini "versi@aktif", aktif = saat versi itu
+//     diaktifkan di gudang (site_aktif.diubah_pada, ms). Nomor versi saja tidak
+//     bisa mengurutkan, karena Pulihkan mengaktifkan lagi nomor lama; waktu aktif
+//     selalu maju. Baris kv versi 15 ("5") dibaca sebagai aktif 0 (belum
+//     diketahui) dan dilengkapi pada pemanggilan /api/jalan/segarkan berikutnya.
+//  5. /api/unit membawa `versi_jalan` dan `jalan_aktif`. Halaman yang memang
+//     menarik /api/unit tiap 10 detik jadi tahu ada versi baru tanpa permintaan
+//     tambahan. /api/jalan menambah `aktif` (cache 60 → 15 detik); /api/batas dan
+//     /api/status menambah `jalan_aktif`.
+//
+// Kejadian yang SEDANG berjalan saat batas berganti tetap terikat pada batas
+// ketika ia dibuka (satu baris = satu ruas + satu batas), sampai unitnya melambat
+// atau pindah ke batas lain — sama dengan versi 15. Kejadian baru langsung
+// dinilai dengan batas baru.
+//
+// Diuji (D1 tiruan di atas SQLite, Supabase dan Wialon tiruan, jam virtual,
+// isolate = konteks vm baru):
+//  - HTTP, 29 cek: baris kv versi 15 terbaca; segarkan pertama melengkapi waktu
+//    aktif; panggilan kedua < 5 detik tidak bertanya ke gudang; v6 terpasang di
+//    isolate pemanggil seketika dan di isolate lain ≤ 30 detik; Pulihkan v5
+//    sesudah v6 → semua isolate kembali ke v5 dengan waktu aktif baru; isi tidak
+//    sah (batas 200) ditolak tanpa mengubah kv; gudang mati → 502 tanpa perubahan;
+//    kv gagal ditulis → 502 dan isolate kembali ke versi sebelumnya; gudang
+//    belum disemai → jalan bawaan.
+//  - Cron, 13 cek: isolate cron hangat yang memegang v5 memakai v6 mulai blok
+//    pertama sesudah segarkan, tanpa bertanya ke gudang; unit 27 km/jam di
+//    RD_EFO dibuka dengan batas 25 (v6), kejadian berbatas 20 ditutup; isolate
+//    dingin memakai v6 dari kv; tanpa segarkan, blok A menit kelipatan lima
+//    tetap menemukan versi baru.
+//  - Kesetaraan dengan versi 15 pada jalan normal, 25 menit, tiga unit, isolate
+//    dingin dan hangat: tabel pelanggaran dan seluruh 85 baris kv IDENTIK byte
+//    demi byte. (Tanpa baris state, versi 15 menilai dengan RUAS_BAWAAN sampai
+//    menit kelipatan lima; versi 16 langsung memakai kv.)
+//  - CPU /api/jalan/segarkan di isolate dingin (Node tanpa kompilator optimasi):
+//    jalan sekarang 31 potong · 506 titik → versi baru ±2 ms (p90 ±4), sama
+//    ±1 ms; jalan 4× lebih rapat (1.882 titik) ±6,5 ms (p90 ±10,7). Pekerjaan
+//    ini dulu dipikul pemanggilan cron blok A.
+//
+// Sesudah deploy: /api/status → `versi_worker: 16`; POST /api/jalan/segarkan →
+// {ok: true, versi, aktif, berubah, hasil}.
+//
 // Binding yang dibutuhkan: D1 bernama `DB`, secret `WIALON_TOKEN`.
 // Opsional: variabel SUPABASE_URL dan SUPABASE_ANON_KEY bila proyek Supabase
 // berganti (bawaan: proyek MiningMalut, kunci anon publik yang sama dengan
@@ -617,14 +679,34 @@ const RUAS_BAWAAN = [{"n":"RD_EFO","b":15,"bb":[128.325754,0.792975,128.325759,0
 /* RUAS yang sedang dipakai. Mulai dari salinan bawaan di atas, lalu diganti
    versi dari gudang data site bila ada yang sah (versi 9). */
 let RUAS = RUAS_BAWAAN;
-let JALAN = { versi: 0, judul: "bawaan Worker (Mei 2026)", dimuat: null };
+/* `aktif` (versi 16): saat versi ini diaktifkan di gudang, ms; 0 = belum diketahui. */
+let JALAN = { versi: 0, judul: "bawaan Worker (Mei 2026)", dimuat: null, aktif: 0 };
 
 // Gudang data site (Supabase). Kunci anon ini publik — sama dengan index.html.
 const SUPA_URL = "https://qblivboqavhlugydhmjr.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFibGl2Ym9xYXZobHVneWRobWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMxNjksImV4cCI6MjA5NzIwOTE2OX0.q-rkx2lEONfstic5vlC_-3M1gosvnDd_oMje-2SZvNE";
-const JALAN_TIAP_MENIT = 5;     // blok A memeriksa gudang tiap 5 menit
-const JALAN_HTTP_MS = 300000;   // jalur HTTP memeriksa nomor versi paling sering tiap 5 menit
+const JALAN_TIAP_MENIT = 5;     // blok A memeriksa gudang tiap 5 menit (cadangan /api/jalan/segarkan, v16)
+const JALAN_HTTP_MS = 30000;    // jalur HTTP memeriksa nomor versi di kv paling sering tiap 30 detik (v16; dulu 5 menit)
+const SEGAR_JEDA_MS = 5000;     // /api/jalan/segarkan paling sering sekali per 5 detik per isolate (v16)
 let jalanDiperiksa = 0;
+let segarTerakhir = 0;
+
+/* Versi 16 — kunci versi jalan di baris kv 'jalan:versi': "versi@aktif".
+   Nomor versi saja tidak bisa mengurutkan: Pulihkan mengaktifkan lagi nomor
+   lama (v5 → v6 → v5). Waktu aktif selalu maju, jadi halaman bisa menolak
+   jawaban isolate yang belum menyusul. Baris versi 15 hanya berisi nomor
+   ("5") dan dibaca sebagai aktif 0. */
+function kunciJalan(versi, aktif) {
+  return String(Number(versi) || 0) + "@" + String(Math.round(Number(aktif) || 0));
+}
+function uraiKunciJalan(teks) {
+  const [v, a] = String(teks ?? "").split("@");
+  return { versi: Number(v) || 0, aktif: Math.round(Number(a) || 0) };
+}
+/* Isolate ini memegang versi yang disebut kunci k (nomor dan waktu aktif sama). */
+function jalanSama(k) {
+  return k.versi === JALAN.versi && k.aktif === (JALAN.aktif || 0);
+}
 
 /* Pemeriksaan isi jalan dari gudang. Mengembalikan pesan galat, atau null.
    Aturannya sama dengan site__cek_jalan_worker di Supabase dan terbitJalan()
@@ -671,8 +753,9 @@ function periksaJalan(d) {
   return null;
 }
 
-/* Memasang jalan yang sudah diperiksa. Indeks potongan dibangun ulang saat dipakai. */
-function pasangJalan(d, versi, judul) {
+/* Memasang jalan yang sudah diperiksa. Indeks potongan dibangun ulang saat dipakai.
+   `aktif` (versi 16) = saat versi ini diaktifkan di gudang, ms (0 = tidak diketahui). */
+function pasangJalan(d, versi, judul, aktif) {
   RUAS = d.ruas.map((r) => {
     let bb = r.bb;
     if (!Array.isArray(bb) || bb.length !== 4) {
@@ -685,15 +768,16 @@ function pasangJalan(d, versi, judul) {
   TOLERANSI_RUAS = d.toleransi_m == null ? TOLERANSI_RUAS_BAWAAN : Number(d.toleransi_m);
   BATAS_MIN = RUAS.reduce((m, r) => Math.min(m, r.b), BATAS_LUAR);
   indeks = null;
-  JALAN = { versi, judul: judul || ("jalan v" + versi), dimuat: Date.now() };
+  JALAN = { versi, judul: judul || ("jalan v" + versi), dimuat: Date.now(), aktif: Math.round(Number(aktif) || 0) };
 }
 
-/* Isi jalan dari baris kv 'jalan' (ditulis blok A saat versi berganti).
+/* Isi jalan dari baris kv 'jalan' (ditulis blok A atau /api/jalan/segarkan saat
+   versi berganti).
 
    Versi 10: TIDAK diperiksa ulang dengan periksaJalan(). Baris ini hanya ditulis
-   oleh periksaGudangJalan() sesudah pemeriksaan penuh lolos, dan memeriksanya
-   lagi di setiap isolate dingin memakan 0,5–1,8 ms dari jatah 10 ms. Yang
-   dicek di sini hanya bentuknya, supaya isi yang rusak tidak dipasang. */
+   sesudah pemeriksaan penuh lolos (terimaJalan), dan memeriksanya lagi di setiap
+   isolate dingin memakan 0,5–1,8 ms dari jatah 10 ms. Yang dicek di sini hanya
+   bentuknya, supaya isi yang rusak tidak dipasang. */
 async function muatJalanKV(env) {
   const teks = await ambilKV(env, "jalan");
   if (!teks) return false;
@@ -701,53 +785,125 @@ async function muatJalanKV(env) {
   try { j = JSON.parse(teks); } catch (e) { return false; }
   const d = j && j.data;
   if (!j || !j.versi || !d || !Array.isArray(d.ruas) || !d.ruas.length || !(Number(d.batas_luar) > 0)) return false;
-  if (j.versi !== JALAN.versi) pasangJalan(j.data, j.versi, j.judul);
+  const aktif = Math.round(Number(j.aktif) || 0);
+  if (j.versi !== JALAN.versi || aktif !== (JALAN.aktif || 0)) pasangJalan(j.data, j.versi, j.judul, aktif);
   return true;
 }
 
-/* Dipanggil tiap blok cron sesudah state dibaca: bila state menyebut versi
-   jalan lain dari yang dipegang isolate ini, isinya dimuat dari kv. */
+/* Dipanggil tiap blok cron sesudah state dibaca. Versi 16: patokannya baris kv
+   'jalan:versi' yang ikut terbaca bersama state (`s.jk`), supaya versi yang
+   ditulis /api/jalan/segarkan langsung dipakai blok berikutnya. Tanpa baris itu
+   (gudang belum pernah terbaca) tetap nomor versi di state, seperti versi 15. */
 async function sesuaikanJalan(env, s) {
-  if (!s.jv || s.jv === JALAN.versi) return;
-  try { await muatJalanKV(env); } catch (e) { console.log(`jalan v${s.jv} tidak terbaca dari kv: ${String(e.message || e)}`); }
+  const k = s.jk && s.jk.versi ? s.jk : null;
+  if (k ? jalanSama(k) : (!s.jv || s.jv === JALAN.versi)) return;
+  try { await muatJalanKV(env); }
+  catch (e) { console.log(`jalan v${k ? k.versi : s.jv} tidak terbaca dari kv: ${String(e.message || e)}`); }
 }
 
-/* Jalur HTTP: nomor versi di kv dibaca paling sering sekali per lima menit. */
+/* Jalur HTTP: kunci versi di kv dibaca paling sering sekali per JALAN_HTTP_MS. */
 async function segarkanJalan(env) {
   const kini = Date.now();
   if (kini - jalanDiperiksa < JALAN_HTTP_MS) return;
   jalanDiperiksa = kini;
   try {
-    const v = Number(await ambilKV(env, "jalan:versi")) || 0;
-    if (v && v !== JALAN.versi) await muatJalanKV(env);
+    const k = uraiKunciJalan(await ambilKV(env, "jalan:versi"));
+    if (k.versi && !jalanSama(k)) await muatJalanKV(env);
   } catch (e) { /* tetap memakai yang dipegang */ }
 }
 
-/* Blok A, menit kelipatan lima: tanya gudang. Mengembalikan perintah D1 untuk
-   menyimpan versi baru (ikut batch akhir blok), atau daftar kosong. */
-async function periksaGudangJalan(env) {
+/* Tanya gudang data site. pVersi = versi yang dipegang (jawabannya cukup
+   {versi, sama:true} bila masih aktif), atau null untuk selalu meminta isi
+   lengkap beserta waktu aktifnya. Melempar galat berpesan bila gagal. */
+async function tanyaGudangJalan(env, pVersi) {
   const url = (env.SUPABASE_URL || SUPA_URL).replace(/\/+$/, "") + "/rest/v1/rpc/site_jalan_worker";
   const key = env.SUPABASE_ANON_KEY || SUPA_KEY;
   const opsi = {
     method: "POST",
     headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" },
-    body: JSON.stringify({ p_versi: JALAN.versi || null }),
+    body: JSON.stringify({ p_versi: pVersi || null }),
   };
   if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") opsi.signal = AbortSignal.timeout(BATAS_TUNGGU_MS);
-  let j;
-  try {
-    const r = await fetch(url, opsi);
-    if (!r.ok) { console.log(`gudang jalan HTTP ${r.status}, tetap jalan v${JALAN.versi}`); return []; }
-    j = await r.json();
-  } catch (e) { console.log(`gudang jalan tidak terjangkau, tetap jalan v${JALAN.versi}: ${String(e.message || e)}`); return []; }
-  if (!j || !j.versi || j.sama || j.versi === JALAN.versi) return [];
+  let r;
+  try { r = await fetch(url, opsi); }
+  catch (e) { throw new Error(`gudang jalan tidak terjangkau: ${String(e.message || e)}`); }
+  if (!r.ok) throw new Error(`gudang jalan HTTP ${r.status}`);
+  return await r.json();
+}
+
+/* Memeriksa isi jalan dari gudang, lalu memasangnya. Mengembalikan {perintah}
+   (dua upsert kv untuk disimpan pemanggil) atau {galat} — yang ditolak tidak
+   dipasang sama sekali. */
+function terimaJalan(env, j) {
   const galat = periksaJalan(j.data);
-  if (galat) { console.log(`jalan v${j.versi} DITOLAK (${galat}); tetap jalan v${JALAN.versi}`); return []; }
-  pasangJalan(j.data, j.versi, j.judul);
-  console.log(`jalan v${j.versi} dipasang: ${RUAS.length} potong, batas luar ${BATAS_LUAR}`);
-  const isi = JSON.stringify({ versi: j.versi, judul: JALAN.judul, data: j.data });
+  if (galat) return { galat };
+  pasangJalan(j.data, j.versi, j.judul, Date.parse(j.diubah_pada) || Date.now());
+  const isi = JSON.stringify({ versi: j.versi, judul: JALAN.judul, aktif: JALAN.aktif, data: j.data });
   const tulis = (k, v) => env.DB.prepare(`INSERT INTO kv (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v`).bind(k, v);
-  return [tulis("jalan", isi), tulis("jalan:versi", String(j.versi))];
+  return { perintah: [tulis("jalan", isi), tulis("jalan:versi", kunciJalan(j.versi, JALAN.aktif))] };
+}
+
+/* Blok A, menit kelipatan lima: tanya gudang. Mengembalikan perintah D1 untuk
+   menyimpan versi baru (ikut batch akhir blok), atau daftar kosong. Sejak versi
+   16 ini cadangan: biasanya versi baru sudah dipasang /api/jalan/segarkan. */
+async function periksaGudangJalan(env) {
+  let j;
+  try { j = await tanyaGudangJalan(env, JALAN.versi); }
+  catch (e) { console.log(`${String(e.message || e)}, tetap jalan v${JALAN.versi}`); return []; }
+  if (!j || !j.versi || j.sama || j.versi === JALAN.versi) return [];
+  const t = terimaJalan(env, j);
+  if (t.galat) { console.log(`jalan v${j.versi} DITOLAK (${t.galat}); tetap jalan v${JALAN.versi}`); return []; }
+  console.log(`jalan v${j.versi} dipasang: ${RUAS.length} potong, batas luar ${BATAS_LUAR}`);
+  return t.perintah;
+}
+
+/* Versi 16 — /api/jalan/segarkan. Digital Twin memanggilnya sesaat sesudah admin
+   menerbitkan atau memulihkan jalan, supaya Worker tidak menunggu pemeriksaan
+   menit kelipatan lima. Gudang selalu ditanya isi lengkapnya (p_versi null):
+   hanya dengan begitu waktu aktif ikut terbaca, termasuk saat Pulihkan
+   mengaktifkan lagi nomor lama. Pembandingnya kunci di kv, bukan isolate ini —
+   kv itulah yang dibaca cron dan isolate lain. Bila penulisan kv gagal, isolate
+   kembali ke jalan sebelumnya, supaya tidak pernah melayani versi yang tidak
+   tersimpan. Tanpa login: pemanggil hanya bisa membuat Worker menyamakan diri
+   dengan gudang. Tidak memeriksa skema — tabel kv dibuat cron. */
+async function segarkanDariGudang(env) {
+  const jawab = (o, s = 200) =>
+    json(Object.assign({ versi: JALAN.versi, judul: JALAN.judul, aktif: JALAN.aktif || 0 }, o), s);
+  const kini = Date.now();
+  if (kini - segarTerakhir < SEGAR_JEDA_MS) return jawab({ ok: true, berubah: false, hasil: "baru saja diperiksa" });
+  segarTerakhir = kini;
+
+  let k, j;
+  try { k = uraiKunciJalan(await ambilKV(env, "jalan:versi")); }
+  catch (e) { return jawab({ ok: false, berubah: false, hasil: `kv tidak terbaca: ${String(e.message || e)}` }, 502); }
+  try { j = await tanyaGudangJalan(env, null); }
+  catch (e) { return jawab({ ok: false, berubah: false, hasil: String(e.message || e) }, 502); }
+  if (!j || !j.versi || !j.data) return jawab({ ok: false, berubah: false, hasil: "gudang belum berisi jalan" });
+
+  const aktif = Date.parse(j.diubah_pada) || 0;
+  if (j.versi === k.versi && (!aktif || aktif === k.aktif)) {
+    // kv sudah memegang versi ini; isolate ini cukup menyusul kv.
+    jalanDiperiksa = 0;
+    await segarkanJalan(env);
+    return jawab({ ok: true, berubah: false, hasil: "sama" });
+  }
+
+  const lama = { RUAS, BATAS_LUAR, TOLERANSI_RUAS, BATAS_MIN, JALAN, indeks };
+  const t = terimaJalan(env, j);
+  if (t.galat) {
+    console.log(`jalan v${j.versi} DITOLAK lewat /api/jalan/segarkan (${t.galat}); tetap jalan v${JALAN.versi}`);
+    return jawab({ ok: false, berubah: false, hasil: `ditolak: ${t.galat}` });
+  }
+  try {
+    await env.DB.batch(t.perintah);
+  } catch (e) {
+    ({ RUAS, BATAS_LUAR, TOLERANSI_RUAS, BATAS_MIN, JALAN, indeks } = lama);
+    console.log(`jalan v${j.versi} gagal disimpan lewat /api/jalan/segarkan: ${String(e.message || e)}`);
+    return jawab({ ok: false, berubah: false, hasil: `gagal disimpan: ${String(e.message || e)}` }, 502);
+  }
+  jalanDiperiksa = Date.now();
+  console.log(`jalan v${j.versi} dipasang lewat /api/jalan/segarkan: ${RUAS.length} potong, batas luar ${BATAS_LUAR}`);
+  return jawab({ ok: true, berubah: true, hasil: "baru" });
 }
 
 /* ------------------------------------------------------------------ jejak GPS
@@ -1895,12 +2051,17 @@ const SEBELUM = { A: ["C", -60000], B: ["A", 0], C: ["B", 0] };
 async function muatSimpananBlok(env, nama, T) {
   const [p, geser] = SEBELUM[nama];
   const Tp = T + geser;
-  const [rs, rk] = await env.DB.batch([
+  /* Versi 16: kunci jalan di kv ikut dibaca dalam batch yang sama (sesuaikanJalan),
+     supaya versi yang dipasang /api/jalan/segarkan dipakai mulai blok ini. */
+  const [rs, rk, rj] = await env.DB.batch([
     env.DB.prepare(`SELECT v FROM kv WHERE k = 'state'`),
     env.DB.prepare(`SELECT json_extract(v, '$.m') AS m, json_extract(v, '$.g') AS g FROM kv WHERE k = ? AND json_valid(v)`)
       .bind("blok:" + p),
+    env.DB.prepare(`SELECT v FROM kv WHERE k = 'jalan:versi'`),
   ]);
+  const jk = rj?.results?.[0]?.v != null ? uraiKunciJalan(rj.results[0].v) : null;
   let s = uraiState(rs?.results?.[0]?.v ?? null);
+  s.jk = jk;
   s.tunggu = 0;
   const klaim = rk?.results?.[0];
   if (Number(s.blok[p]) === Tp || Number(klaim?.m) !== Tp) return s;
@@ -1922,6 +2083,7 @@ async function muatSimpananBlok(env, nama, T) {
     } catch (e) { sebab = "galat"; break; }
   }
   s = await muatSimpanan(env);
+  s.jk = jk;
   s.tunggu = Date.now() - awal;
   s.tungguSebab = Number(s.blok[p]) === Tp ? "tersimpan" : sebab;
   return s;
@@ -3059,6 +3221,12 @@ export default {
     const url = new URL(req.url);
 
     try {
+      /* Versi 16: Digital Twin memanggil ini sesudah admin menerbitkan atau
+         memulihkan jalan. Ditangani sebelum pemeriksaan skema dan penyegaran
+         jalan di bawah: yang disentuh hanya baris kv jalan, dan jalan disamakan
+         sendiri dengan gudang (segarkanDariGudang). */
+      if (url.pathname === "/api/jalan/segarkan") return await segarkanDariGudang(env);
+
       /* /api/unit dipanggil tiap 10 detik oleh setiap Speed Watcher dan tidak
          menyentuh tabel pelanggaran; /api/batas tidak menyentuh D1 sama sekali.
          Keduanya tidak menjalankan pemeriksaan skema, supaya isolate baru tidak
@@ -3078,6 +3246,10 @@ export default {
         return json({
           jumlah: units.length,
           batas_luar: BATAS_LUAR,
+          /* Versi 16: halaman membandingkan ini dengan jalan yang terpasang di
+             layar dan langsung menarik /api/jalan bila berbeda. */
+          versi_jalan: JALAN.versi,
+          jalan_aktif: JALAN.aktif || 0,
           waktu_server: Date.now(),
           unit: units,
         });
@@ -3185,7 +3357,7 @@ export default {
           belah = { dipindah: 0, kejadian: 0, waktu: null, diperiksa: null, berikut: null, catatan: "belum dijalankan" };
         }
         return json({
-          versi_worker: 15,
+          versi_worker: 16,
           terhubung: !!cek && kini - cek < 120000,
           cek_terakhir: cek,
           jumlah_unit: Number(meta.jumlah) || 0,
@@ -3195,6 +3367,7 @@ export default {
           versi_jalan: JALAN.versi,
           judul_jalan: JALAN.judul,
           jalan_dimuat: JALAN.dimuat,
+          jalan_aktif: JALAN.aktif || 0,
           titik_jalan: RUAS.reduce((a, r) => a + r.p.length, 0),
           jejak: JEJAK_HARI + " hari terakhir",
           terbagi,
@@ -3278,6 +3451,7 @@ export default {
           toleransi_ruas_m: TOLERANSI_RUAS,
           jumlah_ruas: Object.keys(urut).length,
           versi_jalan: JALAN.versi,
+          jalan_aktif: JALAN.aktif || 0,
           ruas: urut,
         });
       }
@@ -3286,10 +3460,13 @@ export default {
          luar ruas, toleransi, dan versinya. Halaman Speed Watcher menggambar
          peta dari sini, jadi layar dan server selalu menilai ruas yang sama. */
       if (url.pathname === "/api/jalan") {
+        /* Versi 16: `aktif` = saat versi ini diaktifkan di gudang. Halaman memakainya
+           untuk menolak jawaban isolate yang belum menyusul. Cache dipendekkan ke
+           15 detik: jalan kini bisa berganti dalam hitungan detik. */
         return new Response(JSON.stringify({
-          versi: JALAN.versi, judul: JALAN.judul, dimuat: JALAN.dimuat,
+          versi: JALAN.versi, judul: JALAN.judul, dimuat: JALAN.dimuat, aktif: JALAN.aktif || 0,
           batas_luar: BATAS_LUAR, toleransi_m: TOLERANSI_RUAS, ruas: RUAS,
-        }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60", ...CORS } });
+        }), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=15", ...CORS } });
       }
 
       /* Jejak GPS untuk putar ulang shift dan saran jalan di Digital Twin.

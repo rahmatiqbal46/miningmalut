@@ -9103,6 +9103,11 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       var r = await G.pulihkan(jenis, v.versi, aktifKini);
       if (r && r.galat === 'bentrok') throw new Error('Versi aktif baru saja diganti admin lain. Muat ulang lalu ulangi.');
       toast(jenis + ' v' + v.versi + ' aktif lagi.');
+      /* Worker v16: jalan yang dipulihkan langsung dipakai Speed Watcher, sama dengan terbit. */
+      if (jenis === 'jalan') segarkanWorkerJalan().then(function (d) {
+        if (d && !d.lama && Number(d.versi) === v.versi) toast('Speed Watcher memakai jalan v' + v.versi + ' sekarang.', 5000);
+        else toast('Worker Speed Watcher memakai jalan v' + v.versi + ' paling lambat 5 menit lagi (memeriksa sendiri).', 7000);
+      });
       await A().muatUlangData([jenis]); pilih(aktif);
     } catch (e) { toast('Gagal memulihkan: ' + e.message, 6000); }
   }
@@ -9699,7 +9704,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
           h('button', { type: 'button', class: 'btn btn-kecil', text: 'Samakan elevasi dengan topo', onclick: function () {
             var rs = J.ed.ruas()[i]; J.ed.ubahRuas(i, { bagian: rs.bagian.map(function (bg) { return bg.map(function (p) { return [p[0], p[1], Math.round(hAktif(p[0], p[1]) * 10) / 10]; }); }) }); toast('Elevasi simpul ' + rs.nama + ' disamakan dengan topo aktif.'); } }),
           h('button', { type: 'button', class: 'btn btn-kecil btn-bahaya', text: 'Hapus ruas', onclick: function () { if (confirm('Hapus ruas ' + r.nama + '?')) J.ed.hapusRuas(i); } }))
-      ], 'Batas kecepatan di sini dipakai Worker Speed Watcher untuk menilai pelanggaran, paling lambat 5 menit sesudah terbit.'));
+      ], 'Batas kecepatan di sini dipakai Worker Speed Watcher untuk menilai pelanggaran mulai menit berikutnya sesudah terbit.'));
     }
     var dfAtas = diffJalan();
     if (dfAtas.length || J.sedang || J.sebaran) samping.appendChild(kartuPerubahanJalan(dfAtas));
@@ -9766,30 +9771,70 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       pilih('jalan');
     } catch (e) { J.sedang = null; toast('Gagal terbit: ' + e.message, 8000); isiSampingJalan(); }
   }
+  /* Worker Speed Watcher v16 (26 Oktober 2026): minta server memakai jalan aktif
+     SEKARANG lewat POST /api/jalan/segarkan. Tanpa ini Worker baru memeriksa gudang
+     di menit kelipatan lima, dan halaman Speed Watcher menyusul sampai ±15 menit
+     kemudian. Jawaban Worker: {ok, versi, aktif, berubah, hasil}. {lama:true} bila
+     Worker belum versi 16 (404); null bila tidak terjangkau. */
+  async function segarkanWorkerJalan() {
+    try {
+      var r = await fetch(A().KONFIG.worker + '/api/jalan/segarkan', { method: 'POST', cache: 'no-store' });
+      if (r.status === 404) return { lama: true };
+      return await r.json();
+    } catch (e) { return null; }
+  }
   function sebaranJalan(v) {
     var baris = {}, w = h('div', { class: 'sebaran' }, h('div', { style: 'font-size:12.5px;font-weight:600;grid-template-columns:1fr', text: 'Terbit v' + v + ' · ' + jamWIT(Date.now()) + ' WIT' }));
     function tambah(k, nama, status, warna) { var i = h('i', { style: 'background:' + warna }), s = h('span', { class: 'redup', text: status }); baris[k] = { i: i, s: s }; w.appendChild(h('div', null, i, h('span', { text: nama }), s)); }
     tambah('twin', 'Digital Twin', 'dipakai sekarang', 'var(--good)');
-    tambah('worker', 'Worker Speed Watcher', 'menunggu (≤ 5 menit)', 'var(--warn)');
+    tambah('worker', 'Worker Speed Watcher', 'meminta server memakai v' + v + '…', 'var(--warn)');
     tambah('sw', 'Speed Watcher (halaman)', 'menyusul Worker', 'var(--ink2)');
     tambah('amora', 'AMORA', 'saat dibuka · diperiksa tiap 10 menit', 'var(--ink2)');
     tambah('wr', 'Water & Road', 'saat dibuka', 'var(--ink2)');
-    var mulai = Date.now(), cfg = A().KONFIG;
+    var mulai = Date.now(), cfg = A().KONFIG, pernahTampil = false;
+    /* Kartu ini baru dipasang ke halaman sesudah fungsi ini kembali, jadi pantauan
+       berjalan selama kartunya belum pernah tampil atau masih tampil. (Sampai
+       versi ini syaratnya w.isConnected saja — salah sejak awal, sehingga
+       pantauannya tidak pernah berjalan dan kartu tetap "menunggu".) */
+    function hidup() { if (w.isConnected) pernahTampil = true; return !pernahTampil || w.isConnected; }
+    function berhasil(versi, seketika) {
+      baris.worker.s.textContent = 'memakai v' + versi + ' · ' + jamWIT(Date.now()) + ' WIT';
+      baris.worker.i.style.background = 'var(--good)';
+      baris.sw.s.textContent = seketika ? 'ruas & batas baru dalam ±30 detik' : 'ruas & batas baru dalam ≤ 5 menit';
+      baris.sw.i.style.background = 'var(--good)';
+    }
     (async function tunggu() {
-      while (Date.now() - mulai < 8 * 60000 && w.isConnected !== false) {
-        try {
-          var r = await fetch(cfg.worker + '/api/status', { cache: 'no-store' });
-          if (r.ok) {
-            var d = await r.json();
-            if (d.versi_jalan == null) { baris.worker.s.textContent = 'Worker belum versi 9 (tetap memakai jalan bawaan)'; baris.worker.i.style.background = 'var(--bad)'; return; }
-            if (Number(d.versi_jalan) >= v) {
-              baris.worker.s.textContent = 'memakai v' + d.versi_jalan + ' · ' + jamWIT(Date.now()) + ' WIT'; baris.worker.i.style.background = 'var(--good)';
-              baris.sw.s.textContent = 'ruas & batas baru dalam ≤ 5 menit'; baris.sw.i.style.background = 'var(--good)'; return;
-            }
-            baris.worker.s.textContent = 'masih v' + d.versi_jalan + ' · menunggu';
+      var lama = false, minta = 0;
+      while (Date.now() - mulai < 10 * 60000 && hidup()) {
+        if (!lama && minta < 4) {
+          /* Worker v16: minta server memakai versi ini sekarang. Diulang beberapa
+             kali bila jawabannya belum menyebut v (Worker membatasi permintaan
+             ini sekali per 5 detik per isolate). */
+          minta++;
+          var d = await segarkanWorkerJalan();
+          if (d && d.lama) lama = true;
+          else if (d && Number(d.versi) >= v) { berhasil(d.versi, true); return; }
+          else if (d && d.ok === false && /^ditolak/.test(d.hasil || '')) {
+            baris.worker.s.textContent = 'menolak v' + v + ' (' + d.hasil + ') · tetap v' + d.versi; baris.worker.i.style.background = 'var(--bad)'; return;
           }
-        } catch (e) { baris.worker.s.textContent = 'Worker tidak terjangkau · mencoba lagi'; }
-        await new Promise(function (r2) { setTimeout(r2, 20000); });
+          else baris.worker.s.textContent = d ? 'masih v' + d.versi + ' · mencoba lagi' : 'Worker tidak terjangkau · mencoba lagi';
+        } else {
+          // Worker lama (memeriksa gudang sendiri tiap 5 menit) atau permintaan di atas belum berhasil.
+          try {
+            var r = await fetch(cfg.worker + '/api/batas', { cache: 'no-store' });
+            if (r.ok) {
+              var b = await r.json();
+              if (b.versi_jalan == null) { baris.worker.s.textContent = 'Worker belum versi 9 (tetap memakai jalan bawaan)'; baris.worker.i.style.background = 'var(--bad)'; return; }
+              if (Number(b.versi_jalan) >= v) { berhasil(b.versi_jalan, !lama); return; }
+              baris.worker.s.textContent = 'masih v' + b.versi_jalan + ' · menunggu' + (lama ? ' (Worker lama, memeriksa tiap 5 menit)' : '');
+            }
+          } catch (e) { baris.worker.s.textContent = 'Worker tidak terjangkau · mencoba lagi'; }
+        }
+        await new Promise(function (r2) { setTimeout(r2, Date.now() - mulai < 60000 ? 6000 : 20000); });
+      }
+      if (hidup()) {
+        baris.worker.s.textContent = 'belum terkonfirmasi · Worker memeriksa gudang sendiri tiap 5 menit';
+        baris.worker.i.style.background = 'var(--warn)';
       }
     })();
     return w;
@@ -10767,7 +10812,7 @@ window.DUNIA_PAKAL={"pusat":[0.787877,128.337652],"R":6371000.0,"bumi":{"gambar"
       utama.appendChild(kartu('Riwayat ' + ({ topo: 'topo', citra: 'citra', jalan: 'jalan', area: 'area kerja', armada: 'model unit', air: 'air & sump' })[j], w));
       isiRiwayat(j, w, false);
     });
-    samping.appendChild(kartu('Cara kerja', null, 'Setiap terbit membuat versi baru dan langsung menjadi aktif. Digital Twin memeriksa perubahan tiap 60 detik, AMORA tiap 10 menit, Water & Road saat dibuka. Worker Speed Watcher memakai jalan dan batas baru paling lambat 5 menit; halaman Speed Watcher ikut menyusul (ruas tiap 5 menit, citra tiap 30 menit). Berkas topo dan citra lama boleh dihapus untuk menghemat kuota; catatan versinya tetap ada.'));
+    samping.appendChild(kartu('Cara kerja', null, 'Setiap terbit membuat versi baru dan langsung menjadi aktif. Digital Twin memeriksa perubahan tiap 60 detik, AMORA tiap 10 menit, Water & Road saat dibuka. Jalan dan batas baru langsung dikirim ke Worker Speed Watcher saat terbit atau dipulihkan dan dipakai menilai pelanggaran mulai menit berikutnya; halaman Speed Watcher menyusul dalam ±30 detik, citra tiap 30 menit. Bila pengiriman itu gagal, Worker memeriksa sendiri tiap 5 menit. Berkas topo dan citra lama boleh dihapus untuk menghemat kuota; catatan versinya tetap ada.'));
   }
   async function semai(pr) {
     kosongkan(pr);

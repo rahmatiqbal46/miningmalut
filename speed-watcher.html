@@ -3562,13 +3562,24 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
      Batas kecepatan diambil dari jawaban yang SAMA dengan geometrinya, bukan dari
      /api/batas terpisah: panggilan kedua bisa jatuh ke isolate Worker yang belum
      menyusul versi baru, dan halaman lalu memakai ruas baru dengan batas lama.
-     Lebar zona = 2 × toleransi Worker, supaya layar dan server menilai ruas sama. */
+     Lebar zona = 2 × toleransi Worker, supaya layar dan server menilai ruas sama.
+
+     Worker v16 (26 Oktober 2026): jawabannya membawa `aktif`, yaitu saat versi itu
+     diaktifkan di gudang. Waktu aktif selalu maju, sedangkan nomor versi tidak
+     (Pulihkan mengaktifkan lagi nomor lama). Jawaban yang waktu aktifnya lebih tua
+     dari yang sudah terpasang datang dari isolate Worker yang belum menyusul, dan
+     diabaikan — layar tidak bolak-balik antara versi lama dan baru. */
   var RUAS_TERTANAM = null, LEBAR_TERTANAM = null;
   function batasDariJalan(d, versi) {
     var t = {}, n = 0;
     d.ruas.forEach(function (r) { var b = Number(r.b); if (!(r.n in t)) n++; if (!(r.n in t) || b < t[r.n]) t[r.n] = b; });
     return { batas_luar: Number(d.batas_luar) || 35, toleransi_ruas_m: Number(d.toleransi_m) || 20,
              jumlah_ruas: n, ruas: t, versi_jalan: versi };
+  }
+  /* "26/10 09.10 WIT" — waktu aktif jalan, selalu dalam WIT apa pun zona waktu peramban. */
+  function waktuAktif(ms) {
+    var d = new Date(Number(ms) + 9 * 3600000);
+    return pad(d.getUTCDate()) + '/' + pad(d.getUTCMonth() + 1) + ' ' + pad(d.getUTCHours()) + '.' + pad(d.getUTCMinutes()) + ' WIT';
   }
   function tarikJalan() {
     return fetch(API + '/api/jalan', { cache: 'no-store' })
@@ -3577,15 +3588,22 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
         var S = window.PAKAL_SITE; if (!S) return;
         if (!RUAS_TERTANAM) { RUAS_TERTANAM = S.ruas; LEBAR_TERTANAM = S.lebarRuas || 40; }
         var versi = Number(d && d.versi) || 0;
+        /* Worker lama (sebelum v16, atau sesudah rollback) tidak mengirim `aktif`:
+           jawabannya diterima dengan aturan lama (nomor versi), bukan dianggap tertinggal. */
+        var adaAktif = !!d && d.aktif != null;
+        var aktif = adaAktif ? (Number(d.aktif) || 0) : 0;
         var ruas = (d && d.ruas || []).filter(function (r) { return r && r.n && r.p && r.p.length >= 2; });
         if (!versi || !ruas.length) {
-          if (S.versiRuas) { S.ruas = RUAS_TERTANAM; S.lebarRuas = LEBAR_TERTANAM; S.versiRuas = 0; S.judulRuas = null; pasangRuas(); tarikBatas(); }
+          if (S.versiRuas) { S.ruas = RUAS_TERTANAM; S.lebarRuas = LEBAR_TERTANAM; S.versiRuas = 0; S.aktifRuas = 0; S.judulRuas = null; pasangRuas(); tarikBatas(); }
           return;
         }
-        if (!BATAS || Number(BATAS.versi_jalan || 0) !== versi) {
+        if (adaAktif && S.aktifRuas && aktif < S.aktifRuas) return;    // isolate Worker yang belum menyusul
+        if (!BATAS || Number(BATAS.versi_jalan || 0) !== versi || (BATAS.aktif_jalan || 0) !== aktif) {
           BATAS = batasDariJalan(Object.assign({}, d, { ruas: ruas }), versi);
+          BATAS.aktif_jalan = aktif;
           terapkanBatas(); kunciSetelanBatas();
         }
+        S.aktifRuas = aktif;
         if (versi === (S.versiRuas || 0)) return;
         var ke = {};
         S.ruas = ruas.map(function (r) {
@@ -3596,10 +3614,32 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
         S.versiRuas = versi; S.judulRuas = d.judul || null;
         pasangRuas();
         terapkanBatas();
-        catat('Ruas jalan versi ' + versi + (d.judul ? ' · ' + d.judul : '') + ', sama dengan yang dipakai server.');
+        catat('Ruas jalan versi ' + versi + (d.judul ? ' · ' + d.judul : '') +
+              (aktif ? ' · aktif sejak ' + waktuAktif(aktif) : '') + ', sama dengan yang dipakai server.');
         setTimeout(labelUlang, 400);
       })
       .catch(function () { /* Worker lama (sebelum versi 9) atau tidak terjangkau: ruas tertanam tetap dipakai */ });
+  }
+
+  /* Worker v16: /api/unit (tiap 10 detik) menyebut versi jalan yang dipegang
+     server beserta waktu aktifnya. Begitu berbeda dari yang terpasang di layar,
+     /api/jalan langsung ditarik — batas yang diubah admin di Digital Twin tampil
+     di sini dalam hitungan detik, tanpa menunggu tarikan rutin tiap 5 menit.
+     Jawaban yang waktu aktifnya lebih tua diabaikan (isolate belum menyusul).
+     Paling sering sekali per 9 detik — kira-kira sekali per tarikan unit — jadi
+     selama isolate Worker masih berbeda (≤ 30 detik) paling banyak tiga tarikan
+     tambahan. Worker lama tidak mengirim versi_jalan: tarikan rutin 5 menit
+     tetap berjalan seperti dulu. */
+  var jalanDiminta = 0, workerSeketika = false;
+  function cekVersiJalan(v, a) {
+    var S = window.PAKAL_SITE; if (!S || !(v > 0)) return;
+    if (!workerSeketika) { workerSeketika = true; if (BATAS) kunciSetelanBatas(); }
+    var pa = S.aktifRuas || 0;
+    if (v === (S.versiRuas || 0) && a === pa) return;
+    if (pa && a < pa) return;
+    if (Date.now() - jalanDiminta < 9000) return;
+    jalanDiminta = Date.now();
+    tarikJalan();
   }
 
   /* Bingkai citra tertanam (UTM 52N), sama dengan IMG_BOUNDS di AMORA. */
@@ -3709,8 +3749,17 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) {
         if (!d || !d.ruas) throw new Error('tabel batas tidak terbaca');
-        // jangan pernah mundur ke versi jalan yang lebih lama (isolate Worker yang tertinggal)
-        if (BATAS && Number(BATAS.versi_jalan || 0) > Number(d.versi_jalan || 0)) return;
+        /* Jangan pernah mundur ke jalan yang lebih lama (isolate Worker yang
+           tertinggal). Worker v16 menyebut waktu aktifnya — itu patokannya, karena
+           Pulihkan bisa mengaktifkan lagi nomor versi lama; Worker lama hanya punya
+           nomor versi. */
+        var adaAktif = d.jalan_aktif != null;
+        d.aktif_jalan = adaAktif ? (Number(d.jalan_aktif) || 0) : 0;
+        if (BATAS) {
+          var aP = BATAS.aktif_jalan || 0;
+          if (adaAktif && (aP || d.aktif_jalan) ? d.aktif_jalan < aP
+                                                : Number(BATAS.versi_jalan || 0) > Number(d.versi_jalan || 0)) return;
+        }
         BATAS = d;
         terapkanBatas();
         kunciSetelanBatas();
@@ -3742,7 +3791,14 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     return 'Batas di luar ruas ' + BATAS.batas_luar + ' km/jam. ' +
       BATAS.jumlah_ruas + ' ruas punya batasnya sendiri, lihat daftar Ruas jalan. ' +
       'Seluruhnya diatur admin di ' + TEMPAT_ATUR + ' dan berlaku sama untuk semua pengguna' +
-      (BATAS.versi_jalan ? ' (jalan versi ' + BATAS.versi_jalan + ').' : '.');
+      (BATAS.versi_jalan ? ' (jalan versi ' + BATAS.versi_jalan +
+        (BATAS.aktif_jalan ? ', aktif sejak ' + waktuAktif(BATAS.aktif_jalan) : '') + ').' : '.');
+  }
+  /* Seberapa cepat perubahan dari Digital Twin sampai ke layar ini: Worker v16
+     memberitahukannya lewat /api/unit, Worker lama baru lewat tarikan 5 menit. */
+  function teksSusul() {
+    return workerSeketika ? 'perubahan dari Digital Twin tampil di sini kurang dari 1 menit sesudah terbit.'
+                          : 'perubahan dari Digital Twin tampil di sini paling lambat ±15 menit sesudah terbit.';
   }
 
   /* Kolom isian batas diganti keterangan baca-saja. Elemen #cfgLimit sendiri
@@ -3771,10 +3827,10 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
       };
       kunci();
       new MutationObserver(kunci).observe(zl, { childList: true });
-      var h = zl.parentNode ? zl.parentNode.querySelector('.hint') : null;
-      if (h) h.textContent = 'Batas tiap ruas diatur admin di ' + TEMPAT_ATUR + '. ' +
-                             'Server memakai angka yang sama untuk semua pengguna; perubahan berlaku paling lambat 5 menit.';
     }
+    var h = zl && zl.parentNode ? zl.parentNode.querySelector('.hint') : null;
+    if (h) h.textContent = 'Batas tiap ruas diatur admin di ' + TEMPAT_ATUR + '. ' +
+                           'Server memakai angka yang sama untuk semua pengguna; ' + teksSusul();
     var ul = el('unitList');
     if (ul && !ul.dataset.terkunci) {
       ul.dataset.terkunci = '1';
@@ -3820,6 +3876,8 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
 
         App.lastPoll = Date.now();
         gagal = 0;
+        // Worker v16: versi jalan server ikut di jawaban ini (lihat cekVersiJalan).
+        if (d.versi_jalan != null) cekVersiJalan(Number(d.versi_jalan) || 0, Number(d.jalan_aktif) || 0);
         setConn('on', 'Terhubung · ' + d.jumlah + ' unit');
         setPoll('on live', 'Mengambil tiap ' + (AMBIL_MS / 1000) + ' dtk');
         if (baru || !adaUnit) { adaUnit = true; try { renderUnitList(); } catch (e) {} }
@@ -4747,7 +4805,8 @@ window.PAKAL_SITE.peta.url = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
     tarikBatas();
     /* Ruas dan citra terbaru (Digital Twin › Kelola data). Citra disusun sesudah
        ruas terbaca karena bingkainya mengikuti ruas. Ruas diperiksa tiap 5 menit
-       (Worker memeriksa gudang dengan irama yang sama), citra tiap 30 menit. */
+       sebagai cadangan — sejak Worker v16 versi baru sudah ketahuan dari /api/unit
+       tiap 10 detik (cekVersiJalan) — dan citra tiap 30 menit. */
     tarikJalan().then(function () { setTimeout(tarikCitra, 800); });
     setInterval(function () { if (!document.hidden) tarikJalan(); }, 300000);
     setInterval(function () { if (!document.hidden) tarikCitra(); }, 1800000);
