@@ -972,6 +972,7 @@ const PH={};
 const MINEDEV={reklamasi:'rekla',smr:'smr',water:'wr',input:'input'}; let minedevLoaded=false;
 const loaded={};
 function showPage(key){
+ window.halamanAktif=key;   // dipakai penyegaran otomatis untuk kembali ke halaman yang sama
  document.querySelectorAll('#nav .item,#nav .leaf').forEach(b=>b.classList.toggle('active',b.dataset.page===key));
  var btnT=document.getElementById('btnTentang');if(btnT){btnT.classList.toggle('active',key==='tentang');if(key==='tentang')btnT.setAttribute('aria-current','page');else btnT.removeAttribute('aria-current');}
  // expand group containing active leaf
@@ -1066,6 +1067,19 @@ function tickJam(){
 }
 tickJam(); setInterval(tickJam,1000);
 
+/* Halaman yang dibuka sebelum penyegaran otomatis (blok segar-otomatis).
+   Didefinisikan di sini karena showApp() bisa langsung jalan saat halaman dimuat. */
+var SEGAR_KEY='mm_segar_halaman';
+function ambilHalamanPulih(){
+  try{
+    var raw=sessionStorage.getItem(SEGAR_KEY); if(!raw)return null;
+    sessionStorage.removeItem(SEGAR_KEY);
+    var d=JSON.parse(raw);
+    /* Hanya dipakai bila muat ulang baru saja terjadi; catatan lama diabaikan. */
+    if(!d||!d.k||Date.now()-d.t>10*60000)return null;
+    return d.k;
+  }catch(e){return null;}
+}
 let homeTimer=null;
 function showApp(){
  /* Masuk lagi sesudah sesi ditolak: akun yang sama melanjutkan dengan modul yang
@@ -1082,7 +1096,7 @@ function showApp(){
  if(av)av.textContent=fullName().split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
  /* Identitas yang dulu tampil di popover Setting kini cukup di tooltip tombol Keluar. */
  judulAkun(); cekAdmin();
- tickJam(); buildBento(); showPage('home'); fetchHomeStats(); if(homeTimer)clearInterval(homeTimer); homeTimer=setInterval(fetchHomeStats,60000);
+ tickJam(); buildBento(); showPage(ambilHalamanPulih()||'home'); fetchHomeStats(); if(homeTimer)clearInterval(homeTimer); homeTimer=setInterval(fetchHomeStats,60000);
 }
 document.getElementById('btnLogin').onclick=async()=>{
  const em=document.getElementById('in_email').value.trim(),pw=document.getElementById('in_pw').value,b=document.getElementById('btnLogin'),er=document.getElementById('loginErr');
@@ -1103,6 +1117,100 @@ function showSwToast(text){var w=document.getElementById('swToastWrap');if(!w){w
 if(authValid())showApp();
 else if(bisaSegar(AUTH)&&!nppAkanAlih())pulihkanSesi();
 else document.getElementById('login').style.display='flex';
+</script><script id="segar-otomatis">
+/* Penyegaran otomatis 30 menit.
+   Layar MiningMalut sering dibiarkan terbuka lama. Sesudah 30 menit sejak
+   halaman terakhir dimuat, halaman dimuat ulang supaya kode dan data terbaru
+   ikut terpakai. Syaratnya:
+   1. Tidak ada yang sedang memakai layar: tidak ada klik, ketik, gulir, atau
+      gerak mouse selama 5 menit, di shell maupun di dalam modul.
+   2. Tidak ada isian yang belum disimpan di modul mana pun:
+      a. Modul yang punya penjaga beforeunload sendiri (Data 1on1, Dispatch
+         Monitoring) ditanya lewat event beforeunload tiruan. Data 1on1 sekalian
+         menyimpan isiannya; muat ulang menunggu cek berikutnya.
+      b. Modul lain: kolom teks/angka/textarea yang diketik sejak halaman dimuat
+         dan isinya masih ada (belum dikosongkan oleh simpan) dianggap belum
+         disimpan. Kolom filter (tanggal, pilihan, centang, pencarian) tidak
+         dihitung. Bila ada isian seperti itu, muat ulang menunggu sampai layar
+         diam 12 jam: isian yang ditinggal selama itu dianggap sudah ditinggalkan.
+   3. Server bisa dijangkau. Kalau jaringan putus, halaman lama dibiarkan tetap
+      tampil (tidak berganti jadi halaman error browser) dan dicoba lagi tiap menit.
+   Halaman yang sedang dibuka (misal Digital Twin atau Speed Watcher) dicatat di
+   sessionStorage lalu dibuka kembali sesudah muat ulang, bukan kembali ke Home. */
+(function(){
+  var UMUR_MS=30*60000, DIAM_MS=5*60000, DIAM_ISIAN_MS=12*3600000;
+  var waktuMuat=Date.now(), aktifTerakhir=Date.now(), sedangCek=false;
+  function tandaAktif(){aktifTerakhir=Date.now();}
+  var EV=['pointerdown','keydown','wheel','touchstart','mousemove','input'];
+  var TIPE_ISIAN={text:1,number:1,email:1,tel:1,url:1,'':1};
+  function catatIsian(e){
+    var el=e.target; if(!el||!el.tagName)return;
+    var tg=el.tagName.toLowerCase();
+    if(tg==='textarea'||(tg==='input'&&TIPE_ISIAN[(el.getAttribute('type')||'').toLowerCase()])){
+      var doc=el.ownerDocument; (doc.__mmIsian||(doc.__mmIsian=new Set())).add(el);
+    }
+  }
+  function pasang(doc,bingkai){
+    if(!doc||doc.__mmSegar)return; doc.__mmSegar=1;
+    EV.forEach(function(n){doc.addEventListener(n,tandaAktif,{capture:true,passive:true});});
+    if(bingkai)doc.addEventListener('input',catatIsian,true);
+  }
+  pasang(document,false);   // shell: hanya aktivitas (kolom login tidak dihitung sebagai isian)
+  function pasangBingkai(f){
+    function coba(){try{pasang(f.contentDocument,true);}catch(e){}}
+    f.addEventListener('load',coba); coba();
+  }
+  document.querySelectorAll('iframe').forEach(pasangBingkai);
+  function adaIsianBelumDisimpan(){
+    var frames=document.querySelectorAll('iframe');
+    for(var i=0;i<frames.length;i++){
+      var w,doc;
+      try{w=frames[i].contentWindow;doc=frames[i].contentDocument;}catch(e){continue;}
+      if(!w||!doc||!doc.body)continue;
+      /* a. penjaga milik modul */
+      try{
+        var ev=new w.Event('beforeunload',{cancelable:true});
+        w.dispatchEvent(ev);
+        if(ev.defaultPrevented)return 'penjaga';
+      }catch(e){}
+      /* b. kolom yang diketik dan isinya masih ada */
+      if(doc.__mmIsian){
+        var ada=false;
+        doc.__mmIsian.forEach(function(el){
+          if(ada)return;
+          if(!el.isConnected||el.disabled||el.readOnly){doc.__mmIsian.delete(el);return;}
+          var v=String(el.value||'').trim();
+          if(v===''||el.value===el.defaultValue){doc.__mmIsian.delete(el);return;}
+          ada=true;
+        });
+        if(ada)return 'ketikan';
+      }
+    }
+    return '';
+  }
+  async function cek(){
+    if(sedangCek)return;
+    if(Date.now()-waktuMuat<UMUR_MS)return;
+    var diam=Date.now()-aktifTerakhir;
+    if(diam<DIAM_MS)return;
+    var isian=adaIsianBelumDisimpan();
+    if(isian==='penjaga')return;
+    if(isian==='ketikan'&&diam<DIAM_ISIAN_MS)return;
+    if(navigator.onLine===false)return;
+    sedangCek=true;
+    try{
+      var r=await fetch(location.pathname+'?segar='+Date.now(),{method:'HEAD',cache:'no-store'});
+      if(!r.ok)return;
+      try{if(window.halamanAktif&&window.halamanAktif!=='home')sessionStorage.setItem(SEGAR_KEY,JSON.stringify({k:window.halamanAktif,t:Date.now()}));}catch(e){}
+      location.reload();
+    }catch(e){/* server tak terjangkau: coba lagi di cek berikutnya */}
+    finally{sedangCek=false;}
+  }
+  setInterval(cek,60000);
+  /* Komputer bangun dari sleep atau tab kembali terlihat: langsung cek. */
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')cek();});
+  window.addEventListener('online',cek);
+})();
 </script><script id="login-npp">
 /* =============================================================================
    Masuk dengan NPP untuk operator dan pengawas (Asesmen Go/No-Go).
