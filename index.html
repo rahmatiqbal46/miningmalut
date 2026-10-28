@@ -383,56 +383,170 @@ iframe.page.show{display:block}
 .ph .back:hover{background:rgba(0,60,60,.14)}
 
 /* ====================================================================== login */
-.login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;background:radial-gradient(130% 120% at 26% 14%, #0d5450 0%, #00302f 46%, #001514 100%)}
-.login canvas.peta{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;
-  transition:opacity .9s cubic-bezier(.16,1,.3,1)}
-.login canvas.peta.siap{opacity:1}
-/* Memulihkan sesi saat halaman dibuka dengan token yang sudah habis: lembar login
-   disembunyikan, peta tetap bergerak, sampai token baru diterima (biasanya < 1 detik).
-   Latar login tetap tanpa tulisan apa pun (permintaan Iqbal, 17 September 2026):
-   keterangan "Memulihkan sesi…" hanya untuk pembaca layar, tidak tampil. */
+/* Layar login, dibangun ulang 28 Oktober 2026 dalam bahasa yang sama dengan hero
+   Home dan halaman Tentang: panggung teal gelap, peta kontur yang tergores sekali
+   saat tampil, garis indeks amber, sorot kursor amber, dan unit yang berjalan.
+   Aturan yang tetap mengikat:
+   - Latar TANPA tulisan apa pun (permintaan Iqbal, 17 September 2026). Semua teks
+     ada di kartu; saat sesi dipulihkan (.pulih) kartu disembunyikan dan yang
+     tersisa hanya gambar. Keterangan "Memulihkan sesi…" hanya untuk pembaca layar.
+   - Peta latar FIKTIF. Layar login terbuka untuk siapa pun, jadi kontur, pit, dan
+     jalan hauling-nya dibangkitkan dari derau berbenih tetap (#dataLatarLogin),
+     bukan kontur Pulau Pakal milik Home dan Tentang.
+   - Kartu adalah lembar kaca yang melayang di atas konten bergambar (pemakaian
+     kaca yang benar, §23.5) dan tetap berefraksi (data-lensa). Tombol dan kolom
+     di dalamnya isian, bukan kaca kedua.
+   - Tidak ada tulisan kecil: teks terkecil di kartu 12 px. */
+.login{position:fixed;inset:0;z-index:100;display:flex;overflow-x:hidden;overflow-y:auto;
+  padding:28px 16px;color:#eaf5f4;color-scheme:dark;
+  background:
+    radial-gradient(54% 66% at 64% 46%, rgba(10,90,86,.66) 0%, rgba(10,90,86,0) 72%),
+    radial-gradient(40% 46% at 100% 100%, rgba(234,144,0,.13) 0%, rgba(234,144,0,0) 64%),
+    linear-gradient(160deg,#00302f 0%,#001f1f 64%,#001a1a 100%)}
+/* Memulihkan sesi saat halaman dibuka dengan token yang sudah habis: kartu
+   disembunyikan, peta tetap bergerak, sampai token baru diterima (biasanya < 1 detik). */
 .login.pulih .card-login{visibility:hidden}
 .pulih-teks{display:none}
 .login.pulih .pulih-teks{display:block;position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
   overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
-/* Latar login tanpa teks apa pun: hanya penunjuk utara sebagai simbol peta. */
-.peta-utara{position:absolute;right:26px;bottom:24px;width:12px;height:17px;pointer-events:none;opacity:.5}
+
+/* --------------------------------------------------------------- latar peta */
+/* Wadah 16 px lebih besar di tiap sisi supaya paralaks tidak memperlihatkan tepi.
+   position:fixed: latar tetap diam walau kartu digulir di layar yang pendek. */
+.latar{position:fixed;inset:-16px;z-index:0;pointer-events:none;transition:transform .9s cubic-bezier(.16,1,.3,1)}
+.latar svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden}
+/* Tebal garis diatur skrip lewat --k (1 / skala tampil), jadi tetap sama dalam
+   piksel layar berapa pun ukuran jendelanya. */
+.latar .laut path{fill:none;stroke:rgba(143,186,184,.11);stroke-width:calc(var(--k,1) * 1px);stroke-linejoin:round}
+.latar .pantai{fill:none;stroke:rgba(178,214,210,.40);stroke-width:calc(var(--k,1) * 1.25px);stroke-linejoin:round}
+.latar .kt{fill:none;stroke:rgba(143,186,184,.24);stroke-width:calc(var(--k,1) * 1.1px);stroke-linejoin:round}
+.latar .kt.indeks{stroke:rgba(234,144,0,.44);stroke-width:calc(var(--k,1) * 1.3px)}
+.latar .jalan{fill:none;stroke:rgba(255,222,170,.30);stroke-width:calc(var(--k,1) * 1.4px);
+  stroke-dasharray:calc(var(--k,1) * 5px) calc(var(--k,1) * 4px);stroke-linecap:round}
+.latar .dermaga{fill:none;stroke:rgba(255,222,170,.45);stroke-width:calc(var(--k,1) * 3px);stroke-linecap:round}
+.latar .laut{opacity:0;animation:lgMuncul 1.6s cubic-bezier(.16,1,.3,1) forwards .1s}
+/* Kontur tergores sekali dari pantai ke puncak; jalan dan unit menyusul. */
+.latar .gores .kt,.latar .gores .pantai{stroke-dasharray:1 1;stroke-dashoffset:1;
+  animation:lgGores 2.2s cubic-bezier(.45,.05,.2,1) forwards;animation-delay:calc(var(--i) * 55ms + 150ms)}
+.latar .jalan-wadah{opacity:0;animation:lgMuncul 1s cubic-bezier(.16,1,.3,1) forwards 2.2s}
+.latar .unit{opacity:0;transition:opacity .8s cubic-bezier(.16,1,.3,1)}
+.latar.jalan-hidup .unit{opacity:1}
+.latar .unit .inti{fill:var(--amber);stroke:#fff3dd;stroke-width:1.4}
+.latar .unit .halo{fill:rgba(234,144,0,.24);animation:hDenyut 2.4s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.latar.selesai .gores .kt,.latar.selesai .gores .pantai{animation:none;stroke-dasharray:none;stroke-dashoffset:0}
+.latar.selesai .laut,.latar.selesai .jalan-wadah{animation:none;opacity:1}
+@keyframes lgGores{to{stroke-dashoffset:0}}
+@keyframes lgMuncul{to{opacity:1}}
+/* Sorot kursor: salinan kontur darat berwarna amber yang hanya terlihat di
+   sekitar kursor (mouse saja), sama dengan hero Home dan Tentang. */
+.latar-sorot{opacity:0;transition:opacity .35s cubic-bezier(.16,1,.3,1);
+  -webkit-mask-image:radial-gradient(250px circle at var(--mx,50%) var(--my,50%),#000 0,rgba(0,0,0,.55) 42%,transparent 72%);
+  mask-image:radial-gradient(250px circle at var(--mx,50%) var(--my,50%),#000 0,rgba(0,0,0,.55) 42%,transparent 72%)}
+.latar-sorot .kt{fill:none;stroke:rgba(255,181,71,.82);stroke-width:calc(var(--k,1) * 1.7px);stroke-linejoin:round}
+.latar-sorot .kt.indeks{stroke:#ffd18a}
+.login.menyorot .latar-sorot{opacity:1}
+/* Simbol peta tanpa teks: penunjuk utara di pojok kanan bawah. */
+.peta-utara{position:fixed;right:26px;bottom:24px;z-index:1;width:12px;height:17px;pointer-events:none;opacity:.5}
 .peta-utara svg{display:block;width:100%;height:100%;fill:#a6cbc9}
 
-/* Lembar login melayang di atas konten bergambar: pemakaian kaca yang benar. */
+/* ------------------------------------------------------------- kartu kaca */
 .card-login{
-  position:relative;width:392px;max-width:calc(100% - 32px);border-radius:26px;
-  padding:30px 28px 24px;color:#eaf5f4;
-  background:linear-gradient(176deg, rgba(0,48,47,.78), rgba(0,31,31,.86));
+  position:relative;z-index:2;flex:0 0 auto;width:440px;max-width:100%;margin:auto;
+  border-radius:24px;padding:32px 32px 24px;color:#eaf5f4;
+  background:linear-gradient(176deg, rgba(0,48,47,.74), rgba(0,31,31,.84));
   backdrop-filter:blur(24px) saturate(1.7);
   -webkit-backdrop-filter:blur(24px) saturate(1.7);
   box-shadow:
-    0 24px 60px rgba(0,16,15,.42),
+    0 30px 80px rgba(0,12,12,.46),
     inset 0 1px 1px rgba(255,255,255,.34),
     inset 0 -10px 24px rgba(255,255,255,.05),
     inset 0 0 0 1px rgba(255,255,255,.14);
+  animation:klNaik .8s cubic-bezier(.16,1,.3,1) both .12s}
+/* Layar lebar: kartu di kiri, peta di kanan, seperti susunan hero Home dan Tentang. */
+@media (min-width:1100px){
+  .login{padding-left:clamp(56px,8.5vw,148px);padding-right:40px}
+  .card-login{margin:auto 0}
 }
-.card-login .lg{margin-bottom:16px}
-.card-login .lg .lambang{
-  width:54px;height:54px;border-radius:15px;
+@keyframes klNaik{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.kl-naik{animation:klNaikIsi .7s cubic-bezier(.16,1,.3,1) both;animation-delay:var(--d,0ms)}
+@keyframes klNaikIsi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Kepala: lambang dan merek MiningMalut. Judulnya tetap satu kalimat untuk
+   pembaca layar, "Masuk ke MiningMalut"; yang berubah hanya susunannya. */
+.kl-kepala{display:flex;align-items:center;gap:14px}
+.kl-kepala .lambang{width:54px;height:54px;flex:0 0 auto;border-radius:15px;
   background:#fff var(--logo) center/contain no-repeat;
-  box-shadow:0 2px 8px rgba(0,20,20,.34), inset 0 0 0 .5px rgba(0,0,0,.08);
-}
-.card-login h1{font-size:var(--f-t1);line-height:var(--lh-t1);font-weight:640;
-  letter-spacing:-.015em;color:#fff}
-.card-login .lead{font-size:var(--f-callout);line-height:1.45;color:#a6cbc9;margin-top:4px}
-/* Daftar tersisip iOS: satu wadah membulat, baris dipisah garis rambut. */
-.card-login .gugus{margin-top:20px;border-radius:12px;overflow:hidden;
-  background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
-.card-login label{display:flex;align-items:center;gap:10px;height:42px;padding:0 13px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
-.card-login label:first-child{box-shadow:none}
-.card-login label svg{width:15px;height:15px;flex:0 0 auto;stroke:#8fb5b4;fill:none;stroke-width:1.9}
-.card-login label .kunci{width:62px;flex:0 0 auto;font-size:var(--f-body);color:#b4d5d4}
-.card-login input{flex:1 1 auto;min-width:0;border:0;background:transparent;outline:none;
-  font:inherit;font-size:var(--f-body);color:#fff}
-.card-login input::placeholder{color:#7ea6a5}
+  box-shadow:0 8px 22px rgba(0,0,0,.34),0 0 0 5px rgba(234,144,0,.12)}
+.kl-judul{display:flex;flex-direction:column;gap:4px;min-width:0;font-weight:inherit}
+.kl-judul .ke{font-size:var(--f-t3);line-height:18px;font-weight:560;color:#a9c9c6}
+.kl-judul .kata{font-size:34px;line-height:36px;font-weight:800;letter-spacing:-.035em;color:#fff;white-space:nowrap}
+.kl-judul .kata span{color:#ffb547}
+.card-login .lead{margin-top:16px;font-size:14px;line-height:20px;color:#a9c9c6}
+
+/* Dua langkah: pilihan masuk, lalu formulir email. */
+.kl-langkah{position:relative;margin-top:24px}
+.kl-langkah.berubah{overflow:clip;overflow-clip-margin:12px;transition:height .42s cubic-bezier(.16,1,.3,1)}
+.kl-panel{display:flex;flex-direction:column}
+.kl-panel[hidden]{display:none}
+.kl-panel.dari-kanan{animation:klDariKanan .42s cubic-bezier(.16,1,.3,1) both}
+.kl-panel.dari-kiri{animation:klDariKiri .42s cubic-bezier(.16,1,.3,1) both}
+@keyframes klDariKanan{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@keyframes klDariKiri{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+
+.kl-opsi{position:relative;display:flex;align-items:center;gap:12px;width:100%;height:48px;padding:0 16px 0 17px;
+  border:0;border-radius:var(--r-pil);font:inherit;font-size:var(--f-t3);font-weight:600;letter-spacing:-.005em;
+  text-align:left;cursor:pointer;transition:filter .15s,background-color .15s,box-shadow .2s,transform .12s}
+.kl-opsi + .kl-opsi{margin-top:18px}
+.kl-opsi svg{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.kl-opsi .t{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kl-opsi.utama{color:#1b1205;background:linear-gradient(180deg,#f3a52a,#dc8a08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 22px rgba(234,144,0,.24)}
+.kl-opsi.utama:hover{filter:brightness(1.06)}
+.kl-opsi.utama .chev{width:16px;height:16px;stroke-width:2.2;transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.kl-opsi.utama:hover .chev{transform:translateX(3px)}
+.kl-opsi:active{transform:scale(.985)}
+/* Ditekan saat SSO belum ada: tombol email berdenyut sekali sebagai penunjuk. */
+.kl-opsi.utama.tunjuk{animation:klTunjuk .9s cubic-bezier(.16,1,.3,1)}
+@keyframes klTunjuk{0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 0 0 rgba(255,181,71,.6)}
+  100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 0 12px rgba(255,181,71,0)}}
+/* SSO ANTAM belum tersedia: tampil sebagai pilihan, tetapi tidak menjalankan apa
+   pun selain memberi tahu (aria-disabled, tetap bisa difokus). */
+.kl-opsi.sso{color:#c3dad8;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);cursor:not-allowed}
+.kl-opsi.sso:hover{background:rgba(255,255,255,.1)}
+.kl-opsi.sso:active{transform:none}
+.kl-opsi.sso svg{stroke:#9cc4c2}
+/* Tanda Segera hadir menempel di tepi atas tombol, jadi label tombol tetap utuh
+   sampai layar HP 320 px. */
+.kl-opsi .segera{position:absolute;top:-10px;right:18px;display:inline-flex;align-items:center;height:20px;padding:0 9px;
+  border-radius:var(--r-pil);font-size:var(--f-callout);line-height:1;font-weight:640;letter-spacing:.005em;color:#ffd08f;
+  background:#173f3b;box-shadow:inset 0 0 0 1px rgba(234,144,0,.5),0 2px 8px rgba(0,16,15,.35);white-space:nowrap}
+.kl-catatan{margin-top:12px;font-size:13px;line-height:19px;color:#ffcf8a}
+.kl-catatan:empty{display:none}
+.kl-opsi:focus-visible,.kl-kembali:focus-visible,.kl-intip:focus-visible,.card-login .go:focus-visible{outline:2px solid #ffb547;outline-offset:3px}
+
+/* Formulir email: daftar tersisip iOS, satu wadah membulat, baris dipisah garis rambut. */
+.kl-balik{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.kl-kembali{width:32px;height:32px;flex:0 0 auto;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  color:#eaf5f4;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.13);transition:background-color .15s}
+.kl-kembali:hover{background:rgba(255,255,255,.15)}
+.kl-kembali svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.kl-balik h2{font-size:var(--f-t3);line-height:20px;font-weight:620;letter-spacing:-.01em;color:#fff}
+.card-login .gugus{border-radius:14px;overflow:hidden;
+  background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.card-login .baris{display:flex;align-items:center;gap:10px;height:48px;padding:0 6px 0 14px;cursor:text;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.11);transition:background-color .15s,box-shadow .15s}
+.card-login .baris:first-child{box-shadow:none}
+.card-login .baris:focus-within{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1.5px rgba(255,181,71,.7)}
+.card-login .baris > svg{width:16px;height:16px;flex:0 0 auto;stroke:#8fb5b4;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+.card-login .baris label{width:50px;flex:0 0 auto;font-size:var(--f-body);font-weight:560;color:#b4d5d4;cursor:text}
+.card-login input{flex:1 1 auto;min-width:0;height:100%;border:0;background:transparent;outline:none;
+  font:inherit;font-size:14px;color:#fff;padding-right:8px}
+.card-login input::placeholder{color:#9cbfbc}
+/* Edge memasang tombol mata bawaannya sendiri di kolom sandi; yang dipakai tombol
+   #btnIntip. Aturan terpisah: pemilih yang tidak dikenal membatalkan seluruh daftar. */
+.card-login input::-ms-reveal{display:none}
 /* Isian otomatis. Chrome dan Edge memaksa latar biru muda dengan teks gelap
    pada kolom yang diisi peramban, dan itu tidak bisa ditimpa "background"
    biasa — warnanya dilukis di atas gaya kita. Kolom ini tembus pandang di atas
@@ -458,28 +572,63 @@ iframe.page.show{display:block}
   background-clip:text;
   transition:background-color 100000s 0s, color 100000s 0s;
 }
-.card-login .go{width:100%;margin-top:18px;height:38px;border:0;border-radius:var(--r-pil);
-  font:inherit;font-size:var(--f-t3);font-weight:600;color:#1b1205;cursor:pointer;
-  background:linear-gradient(180deg,#f0a423,#d4860a);box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
-  transition:filter .15s}
+/* Lihat sandi: ikon mata di ujung baris Sandi. */
+.kl-intip{width:36px;height:36px;flex:0 0 auto;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  color:#8fb5b4;background:transparent;transition:background-color .15s,color .15s}
+.kl-intip:hover{background:rgba(255,255,255,.09);color:#eaf5f4}
+.kl-intip svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kl-intip .tutup,.kl-intip[aria-pressed="true"] .buka{display:none}
+.kl-intip[aria-pressed="true"] .tutup{display:block}
+/* #btnLogin: skrip lama menulis teksnya ("Masuk" / "Masuk…") lewat textContent,
+   jadi tombol ini tidak boleh berisi ikon. Putaran saat menunggu dari ::before. */
+.card-login .go{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:14px;height:48px;
+  border:0;border-radius:var(--r-pil);font:inherit;font-size:var(--f-t3);font-weight:620;color:#1b1205;cursor:pointer;
+  background:linear-gradient(180deg,#f3a52a,#dc8a08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 22px rgba(234,144,0,.24);
+  transition:filter .15s,transform .12s}
 .card-login .go:hover{filter:brightness(1.06)}
-.card-login .go:disabled{filter:saturate(.5) brightness(.9);cursor:default}
-.card-login .err{color:#ffb4ad;font-size:var(--f-callout);margin-top:12px;min-height:15px}
-.card-login .kontak{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);
-  font-size:var(--f-callout);line-height:1.5;color:#a6cbc9}
-.card-login .salin{display:inline-flex;align-items:center;gap:6px;margin:2px 0 0 -7px;padding:3px 7px;
-  border:0;border-radius:7px;background:rgba(255,255,255,.1);font:inherit;font-size:var(--f-callout);
-  font-weight:590;color:#eaf5f4;cursor:pointer;transition:background .15s}
-.card-login .salin:hover{background:rgba(255,255,255,.18)}
-.card-login .salin:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
-.card-login .salin svg{width:13px;height:13px;flex:0 0 auto;fill:none;stroke:currentColor;
+.card-login .go:active{transform:scale(.985)}
+.card-login .go:disabled{filter:saturate(.6) brightness(.92);cursor:default;transform:none}
+.card-login .go:disabled::before{content:"";width:15px;height:15px;flex:0 0 auto;border-radius:50%;
+  border:2px solid rgba(27,18,5,.28);border-top-color:#1b1205;animation:klPutar .8s linear infinite}
+@keyframes klPutar{to{transform:rotate(360deg)}}
+.card-login .err{display:flex;gap:8px;margin-top:12px;font-size:13px;line-height:19px;color:#ffb4ad}
+.card-login .err:empty{display:none}
+.card-login .err::before{content:"";width:16px;height:16px;flex:0 0 auto;margin-top:1.5px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7.5v5.5M12 16.4v.1%27/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%279%27/%3E%3Cpath d=%27M12 7.5v5.5M12 16.4v.1%27/%3E%3C/svg%3E") center/contain no-repeat}
+
+/* Kontak di kaki kartu: sekali klik menyalin alamat (blok login-kontak). */
+.card-login .kontak{margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.11);
+  font-size:13px;line-height:20px;color:#a9c9c6}
+.card-login .salin{display:inline-flex;align-items:center;gap:7px;margin:4px 0 0 -8px;padding:4px 8px;
+  border:0;border-radius:8px;background:rgba(255,255,255,.09);font:inherit;font-size:13px;
+  font-weight:600;color:#eaf5f4;cursor:pointer;transition:background-color .15s}
+.card-login .salin:hover{background:rgba(255,255,255,.16)}
+.card-login .salin:focus-visible{outline:2px solid #ffb547;outline-offset:2px}
+.card-login .salin svg{width:14px;height:14px;flex:0 0 auto;fill:none;stroke:currentColor;
   stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .card-login .salin .ok{display:none;color:#8fe0b4}
 .card-login .salin.tersalin .ok{display:block}
 .card-login .salin.tersalin .ikon{display:none}
-.card-login .salin-info{margin-left:2px;font-size:var(--f-foot);font-weight:590;color:#8fe0b4}
+.card-login .salin-info{margin-left:6px;font-size:var(--f-callout);font-weight:600;color:#8fe0b4}
 .card-login .salin-info.gagal{color:#ffc98a}
-.card-login .foot{font-size:var(--f-foot);color:#7ea6a5;margin-top:10px}
+
+/* Layar sempit dan HP. Kolom isian 16 px supaya Safari iOS tidak memperbesar
+   halaman saat kolom disentuh. */
+@media (max-width:520px){
+  .login{padding:20px 14px}
+  .card-login{padding:26px 22px 20px;border-radius:22px}
+  .kl-kepala .lambang{width:48px;height:48px;border-radius:13px}
+  .kl-judul .kata{font-size:30px;line-height:32px}
+  .card-login input{font-size:16px}
+  .card-login .baris label{width:46px}
+  .peta-utara{right:16px;bottom:14px}
+}
+@media (max-width:360px){
+  .kl-opsi{gap:10px;padding:0 13px 0 14px;font-size:14px}
+  .kl-opsi .segera{right:14px}
+}
 
 /* ====================================================================== toast */
 #swToastWrap{position:fixed;right:16px;bottom:16px;z-index:200;display:flex;flex-direction:column;
@@ -582,6 +731,7 @@ iframe.page.show{display:block}
   .card-login,.sw-toast{background:#002b2a}
   .toolbar{background:#f4f8f7}
   .tepi-gulir{display:none}
+  .latar-sorot{display:none}
 }
 /* Increase Contrast: elemen jadi tegas dengan garis tepi pembeda. */
 @media (prefers-contrast: more){
@@ -593,10 +743,17 @@ iframe.page.show{display:block}
   .hero .kontur .kt{stroke:rgba(180,212,210,.5)}
   .stat{border-left-color:rgba(255,255,255,.45)}
   .hero p,.stat .k,.stat .s,.stat .v small,.stats-ket{color:#d4e7e5}
+  .latar .kt{stroke:rgba(180,212,210,.5)}
+  .latar .laut path{stroke:rgba(180,212,210,.24)}
+  .kl-judul .ke,.card-login .lead,.card-login .kontak,.card-login .baris label{color:#d4e7e5}
+  .kl-opsi.sso,.card-login .gugus,.kl-kembali{box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
+  .kl-opsi.utama,.card-login .go{box-shadow:inset 0 0 0 1px #1b1205}
+  .card-login input::placeholder{color:#b8d4d2}
 }
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important}
-  .login canvas.peta{transition:none}
+  .latar .gores .kt,.latar .gores .pantai{stroke-dasharray:none;stroke-dashoffset:0}
+  .latar .laut,.latar .jalan-wadah,.latar .unit{opacity:1}
   .stat .k .hidup::after{display:none}
   .muncul{opacity:1;translate:none}
   .hero.siap .naik{opacity:1;transform:none}
@@ -681,20 +838,37 @@ iframe.page.show{display:block}
 
 <!-- LOGIN -->
 <div class="login" id="login">
- <canvas class="peta" id="petaLogin" aria-hidden="true"></canvas>
+ <div class="latar" id="latarLogin" aria-hidden="true">
+  <svg class="latar-dasar" id="latarDasar" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" focusable="false"></svg>
+  <svg class="latar-sorot" id="latarSorot" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" focusable="false"></svg>
+ </div>
  <div class="peta-utara" aria-hidden="true"><svg viewBox="0 0 12 17"><path d="M6 0 12 17 6 12.5 0 17Z"/></svg></div>
  <div class="card-login" data-lensa data-pita="30" data-skala="26" data-blur="24">
-   <div class="lg"><div class="lambang"></div></div>
-   <h1>Masuk ke MiningMalut</h1>
-   <div class="lead">Biro Mining · UBPN Maluku Utara, Pulau Pakal</div>
-   <div class="gugus">
-     <label for="in_email"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 6.4h15.2v11.2H4.4zM4.4 7.2 12 12.8l7.6-5.6"/></svg><span class="kunci">Email / NPP</span><input id="in_email" type="text" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="username" placeholder="nama@antam.com atau NPP"></label>
-     <label for="in_pw"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 10.6h10.8v8.8H6.6zM8.8 10.6V8.2a3.2 3.2 0 1 1 6.4 0v2.4"/></svg><span class="kunci">Sandi</span><input id="in_pw" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+   <div class="kl-kepala kl-naik" style="--d:140ms">
+     <span class="lambang" aria-hidden="true"></span>
+     <h1 class="kl-judul"><span class="ke">Masuk ke</span> <span class="kata">Mining<span>Malut</span></span></h1>
    </div>
-   <button class="go" id="btnLogin">Masuk</button>
-   <div class="err" id="loginErr"></div>
-   <div class="kontak">Butuh informasi login? Hubungi<br><button type="button" class="salin" id="btnSalinEmail" title="Salin alamat email" aria-label="Salin alamat email rahmat.iqbal@antam.com"><span id="salinTeks">rahmat.iqbal@antam.com</span><svg class="ikon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5 9.5 17.5 19.5 6.5"/></svg></button><span class="salin-info" id="salinInfo" role="status" aria-live="polite"></span></div>
-   <div class="foot">Akses internal Biro Mining</div>
+   <div class="lead kl-naik" style="--d:210ms">Biro Mining · UBPN Maluku Utara, Pulau Pakal</div>
+   <div class="kl-langkah kl-naik" id="klLangkah" style="--d:280ms">
+     <div class="kl-panel" id="klPilih" role="group" aria-label="Pilihan masuk">
+       <button type="button" class="kl-opsi utama" id="btnPilihEmail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 6.4h15.2v11.2H4.4z"/><path d="m4.9 7.1 7.1 5.3 7.1-5.3"/></svg><span class="t">Masuk dengan Email</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+       <button type="button" class="kl-opsi sso" id="btnSso" aria-disabled="true" aria-describedby="ssoSegera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 5.2 6v5.4c0 4.1 2.8 7.8 6.8 9 4-1.2 6.8-4.9 6.8-9V6z"/><circle cx="12" cy="10.4" r="2.1"/><path d="M12 12.5v3.6"/></svg><span class="t">Masuk dengan SSO ANTAM</span><span class="segera" id="ssoSegera">Segera hadir</span></button>
+       <p class="kl-catatan" id="ssoCatatan" role="status" aria-live="polite"></p>
+     </div>
+     <div class="kl-panel" id="klEmail" role="group" aria-labelledby="klEmailJudul" hidden>
+       <div class="kl-balik">
+         <button type="button" class="kl-kembali" id="btnKembali" aria-label="Kembali ke pilihan masuk" title="Kembali ke pilihan masuk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+         <h2 id="klEmailJudul">Masuk dengan Email</h2>
+       </div>
+       <div class="gugus">
+         <div class="baris"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 6.4h15.2v11.2H4.4zM4.4 7.2 12 12.8l7.6-5.6"/></svg><label for="in_email">Email</label><input id="in_email" type="text" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="username" placeholder="nama@antam.com"></div>
+         <div class="baris"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.6h10.8v8.8H6.6zM8.8 10.6V8.2a3.2 3.2 0 1 1 6.4 0v2.4"/></svg><label for="in_pw">Sandi</label><input id="in_pw" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="kl-intip" id="btnIntip" aria-label="Tampilkan sandi" aria-pressed="false" title="Tampilkan sandi"><svg class="buka" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="tutup" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 5.6A10 10 0 0 1 12 5.5C18 5.5 21.5 12 21.5 12a17 17 0 0 1-2.6 3.4M6.5 7.1C3.9 8.8 2.5 12 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 4.6-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3.5 3.5l17 17"/></svg></button></div>
+       </div>
+       <button class="go" id="btnLogin">Masuk</button>
+       <div class="err" id="loginErr" role="alert"></div>
+     </div>
+   </div>
+   <div class="kontak kl-naik" style="--d:350ms">Butuh informasi login? Hubungi<br><button type="button" class="salin" id="btnSalinEmail" title="Salin alamat email" aria-label="Salin alamat email rahmat.iqbal@antam.com"><span id="salinTeks">rahmat.iqbal@antam.com</span><svg class="ikon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5 9.5 17.5 19.5 6.5"/></svg></button><span class="salin-info" id="salinInfo" role="status" aria-live="polite"></span></div>
  </div>
  <div class="pulih-teks" role="status">Memulihkan sesi…</div>
 </div>
@@ -1217,6 +1391,9 @@ else document.getElementById('login').style.display='flex';
    Isian tanpa "@" dianggap NPP: diperiksa lewat fungsi SQL gng_masuk, lalu
    pengguna dibawa ke cek-aman.html. Operator tanpa sandi; pengawas mengisi PIN
    di kolom Sandi. Mereka TIDAK punya akun Supabase, jadi tidak pernah masuk shell.
+   Sejak 28 Oktober 2026 tulisan NPP tidak tampil lagi di layar login (label
+   "Email", permintaan Iqbal). Jalurnya sengaja dibiarkan: operator yang terbiasa
+   mengetik NPP di formulir email tetap dibawa ke cek-aman.
    ============================================================================= */
 (function(){
   var btn=document.getElementById('btnLogin'), asli=btn.onclick,
@@ -3373,834 +3550,333 @@ else document.getElementById('login').style.display='flex';
   });
 })();
 </script>
-<script id="login-peta">
+<script id="login-langkah">
 /* =============================================================================
-   Latar layar login: peta jaringan jalan tambang yang menjalankan Dijkstra.
+   Kartu login dua langkah (28 Oktober 2026).
 
-   Jaringan dibangkitkan acak di atas kisi persegi, jadi setiap ruas mendatar,
-   tegak, atau miring 45 derajat, seperti peta skematik RTUP. Kisi dengan satu
-   diagonal per sel tidak pernah menghasilkan ruas yang bersilangan tanpa
-   simpang. Simpulnya simpang biasa dan beberapa fasilitas: front muat,
-   stockpile, ROM, jetty, workshop, pos BBM, pos checker, disposal, tower.
+   Langkah 1 (#klPilih): Masuk dengan Email, dan Masuk dengan SSO ANTAM yang
+   belum tersedia (aria-disabled; ditekan hanya memberi tahu dan menunjuk tombol
+   email). Langkah 2 (#klEmail): formulir email yang SAMA dengan sebelumnya.
+   #in_email, #in_pw, #btnLogin, dan #loginErr tidak berubah, jadi doLogin(),
+   blok login-npp, tampilLogin(), dan pulihkanSesi() bekerja seperti dulu.
 
-   Jalan utama adalah ruas yang dilalui rute terpendek antar-fasilitas dalam
-   siklus angkut; sisanya jalan cabang yang lebih lambat. Bobot Dijkstra adalah
-   waktu tempuh (panjang dibagi kecepatan kelas jalan), jadi yang dicari rute
-   tercepat, dan rute itu sewajarnya lebih suka jalan utama.
-
-   Pencarian digambar sebagai gelombang yang merambat di sepanjang ruas menurut
-   jarak Dijkstra. Simpul menyala tepat saat jaraknya tercapai, yaitu urutan
-   simpul diselesaikan algoritma. Setelah tujuan tercapai, rute ditarik amber
-   dan satu dump truck berjalan di atasnya. Tujuan berikutnya mengikuti siklus
-   angkut: front, stockpile atau ROM, jetty, lalu kembali ke front.
-
-   Dua truk latar yang redup berkeliling antar-fasilitas tanpa visualisasi
-   pencarian, dan tower radio memancarkan denyut sinyal tipis, supaya peta
-   terasa sebagai operasi yang berjalan.
-
-   Kursor: fasilitas terdekat disorot, dan jalan di sekitar kursor menerang.
-   Bila kursor diam di dekat sebuah fasilitas sebentar, fasilitas itu menjadi
-   tujuan baru. Truk yang sedang berjalan dialihkan di simpang berikutnya.
-
-   Latar ini sengaja tanpa tulisan apa pun: tidak ada nama fasilitas, label
-   waktu tempuh, keterangan, atau skala (permintaan Iqbal, 17 September 2026).
-   Fasilitas hanya dikenali dari ikonnya.
-
-   Tidak ada nama atau geometri site sungguhan di sini. Layar login terbuka
-   untuk siapa pun, jadi petanya sengaja fiktif.
-
-   Berhenti sendiri begitu layar login disembunyikan. Bila pengguna meminta
-   gerak dikurangi, peta digambar sekali dalam keadaan rute sudah ditemukan.
+   - tampilLogin() menulis pesan ke #loginErr (sesi ditolak) selagi langkah 1
+     tampil: langkah 2 dibuka supaya pesannya terlihat.
+   - Tinggi kartu dianimasikan saat berganti langkah. Selama itu refraksi diganti
+     blur biasa, karena peta perpindahannya diukur untuk tinggi lama (§23.5);
+     sesudahnya ResizeObserver blok kaca-refraksi memasang lensa ukuran baru.
+   - Sandi bisa diintip; jenis kolom selalu dikembalikan ke password sebelum
+     masuk dan saat kartu berganti langkah.
+   - Gerak dikurangi: berganti seketika, tanpa geser dan tanpa animasi tinggi.
    ============================================================================= */
 (function () {
-  var login = document.getElementById('login');
-  var kanvas = document.getElementById('petaLogin');
-  if (!login || !kanvas || !kanvas.getContext) return;
-  var ctx = kanvas.getContext('2d');
-  var kartuEl = login.querySelector('.card-login');
-  var mqGerak = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  'use strict';
+  function el(id) { return document.getElementById(id); }
+  var login = el('login'), kartu = login && login.querySelector('.card-login');
+  var wadah = el('klLangkah'), pilih = el('klPilih'), email = el('klEmail');
+  var bEmail = el('btnPilihEmail'), bSso = el('btnSso'), bKembali = el('btnKembali');
+  var catatan = el('ssoCatatan'), inEmail = el('in_email'), inPw = el('in_pw');
+  var bMasuk = el('btnLogin'), err = el('loginErr'), intip = el('btnIntip');
+  if (!login || !kartu || !wadah || !pilih || !email || !bEmail || !bKembali || !catatan || !inEmail || !inPw || !err) return;
+  var gerakKurang = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  var langkah = 'pilih', tSelesai = 0;
 
-  var KM_PER_SEL = 0.4;
-  var LAJU = { utama: 35, cabang: 22 };            // km/jam
-  var WARNA = {
-    jalan: '143,189,178', terang: '176,222,212', cari: '126,214,196',
-    amber: '#E8920A', gelap: '#082a25'
-  };
-
-  /* Ikon garis 24×24, digambar lewat Path2D. Bentuknya sengaja sederhana:
-     pada ukuran 15 px detail kecil hanya jadi noda. */
-  var IKON = {
-    front: 'M3.5 17.5h9a2 2 0 0 1 0 4h-9a2 2 0 0 1 0-4Z M5 17.5V13h5l1.5 2v2.5 M11.5 14.5 16 8.5l4.5 4 M20.5 12.5l-.6 3.5H17',
-    stockpile: 'M2 19.5h20 M3.5 19.5c1.8-5.5 4.9-10 8.5-10s6.7 4.5 8.5 10',
-    rom: 'M3.5 4.5h17l-6 7.5v3.5h-5V12Z M12 15.5v3.5 M8.5 20.5h7',
-    jetty: 'M3 13.5h18l-2.5 4.5h-13Z M7 13.5v-4h5v4 M12 10.5h4v3 M2.5 21.5c1.6 0 1.6-1 3.2-1s1.6 1 3.2 1 1.6-1 3.1-1 1.6 1 3.2 1 1.6-1 3.2-1 1.6 1 3.1 1',
-    workshop: 'M14.5 5.5a4 4 0 0 0-5.2 5.2L3.5 16.5l4 4 5.8-5.8a4 4 0 0 0 5.2-5.2l-2.7 2.7-2.6-.7-.7-2.6Z',
-    fuel: 'M5 21V5a1.5 1.5 0 0 1 1.5-1.5h6A1.5 1.5 0 0 1 14 5v16 M3.5 21h12 M7.5 7.5h4 M14 9.5h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L18.5 6',
-    checker: 'M8.5 3.5h7v3h-7Z M6.5 5H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-1.5 M8.5 13.5l2.5 2.5 4.5-5',
-    disposal: 'M2 20.5h20 M3.5 20.5 9 13l3 3 3.5-4.5 5 9 M12 2.5v5.5 M9.5 6 12 8.5 14.5 6',
-    tower: 'M12 11v10.5 M9 21.5 12 11l3 10.5 M8.5 21.5h7 M8.8 7.4a4.5 4.5 0 0 1 6.4 0 M6.2 4.8a8.2 8.2 0 0 1 11.6 0',
-    truk: 'M1.5 8h11.5l-1.3 7.5H2.8Z M13 10.5h4.3l3.2 3.6v3.4H13Z M6 17.5a2 2 0 1 0 .01 0Z M16.8 17.5a2 2 0 1 0 .01 0Z'
-  };
-  var jalurIkon = {};
-  Object.keys(IKON).forEach(function (k) { try { jalurIkon[k] = new Path2D(IKON[k]); } catch (e) {} });
-
-  var W = 0, H = 0, DPR = 1, SEL = 110;
-  var jar = null, run = null, armada = [];
-  var lapisDasar = null, lapisTerang = null, lapisFasil = null, sorot = null, sorotCtx = null;
-  var raf = 0, tLalu = 0, waktu = 0;
-  var penunjuk = { x: 0, y: 0, ada: false, sentuhSampai: 0 };
-  var kotakKartu = null, kartuDiukur = -1;
-  var sorotan = null, sorotSejak = 0, sorotDipakai = null;
-
-  function acak(a, b) { return a + Math.random() * (b - a); }
-  function jepit(v, a, b) { return v < a ? a : v > b ? b : v; }
-  function kocok(a) {
-    for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t;
-    }
-    return a;
+  /* ------------------------------------------------ refraksi saat berubah */
+  function kacaBiasa() {
+    if (!kartu.dataset.lensaId) return;
+    var v = 'blur(' + (kartu.dataset.blur || 24) + 'px) saturate(' + (kartu.dataset.jenuh || 1.7) + ')';
+    kartu.style.backdropFilter = v;
+    kartu.style.webkitBackdropFilter = v;
   }
-  function tampil() { return login.style.display !== 'none' && login.getClientRects().length > 0; }
-  function kurangiGerak() { return !!(mqGerak && mqGerak.matches); }
+  function kacaPulih() {
+    var id = kartu.dataset.lensaId;
+    if (!id || !document.getElementById(id)) return;
+    var r = kartu.getBoundingClientRect();
+    /* Ukuran berbeda: ResizeObserver kaca-refraksi yang memasang lensa baru. */
+    if (kartu.dataset.lensaW !== String(Math.round(r.width)) || kartu.dataset.lensaH !== String(Math.round(r.height))) return;
+    var v = 'url(#' + id + ') blur(' + (kartu.dataset.blur || 24) + 'px) saturate(' + (kartu.dataset.jenuh || 1.7) + ')';
+    kartu.style.backdropFilter = v;
+    kartu.style.webkitBackdropFilter = v;
+  }
 
-  /* Liang–Barsky: apakah ruas garis menyentuh kotak z? */
-  function kenaKotak(x1, y1, x2, y2, z) {
-    var dx = x2 - x1, dy = y2 - y1, t0 = 0, t1 = 1;
-    var p = [-dx, dx, -dy, dy], q = [x1 - z.x0, z.x1 - x1, y1 - z.y0, z.y1 - y1];
-    for (var i = 0; i < 4; i++) {
-      if (p[i] === 0) { if (q[i] < 0) return false; continue; }
-      var t = q[i] / p[i];
-      if (p[i] < 0) { if (t > t1) return false; if (t > t0) t0 = t; }
-      else { if (t < t0) return false; if (t < t1) t1 = t; }
+  /* ------------------------------------------------------- ganti langkah */
+  function tutupSandi() {
+    if (inPw.type !== 'password') inPw.type = 'password';
+    if (intip) { intip.setAttribute('aria-pressed', 'false'); intip.setAttribute('aria-label', 'Tampilkan sandi'); intip.title = 'Tampilkan sandi'; }
+  }
+  function fokus(n) { if (n) { try { n.focus({ preventScroll: true }); } catch (e) { n.focus(); } } }
+  function selesai() {
+    tSelesai = 0;
+    wadah.classList.remove('berubah');
+    wadah.style.height = '';
+    kacaPulih();
+  }
+  function ganti(ke, tujuanFokus) {
+    if (ke === langkah) { fokus(tujuanFokus); return; }
+    var lama = ke === 'email' ? pilih : email, baru = ke === 'email' ? email : pilih;
+    langkah = ke;
+    catatan.textContent = '';
+    bEmail.classList.remove('tunjuk');
+    tutupSandi();
+    var tampak = login.style.display !== 'none' && kartu.getClientRects().length > 0;
+    if (tSelesai) { clearTimeout(tSelesai); selesai(); }
+    if (gerakKurang.matches || !tampak) {
+      lama.hidden = true; baru.hidden = false;
+      fokus(tujuanFokus);
+      return;
     }
+    var h0 = wadah.offsetHeight;
+    lama.hidden = true; baru.hidden = false;
+    baru.classList.remove('dari-kanan', 'dari-kiri');
+    void baru.offsetWidth;                      // supaya animasi masuk mulai dari awal
+    baru.classList.add(ke === 'email' ? 'dari-kanan' : 'dari-kiri');
+    var h1 = wadah.offsetHeight;
+    kacaBiasa();
+    wadah.style.height = h0 + 'px';
+    void wadah.offsetHeight;
+    wadah.classList.add('berubah');
+    wadah.style.height = h1 + 'px';
+    tSelesai = setTimeout(selesai, 460);
+    fokus(tujuanFokus);
+  }
+  function keEmail() { ganti('email', inEmail.value.trim() ? inPw : inEmail); }
+
+  bEmail.addEventListener('click', keEmail);
+  bKembali.addEventListener('click', function () { ganti('pilih', bEmail); });
+  email.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !e.defaultPrevented && !(bMasuk && bMasuk.disabled)) { e.preventDefault(); ganti('pilih', bEmail); }
+  });
+  /* Sesi ditolak: tampilLogin() menulis pesannya ke #loginErr. */
+  if (window.MutationObserver) {
+    new MutationObserver(function () {
+      if (langkah !== 'email' && err.textContent.trim()) ganti('email', null);
+    }).observe(err, { childList: true, characterData: true, subtree: true });
+  }
+
+  /* ------------------------------------------------------------ SSO ANTAM */
+  if (bSso) {
+    bSso.addEventListener('click', function (e) {
+      e.preventDefault();
+      catatan.textContent = 'SSO ANTAM belum tersedia. Untuk sementara, masuk dengan email.';
+      bEmail.classList.remove('tunjuk');
+      void bEmail.offsetWidth;
+      if (!gerakKurang.matches) bEmail.classList.add('tunjuk');
+    });
+    bEmail.addEventListener('animationend', function () { bEmail.classList.remove('tunjuk'); });
+  }
+
+  /* ----------------------------------------------------------- intip sandi */
+  if (intip) {
+    intip.addEventListener('click', function () {
+      var lihat = inPw.type === 'password';
+      var awal = inPw.selectionStart, akhir = inPw.selectionEnd;
+      inPw.type = lihat ? 'text' : 'password';
+      var label = lihat ? 'Sembunyikan sandi' : 'Tampilkan sandi';
+      intip.setAttribute('aria-pressed', lihat ? 'true' : 'false');
+      intip.setAttribute('aria-label', label);
+      intip.title = label;
+      fokus(inPw);
+      try { if (awal != null) inPw.setSelectionRange(awal, akhir); } catch (e) {}
+    });
+  }
+  /* Sebelum dikirim (klik maupun Enter, yang memanggil click()), sandi ditutup
+     lagi supaya peramban menyimpannya sebagai kolom sandi. Fase tangkap: jalan
+     sebelum penangan onclick bawaan dan pembungkus login-npp. */
+  if (bMasuk) bMasuk.addEventListener('click', tutupSandi, true);
+
+  /* Klik di mana saja pada baris (ikon, ruang kosong) memfokuskan kolomnya. */
+  Array.prototype.forEach.call(email.querySelectorAll('.baris'), function (b) {
+    b.addEventListener('mousedown', function (e) {
+      if (e.target.closest && e.target.closest('button,input,label')) return;
+      var i = b.querySelector('input');
+      if (i) { e.preventDefault(); fokus(i); }
+    });
+  });
+
+  /* Kartu disembunyikan (masuk berhasil, atau pindah ke cek-aman): sandi ditutup. */
+  if (window.MutationObserver) {
+    new MutationObserver(function () { if (login.style.display === 'none') tutupSandi(); })
+      .observe(login, { attributes: true, attributeFilter: ['style'] });
+  }
+  window.LoginLangkah = { ganti: ganti, langkah: function () { return langkah; } };
+})();
+</script>
+<script type="application/json" id="dataLatarLogin">{"w":1600,"h":1000,"level":[{"k":"laut","d":"M414,1000l-10-8-24-9-14-3-6-8-18-10-6-9-19-9-5-7-12-2-11-17-11-6-8-12-5-18-2-12 1-6 5-8 6-18-12-26 0-4 16-26 3-14 16-18 0-16 10-30 2-16-3-10 2-10 9-12 3-12 7-8 3-6-2-4-9-6-2-4-1-22-2-8 4-20 10-14 1-12 1-4 19-13 4-7 1-20-14-22-2-8 1-6 12-18 2-14 5-6-1-20-7-12 2-6 4-4 11-6 16-7 0-13 15-14 6-8 15,1 14-6 12,1 8-6 3-14-1-2-6,2-2-6 2-4 8-4 2-4-3-6-10-6-3-14 3-6 12-12 4-10 5-2 16,8 18-2 4-4 4-16 26-6 2-2-2-18 6-16 4-3 4-1 10,6 10,0 22-13 3-5 2-22 13-16 18-7 8-7 4-1 3,1 1,8 4,4 4,2 8,0 4-2 2-4-1-16 7-6 12-3 12-7 18-5 18,5 18-5 7-5 11-16 10,2 4-1 16-13 10,0 10,5 6,1 14-6 7-8 7-4 4-10 12-11 26-2 10-10 12,3 7,0 3-2 2-4M296,232l-24,0-30-6-20-9-16-16-12-33-10-16-3-8-4-34 4-22 5-8 12-6 8-2 52,7 16,4 8,5 12,15 32,24 15,19 12,22 3,10 0,8-4,12-6,8-16,13-18,8-16,5zM1600,795l-18,14-10,2-10,5-14,0-10,4-8,7-8,13-5,12-31,12-6,3-6,7-12,4-8,6-12,5-12,1-10,3-18-4-12-6-18-3-15,22-4,12 0,8-3,4-12,2-10,9-14-3-10,10-10,5-30-10-14,4-32,23-14,22-1,12"},{"k":"laut","d":"M1600,623l-12,5-10-4-14-2-16,13-5,9 8,16-2,18-14,18-13,8-16,13-4,11-14,16-9,22-5,6-24,12-10,2-22,8-20,4-10,12-8,4-22,6-10,6-10,16-18,9-18,6-14,1-10,8-16,9-24,4-8,4-16,1-8,5-20,22-10,8-16,3-30,9-26,22-20,6-10,0-8,13-10,10-42,3-22-2-20-13-16-2-14-9-16,0-12-4-18,1-14-8-10,1-26-1-29,10-13-16-16-1-11-3-7-20-4-3-4,1-6,11-2,17-10,13-16,0-12-6-13-3-3-4 1-12-5-4-14,1-10-3-18,0-14-2-2,1-1,3 6,10-3,4-7,4 0,12-3,4-50,13-10-2-18-14-64-2-14,2-32-2-38-11-14-12-10-14-7-6-34-16-7-8-2-10-10-16 1-16-14-44 1-12 2-7 20-23 12-26 4-5 14-5 8-6 12-4 16,3 14-1 26-16 0-4-6-2 1-6-3-10 1-4 3-3 8,3 4-1 10-14 3-13-8-16-11-8-12-2-5-4-5-8-1-8 12-14 13-10 4-12 4-4 26-6 14,4 8-12 8-8 5-12-2-16 4-24-3-10 0-6 6-14 13-10 11-18 2-14-6-14 1-6 4-12 5-6 15-28 1-10 12-8 15-18 5-2 10-1 4-3 8-11 7-19 3-5 14-6 4,3 6,10 4,4 8-6 0-4-11-6-2-8 6-8-1-12 17-26 1-12 8-12 6-16 6-2 6,1 20,10 28-8 6-5 8-11 16-2 10-3 10-8 16-2 45-20 5-4 5-8 11-6 18-6 12-1 28-11 21-16 18-24 15-5 10,1 10-6 18-4 16-1 14,9 14,16 22,3 10,3 16-2 26-11 10-11 10-17 8-9 6-2 6,4 11,10 2,12 3,3 10-3 22,3 16-2 14-3 8,1 12,8 6,0 10-3 12-14 18-9 10-9 6,0 12,5 20,2 8-8 2-9M1410,0l6,5 32,4 26-8 16,0 14,3 12,6 30,9 22,4 18,6 14,3M286,216l-18-1-34-11-12-7-6-7-18-40-4-16 2-18 3-12 3-6 6-5 8-3 16,0 22,2 10,3 6,3 14,14 28,18 14,16 10,26 1,6-3,8-8,9-14,10-16,9-10,2z"},{"k":"laut","d":"M1600,446l-17,18-4,10-1,10 10,11 2,11-1,4-7,10-3,12-15,10-10,0-4,2-2,22-10,4-4,4-5,14-9,14-1,16-8,18 1,16-5,10-13,15-22,7-11,10-13,36-12,2-12-2-8,8-14,3-16,6-16,1-6,6-12-2-4,2-4,4-2,10-4,10-1,8-7,12-20,14-14,7-23,21-11,2-12-3-12-6-14,2-7,5-7,10-14,10-19,22-17,3-8,5-18,8-10-5-12-1-10-6-18,1-13,11-23,13-10,1-18,21-4,2-10-2-24-19-10,2-10-3-8-5-10,4-16-2-12,1-12-7-22-4-6-5-8-1-8-5-16,2-18-4-10,6-14-4-8-7-10-1-8-8-24-1-16-5-12,3-12-4-14,2-12,5-6,4-6,10-4,3-6,0-12-5-20,7-16,12-16,18-12,6-30,6-10,5-28-2-18,3-18-4-22-1-14,3-18-3-14-7-10-7-6-9-3-14-11-16-14-14-16-10-6-6-6-12-3-26-6-10-2-10 3-8 16-18 6-13 4-3 20-7 10-5 14-2 30-11 28-2 36-14 18,4 12-3 6-4 2-8 4-6 18-4 4-3 2-5-2-8-5-8-9-8 3-12-7-12 1-26-4-8 1-4 8-8 6-22 5-8-4-16 6-26-1-24-2-5-10-11 2-3 8-5 5-12 14-24 3-14-1-10 4-12 20-28 21-9 6-5 5-6 3-10 9-10 5-1 10,2 10-2 12-6 11-9 17-6 18-10 2-4-1-8-3-7-9-7 0-6 19-12 12-18 11-30 5-2 10,4 10-3 12-12 15-23 9-7 28-14 44-9 8-6 14-4 12-8 20-6 12,2 14-7 22-3 16-9 12-3 68,4 36-12 12,1 10,3 8-5 4-1 10,3 10,8 36,1 8-4 6-8 6-3 20-3 22,3 10-5 10-2 6-3 8-1 20-20 6-3 14-1 14,4 24-11 86-16 10,0 44,9 26,4 24,9 14,10M280,206l-10-1-32-11-12-6-5-6-12-32-2-22 3-14 4-7 4-4 16-4 26,5 20,15 26,15 11,14 6,10 2,8 1,10-2,6-14,12-20,11-10,1zM1600,198l-12,7-8,11-8,7-8,17 11,28-1,6-7,16 7,18 0,18-10,14 2,4 7,8-2,16 7,8 12-1 10,3"},{"k":"pantai","d":"M1600,156l-4,4-10,16-6,12-30,28-5,12-13,14-1,4 4,16 9,10-5,28 10,24-1,4-8,8-1,6 1,8 7,10 2,14 4,12-2,30-5,20-8,8-6,10-10,3-5,3-2,8 1,7 15,21 4,0 3-8 4,0 6,4 3,10-5,12-4,4-14,2-8,9-6,3-10-3-16,6-7,7-8,28-3,18 2,4 8,5 4,5 1,12 6,8 1,10-4,16-2,3-14,7-26,4-18,10-14-4-6,2-18,8-16,14-20,6-28,15-2,5 5,10-1,8-22,30-18,10-8,10-6,2 0,2 2,1 6-3 7,6 1,4-4,4-20,3-10,5-22-5-14,3-10,6-10,3-16,14-10,1-5,6 0,4 2,6-3,2-20,4-8,8-4,2-13-2-9-5-4-1-8,2-12,0-16,3-10,0-10,7-6,1-24-4-12-4-4,1-8,7-8,3-6,0-8-3-14,1-20,9-24,2-14-4-9-9-12-6-8-12-3-10-4-3-6,0-10,3-14-3-10,1-26-8-10,5-10,1-24-9-12-9-10-5-4-1-10,3-6,0-6-2-8-7-6-1-18,5-7,6-3,8 1,22-6,8-3,9-14,3-20,10-18,19-22,15-36,15-14,3-34-3-14-3-18,2-20-1-18-2-6-3-13-12-12-22-17-22-28-28-5-12 1-28 5-14 13-16 24-13 40-11 30-2 24-9 28,1 16-4 22-1 18-3 24,5 7-3 5-18-6-8-2-10-10-10-1-10 0-10-4-14 5-24-6-22 5-22 6-12 1-8-1-12-9-16-2-6 5-40 5-3 10,1 4-2-1-10 2-12 7-6 6-10 5-6 4-12-15-11-4-7 1-4 7-14 10-8 22-5 10-3 16-1 10-3 14-15 16-24 24-13 12-3 4-3 5-6 6-12-5-26 12-16 12-11 6-9 24-20 10-20 8-8 14-1 4-3 4-8 20-8 22,7 12-7 18,0 26,7 12-5 20,2 26-17 16-17 14-5 10-7 12-1 30,6 20-2 8-4 12-3 10,2 14-2 14,4 18,2 22,9 12-2 14-7 16,5 18-2 14,6 20-2 12-7 11-22 9-14 22-4 18-10 14-14 6-4 22-5 11-5 31-6 18,1 22,4 52,4 42,27M288,196l-18,1-36-13-7-6-5-10-6-30 0-14 8-10 10-5 12,1 42,20 13,8 7,6 9,18 0,12-11,14-18,8z"},{"k":"kt","d":"M1600,136l-6,5-20,27-32,28-17,20-7,13-8,8-8,2-12,2-48-8-6,1-4,4 0,4 22,10 20,5 28,10 5,5 2,8 6,10 7,20-1,12-4,6-11,9-8,13 2,4 16,12 6,8-2,6-10,7-2,5 2,27-5,7-2,12-8,12-5,12-2,14-6,9-6-1-30-30-8-4-8,2-4,4 0,8 3,10-1,4-26,4-4,4 2,8 8,8 26,12 6,4 6,8 11,24-1,8-6,14-10,8-15,6 0,6 9,12-1,14 3,12-3,8-7,5-20-17-3,2-5,12-13,10-15,4-14,8-8,1-12-6-8,0-12,21-6,7-20,7-25,18-1,8 3,12-2,22-1,4-10,7-4,1-16-3-18-21-8-3-20,20-30,18-4,0-16-4-8,2-4,5-10,20-7,8-11,9-13,5-13,9-6-1-12-9-24,3-14-3-10,3-8-1-20-10-14,6-16,11-20,0-12-3-4-3-6-16-21-26-9,4-12,17-8,5-8,2-8-3-25-23-19,1-12-2-18-20-2-1-18,23-14,3-6-2-4-4-12-34-36-7-27,37 3,24-12,18-4,24-16,26-24,24-8,6-26,12-16,4-18-1-36-7-36,6-18-6-18-19-29-37-9-14-9-10-3-6-1-20 2-8 7-14 10-10 10-5 46-14 54-6 30-1 24,2 24,7 33-3 13-7 8-10 7-3 1-4 0-13 8-12 16-3 20-10 4-4 4-8-1-10-11-15-10-6-6,1-4,3-15,23 0,18-3,3-6-2-5-9-8-8 1-14 5-12-5-18 12-8 8-8 2-4 0-11 16-9 14,5 10-1 16-14 2-6-2-8-32-26-8,2-12,9-10,1-3-2-5-7-3-11 3-2 14,0 16-13 10-1 24-10 16-14 1-6-12-20-1-10 4-10 6-10 2-21 12-13 0-4-5-10 13-14 1-6-1-12 4-6 10-6 20-2 8,3 16,8 8,0 4-7 0-18 6-12 0-12 20-17 4,1 5,8 5,24 6,14 4,1 17-9 2-8 1-25-4-9-12-11-4-2-8,2-16,9-16-5-6-5-6-1-2-3 2-5 8-6 10-13 8-7 8-2 3-3 3-14 4-4 8-2 4,3 3,9 0,10 2,10 2,4 21,5 14,1 22,6 2-2 1-4-5-12-5-6-13-10-3-8 0-6 9-20 6-2 14,2 9-6 5-1 16,6 16,1 38,10 8-6 8-12 7-16 11-10 4,0 14,9 16-3 9,6 11,2 14-7 10-10 6,0 4,3 8,12 12,27 6,3 4-4 14-31 6-5 10,6 10,9 10-7 10-13 8-1 12,4 18-4 13,6 9,14 2,0 8-4 10-12 8-6 8-2 14,1 4-2 14-15 16-28 16-11 26-26 16-10 22-6 42-1 50,8 20-1 6,3 12,13 28,20M278,188l-26-5-14-6-6-5-5-14-1-18 1-6 5-6 10-3 34,8 18,9 8,7 7,15-2,8-11,11-10,4-8,1z"},{"k":"kt","d":"M1080,800l-6,0-6-2-26-13-16-10-8,1-12,9-8-1-12-12-8-4-4,1-20,25-8,4-14,1-12-6-12-11-4-6-5-20-7-5-6-1-10,3-20,18-10,0-20-18-4-2-6,0-10,7-8,3-4,0-4-3-2-4 0-6 3-12 5-10 0-6-12,1-20,11-10,3-3-5 1-12-2-5-4-4-10-5-4,1-6,9-10,6-22-5-5-3 3-6 8-3 6-5 11-18 11-24 0-10-3-12 4-16-2-14 2-10 10-20-3-8-10-11-22-17 0-12 4-3 12,1 10-3 3-3 4-12 5-6 4,3 18,27 12,3 12-1 2-8-5-38 2-14 11-14 12-8 12-12 17-8 4-6-6-8-11-2-20,6-24,2-12,3-10,11-10,6-7,6-9,20-4-1-3-3-1-6 3-22 23-20 2-12-3-12 1-3 7-5 2-10 5-2 34,7 10,0 8-5 7-8 1-6 4-2 16,9 18,16 10,3 3-2 0-8-14-20 0-4 3-4 10,0 28,12 6,0 2-4-1-4-18-24-5-18 4-6 16-5 8-9 10,1 18,8 10,1 5-2 1-6-12-28-3-18-6-14 1-4 12-7 16-3 30,5 12,11 9,22 3,3 4,0 4-5 14-42 12,2 20-16 18-2 14-10 8-3 10,4 4,5 5,12 5,24 6,6 12,0 22-24 13,16 5,3 4,0 4-1 7-14 7-9 8-4 12,0 14-13 4,0 8,10 10,9 4,1 12-8 16-26 8,1 12,12 12-4 4-6 0-15 3-8 14-16 15-28 22-19 17-19 11-8 16-3 24,2 28,0 34,11 20,1 10,3 28,24 5,12-1,10-7,16-17,21-38,27-16,24-10,6-10,2-12-4-10-1-52,3-8,3-23,17-11,14 0,3 2,2 18-6 12,1 15,8 13,14 6,2 16-1 12,7 2,4 0,6-5,18 0,16-2,6-14,14-2,6 2,4 25,16 2,6-6,7-12,5-18,10-9,14-11,11-8,1-24-7-10-1-10,5-7,9 0,4 3,4 19,16-1,2-8,6-4,8 0,36 1,6 5,5 10,4 18,0 17,7 3,4 0,4-3,10-4,8-13,10-18,1-18-9-18-16-6-2-6,2-22,19-36,15 2,3 6,2 24,0 30-2 24-6 6,0 5,5 8,18 0,10-3,6-19,24-7,5-8,1-32-12-30-31-8-3-4,1-10,9 7,10 9,7 10,12 8,13 2,10-4,7-18,11-20,8-17,18-4,6 1,18-2,4-4-2-2-6-18-22-4-4-4,0-7,8-11,29-8,7-32,9-40,3-3,4 0,18-5,11-6,7-14,8zM282,176l-22,0-16-7-4-5-1-6 1-16 6-3 12,1 18,4 10,6 6,8 2,6-4,8-8,4zM1042,213l-4-2-2-3 0-4 2-3 5,3 1,8-2,1zM833,556l3-3 1-5-2-4-21-2-6,2-1,2 2,4 5,4 12,3 7-1zM560,898l-8,2-10,0-28-6-30-1-30,6-12-4-40-43-17-26-2-8-1-18 4-14 7-6 27-13 20-8 16-3 28-1 44,2 34,7 36-2 18,6 5,6 2,8-6,34-8,22-2,20-30,30-17,10z"},{"k":"kt","d":"M942,778l-6,2-6-2-10-8-2-12 5-20-5-7-12-2-30,1-12,4-10,10-6-1-22-20-3-11-1-18-4-6-6,1-14,11-10,6-14,2-8-10-20-18-2-6 0-8 7-32-3-28 19-32 5-18 4-3 8,0 22,10 30,9 8,1 7-19 5-8-2-8-8-5-30-3-8-4-3-8 3-14-8-18 4-10 30-25 16-2 8-3 2-4 3-28 2-4 19-6 10-5 10-18 6,0 16,4 4-2 2-11-3-16-6-14-1-8 2-2 14-3 8-9 8-3 12,3 10,6 6,0 4-4 1-10-14-22-8-22 1-14 4-9 6-3 8-1 12,3 9,14 11,22 8,4 4-2 8-11 10-29 3-4 7-4 12-3 14-15 28-10 10,1 5,5-2,20 3,14 4,3 18,4 8,0 20-11 32,10 8,0 8-2 8-5 16-22 10-7 8,4 8,12 4,3 12-9 10-12 8-2 12,2 8-1 36-23 2-6-6-22 13-20 9-24 4-6 18-15 18-21 6-4 8-3 30,3 20-1 14,2 24,11 26,5 21,15 6,8 2,8-1,10-5,10-21,22-33,20-15,18-10,4-44-2-24,4-18-5-10,2-4,3-6,14-14,10-35,42 1,6 4,4 4,2 8,0 16-6 26-13 6,0 7,5 0,8-5,20-12,12-1,2 2,2 6,0 14-12 11-4 14-1 3,3 0,4-8,22-8,16-2,10-1,16-12,29-4,3-8,0-18-3-8,1-13,12-16,24 2,10 9,20 4,24-1,10-5,13-4,4-14,7-18,24-9,8-9,4-12,3-10,0-8-3-12-9-4,0-3,1 0,6 9,18 4,12-4,7-16,13 23,18 12,12 4,12-5,11-6,5-18,6-6,5-9,11-7,4-6,0-28-12-6,1-4,19-6,11-16,18-14,7-26,5-28-6-8,1-2,2-1,4 3,26-2,6-6,5-8-1-26-20-20-9-26-1-28-6-6,1-4,3-12,25-5,7-5,2zM264,162l-8-2 0-6 4-2 6,3 1,5-3,2zM1350,619l-22-1-8-3-12-11-2-8 12-4 20-1 18,0 6,2 4,5-2,8-6,9-8,4zM552,888l-10,0-18-8-8-1-34,1-26,5-12-3-30-28-13-18-6-16 0-18 3-9 5-5 23-15 16-7 14-3 38,1 36,4 26,5 30,0 14,4 6,7 1,12-4,18-10,18-2,20-5,8-11,10-9,12-14,6z"},{"k":"kt","d":"M1480,194l-30-2-30,0-30-14-8-6-3-4 0-8 9-38 20-19 18-21 8-5 8-2 18,3 26,0 14,2 20,10 30,11 12,9 6,10 1,8-4,8-7,10-10,10-31,18-19,17-8,2-10,1zM1066,744l-26-13-12-3-22,1-18-4-10,0-24,5-10,8-2,0-5-16-4-4-7-3-10,0-16,4-24-6-24,4-8-4-8-9-4-24-2-5-4-3-16,4-14,13-10,5-4,0-6-6-18-20-2-6 8-34-2-20 6-10 14-10 11-12 15-3 8,0 11,3 29,18 8,0 2-4 0-4-8-12-3-10 5-9 14-11 2-6-5-4-44-16-2-4-2-24 1-8 6-6 22-11 16-3 6-3 2-7-4-20 2-6 4-3 20-9 12-13 6-4 22,1 7-2-4-30 3-8 4-5 18-14 20,1 8-5 2-5 3-16-4-10-9-12-4-10-1-14 3-6 2-2 8,3 4,3 16,32 4,2 10-5 14-16 14-29 22-3 5-5 8-12 9-6 6,0 3,2 5,22 10,13 6,4 18,3 8-2 12-9 8-2 30,7 22,0 10-6 12-13 6-3 22,16 20-22 6-3 6-2 12,2 14-1 9,2 3,4 0,7-8,9-10,8-5,8-1,6 3,10 11,11 12,5 10,0 8-7 8-3 8,1 1,3-3,4-15,14 1,10 4,3 33,7 3,2 1,6-6,22-4,10-35,17-12,16-5,11-11,18 1,8 5,12 3,18 5,16-2,10-7,8-18,10-17,28-6,6-6,3-8,1-12-3-26-23-4,1-4,4-1,13 12,28 1,10-2,4-18,14-2,4 6,7 22,13 5,10 0,4-3,8-16,12-13,14-5,3-8,0-20-8-10-2-6,1-4,6 0,14-3,10-25,25-14,5-18,0-14-3-18-8-6,1-4,2-2,4-5,18-3,2zM554,874l-10,2-28-7-60,6-12-3-26-23-10-13-4-14 1-14 2-8 5-6 20-16 10-5 14-4 34,2 64,10 22,0 10,3 6,4 3,6-2,18-17,36-22,26z"},{"k":"indeks","d":"M1474,188l-52-5-25-17-5-6-1-26 3-9 36-38 8-5 46,1 14,2 20,10 26,11 9,6 6,8 0,8-3,10-12,14-32,18-22,15-16,3zM1056,724l-30-8-24,1-18-2-28,2-10-3-11-8-9-3-11,1-17,5-24-8-20,0-8-6-11-31-3-4-6-3-12,3-20,13-10,0-9-7-6-10 7-26-2-18 1-4 27-22 8-4 6-1 14,3 14,10 12,7 28,5 6,0 0-2-14-14-14-24 2-5 6-6 23-9 0-8-5-5-48-19-5-8 1-10 18-20 22-7 6-4 4-9 0-20 4-5 22-10 9-11 5-3 22,2 8-3-7-32 4-10 19-13 27-7 9-20 18-10 36-50 23-8 13-7 8,4 16,17 8,4 26,1 12-9 8-3 30,8 22-1 30-13 6,3 10,11 4,2 12-7 10-19 6-3 4,1 5,7-3,16 2,10 14,26 20,15 15,17 5,2 10-1 6,1 5,4 2,4-1,10-6,10-8,6-17,6-6,4-12,34-12,18 1,10 5,14 4,24-3,12-5,6-15,10-21,32-7,5-12-2-18-17-10-12-8,3-5,5-4,10 0,8 11,24 2,12-5,10-17,8-2,8 2,4 6,7 17,11 3,4 2,8-6,7-20,16-6,3-22-3-18-5-6,1-3,5 1,18-3,10-4,6-15,15-10,6-12,3-12,1-8-3-20-12-6-1-4,2-12,13-8,4zM1108,608l2-2 4,0 14-6 6-6 2-8-6-12-4-2-14,0-2,2-4,0-14,6-6,6-2,8 2,2 2,8 6,4 14,0zM462,868l-10,0-10-5-24-23-6-12-1-12 4-14 6-8 17-14 18-6 22,0 74,14 22,0 8,4 3,4 1,12-5,12-15,24-20,20-6,1-24-3-54,6z"},{"k":"kt","d":"M1480,182l-16,1-34-7-20-11-6-7-7-22 2-8 7-10 32-29 10-2 30,0 18,2 44,21 11,10 1,6-1,10-3,6-6,7-14,9-48,24zM1058,715l-8,0-14-5-10-2-32-1-38,2-10-3-12-10-8-1-32,6-18-9-20-5-4-6-10-25-8-8-8-1-16,3-16,9-6,0-5-3-2-8 8-32 7-9 20-17 10,0 26,15 18,5 16,3 16,0 12,5 10,2 10-1 5-3 0-6-2-4-7-2-24-3-10-3-12-8-9-12-4-10 0-4 7-5 18-4 7-3 3-6 0-10-6-6-24-7-16-9-6-10 1-10 3-8 8-6 22-6 4-10 2-18 2-6 8-7 16-5 10-12 6-2 20,3 10,1 4-2 0-4-9-14-4-12-1-10 2-5 7-7 19-10 8-2 14,2 2-1 1-15 3-6 19-10 19-30 16-20 6-4 28-8 6,2 11,12 9,6 28,4 4-1 10-8 10-5 8,2 12,6 10,1 26-3 24-9 4,3 8,10 6,3 20-8 4,0 7,9 10,20 31,29 8,15 4,2 12,1 3,1 0,2-10,10-19,8-6,8-2,32-16,24 9,32 0,10-5,11-10,10-16,22-12,11-6,4-4-1-12-8-16-18-6-1-6,2-11,16-4,12 1,8 12,22 1,8-7,8-6,1-12-2-16-14-8,1-5,4 1,4 2,2 20,12 11,20 16,16 1,6-1,4-27,16-8,0-12-5-18-3-8,2 1,28-3,8-5,8-11,12-12,8-12,2-10-3-12-9-10-12-6-2-4,3-9,15-9,9zM1100,616l2-2 6,0 2-2 16-4 10-6 6-6 2-4 0-12-4-8-6-6-6,0-2-2-14,2-2,2-4,0-2,2-14,4-12,10-2,4 0,12 4,8 6,6 14,2zM468,862l-14,2-8-4-23-22-6-10-1-12 4-12 8-10 14-11 16-5 20,0 72,15 20,2 8,5 1,8-5,12-15,20-17,15-24,1-22,4-28,2z"},{"k":"kt","d":"M1474,178l-16,0-26-9-17-11-6-8-4-14 1-8 8-10 22-20 6-4 10-2 26-1 12,1 12,4 32,17 9,7 3,6 0,8-2,6-5,6-17,11-16,6-24,13-8,2zM1056,707l-8,0-18-6-18-1-18-3-22,5-16,0-8-3-12-10-10-2-32,6-30-18-24-36-12-4-20,6-6,0-4-2 0-9 8-13 12-5 10-8 8,2 14,14 4,3 22-3 20-1 22,5 16,0 8-2 6-6-1-8-5-6-8-2-22-2-12-4-11-6-7-10-2-8 2-5 6-2 20-1 10-6 2-8 0-12-4-8-6-5-26-4-11-5-7-10 0-12 3-4 5-3 23-1 2-6 2-24 2-8 5-4 18-4 10-14 10-1 22,4 8-1 5-2 2-4-2-6-13-15-4-7-2-8 2-8 6-6 18-11 10,1 20,8 5-2 1-4-5-18 0-4 17-10 19-32 21-22 26-5 24,16 24,5 8-1 20-13 30,10 16-4 30-5 4,1 10,9 8,3 22-2 9,20 29,22 6,8 2,6-2,16-9,20-1,10 2,12-2,8-16,22 0,8 8,24-1,8-4,8-19,28-12,7-12,2-6-1-22-17-8-2-4,1-17,26-5,12 1,10 13,18-2,8-4,2-6-1-16-13-8-2-10,4-8,12 4,8 19,10 6,6 12,24 0,4-9,9-8,3-22,0-22-7-8,0-4,1-1,4 9,18 0,22-4,8-14,14-10,5-10-1-6-4-16-21-4-3-8,0-5,4-9,18-8,9zM1100,622l2-2 8,0 12-6 4,0 12-6 12-10 2-8 2-2-2-12-4-8-8-8-4,0-2-2-14,0-2,2-8,0-28,12-12,10-4,14 2,2 0,6 4,8 8,8 4,0 2,2 14,0zM468,858l-12,1-9-3-19-20-6-10 0-12 3-10 8-10 13-9 18-4 28,2 32,8 36,11 7,6-2,10-8,14-19,16-42,8-28,2z"},{"k":"kt","d":"M1468,174l-12-2-26-11-11-9-5-8-1-12 5-10 6-7 18-14 7-3 9-2 20-1 12,2 16,6 26,16 6,5 2,6 0,6-3,6-4,4-14,8-39,18-12,2zM1054,698l-8,1-18-7-34-4-10,2-14,5-14,0-6-3-10-9-6-3-10,0-28,3-10-6-16-13-5-14 0-8 4-6 11-9 18-3 18,5 22,1 16-1 4-3-4-20-6-7-8-4-24-2-14-4-6-3-5-10 4-4 25-6 8-8 2-6-1-16-3-20 5-12 0-8-3-4-12-6-5-6-3-16 2-10 6-4 20-4 10-11 30-2 8-2 6-5 2-4-3-8-18-20-3-10 2-4 16-11 8-3 12,3 20,10 8-1 2-4-4-18 2-6 12-10 3-18 10-16 19-18 18-6 6-1 6,2 18,13 26,6 26-15 28,11 32-8 12-1 8,2 20,10 10,2 17,19 13,10 12,6 5,6-3,20-5,18 0,28-17,24 5,28-1,12-2,6-14,21-6,5-6,3-20-4-10-4-16-11-4,0-32,42-8,14-12,7-15,13-4,8 3,10 6,6 23,14 3,6-1,8-7,8-16,5-10-1-26-6-6,0-6,4-3,8 11,13 3,9-1,20-8,11-8,5-6,0-20-25-6-2-12-2-8,5-9,22-7,6zM896,506l-11,0-3-3 0-4 2-2 4,1 8,5 0,3zM1102,628l2-2 6,0 2-2 10-2 6-4 4,0 12-6 12-10 6-10 0-14-8-18-4-4-8-4-24,0-2,2-6,0-34,14-12,10-6,10 0,14 8,18 4,4 8,4 24,0zM466,854l-10,1-8-4-16-19-4-8-1-10 3-10 7-8 11-8 18-4 28,3 38,11 11,6 6,6 1,8-1,8-16,16-31,8-36,4z"},{"k":"kt","d":"M1474,168l-10,1-8-1-24-12-7-6-5-8 0-8 5-10 5-6 20-14 32-4 21,6 29,20 2,4 0,6-6,8-14,8-40,16zM1050,691l-6-1-20-8-16-2-20,1-20,7-10,0-4-2-10-10-6-3-30,0-12-3-6-4-8-10-2-6 3-10 3-4 6-3 6-1 14,3 22,1 22,4 10-5 6-9-8-10-6-16-4-5-10-5-24-4-5-2 0-2 15-14 9-12-2-40 7-20-5-8-17-14-2-8 1-4 5-3 20-4 14-10 26-8 10-7 3-6-2-10-11-11-8-11 0-6 3-4 13-7 6,0 8,2 22,12 8,1 3-2 3-6 2-20 4-4 10-3 3-3-5-18 2-12 6-11 10-11 18-10 6-1 6,1 18,16 14,2 10,6 6,1 4-1 8-13 10-4 28,9 40-9 10,1 8,2 26,18 16,16 15,10 5,8 1,12-4,20 0,22-3,8-12,14-3,6 4,28-1,10-3,8-15,17-6,2-24-3-18-13-6-1-4,3-18,25-30,31-18,16-16-11-18-2-2,2-10,0-2,2-6,0-2,2-10,2-6,4-14,4-4,4-6,2-6,6-2,0-8,10-2,4 0,8-2,2 6,22 4,4 0,2 6,6 8,4 8,0 2,2 8,0 2-2 10,0 2-2 4,0 2,2 0,6 12,14 1,8-1,6-4,4-20-16-32,0-5,6-4,24-7,5zM1172,623l-8,0-17-5 3-4 10-6 10-11 12,9 2,4-3,8-9,5zM476,848l-14,2-8-1-6-5-13-16-3-10 1-8 4-8 7-7 9-5 9-2 26,1 36,11 11,8 1,6-2,10-4,8-6,6-18,6-30,4z"},{"k":"indeks","d":"M1468,164l-10-1-14-6-12-8-5-7 1-8 6-10 18-13 22-5 16,0 18,8 19,16 1,6-6,6-54,22zM970,678l-6,1-6-1-12-15-20-2-18,0-6-3-1-4 5-5 18-5 8,1 16,6 8-1 18-11 15-19-1-4-14-5-6-5-2-10 3-10 0-4-3-1-20,1-4-2-3-4 9-18 0-24-1-20 12-20-4-10-6-8 0-4 30-22 23-12 4-4 1-10-4-12-9-10-5-8 3-6 6-4 8-1 20,12 14,5 8-2 3-4 4-18 13-13 5-9 1-12-3-14 2-6 13-18 12-7 6,1 4,2 6,12 6,6 8,5 20,7 8-2 6-7 6-11 6-4 4,0 24,7 40-8 16,0 11,7 41,37 3,5 3,10-2,20 1,20-5,12-12,8-2,4 4,28-1,10-3,7-10,7-6,8-14,3-10-2-18-15-8,0-4,3-8,14-16,19-36,35-2,1-10-6-6,0-2-2-18,0-2,2-8,0-2,2-6,0-2,2-16,4-6,4-4,0-16,8-12,10-2,0-8,10-2,8-2,2 0,14 2,2 0,6 4,6 0,4 4,4 0,2 8,8 8,4 6,0 2,2-10,3-8,6-8,16-4,4-16-1-40,3-18,5zM466,844l-6,0-6-2-12-14-3-6-1-8 2-8 4-6 5-4 15-5 24,2 19,5 17,10 1,4-1,12-3,6-4,4-13,5-38,5z"},{"k":"kt","d":"M1472,156l-10,2-10-4-10-5-5-7 1-6 3-8 17-12 18-4 14,0 14,6 13,12 1,4-6,6-40,16zM972,668l-4,0-3-2 1-8 20-23 17-13 3-6-6-8-12-4-11-8 11-18-1-6-5-3-18-5-5-6-3-10 2-14-1-18 7-10 14-8 6-6 7-16 0-12 5-11 8-3 22-1 6-3 1-2-11-7-6-7-3-16 1-8 4-3 8,0 20,7 8-1 4-3 3-24 15-18 4-8 3-30 5-7 8-5 18,14 32,13 6,1 6-2 14-22 4-4 10,2 18,5 34-8 20,0 6,3 18,22 20,16 6,12-2,18 2,22-4,6-14,9-3,5 6,20-1,6-2,5-14,14-6,9-6,3-6-1-20-15-10-2-51,61-13,10-8-2-2-2-28,0-2,2-6,0-2,2-6,0-2,2-16,4-6,4-14,4-8,4-4,4-6,2-18,18-2,8-2,2 0,22 2,2 0,4 4,6 2,8 10,10-14,14-16,8-8,1-18,0-22,5zM478,836l-18,1-8-6-6-9-2-6 1-8 5-7 12-5 22,0 18,5 11,7 2,4 0,6-8,12-7,3-22,3z"},{"k":"kt","d":"M1466,150l-6,0-6-2-6-8 2-8 12-9 8-2 20-2 8,3 6,6 0,6-4,3-34,13zM1014,650l-8,0-11-2-2-2 26-22 3-8-2-8-7-8-13-3-4-3-2-6 4-14-1-10-17-8-12-10 2-28 2-4 14-11 12-11 14-10 3-6-1-10 3-4 22-8 6-4 2-4-1-4-19-18 3-3 28-3 8-4 1-30 6-8 13-12 3-20 3-6 4-3 10,1 22,7 18,7 8,1 8-6 16-22 9,1 13,5 8,1 20-6 10-1 15,7 23,20 18,9 4,5 2,6-3,14 3,20-4,5-12,8-6,7 3,20-6,14-13,11-4,1-12-5-10-8-8-1-31,30-11,16-20,22-12,4-28,0-2,2-8,0-8,4-4,0-2,2-4,0-2,2-4,0-2,2-4,0-6,4-14,2-6,4-8,8-10,6-14,18 0,4-2,2 0,22 2,2 2,10 6,10 0,6-22,12zM482,828l-16,1-6-2-8-12 0-5 2-4 4-3 8-1 20,1 10,3 4,6-1,6-6,6-11,4z"},{"k":"kt","d":"M1018,584l-8-2-1-4 8-22 0-10-3-4-4-1-16,2-6-2-3-7 1-14 15-16 22-16 9-22 6-3 16-3 4-3 0-5-6-20 4-5 16-3 4-4 1-6-4-18 1-8 3-6 15-14 5-16 3-4 6-2 10,2 30,12 10,1 4-2 10-15 8-9 4-1 14,5 10,0 12-2 12-5 6-1 12,7 20,21 15,9 2,4 6,30-3,4-18,16-1,4 2,20-5,9-6,4-6,0-6-2-10-8-8-2-4,2-37,35-15,18-12,11-25,9-17,3-40,12-10-3-6,1-10,7-23,26-11,16-2,0z"},{"k":"kt","d":"M1046,533l-8,0-14-8-5-5 0-6 9-18 18-21 14-3 16,6 9-2 0-4-13-14-4-16 3-6 13-6 7-6 0-8-8-12-2-10 5-8 14-12 8-16 8-1 20,9 22,4 7-4 9-18 6-4 24,5 32-8 12,8 23,29 8,18 0,8-13,10-4,6-1,6 3,16-3,6-7,1-16-10-12,1-44,40-16,19-10,7-18,5-11,7-35,11-6,1-10-6-10-1-8,3-12,7z"},{"k":"indeks","d":"M1102,520l-8,1-14-8-12-3-16,0-10-4-2-2 3-8 11-8 12-1 22,2 14-13 1-4-1-6-16-9-3-3-1-6 2-6 19-18 0-10-6-12 0-8 23-17 6,0 30,4 8-2 6-6 7-15 5-3 6-1 16,3 26-5 10,3 21,25 8,14-2,6-15,14 0,14-1,4-3,1-16-7-12,3-20,25-22,17-22,26-8,4-12-2-6,1-6,4-12,12-10,4z"},{"k":"kt","d":"M1122,488l-8,1-2-3 6-30-5-12 5-7 1-5-4-26 3-7 10-6 38-6 6-4 12-15 4-3 18,3 14-5 6,0 11,5 7,5 9,13 1,6-2,5-18,12-18,5-16,26-40,33-38,15z"},{"k":"kt","d":"M1146,464l-8,0-3-2 0-16-6-30 1-6 10-6 28-9 20-16 10,1 12,4 0,8-6,10-7,20-11,16-9,10-14,10-7,4-10,2zM1232,389l-4,1-3-2-2-4 1-3 4-1 3,2 2,4-1,3z"},{"k":"kt","d":"M1158,441l-6,1-6-6-3-10 3-8 8-6 12-5 18-13 6-1 3,3-1,6-9,20-7,8-18,11z"}],"jalan":"M1118,591l12,1 9-1 6-6 6-10 2-2 7,0 31,7 11,4 20,12 11,5 11,3 29,6 5,2 10,6 13,12 16,18 6,9 5,10 0,6-1,10-16,30-3,9 0,8","dermaga":"M1311,739l22,9"}</script>
+<script id="login-latar">
+/* =============================================================================
+   Latar layar login (28 Oktober 2026): peta kontur pulau FIKTIF.
+
+   Menggantikan peta jaringan jalan Dijkstra (September 2026) supaya layar login
+   sebahasa dengan hero Home dan halaman Tentang. Datanya #dataLatarLogin:
+   kontur medan yang dibangkitkan dari derau Perlin berbenih tetap, dikikis aliran
+   air supaya lembahnya bercabang, ditambah satu pit berjenjang dan satu jalan
+   hauling (rute termurah menurut kemiringan) dari pit ke dermaga. Tidak ada nama
+   atau geometri site sungguhan: layar ini terbuka untuk siapa pun.
+
+   - Kontur tergores sekali dari pantai ke puncak, garis indeks tiap 100 m amber,
+     batimetri samar di laut supaya kaca kartu punya sesuatu untuk dibelokkan.
+   - Dua unit amber bolak-balik pit–dermaga di jalan hauling (SMIL), dijeda saat
+     layar login tidak tampil atau tab di belakang.
+   - Kursor (mouse saja): kontur di sekitarnya menyala amber dan peta bergeser
+     sedikit berlawanan arah. Di atas kartu sorotnya padam.
+   - Kamera: viewBox dihitung ulang tiap ukuran jendela berubah supaya pusat
+     pulau jatuh di kanan kartu pada layar lebar dan di tengah pada HP; garis
+     tetap ±1 px di layar lewat --k.
+   - Tanpa tulisan apa pun (permintaan Iqbal, 17 September 2026).
+   - Gerak dikurangi: peta digambar utuh dan diam, tanpa paralaks.
+   ============================================================================= */
+(function () {
+  'use strict';
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(id) { return document.getElementById(id); }
+  var login = el('login'), latar = el('latarLogin'), dasar = el('latarDasar'), sorot = el('latarSorot');
+  var kartu = login && login.querySelector('.card-login');
+  if (!login || !latar || !dasar || !sorot || !kartu) return;
+  var D = null;
+  try { D = JSON.parse(el('dataLatarLogin').textContent); } catch (e) { D = null; }
+  if (!D || !D.level || !D.level.length) return;
+  var gerakKurang = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+  function buat(tag, atr) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in atr) n.setAttribute(k, atr[k]);
+    return n;
+  }
+
+  /* ------------------------------------------------------------- lapisan */
+  var gLaut = buat('g', { 'class': 'laut' }), gDarat = buat('g', { 'class': 'gores' }), gSorot = buat('g', {});
+  var urut = 0;
+  D.level.forEach(function (l) {
+    if (l.k === 'laut') { gLaut.appendChild(buat('path', { d: l.d })); return; }
+    var kelas = l.k === 'pantai' ? 'pantai' : (l.k === 'indeks' ? 'kt indeks' : 'kt');
+    var p = buat('path', { d: l.d, 'class': kelas, pathLength: '1' });
+    p.style.setProperty('--i', urut++);
+    gDarat.appendChild(p);
+    if (l.k !== 'pantai') gSorot.appendChild(buat('path', { d: l.d, 'class': kelas }));
+  });
+  dasar.appendChild(gLaut);
+  dasar.appendChild(gDarat);
+  sorot.appendChild(gSorot);
+
+  var unitSkala = [];
+  if (D.jalan) {
+    var gJalan = buat('g', { 'class': 'jalan-wadah' });
+    gJalan.appendChild(buat('path', { id: 'latarJalan', 'class': 'jalan', d: D.jalan }));
+    if (D.dermaga) gJalan.appendChild(buat('path', { 'class': 'dermaga', d: D.dermaga }));
+    dasar.appendChild(gJalan);
+    /* Satu putaran 44 detik: pit ke dermaga, berhenti, kembali, berhenti. Unit
+       kedua setengah putaran di belakang, jadi keduanya berpapasan di jalan. */
+    [0, -22].forEach(function (mulai) {
+      var g = buat('g', { 'class': 'unit' });
+      var s = buat('g', {});
+      s.appendChild(buat('circle', { 'class': 'halo', r: '12' }));
+      s.appendChild(buat('circle', { 'class': 'inti', r: '4.8' }));
+      g.appendChild(s);
+      var a = buat('animateMotion', { dur: '44s', begin: mulai + 's', repeatCount: 'indefinite',
+        calcMode: 'linear', keyPoints: '0;1;1;0;0', keyTimes: '0;0.42;0.5;0.92;1' });
+      var m = buat('mpath', {});
+      m.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#latarJalan');
+      m.setAttribute('href', '#latarJalan');
+      a.appendChild(m);
+      g.appendChild(a);
+      dasar.appendChild(g);
+      unitSkala.push(s);
+    });
+  }
+
+  /* ---------------------------------------------------------------- kamera */
+  /* Titik fokus (pusat pulau dan pit) diletakkan di bagian layar yang tidak
+     tertutup kartu, lalu dijepit supaya tepi peta tidak pernah terlihat. */
+  var FOKUS = { x: 1040, y: 540 };
+  var skala = 1;
+  function kamera() {
+    var r = latar.getBoundingClientRect();
+    var w = r.width, h = r.height;
+    if (!w || !h) return false;
+    skala = Math.max(w / D.w, h / D.h);
+    var vw = w / skala, vh = h / skala;
+    var lebar = window.innerWidth >= 1100;
+    var fx = lebar ? 0.64 : 0.5, fy = 0.5;
+    var x0 = Math.min(Math.max(FOKUS.x - vw * fx, 0), D.w - vw);
+    var y0 = Math.min(Math.max(FOKUS.y - vh * fy, 0), D.h - vh);
+    var vb = x0.toFixed(1) + ' ' + y0.toFixed(1) + ' ' + vw.toFixed(1) + ' ' + vh.toFixed(1);
+    dasar.setAttribute('viewBox', vb);
+    sorot.setAttribute('viewBox', vb);
+    latar.style.setProperty('--k', (1 / skala).toFixed(3));
+    unitSkala.forEach(function (s) { s.setAttribute('transform', 'scale(' + (1 / skala).toFixed(3) + ')'); });
     return true;
   }
 
-  /* Dijkstra biasa. N paling banyak ratusan simpul, jadi pemilihan linear
-     sudah cukup dan lebih mudah dibaca daripada antrean prioritas. */
-  function dijkstra(sumber, bobot) {
-    var n = jar.simpul.length, jarak = new Array(n), asal = new Array(n), selesai = new Array(n);
-    for (var i = 0; i < n; i++) { jarak[i] = Infinity; asal[i] = -1; selesai[i] = false; }
-    jarak[sumber] = 0;
-    for (;;) {
-      var u = -1, best = Infinity;
-      for (i = 0; i < n; i++) if (!selesai[i] && jarak[i] < best) { best = jarak[i]; u = i; }
-      if (u < 0) break;
-      selesai[u] = true;
-      var rs = jar.simpul[u].ruas;
-      for (var k = 0; k < rs.length; k++) {
-        var e = rs[k], v = e.a === u ? e.b : e.a, alt = best + bobot(e);
-        if (alt < jarak[v]) { jarak[v] = alt; asal[v] = e.id; }
-      }
-    }
-    return { jarak: jarak, asal: asal };
+  /* ------------------------------------------------------- urutan masuk */
+  function tampil() { return login.style.display !== 'none' && login.getClientRects().length > 0; }
+  var sudah = false, tSelesai = 0, tJalan = 0;
+  function mulai() {
+    if (sudah || !tampil()) return;
+    if (!kamera()) return;
+    sudah = true;
+    if (gerakKurang.matches) { latar.classList.add('selesai', 'jalan-hidup'); jeda(); return; }
+    /* Kontur terakhir mulai 150 + n x 55 ms dan butuh 2,2 detik. */
+    tSelesai = setTimeout(function () { latar.classList.add('selesai'); }, 150 + urut * 55 + 2200 + 150);
+    tJalan = setTimeout(function () { latar.classList.add('jalan-hidup'); }, 2600);
+    jeda();
   }
 
-  /* ------------------------------------------------------------ jaringan */
-  function bangunJaringan() {
-    var lr = login.getBoundingClientRect(), kr = kartuEl.getBoundingClientRect();
-    var kx = kr.left - lr.left, ky = kr.top - lr.top;
-    SEL = Math.round(jepit(Math.min(W, H) / 8.2, 72, 108));
-    var tepi = SEL * 0.5;
-    var zona = { x0: kx - tepi, y0: ky - tepi, x1: kx + kr.width + tepi, y1: ky + kr.height + tepi };
-    /* Pojok kanan bawah untuk penunjuk arah utara. */
-    var pojok = [{ x0: W - 70, y0: H - 64, x1: W, y1: H }];
-
-    var kol = Math.ceil(W / SEL) + 3, bar = Math.ceil(H / SEL) + 3;
-    var ox = (W - (kol - 1) * SEL) / 2, oy = (H - (bar - 1) * SEL) / 2;
-    var simpul = [], kisi = {};
-    for (var i = 0; i < kol; i++) {
-      for (var j = 0; j < bar; j++) {
-        var x = ox + i * SEL, y = oy + j * SEL;
-        if (x > zona.x0 && x < zona.x1 && y > zona.y0 && y < zona.y1) continue;
-        if (Math.random() < 0.36) continue;
-        var s = { id: simpul.length, i: i, j: j, x: x, y: y, ruas: [] };
-        simpul.push(s);
-        kisi[i + ',' + j] = s;
-      }
-    }
-    function di(a, b) { return kisi[a + ',' + b]; }
-    var calon = [], tengahDipakai = {};
-    function tambah(a, b, tengah) {
-      if (!a || !b) return;
-      if (tengah) {                       // ruas lompat: jangan sampai bersilang di titik kosong
-        if (tengahDipakai[tengah]) return;
-        tengahDipakai[tengah] = 1;
-      }
-      if (kenaKotak(a.x, a.y, b.x, b.y, zona)) return;
-      calon.push({ a: a, b: b });
-    }
-    simpul.forEach(function (s) {
-      if (di(s.i + 1, s.j)) tambah(s, di(s.i + 1, s.j));
-      else if (Math.random() < 0.5) tambah(s, di(s.i + 2, s.j), (s.i + 1) + ',' + s.j);
-      if (di(s.i, s.j + 1)) tambah(s, di(s.i, s.j + 1));
-      else if (Math.random() < 0.45) tambah(s, di(s.i, s.j + 2), s.i + ',' + (s.j + 1));
-    });
-    for (i = 0; i < kol - 1; i++) {
-      for (j = 0; j < bar - 1; j++) {
-        if (Math.random() < 0.5) tambah(di(i, j), di(i + 1, j + 1));
-        else tambah(di(i + 1, j), di(i, j + 1));
-      }
-    }
-
-    /* Hutan rentang acak (Kruskal) menjamin setiap bagian tersambung;
-       sisa calon hanya diambil sebagian supaya tidak jadi kisi rapat. */
-    var induk = simpul.map(function (s) { return s.id; });
-    function akar(v) { while (induk[v] !== v) { induk[v] = induk[induk[v]]; v = induk[v]; } return v; }
-    kocok(calon);
-    var ruas = [];
-    calon.forEach(function (c) {
-      var ra = akar(c.a.id), rb = akar(c.b.id);
-      if (ra !== rb) induk[ra] = rb;
-      else if (Math.random() > 0.3) return;
-      var px = Math.hypot(c.b.x - c.a.x, c.b.y - c.a.y);
-      var e = { id: ruas.length, a: c.a.id, b: c.b.id, px: px, km: px / SEL * KM_PER_SEL, kelas: 'cabang' };
-      ruas.push(e);
-      c.a.ruas.push(e);
-      c.b.ruas.push(e);
-    });
-
-    // komponen tersambung
-    var komp = 0;
-    simpul.forEach(function (s) { s.komp = -1; });
-    simpul.forEach(function (s) {
-      if (s.komp >= 0 || !s.ruas.length) return;
-      var tumpuk = [s];
-      s.komp = komp;
-      while (tumpuk.length) {
-        var u = tumpuk.pop();
-        u.ruas.forEach(function (e) {
-          var v = simpul[e.a === u.id ? e.b : e.a];
-          if (v.komp < 0) { v.komp = komp; tumpuk.push(v); }
-        });
-      }
-      komp++;
-    });
-    jar = { simpul: simpul, ruas: ruas, fasil: [], pit: [], zona: zona };
-
-    // fasilitas
-    function diPojok(s) {
-      return pojok.some(function (z) { return s.x > z.x0 - 20 && s.x < z.x1 + 20 && s.y > z.y0 - 16 && s.y < z.y1 + 16; });
-    }
-    var calonF = kocok(simpul.filter(function (s) {
-      return s.ruas.length && s.x > 44 && s.x < W - 44 && s.y > 40 && s.y < H - 40 &&
-        !(s.x > zona.x0 - 26 && s.x < zona.x1 + 26 && s.y > zona.y0 - 22 && s.y < zona.y1 + 22) &&
-        !diPojok(s);
-    }));
-    var K = Math.round(jepit(W * H / (SEL * SEL * 6.5), 5, 12));
-    var fasil = [];
-    for (i = 0; i < calonF.length && fasil.length < K; i++) {
-      var c = calonF[i];
-      if (fasil.some(function (f) { return Math.hypot(f.x - c.x, f.y - c.y) < SEL * 1.9; })) continue;
-      fasil.push(c);
-    }
-    /* Jetty ke arah pantai (kanan bawah), front ke arah pit (kiri atas),
-       stockpile dan ROM di antaranya. Sisanya fasilitas pendukung. */
-    fasil.sort(function (a, b) { return (b.y / H + 0.6 * b.x / W) - (a.y / H + 0.6 * a.x / W); });
-    var jenis = [];
-    if (fasil.length) jenis[0] = 'jetty';
-    var nFront = fasil.length >= 8 ? 3 : 2;
-    for (i = 0; i < nFront && fasil.length - 1 - i > 0; i++) jenis[fasil.length - 1 - i] = 'front';
-    var tengahan = ['stockpile', 'rom', 'stockpile', 'workshop', 'checker', 'fuel', 'disposal', 'tower', 'stockpile'];
-    var ti = 0;
-    for (i = 1; i < fasil.length; i++) if (!jenis[i]) jenis[i] = tengahan[ti++] || 'workshop';
-    fasil.forEach(function (f, n) { f.jenis = jenis[n]; });
-    jar.fasil = fasil;
-
-    /* Jalan utama: ruas yang dilalui rute terpendek (menurut panjang) dari tiap
-       fasilitas ke tujuan wajarnya dalam siklus angkut. */
-    var ARAH = { front: ['stockpile', 'rom'], stockpile: ['jetty'], rom: ['stockpile'] };
-    fasil.forEach(function (f) {
-      var tujuan = ARAH[f.jenis];
-      if (!tujuan) return;
-      var d = dijkstra(f.id, function (e) { return e.px; });
-      var pilih = null;
-      fasil.forEach(function (g) {
-        if (tujuan.indexOf(g.jenis) < 0 || !isFinite(d.jarak[g.id])) return;
-        if (!pilih || d.jarak[g.id] < d.jarak[pilih.id]) pilih = g;
-      });
-      if (!pilih) return;
-      for (var cur = pilih.id; cur !== f.id;) {
-        var e = ruas[d.asal[cur]];
-        e.kelas = 'utama';
-        cur = e.a === cur ? e.b : e.a;
-      }
-    });
-    ruas.forEach(function (e) { e.menit = e.km / LAJU[e.kelas] * 60; });
-    fasil.forEach(function (f) { f.fasil = true; });
-
-    // pit terbuka di dekat front, sebagai kontur jenjang
-    fasil.filter(function (f) { return f.jenis === 'front'; }).slice(0, 2).forEach(function (f) {
-      var arahX = f.x < W / 2 ? -1 : 1, arahY = f.y < H / 2 ? -1 : 1;
-      jar.pit.push(buatPit(f.x + arahX * SEL * acak(0.5, 0.9), f.y + arahY * SEL * acak(0.35, 0.7),
-        SEL * acak(1.05, 1.45)));
-    });
+  /* SMIL dijeda saat tidak ada yang melihat: login disembunyikan sesudah masuk,
+     tab di belakang, atau pengguna meminta gerak dikurangi. */
+  function jeda() {
+    if (!dasar.pauseAnimations) return;
+    try {
+      if (tampil() && !document.hidden && !gerakKurang.matches) dasar.unpauseAnimations();
+      else dasar.pauseAnimations();
+    } catch (e) {}
   }
 
-  function buatPit(cx, cy, R) {
-    var harmoni = [[2, acak(0.05, 0.11), acak(0, 6.28)], [3, acak(0.03, 0.07), acak(0, 6.28)],
-      [5, acak(0.01, 0.03), acak(0, 6.28)]];
-    var cincin = [];
-    for (var k = 0; k < 7; k++) {
-      var rr = R * (1 - k * 0.125), titik = [];
-      for (var a = 0; a < 72; a++) {
-        var th = a / 72 * Math.PI * 2, f = 1;
-        for (var h = 0; h < harmoni.length; h++) f += harmoni[h][1] * Math.sin(harmoni[h][0] * th + harmoni[h][2] + k * 0.18);
-        titik.push([cx + Math.cos(th) * rr * f, cy + Math.sin(th) * rr * f * 0.74]);
-      }
-      cincin.push(titik);
-    }
-    return cincin;
-  }
-
-  /* ------------------------------------------------------ lapisan statis */
-  function kanvasBaru(w, h) {
-    var c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
-    return c;
-  }
-  function jalurRuas(c, kelas) {
-    c.beginPath();
-    jar.ruas.forEach(function (e) {
-      if (kelas && e.kelas !== kelas) return;
-      var a = jar.simpul[e.a], b = jar.simpul[e.b];
-      c.moveTo(a.x, a.y); c.lineTo(b.x, b.y);
-    });
-  }
-  function ikon(c, nama, x, y, ukuran, warna, tebal) {
-    var p = jalurIkon[nama];
-    if (!p) return;
-    var s = ukuran / 24;
-    c.save();
-    c.translate(x - ukuran / 2, y - ukuran / 2);
-    c.scale(s, s);
-    c.lineWidth = tebal / s;
-    c.lineCap = 'round'; c.lineJoin = 'round';
-    c.strokeStyle = warna;
-    c.stroke(p);
-    c.restore();
-  }
-  function gambarLapisan() {
-    var w = W * DPR, h = H * DPR;
-    lapisDasar = kanvasBaru(w, h);
-    lapisTerang = kanvasBaru(w, h);
-    lapisFasil = kanvasBaru(w, h);
-
-    var c = lapisDasar.getContext('2d');
-    c.setTransform(DPR, 0, 0, DPR, 0, 0);
-    jar.pit.forEach(function (cincin) {
-      cincin.forEach(function (titik, k) {
-        c.beginPath();
-        var n = titik.length;
-        c.moveTo((titik[n - 1][0] + titik[0][0]) / 2, (titik[n - 1][1] + titik[0][1]) / 2);
-        for (var i = 0; i < n; i++) {
-          var p = titik[i], q = titik[(i + 1) % n];
-          c.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
-        }
-        c.strokeStyle = 'rgba(' + WARNA.jalan + ',' + (k % 2 ? 0.07 : 0.12) + ')';
-        c.lineWidth = 1;
-        c.stroke();
-      });
-    });
-    c.lineCap = 'round';
-    jalurRuas(c, 'cabang');
-    c.strokeStyle = 'rgba(' + WARNA.jalan + ',.15)'; c.lineWidth = 1.1; c.stroke();
-    jalurRuas(c, 'utama');
-    c.strokeStyle = 'rgba(' + WARNA.jalan + ',.07)'; c.lineWidth = 7; c.stroke();
-    c.strokeStyle = 'rgba(' + WARNA.jalan + ',.34)'; c.lineWidth = 2.4; c.stroke();
-    c.beginPath();
-    jar.simpul.forEach(function (s) {
-      if (!s.ruas.length || s.fasil) return;
-      c.moveTo(s.x + 1.7, s.y); c.arc(s.x, s.y, 1.7, 0, Math.PI * 2);
-    });
-    c.fillStyle = 'rgba(' + WARNA.jalan + ',.32)'; c.fill();
-
-    var t = lapisTerang.getContext('2d');
-    t.setTransform(DPR, 0, 0, DPR, 0, 0);
-    t.lineCap = 'round';
-    jalurRuas(t, 'cabang');
-    t.strokeStyle = 'rgba(' + WARNA.terang + ',.5)'; t.lineWidth = 1.3; t.stroke();
-    jalurRuas(t, 'utama');
-    t.strokeStyle = 'rgba(' + WARNA.terang + ',.72)'; t.lineWidth = 2.6; t.stroke();
-    t.beginPath();
-    jar.simpul.forEach(function (s) {
-      if (!s.ruas.length || s.fasil) return;
-      t.moveTo(s.x + 2, s.y); t.arc(s.x, s.y, 2, 0, Math.PI * 2);
-    });
-    t.fillStyle = 'rgba(' + WARNA.terang + ',.8)'; t.fill();
-
-    var f = lapisFasil.getContext('2d');
-    f.setTransform(DPR, 0, 0, DPR, 0, 0);
-    jar.fasil.forEach(function (s) {
-      f.beginPath(); f.arc(s.x, s.y, 12.5, 0, Math.PI * 2);
-      f.fillStyle = '#0b3a34'; f.fill();
-      f.strokeStyle = 'rgba(' + WARNA.jalan + ',.5)'; f.lineWidth = 1; f.stroke();
-      ikon(f, s.jenis, s.x, s.y, 15, 'rgba(214,236,230,.85)', 1.35);
-    });
-
-    var R = Math.round(180 * DPR);
-    sorot = kanvasBaru(R * 2, R * 2);
-    sorotCtx = sorot.getContext('2d');
-  }
-
-  /* ----------------------------------------------------------- truk latar */
-  function jalurMenurut(asal, sumber, tujuan) {
-    var jalur = [tujuan];
-    for (var cur = tujuan; cur !== sumber;) {
-      var e = jar.ruas[asal[cur]];
-      cur = e.a === cur ? e.b : e.a;
-      jalur.push(cur);
-    }
-    return jalur.reverse();
-  }
-  function legBaru(t, dari) {
-    var asal = jar.simpul[dari];
-    var pilihan = jar.fasil.filter(function (f) { return f.komp === asal.komp && f.id !== dari; });
-    if (!pilihan.length) { t.jalur = null; return; }
-    var ke = pilihan[Math.floor(Math.random() * pilihan.length)].id;
-    var d = dijkstra(dari, function (e) { return e.menit; });
-    t.jalur = jalurMenurut(d.asal, dari, ke);
-    t.kum = [0];
-    var total = 0;
-    for (var i = 1; i < t.jalur.length; i++) {
-      var a = jar.simpul[t.jalur[i - 1]], b = jar.simpul[t.jalur[i]];
-      total += Math.hypot(b.x - a.x, b.y - a.y);
-      t.kum.push(total);
-    }
-    t.px = total; t.s = 0; t.tunggu = 0; t.ke = ke;
-    t.kec = acak(58, 78);
-  }
-  function siapkanArmada() {
-    armada = [];
-    if (kurangiGerak() || !run) return;
-    var n = W >= 900 ? 2 : 1;
-    var calon = kocok(jar.fasil.filter(function (f) {
-      return f.id !== run.sumber && jar.fasil.some(function (g) { return g !== f && g.komp === f.komp; });
-    }));
-    for (var i = 0; i < n && i < calon.length; i++) {
-      var t = {};
-      legBaru(t, calon[i].id);
-      if (t.jalur) { t.s = acak(0, t.px * 0.6); armada.push(t); }
-    }
-  }
-  function perbaruiArmada(dt) {
-    armada.forEach(function (t) {
-      if (!t.jalur) return;
-      if (t.tunggu > 0) {
-        t.tunggu -= dt;
-        if (t.tunggu <= 0) legBaru(t, t.ke);
-        return;
-      }
-      t.s += t.kec * dt;
-      if (t.s >= t.px) { t.s = t.px; t.tunggu = acak(1.2, 2.8); }
-    });
-  }
-  function gambarArmada() {
-    armada.forEach(function (t) {
-      if (!t.jalur || t.jalur.length < 2) return;
-      var parkir = Math.min(20, t.px / 2);
-      var pos = titikPada(t, parkir + (t.px - 2 * parkir) * (t.s / (t.px || 1)));
-      var sudut = pos.sudut, balik = Math.cos(sudut) < -0.01;
-      if (balik) sudut -= Math.PI;
-      ctx.save();
-      ctx.translate(pos.x, pos.y);
-      ctx.beginPath(); ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(8,42,37,.88)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(' + WARNA.terang + ',.32)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.rotate(sudut);
-      if (balik) ctx.scale(-1, 1);
-      ikon(ctx, 'truk', 0, -0.4, 12, 'rgba(214,236,230,.72)', 1.2);
-      ctx.restore();
-    });
-  }
-  function gambarDenyutTower() {
-    if (kurangiGerak()) return;
-    jar.fasil.forEach(function (f) {
-      if (f.jenis !== 'tower') return;
-      for (var k = 0; k < 2; k++) {
-        var fase = ((waktu + k * 1.5) % 3) / 3;
-        ctx.beginPath(); ctx.arc(f.x, f.y, 14 + fase * 36, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(' + WARNA.cari + ',' + (0.34 * (1 - fase)).toFixed(3) + ')';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-    });
-  }
-
-  /* ------------------------------------------------------------ satu rute */
-  function mulaiRun(sumber, tujuan) {
-    var d = dijkstra(sumber, function (e) { return e.menit; });
-    var r = { sumber: sumber, jarak: d.jarak, asal: d.asal, gel: 0, fase: 'cari', t: 0, s: 0, antrean: null };
-    aturTujuan(r, tujuan);
-    return r;
-  }
-  function aturTujuan(r, tujuan) {
-    r.tujuan = tujuan;
-    var target = r.jarak[tujuan];
-    r.laju = Math.max(target, 0.5) / jepit(target * 0.3, 1.5, 3.2);   // menit per detik animasi
-    var jalur = [tujuan];
-    for (var cur = tujuan; cur !== r.sumber;) {
-      var e = jar.ruas[r.asal[cur]];
-      cur = e.a === cur ? e.b : e.a;
-      jalur.push(cur);
-    }
-    jalur.reverse();
-    r.jalur = jalur;
-    r.kum = [0];
-    var total = 0;
-    for (var i = 1; i < jalur.length; i++) {
-      var a = jar.simpul[jalur[i - 1]], b = jar.simpul[jalur[i]];
-      total += Math.hypot(b.x - a.x, b.y - a.y);
-      r.kum.push(total);
-    }
-    r.px = total;
-    r.km = total / SEL * KM_PER_SEL;
-    r.menit = target;
-    r.diperiksa = r.jarak.filter(function (v) { return v <= target; }).length;
-    r.idxLalu = 0;
-  }
-
-  var SIKLUS = { front: ['stockpile', 'rom'], stockpile: ['jetty'], rom: ['stockpile', 'jetty'], jetty: ['front'] };
-  function tujuanBerikut(dari) {
-    var asal = jar.simpul[dari];
-    var sekomp = jar.fasil.filter(function (f) { return f.komp === asal.komp && f.id !== dari; });
-    if (!sekomp.length) return -1;
-    var mau = SIKLUS[asal.jenis] || ['front'];
-    var cocok = sekomp.filter(function (f) { return mau.indexOf(f.jenis) >= 0; });
-    var pool = cocok.length ? cocok : sekomp;
-    return pool[Math.floor(Math.random() * pool.length)].id;
-  }
-  function runAwal() {
-    /* Mulai dari komponen dengan fasilitas terbanyak, dari sebuah front bila ada. */
-    var perKomp = {};
-    jar.fasil.forEach(function (f) { (perKomp[f.komp] = perKomp[f.komp] || []).push(f); });
-    var terbesar = null;
-    Object.keys(perKomp).forEach(function (k) {
-      if (perKomp[k].length >= 2 && (!terbesar || perKomp[k].length > terbesar.length)) terbesar = perKomp[k];
-    });
-    if (!terbesar) return null;
-    var fronts = terbesar.filter(function (f) { return f.jenis === 'front'; });
-    var mulai = (fronts.length ? fronts : terbesar)[Math.floor(Math.random() * (fronts.length || terbesar.length))];
-    var tujuan = tujuanBerikut(mulai.id);
-    return tujuan < 0 ? null : mulaiRun(mulai.id, tujuan);
-  }
-
-  function alihkan(id) {
-    if (!run || kurangiGerak()) return;
-    var sasaran = jar.simpul[id];
-    if (sasaran.komp !== jar.simpul[run.sumber].komp) return;   // tidak tersambung
-    if (run.fase === 'cari' || run.fase === 'jejak') {
-      if (id === run.sumber || id === run.tujuan) return;
-      aturTujuan(run, id);
-      if (run.gel >= run.jarak[id]) { run.fase = 'jejak'; run.t = 0; }
-      else run.fase = 'cari';
-    } else if (run.fase === 'jalan') {
-      if (id === run.tujuan) return;
-      run.antrean = id;
-    } else {
-      if (id === run.tujuan) return;
-      run = mulaiRun(run.tujuan, id);
-    }
-  }
-
-  /* ------------------------------------------------------------- update */
-  function perbarui(dt) {
-    perbaruiSorotan();
-    perbaruiArmada(dt);
-    if (!run) return;
-    var r = run;
-    if (r.fase === 'cari') {
-      r.gel += r.laju * dt;
-      if (r.gel >= r.jarak[r.tujuan]) { r.gel = Math.max(r.gel, r.jarak[r.tujuan]); r.fase = 'jejak'; r.t = 0; }
-    } else if (r.fase === 'jejak') {
-      r.t += dt;
-      if (r.t >= 0.9) { r.fase = 'jalan'; r.s = 0; r.t = 0; }
-    } else if (r.fase === 'jalan') {
-      var kec = Math.max(105, r.px / 7);
-      r.s += kec * dt;
-      var idx = 0;
-      while (idx < r.kum.length - 1 && r.kum[idx + 1] <= r.s) idx++;
-      if (r.antrean !== null && idx > r.idxLalu && idx < r.jalur.length - 1) {
-        var di = r.jalur[idx], ke = r.antrean === di ? tujuanBerikut(di) : r.antrean;
-        if (ke >= 0) { run = mulaiRun(di, ke); return; }
-        r.antrean = null;
-      }
-      r.idxLalu = idx;
-      if (r.s >= r.px) { r.s = r.px; r.fase = 'tahan'; r.t = 0; }
-    } else if (r.fase === 'tahan') {
-      r.t += dt;
-      if (r.t >= 0.9) { r.fase = 'pudar'; r.t = 0; }
-    } else if (r.fase === 'pudar') {
-      r.t += dt;
-      if (r.t >= 0.7) {
-        var dari = r.tujuan, ke2 = r.antrean !== null && r.antrean !== dari ? r.antrean : tujuanBerikut(dari);
-        run = ke2 < 0 ? null : mulaiRun(dari, ke2);
-      }
-    }
-  }
-  function perbaruiSorotan() {
-    var aktif = penunjuk.ada && (!penunjuk.sentuhSampai || waktu < penunjuk.sentuhSampai);
-    if (!aktif || !jar) { sorotan = null; sorotDipakai = null; return; }
-    var best = null, bd = 120;
-    jar.fasil.forEach(function (f) {
-      var d = Math.hypot(f.x - penunjuk.x, f.y - penunjuk.y);
-      if (d < bd) { bd = d; best = f; }
-    });
-    if (best !== sorotan) { sorotan = best; sorotSejak = waktu; if (!best) sorotDipakai = null; }
-    if (sorotan && sorotan !== sorotDipakai && waktu - sorotSejak > 0.38) {
-      sorotDipakai = sorotan;
-      alihkan(sorotan.id);
-    }
-  }
-
-  /* ------------------------------------------------------------- gambar */
-  function titikPada(r, jarakPx) {
-    var i = 1;
-    while (i < r.kum.length - 1 && r.kum[i] < jarakPx) i++;
-    var a = jar.simpul[r.jalur[i - 1]], b = jar.simpul[r.jalur[Math.min(i, r.jalur.length - 1)]];
-    var seg = r.kum[i] - r.kum[i - 1] || 1;
-    var f = jepit((jarakPx - r.kum[i - 1]) / seg, 0, 1);
-    return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, sudut: Math.atan2(b.y - a.y, b.x - a.x) };
-  }
-  function tarikJalur(r, dari, sampai) {
-    ctx.beginPath();
-    var p = titikPada(r, dari);
-    ctx.moveTo(p.x, p.y);
-    for (var i = 1; i < r.jalur.length; i++) {
-      if (r.kum[i] <= dari) continue;
-      if (r.kum[i] >= sampai) { var q = titikPada(r, sampai); ctx.lineTo(q.x, q.y); break; }
-      var s = jar.simpul[r.jalur[i]];
-      ctx.lineTo(s.x, s.y);
-    }
-  }
-  function gambarGelombang(r, alpha) {
-    var G = r.gel, jr = r.jarak, ujung = [];
-    ctx.globalAlpha = alpha;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    jar.ruas.forEach(function (e) {
-      var fa = jepit((G - jr[e.a]) / e.menit, 0, 1), fb = jepit((G - jr[e.b]) / e.menit, 0, 1);
-      if (!(fa > 0) && !(fb > 0)) return;
-      var A = jar.simpul[e.a], B = jar.simpul[e.b];
-      if (fa + fb >= 1) { ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); return; }
-      if (fa > 0) {
-        var xa = A.x + (B.x - A.x) * fa, ya = A.y + (B.y - A.y) * fa;
-        ctx.moveTo(A.x, A.y); ctx.lineTo(xa, ya); ujung.push(xa, ya);
-      }
-      if (fb > 0) {
-        var xb = B.x + (A.x - B.x) * fb, yb = B.y + (A.y - B.y) * fb;
-        ctx.moveTo(B.x, B.y); ctx.lineTo(xb, yb); ujung.push(xb, yb);
-      }
-    });
-    ctx.strokeStyle = 'rgba(' + WARNA.cari + ',.5)';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-
-    ctx.beginPath();
-    jar.simpul.forEach(function (s) {
-      if (s.fasil || !s.ruas.length || !(jr[s.id] <= G)) return;
-      ctx.moveTo(s.x + 2.3, s.y); ctx.arc(s.x, s.y, 2.3, 0, Math.PI * 2);
-    });
-    ctx.fillStyle = 'rgba(' + WARNA.cari + ',.85)';
-    ctx.fill();
-
-    if (r.fase === 'cari' && ujung.length) {
-      ctx.beginPath();
-      for (var i = 0; i < ujung.length; i += 2) {
-        ctx.moveTo(ujung[i] + 2.2, ujung[i + 1]); ctx.arc(ujung[i], ujung[i + 1], 2.2, 0, Math.PI * 2);
-      }
-      ctx.fillStyle = '#d9f6ee';
-      ctx.shadowColor = 'rgba(' + WARNA.cari + ',.9)';
-      ctx.shadowBlur = 6;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-    ctx.globalAlpha = 1;
-  }
-  function gambarPenandaFasil(r, alpha) {
-    jar.fasil.forEach(function (f) {
-      if (f === sorotan) {
-        ctx.beginPath(); ctx.arc(f.x, f.y, 16, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(234,245,241,.8)'; ctx.lineWidth = 1.3; ctx.stroke();
-      }
-      if (!r || !(r.jarak[f.id] <= r.gel) || f.id === r.sumber) return;
-      ctx.globalAlpha = alpha;
-      ctx.beginPath(); ctx.arc(f.x, f.y, 12.5, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(' + WARNA.cari + ',.95)'; ctx.lineWidth = 1.3; ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-    if (!r) return;
-    var tuj = jar.simpul[r.tujuan];
-    var denyut = (waktu % 1.6) / 1.6;
-    ctx.globalAlpha = (r.fase === 'pudar' ? alpha : 1);
-    ctx.beginPath(); ctx.arc(tuj.x, tuj.y, 12.5, 0, Math.PI * 2);
-    ctx.strokeStyle = WARNA.amber; ctx.lineWidth = 1.8; ctx.stroke();
-    if (!kurangiGerak() && r.fase !== 'pudar') {
-      ctx.beginPath(); ctx.arc(tuj.x, tuj.y, 14 + denyut * 10, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(232,146,10,' + (0.5 * (1 - denyut)).toFixed(3) + ')';
-      ctx.lineWidth = 1.2; ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-  /* Truk berhenti sedikit di luar lingkaran fasilitas, supaya ikon fasilitas
-     tetap terlihat saat truk menunggu rute atau tiba. */
-  function gambarTruk(r) {
-    var pos, parkir = Math.min(24, r.px / 2);
-    if (r.fase === 'jalan') pos = titikPada(r, parkir + (r.px - 2 * parkir) * (r.s / (r.px || 1)));
-    else if (r.fase === 'tahan' || r.fase === 'pudar') pos = titikPada(r, r.px - parkir);
-    else pos = titikPada(r, parkir);
-    if (r.jalur.length < 2) { var s0 = jar.simpul[r.sumber]; pos = { x: s0.x, y: s0.y, sudut: 0 }; }
-    var sudut = pos.sudut, balik = Math.cos(sudut) < -0.01;
-    if (balik) sudut -= Math.PI;
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
-    ctx.beginPath(); ctx.arc(0, 0, 11.5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(8,42,37,.92)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(232,146,10,.55)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.rotate(sudut);
-    if (balik) ctx.scale(-1, 1);
-    ikon(ctx, 'truk', 0, -0.5, 16, WARNA.amber, 1.5);
-    ctx.restore();
-  }
-  function gambar() {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, kanvas.width, kanvas.height);
-    if (!jar) return;
-    ctx.drawImage(lapisDasar, 0, 0);
-
-    var aktif = penunjuk.ada && (!penunjuk.sentuhSampai || waktu < penunjuk.sentuhSampai);
-    if (aktif && !kurangiGerak() && sorotCtx) {
-      var R = sorot.width / 2, cx = penunjuk.x * DPR, cy = penunjuk.y * DPR;
-      sorotCtx.globalCompositeOperation = 'source-over';
-      sorotCtx.clearRect(0, 0, R * 2, R * 2);
-      var sx = cx - R, sy = cy - R, dx = 0, dy = 0, sw = R * 2, sh = R * 2;
-      if (sx < 0) { dx = -sx; sw += sx; sx = 0; }
-      if (sy < 0) { dy = -sy; sh += sy; sy = 0; }
-      sw = Math.min(sw, lapisTerang.width - sx); sh = Math.min(sh, lapisTerang.height - sy);
-      if (sw > 0 && sh > 0) sorotCtx.drawImage(lapisTerang, sx, sy, sw, sh, dx, dy, sw, sh);
-      sorotCtx.globalCompositeOperation = 'destination-in';
-      var g = sorotCtx.createRadialGradient(R, R, 0, R, R, R);
-      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.55, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      sorotCtx.fillStyle = g;
-      sorotCtx.fillRect(0, 0, R * 2, R * 2);
-      ctx.drawImage(sorot, cx - R, cy - R);
-    }
-
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    var r = run, alpha = 1;
-    if (r) {
-      alpha = r.fase === 'pudar' ? 1 - r.t / 0.7 : 1;
-      gambarGelombang(r, alpha);
-      if (r.fase !== 'cari') {
-        var p = r.fase === 'jejak' ? 1 - Math.pow(1 - r.t / 0.9, 3) : 1;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.globalAlpha = alpha;
-        if (r.fase === 'jalan' && r.s > 0) {
-          tarikJalur(r, 0, r.s);
-          ctx.strokeStyle = 'rgba(232,146,10,.38)'; ctx.lineWidth = 2.4; ctx.stroke();
-        }
-        tarikJalur(r, r.fase === 'jalan' ? r.s : 0, r.px * p);
-        ctx.strokeStyle = WARNA.amber; ctx.lineWidth = 2.6;
-        ctx.shadowColor = 'rgba(232,146,10,.45)'; ctx.shadowBlur = 7;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
-      }
-    }
-    gambarDenyutTower();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(lapisFasil, 0, 0);
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    gambarPenandaFasil(r, alpha);
-    gambarArmada();
-    if (r) gambarTruk(r);
-  }
-
-
-  /* Kotak kartu diukur paling sering dua kali per detik, bukan tiap gerak
-     kursor: getBoundingClientRect() memaksa hitung ulang tata letak bila ada
-     teks yang baru berubah, dan teks status berubah beberapa kali per detik. */
+  /* -------------------------------------------------- sorot dan paralaks */
+  var raf = 0, mx = 0, my = 0, kotak = null, kotakT = 0;
   function diAtasKartu(x, y) {
-    if (!kotakKartu || waktu - kartuDiukur > 0.5 || kartuDiukur < 0) {
-      var lr = login.getBoundingClientRect(), kr = kartuEl.getBoundingClientRect();
-      kotakKartu = { x0: kr.left - lr.left - 10, x1: kr.right - lr.left + 10, y0: kr.top - lr.top - 10, y1: kr.bottom - lr.top + 10 };
-      kartuDiukur = waktu;
-    }
-    return x > kotakKartu.x0 && x < kotakKartu.x1 && y > kotakKartu.y0 && y < kotakKartu.y1;
+    var t = performance.now();
+    if (!kotak || t - kotakT > 500) { kotak = kartu.getBoundingClientRect(); kotakT = t; }
+    return x > kotak.left - 8 && x < kotak.right + 8 && y > kotak.top - 8 && y < kotak.bottom + 8;
   }
-
-  /* ------------------------------------------------------- siklus hidup */
-  function siapkan() {
-    var lr = login.getBoundingClientRect();
-    W = Math.max(1, Math.round(lr.width));
-    H = Math.max(1, Math.round(lr.height));
-    DPR = Math.min(2, window.devicePixelRatio || 1);
-    kanvas.width = Math.round(W * DPR);
-    kanvas.height = Math.round(H * DPR);
-    bangunJaringan();
-    gambarLapisan();
-    run = runAwal();
-    siapkanArmada();
-    if (run && kurangiGerak()) {
-      run.gel = run.jarak[run.tujuan];
-      run.fase = 'tahan';
-      run.s = run.px;
-    }
-    penunjuk.ada = false;
-    sorotan = null; sorotDipakai = null;
-    kotakKartu = null;
-    kanvas.classList.add('siap');
-  }
-  function putar(ts) {
+  function terapkan() {
     raf = 0;
-    if (!tampil()) { tLalu = 0; return; }
-    var dt = tLalu ? Math.min(0.05, (ts - tLalu) / 1000) : 1 / 60;
-    tLalu = ts;
-    waktu += dt;
-    perbarui(dt);
-    gambar();
-    raf = requestAnimationFrame(putar);
+    var r = sorot.getBoundingClientRect();
+    sorot.style.setProperty('--mx', (mx - r.left).toFixed(0) + 'px');
+    sorot.style.setProperty('--my', (my - r.top).toFixed(0) + 'px');
+    if (!gerakKurang.matches) {
+      var kx = mx / window.innerWidth - 0.5, ky = my / window.innerHeight - 0.5;
+      latar.style.transform = 'translate(' + (kx * -14).toFixed(1) + 'px,' + (ky * -10).toFixed(1) + 'px)';
+    }
   }
-  function jalankan() {
-    if (!tampil()) return;
-    if (!jar) siapkan();
-    if (kurangiGerak()) { gambar(); return; }
-    if (!raf) { tLalu = 0; raf = requestAnimationFrame(putar); }
-  }
-
-  var tundaUkur = 0;
-  window.addEventListener('resize', function () {
-    if (!tampil()) return;
-    clearTimeout(tundaUkur);
-    tundaUkur = setTimeout(function () { jar = null; jalankan(); }, 160);
-  });
   login.addEventListener('pointermove', function (e) {
-    if (e.pointerType === 'touch') return;
-    var lr = login.getBoundingClientRect();
-    penunjuk.x = e.clientX - lr.left; penunjuk.y = e.clientY - lr.top;
-    penunjuk.ada = !diAtasKartu(penunjuk.x, penunjuk.y);
-    penunjuk.sentuhSampai = 0;
-    if (kurangiGerak() && jar) { perbaruiSorotan(); gambar(); }
+    if (e.pointerType !== 'mouse') return;
+    mx = e.clientX; my = e.clientY;
+    login.classList.toggle('menyorot', !diAtasKartu(mx, my));
+    if (!raf) raf = requestAnimationFrame(terapkan);
   }, { passive: true });
-  login.addEventListener('pointerleave', function () { penunjuk.ada = false; });
-  login.addEventListener('pointerdown', function (e) {
-    if (e.pointerType !== 'touch') return;
-    var lr = login.getBoundingClientRect();
-    penunjuk.x = e.clientX - lr.left; penunjuk.y = e.clientY - lr.top;
-    penunjuk.ada = !diAtasKartu(penunjuk.x, penunjuk.y);
-    penunjuk.sentuhSampai = waktu + 1.2;
-  }, { passive: true });
-  if (mqGerak) {
-    var ganti = function () { jar = null; if (raf) { cancelAnimationFrame(raf); raf = 0; } jalankan(); };
-    if (mqGerak.addEventListener) mqGerak.addEventListener('change', ganti);
-    else if (mqGerak.addListener) mqGerak.addListener(ganti);
-  }
-  /* Layar login bisa muncul belakangan; pengamat ini menyalakan peta saat itu. */
+  login.addEventListener('pointerleave', function () {
+    login.classList.remove('menyorot');
+    latar.style.transform = '';
+  });
+
+  /* --------------------------------------------------------------- pemicu */
+  var tUkur = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(tUkur);
+    tUkur = setTimeout(function () { kotak = null; if (tampil()) kamera(); }, 120);
+  });
+  function cek() { if (tampil()) { kamera(); mulai(); } jeda(); }
+  document.addEventListener('visibilitychange', jeda);
+  if (gerakKurang.addEventListener) gerakKurang.addEventListener('change', function () {
+    if (gerakKurang.matches) { latar.classList.add('selesai', 'jalan-hidup'); latar.style.transform = ''; }
+    jeda();
+  });
+  /* Layar login bisa muncul belakangan (sesi ditolak, keluar di tab lain). */
   if (window.MutationObserver) {
-    new MutationObserver(function () { if (tampil()) jalankan(); })
+    new MutationObserver(function () { setTimeout(cek, 0); })
       .observe(login, { attributes: true, attributeFilter: ['style'] });
   }
-  jalankan();
+  cek();
 })();
 </script>
 <script id="kaca-refraksi">
