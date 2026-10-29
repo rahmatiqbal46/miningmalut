@@ -1421,7 +1421,9 @@ else document.getElementById('login').style.display='flex';
    Baris paling atas halaman Home: tiga kartu berdampingan dengan SATU filter
    periode.
 
-     1. Pelanggaran Kecepatan  — unit dan segmen jalan   (Worker D1)
+     1. Pelanggaran Kecepatan  — operator, unit, dan segmen jalan
+                                 (Worker D1; nama operator dari Supabase,
+                                 swo_operator_kejadian)
      2. Top Operator           — 1 excavator, 3 dump truck, ANTAM dan PCM
                                  (Supabase, op_halaman)
      3. Keaktifan Update Status Operator                 (Supabase, Dispatch)
@@ -1527,6 +1529,9 @@ else document.getElementById('login').style.display='flex';
         'font-weight:620;color:var(--ink);font-variant-numeric:tabular-nums}',
       '.rk-ang.samar{color:var(--muted);font-weight:530}',
       '.rk-kosong{padding:14px 0;font-size:var(--f-body);line-height:1.5;color:var(--muted)}',
+      /* Angka kecil di kanan judul kelompok, mis. "5 belum pasti" di Operator. */
+      '.rk-grup>h4 .rk-cat{margin-left:auto;font-size:var(--f-foot);line-height:var(--lh-foot);',
+        'font-weight:530;letter-spacing:0;color:var(--muted);white-space:nowrap;cursor:default}',
 
       /* --- kaki kartu: satu tautan ke modulnya --- */
       /* Tautan ke modul: tombol pil berisi seperti tombol Kontribusi di halaman
@@ -1645,29 +1650,75 @@ else document.getElementById('login').style.display='flex';
 /* =============================================================================
    Kartu "Pelanggaran Kecepatan" di baris atas Home.
 
-   Dua peringkat untuk periode yang dipilih: unit paling sering melanggar, dan
-   segmen jalan paling sering jadi tempat pelanggaran. Keduanya menampilkan
-   jumlah kejadian dan kecepatan tertinggi.
+   Tiga peringkat untuk periode yang dipilih, berurutan: operator yang paling
+   sering melanggar, unit paling sering melanggar, dan segmen jalan paling
+   sering jadi tempat pelanggaran. Ketiganya menampilkan jumlah kejadian dan
+   kecepatan tertinggi.
 
-   Pengelompokan dikerjakan Worker lewat GROUP BY di D1, bukan dengan menarik
-   seluruh baris pelanggaran ke browser — itulah sebabnya jawabannya diminta
-   lewat /api/ringkas dan bukan /api/pelanggaran.
+   UNIT DAN SEGMEN JALAN dikelompokkan Worker lewat GROUP BY di D1, bukan
+   dengan menarik seluruh baris pelanggaran ke browser — itulah sebabnya
+   jawabannya diminta lewat /api/ringkas dan bukan /api/pelanggaran.
 
    Worker menerima ?dari=&sampai= sejak versi 18 September 2026. Versi lama
    mengabaikan keduanya dan tetap menjawab shift berjalan, jadi jawabannya
    diperiksa: angka shift yang dilabeli "Kemarin" jauh lebih menyesatkan
    daripada kartu yang mengaku belum bisa menghitung.
+
+   OPERATOR (29 Oktober 2026, §34.13) tidak bisa dikelompokkan Worker: nama
+   operator sengaja tidak pernah masuk ke sana, karena alamat Worker terbaca
+   siapa pun tanpa login (§34.1). Jadi kelompok ini menarik baris pelanggaran
+   periode itu (/api/pelanggaran?dari=&sampai=, lewat indeks tanggal), lalu
+   menanyakan operator tiap id ke Supabase (swo_operator_kejadian) dengan sesi
+   login — cara yang sama dengan Unduh Excel di Speed Watcher.
+
+   Yang dihitung hanya label "Sesuai login Minerva" dan "Dikoreksi admin",
+   aturan yang sama dengan kolom "Sesuai login / dikoreksi" di lembar Ringkasan
+   per Operator: nama di sini dipakai untuk menegur orang. "Perlu dicek" dan
+   kejadian tanpa operator tidak menaikkan peringkat siapa pun; jumlahnya
+   tertulis di kanan judul kelompok ("5 belum pasti"), bukan sebagai baris.
+
+   JUMLAH BARIS (permintaan Iqbal): Operator, Unit, dan Segmen Jalan selalu
+   sama banyak, dan kartu ini setinggi kartu di sebelahnya. Diukur dengan isi
+   penuh: 5 baris ±880 px, 3 baris ±630 px; Top Operator ±650 px, Keaktifan
+   ±930 px. Jadi 5 baris bila ketiga kartu sebaris (yang menentukan tinggi
+   baris tetap Keaktifan) dan di HP (satu kolom, tidak ada tetangga); 3 baris
+   bila hanya dua kartu sebaris (layar sedang/tablet), sejajar Top Operator.
+   Susunannya dibaca dari posisi kartu, dan diperiksa ulang saat lebarnya
+   berubah.
+
+   Biaya baca D1 (§21.8): periodenya selalu hari yang sudah tertutup, jadi
+   barisnya hampir tidak berubah. Ditarik paling sering sekali per 15 menit
+   per periode, hanya selagi Home terlihat, dan disimpan di memori supaya
+   bolak-balik Kemarin dan Last 7 Days tidak menarik ulang. Sesudah gagal
+   dicoba lagi 2 menit kemudian, bukan tiap denyut 15 detik, dan baris yang
+   sudah terbaca tidak ditarik ulang hanya karena Supabase yang gagal.
    ============================================================================= */
 (function () {
   var API = 'https://speed-watcher-24-7.rahmat-iqbal.workers.dev';
-  var SEGAR_MS = 60000;
+  var BARIS_PENUH = 5;             // baris per kelompok: tiga kartu sebaris, atau satu kolom (Worker mengirim 5 teratas)
+  var BARIS_DUA = 3;               // baris per kelompok bila hanya dua kartu sebaris
+  var SEGAR_MS = 60000;            // unit dan segmen jalan
+  var OPR_MS = 900000;             // operator: 15 menit
+  var ULANG_MS = 120000;           // operator: jeda sesudah gagal
+  var TUNGGU_OPR_MS = 2500;        // gambar pertama tiap periode menunggu operator sebentar
+  var SESI_HABIS = 'Sesi login sudah kedaluwarsa. Keluar lalu masuk lagi untuk memuat data terbaru.';
+
   var sibuk = false, terakhir = 0, kunciTerakhir = '';
+  var ringkas = null;              // { kunci, pada, d } atau { kunci, pada, pesan }
+  var opr = {}, oprSibuk = false, oprMati = false;
+  var digambar = '', kunciDigambar = '', tundaGambar = 0;
 
   function el(id) { return document.getElementById(id); }
   function esc(t) {
     return String(t == null ? '' : t)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  function kunciKini() {
+    var p = window.HomePeriode;
+    return p && p.dari ? p.dari + '|' + p.sampai : '';
+  }
+  /* Satu angka di belakang koma, sama dengan pembulatan /api/ringkas. */
+  function km(v) { return Math.round((Number(v) || 0) * 10) / 10; }
   /* Tengah malam WIT sebuah tanggal, dalam epoch UTC. Date.UTC() memberi jam
      dinding WIT seolah-olah UTC, lalu selisih zonanya dikurangkan — sama
      persis dengan jendelaTanggal() di Worker. */
@@ -1676,6 +1727,43 @@ else document.getElementById('login').style.display='flex';
     return Date.UTC(p[0], p[1] - 1, p[2]) - 9 * 3600000;
   }
 
+  /* Sesi login shell, sama dengan kartu Top Operator. */
+  function sesi() {
+    try {
+      var a = JSON.parse(localStorage.getItem('pakal_auth') || 'null');
+      if (a && a.access_token && (!a.expires_at || a.expires_at * 1000 > Date.now())) return a.access_token;
+    } catch (e) {}
+    return null;
+  }
+  function rpc(fn, args) {
+    var t = sesi();
+    if (!t) {
+      var g = new Error('sesi login kedaluwarsa');
+      g.kedaluwarsa = true;
+      return Promise.reject(g);
+    }
+    return fetch(CFG.url.replace(/\/+$/, '') + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      headers: { apikey: CFG.key, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args || {})
+    }).then(function (r) {
+      return r.text().then(function (x) {
+        if (r.ok) return x ? JSON.parse(x) : null;
+        var j = null;
+        try { j = JSON.parse(x); } catch (e) {}
+        var m = (j && j.message) || '';
+        var e = new Error(m || 'HTTP ' + r.status);
+        e.status = r.status;
+        /* 404 = fungsi belum dipasang di Supabase; swo__wajib_login menolak
+           dengan kalimat "Sesi login berakhir…". */
+        if (r.status === 404) e.belumAda = true;
+        if (r.status === 401 || /sesi login/i.test(m)) e.kedaluwarsa = true;
+        throw e;
+      });
+    });
+  }
+
+  /* ------------------------------------------------------- unit dan segmen */
   function baris(daftar) {
     if (!daftar || !daftar.length) return '<div class="rk-kosong">Tidak ada pelanggaran.</div>';
     return daftar.map(function (d, i) {
@@ -1693,18 +1781,188 @@ else document.getElementById('login').style.display='flex';
     }).join('');
   }
 
-  function tampil(d) {
-    el('speedIsi').innerHTML =
-      '<div class="rk-grup"><h4>Unit</h4>' + baris(d.unit) + '</div>' +
-      '<div class="rk-grup"><h4>Segmen Jalan</h4>' + baris(d.ruas) + '</div>';
-  }
-  function pesan(teks) {
-    el('speedIsi').innerHTML = '<div class="rk-kosong">' + teks + '</div>';
+  /* -------------------------------------------------------------- operator */
+  /* daftar: [{id, v}] dari D1, peta: id → baris swo_operator_kejadian. */
+  function hitungOperator(daftar, peta) {
+    var per = {}, lain = { jumlah: 0, cek: 0, tanpa: 0 };
+    daftar.forEach(function (x) {
+      var o = peta[x.id];
+      var badge = o && o.badge ? String(o.badge) : '';
+      var pasti = !!badge && (o.label === 'sesuai' || o.label === 'admin');
+      if (!pasti) {
+        lain.jumlah++;
+        if (badge) lain.cek++; else lain.tanpa++;
+      }
+      if (!badge) return;
+      var a = per[badge] || (per[badge] = { badge: badge, nama: '', perusahaan: '', jumlah: 0, cek: 0, maks: 0 });
+      if (!a.nama && o.nama) a.nama = o.nama;
+      if (!a.perusahaan && o.perusahaan) a.perusahaan = o.perusahaan;
+      if (pasti) { a.jumlah++; a.maks = Math.max(a.maks, x.v); }
+      else a.cek++;
+    });
+    /* Urutan sama dengan unit dan segmen di Worker: jumlah, kecepatan
+       tertinggi, lalu nama supaya yang seri tidak berganti tempat. */
+    var top = Object.keys(per).map(function (k) { return per[k]; })
+      .filter(function (a) { return a.jumlah > 0; })
+      .sort(function (a, b) {
+        return b.jumlah - a.jumlah || b.maks - a.maks ||
+               String(a.nama || a.badge).localeCompare(String(b.nama || b.badge));
+      })
+      .slice(0, BARIS_PENUH);
+    return { total: daftar.length, top: top, lain: lain };
   }
 
+  function barisOperator(h, n) {
+    if (!h.total) return '<div class="rk-kosong">Tidak ada pelanggaran.</div>';
+    if (!h.top.length) return '<div class="rk-kosong">Belum ada yang sesuai login Minerva.</div>';
+    return h.top.slice(0, n).map(function (a, i) {
+      var nama = a.nama || 'Badge ' + a.badge;
+      var ket = ['badge ' + a.badge];
+      if (a.perusahaan) ket.push(a.perusahaan);
+      if (a.cek) ket.push('+' + a.cek + ' perlu dicek');
+      return '<div class="rk-row' + (i === 0 ? ' top' : '') + '">' +
+        '<span class="rk-no">' + (i + 1) + '</span>' +
+        '<span class="rk-nama" title="' + esc(nama + ' · badge ' + a.badge) + '">' + esc(nama) +
+          '<small>' + esc(ket.join(' · ')) + '</small></span>' +
+        '<span class="rk-ang">' + a.jumlah + '&times;</span>' +
+        '<span class="rk-ang samar">' + km(a.maks) + ' km/j</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* "5 belum pasti" di kanan judul: kejadian yang tidak dihitung, rinciannya
+     di keterangan saat ditunjuk. */
+  function tandaBelumPasti(l) {
+    if (!l || !l.jumlah) return '';
+    var rinci = [];
+    if (l.cek) rinci.push(l.cek + ' perlu dicek');
+    if (l.tanpa) rinci.push(l.tanpa + ' tanpa operator');
+    return '<span class="rk-cat" title="Tidak dihitung: ' + esc(rinci.join(' · ')) + '">' +
+      l.jumlah + ' belum pasti</span>';
+  }
+
+  function grupOperator(kunci, n) {
+    if (oprMati) return '';
+    var s = opr[kunci], isi, tanda = '';
+    if (s && s.hasil) { isi = barisOperator(s.hasil, n); tanda = tandaBelumPasti(s.hasil.lain); }
+    else if (s && s.pesan) isi = '<div class="rk-kosong">' + s.pesan + '</div>';
+    else isi = '<div class="rk-kosong">Memuat…</div>';
+    return '<div class="rk-grup"><h4>Operator' + tanda + '</h4>' + isi + '</div>';
+  }
+
+  /* Baris pelanggaran periode (D1) lalu operator tiap id (Supabase). */
+  function ambilOperator(ids) {
+    var peta = {}, i = 0;
+    function lanjut() {
+      if (i >= ids.length) return Promise.resolve(peta);
+      var potong = ids.slice(i, i + 2000);       // fungsinya menolak > 5.000 id sekali minta
+      i += 2000;
+      return rpc('swo_operator_kejadian', { p_id: potong }).then(function (d) {
+        (Array.isArray(d) ? d : []).forEach(function (o) { if (o && o.id != null) peta[o.id] = o; });
+        return lanjut();
+      });
+    }
+    return lanjut();
+  }
+
+  function tarikOperator() {
+    var p = window.HomePeriode, kunci = kunciKini();
+    if (!kunci || oprMati || oprSibuk) return;
+    var s = opr[kunci] || (opr[kunci] = { baris: null, barisPada: 0, hasil: null, hasilPada: 0, pesan: '', ulang: 0 });
+    var kini = Date.now();
+    if (s.hasil && kini - s.hasilPada < OPR_MS) return;
+    if (kini < s.ulang) return;
+    if (!sesi()) {
+      if (!s.hasil && s.pesan !== SESI_HABIS) { s.pesan = SESI_HABIS; gambar(); }
+      return;
+    }
+    oprSibuk = true;
+    var dari = p.dari, sampai = p.sampai;
+    var perluBaris = !s.baris || kini - s.barisPada >= OPR_MS;
+    (perluBaris
+      ? fetch(API + '/api/pelanggaran?dari=' + encodeURIComponent(dari) +
+              '&sampai=' + encodeURIComponent(sampai), { cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function (d) {
+            if (!d || d.dari !== dari || d.sampai !== sampai || !Array.isArray(d.pelanggaran)) {
+              throw new Error('jawaban /api/pelanggaran tidak untuk ' + dari + '…' + sampai);
+            }
+            s.baris = d.pelanggaran.map(function (x) { return { id: x.id, v: Number(x.kecepatan_max) || 0 }; });
+            s.barisPada = Date.now();
+          })
+      : Promise.resolve())
+      .then(function () { return ambilOperator(s.baris.map(function (x) { return x.id; })); })
+      .then(function (peta) {
+        s.hasil = hitungOperator(s.baris, peta);
+        s.hasilPada = Date.now();
+        s.pesan = '';
+        s.ulang = 0;
+        gambar();
+      })
+      .catch(function (e) {
+        /* Fungsi operator belum dipasang di Supabase: kelompok ini diam,
+           seperti tab Kejadian di Speed Watcher. */
+        if (e && e.belumAda) { oprMati = true; gambar(); return; }
+        s.ulang = Date.now() + ULANG_MS;
+        if (s.hasil) return;                     // isi lama masih sah di layar
+        if (!(e && e.kedaluwarsa)) { try { console.warn('Kartu Pelanggaran Kecepatan (operator):', e); } catch (x) {} }
+        s.pesan = e && e.kedaluwarsa ? SESI_HABIS : 'Sedang maintenance.';
+        gambar();
+      })
+      .then(function () {
+        oprSibuk = false;
+        if (kunciKini() !== kunci) tarikOperator();   // periode berganti selagi menarik
+      });
+  }
+
+  /* ----------------------------------------------------------------- gambar */
+  /* Berapa kartu sebaris dengan kartu ini: dibaca dari posisinya, karena
+     kisinya auto-fit (minmax 300 px) dan bergantung lebar layar. offsetTop,
+     bukan getBoundingClientRect: kartu masuk bergantian dengan geseran
+     (munculan home-tampilan), dan geseran itu tidak boleh terbaca sebagai
+     baris lain. */
+  var nTerakhir = BARIS_PENUH;
+  function barisTampil() {
+    var a = el('kartuSpeed'), t = el('kartuTop'), k = el('kartuKep');
+    if (!a || !t || !k || !a.offsetParent) return nTerakhir;   // Home tersembunyi: tidak bisa diukur
+    var y = a.offsetTop;
+    var sebaris = function (x) { return Math.abs(x.offsetTop - y) < 2; };
+    nTerakhir = sebaris(k) ? BARIS_PENUH : (sebaris(t) ? BARIS_DUA : BARIS_PENUH);
+    return nTerakhir;
+  }
+
+  function gambar() {
+    var kunci = kunciKini(), w = el('speedIsi');
+    if (!w || !ringkas || ringkas.kunci !== kunci) return;
+    clearTimeout(tundaGambar);
+    /* Kelompok Operator berada di atas. Gambar pertama sebuah periode menunggu
+       operatornya sebentar, supaya Unit dan Segmen Jalan tidak terdorong turun
+       sedetik sesudah tampil. */
+    if (!ringkas.pesan && !oprMati && kunciDigambar !== kunci) {
+      var s = opr[kunci];
+      var sisa = ringkas.pada + TUNGGU_OPR_MS - Date.now();
+      if (!(s && (s.hasil || s.pesan)) && sisa > 0) {
+        tundaGambar = setTimeout(gambar, sisa + 20);
+        return;
+      }
+    }
+    var n = barisTampil();
+    var html = ringkas.pesan
+      ? '<div class="rk-kosong">' + ringkas.pesan + '</div>'
+      : grupOperator(kunci, n) +
+        '<div class="rk-grup"><h4>Unit</h4>' + baris((ringkas.d.unit || []).slice(0, n)) + '</div>' +
+        '<div class="rk-grup"><h4>Segmen Jalan</h4>' + baris((ringkas.d.ruas || []).slice(0, n)) + '</div>';
+    kunciDigambar = kunci;
+    if (html === digambar) return;               // tarikan yang tidak mengubah apa pun tidak menulis ulang DOM
+    digambar = html;
+    w.innerHTML = html;
+  }
+
+  /* ---------------------------------------------- tarik unit dan segmen */
   function tarik(paksa) {
     var p = window.HomePeriode;
     if (!p || !p.dari || !el('speedIsi')) return;
+    tarikOperator();
     var kunci = p.dari + '|' + p.sampai;
     if (sibuk) return;
     if (!paksa && kunci === kunciTerakhir && Date.now() - terakhir < SEGAR_MS) return;
@@ -1724,11 +1982,13 @@ else document.getElementById('login').style.display='flex';
         if (d.mulai !== tengahMalamWIT(p.dari) ||
             d.selesai !== tengahMalamWIT(p.sampai) + 86400000) {
           kunciTerakhir = '';
-          pesan('Worker Speed Watcher belum mendukung filter periode. ' +
-                'Perbarui speed-watcher-24-7 lalu muat ulang halaman ini.');
-          return;
+          ringkas = { kunci: kunci, pada: Date.now(),
+                      pesan: 'Worker Speed Watcher belum mendukung filter periode. ' +
+                             'Perbarui speed-watcher-24-7 lalu muat ulang halaman ini.' };
+        } else {
+          ringkas = { kunci: kunci, pada: Date.now(), d: d };
         }
-        tampil(d);
+        gambar();
       })
       .catch(function (e) {
         kunciTerakhir = '';
@@ -1736,9 +1996,16 @@ else document.getElementById('login').style.display='flex';
            ditampilkan; rinciannya tetap di konsol. Kartu mencoba lagi sendiri
            pada hometick berikutnya, jadi pulih tanpa muat ulang. */
         try { console.warn('Kartu Pelanggaran Kecepatan:', e); } catch (x) {}
-        pesan('Sedang maintenance.');
+        ringkas = { kunci: kunci, pada: Date.now(), pesan: 'Sedang maintenance.' };
+        gambar();
       })
-      .then(function () { sibuk = false; });
+      .then(function () {
+        sibuk = false;
+        /* Periode berganti selagi menarik: jawaban tadi untuk periode lama,
+           jadi periode yang sekarang ditarik saat itu juga, bukan menunggu
+           denyut berikutnya. */
+        if (kunciKini() !== kunci) tarik(true);
+      });
   }
 
   window.addEventListener('load', function () {
@@ -1746,6 +2013,17 @@ else document.getElementById('login').style.display='flex';
     if (b) b.addEventListener('click', function () { try { showPage('speed'); } catch (e) {} });
     window.addEventListener('homeperiode', function () { tarik(true); });
     window.addEventListener('hometick', function () { tarik(false); });
+    /* Lebar berubah (jendela, sidebar, putar tablet): susunan kartu bisa
+       berganti, jadi jumlah baris dihitung ulang. gambar() hanya menulis ulang
+       DOM bila hasilnya memang berbeda. */
+    var raf = 0;
+    function ulangSusun() {
+      if (raf) return;
+      raf = requestAnimationFrame(function () { raf = 0; gambar(); });
+    }
+    var w = el('atasWrap');
+    if (w && 'ResizeObserver' in window) new ResizeObserver(ulangSusun).observe(w);
+    else window.addEventListener('resize', ulangSusun);
   });
 })();
 </script><script id="home-operator">
