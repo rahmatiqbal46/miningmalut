@@ -248,7 +248,7 @@
      memakai lebar di kepalanya, sisa lebarnya dibagi rata untuk kolom isi dan
      tindak lanjut. Tata letak otomatis memberi hampir semuanya ke kolom isi
      selama kolom tindak lanjut masih banyak yang kosong. */
-  .log-tabel{min-width:820px; table-layout:fixed;}
+  .log-tabel{min-width:900px; table-layout:fixed;}
   .log-tabel td.nw{white-space:nowrap;}             /* tanggal, shift, bagian tidak terpotong */
   /* Kata sangat panjang tidak mendesak kolom lain; baris baru yang diketik di
      kotak isian tetap tampil sebagai baris baru. */
@@ -264,6 +264,25 @@
     font-size:var(--f-callout); line-height:var(--lh-callout); font-weight:560; color:var(--accent);}
   .tl-lama p{margin:6px 2px 10px; font-size:var(--f-callout); line-height:var(--lh-callout);
     color:var(--text-muted); max-width:72ch; text-wrap:pretty;}
+
+  /* ---------- Status tindak lanjut: Open merah, Close hijau ----------
+     Di tabel log statusnya pilihan berbentuk pil, jadi bisa diganti tanpa
+     membuka Input Data. Pilihan (bukan klik sekali) supaya tidak berubah
+     karena salah sentuh. Berwarna penuh seperti pilihan aktif di kartu isian:
+     teks putih di atas --bad 7,4:1 dan di atas --good 6,6:1. Daftar
+     pilihannya tetap netral. */
+  select.st-pilih{appearance:none; -webkit-appearance:none; box-shadow:none; cursor:pointer;
+    padding:4px 24px 4px 11px; border-radius:var(--r-pil); font-size:var(--f-sub);
+    line-height:var(--lh-sub); font-weight:660; background-repeat:no-repeat;
+    background-position:right 9px center; background-size:8px 5px;}
+  select.st-pilih:focus{box-shadow:0 0 0 3px var(--accent-soft);}
+  select.st-pilih option{color:var(--text); background:var(--surface); font-weight:400;}
+  select.st-pilih.st-open{background-color:var(--bad); color:#fff;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+  select.st-pilih.st-close{background-color:var(--good); color:#fff;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+  select.st-pilih.st-kosong{background-color:var(--isi); color:var(--text-muted);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%2347595a' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
 
   /* ---------- Formulir ---------- */
   .form-card{background:var(--surface); border:0; border-radius:var(--r-panel);
@@ -307,8 +326,14 @@
   .tl-kepala .tl-kat{flex:0 1 300px; min-width:0;}
   .tl-kepala .tl-bagian{flex:0 0 84px;}
   .tl-kepala .icon-btn{margin-left:auto; flex-shrink:0;}
-  .tl-isi{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .tl-isi{display:grid; grid-template-columns:1fr 1fr auto; gap:10px;}
   @media(max-width:700px){.tl-isi{grid-template-columns:1fr;}}
+  /* Status di kanan tindak lanjut. Pilihan aktif berwarna penuh supaya
+     terbaca sekilas: Open merah, Close hijau, teks putih (7,4:1 dan 6,6:1). */
+  .st-seg button{padding:0 11px;}
+  .tl-st .st-seg{align-self:flex-start;}   /* selebar isinya, juga saat bertumpuk di ponsel */
+  .st-seg button[data-st="Open"].active{background:var(--bad); color:#fff;}
+  .st-seg button[data-st="Close"].active{background:var(--good); color:#fff;}
   .tl-f{display:flex; flex-direction:column; gap:4px; min-width:0;}
   .tl-f > span{font-size:var(--f-sub); line-height:var(--lh-sub); color:var(--text-muted); font-weight:560;}
   .tl-f textarea{width:100%; resize:vertical; field-sizing:content;
@@ -318,14 +343,16 @@
   /* Catatan format lama: satu baris (kategori, uraian, hapus) karena isinya
      umumnya satu kalimat dan satu laporan lama bisa memuat enam sampai sembilan. */
   .tl-list.ringkas{gap:6px;}
-  .tl-ringkas{display:grid; grid-template-columns:minmax(120px,200px) minmax(0,1fr) auto;
+  .tl-ringkas{display:grid; grid-template-columns:minmax(120px,200px) minmax(0,1fr) auto auto;
     gap:8px; align-items:start; padding:8px 10px;}
   .tl-ringkas textarea{width:100%; resize:vertical; field-sizing:content;
     min-height:var(--h-kontrol); max-height:160px;}
   @media(max-width:560px){
     .tl-ringkas{grid-template-columns:minmax(0,1fr) auto;}
-    .tl-ringkas textarea{grid-column:1 / -1; grid-row:2;}
+    .tl-ringkas > input{grid-column:1; grid-row:1;}
     .tl-ringkas .icon-btn{grid-column:2; grid-row:1;}
+    .tl-ringkas textarea{grid-column:1 / -1; grid-row:2;}
+    .tl-ringkas .st-seg{grid-column:1 / -1; grid-row:3; justify-self:start;}
   }
   .icon-btn{background:none; border:0; box-shadow:inset 0 0 0 1px var(--border);
     color:var(--text-muted); border-radius:var(--r-kecil);
@@ -726,14 +753,14 @@
     </div>
     <div class="log-hitung" id="isuHitung"></div>
     <div class="table-wrap"><table class="log-tabel">
-      <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:124px;">Bagian</th><th style="width:170px;">Kategori</th><th>Isu</th><th>Tindak Lanjut</th></tr></thead>
+      <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:124px;">Bagian</th><th style="width:170px;">Kategori</th><th>Isu</th><th>Tindak Lanjut</th><th style="width:104px;">Status</th></tr></thead>
       <tbody id="isuTableBody"></tbody>
     </table></div>
     <details class="tl-lama" id="isuLama" hidden>
       <summary id="isuLamaJudul">Tindak lanjut format lama</summary>
       <p>Dicatat sebelum tindak lanjut digabung ke tiap isu dan kendala, jadi belum terhubung ke isu atau kendala tertentu. Daftar yang sama ada di bawah Log Kendala.</p>
       <div class="table-wrap"><div class="table-scroll"><table class="log-tabel">
-        <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:170px;">Kategori</th><th>Tindak Lanjut</th></tr></thead>
+        <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:170px;">Kategori</th><th>Tindak Lanjut</th><th style="width:104px;">Status</th></tr></thead>
         <tbody id="isuLamaBody"></tbody>
       </table></div></div>
     </details>
@@ -754,14 +781,14 @@
     </div>
     <div class="log-hitung" id="kendalaHitung"></div>
     <div class="table-wrap"><table class="log-tabel">
-      <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:124px;">Bagian</th><th style="width:170px;">Kategori</th><th>Kendala</th><th>Tindak Lanjut</th></tr></thead>
+      <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:124px;">Bagian</th><th style="width:170px;">Kategori</th><th>Kendala</th><th>Tindak Lanjut</th><th style="width:104px;">Status</th></tr></thead>
       <tbody id="kendalaTableBody"></tbody>
     </table></div>
     <details class="tl-lama" id="kendalaLama" hidden>
       <summary id="kendalaLamaJudul">Tindak lanjut format lama</summary>
       <p>Dicatat sebelum tindak lanjut digabung ke tiap isu dan kendala, jadi belum terhubung ke isu atau kendala tertentu. Daftar yang sama ada di bawah Log Isu.</p>
       <div class="table-wrap"><div class="table-scroll"><table class="log-tabel">
-        <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:170px;">Kategori</th><th>Tindak Lanjut</th></tr></thead>
+        <thead><tr><th style="width:90px;">Tanggal</th><th style="width:60px;">Shift</th><th style="width:170px;">Kategori</th><th>Tindak Lanjut</th><th style="width:104px;">Status</th></tr></thead>
         <tbody id="kendalaLamaBody"></tbody>
       </table></div></div>
     </details>
@@ -1101,6 +1128,41 @@ const KENDALA_CATS=['Device FMS Error','Deviasi Minerva vs MCR','Update Status O
    Sosialisasi, Koordinasi, dst., bukan kategori isu atau kendala), jadi tidak
    ditebak. Tidak ada jalan untuk menambah baris baru ke larik itu. */
 function teksTl(r){ return String((r && r.tindakLanjut) || '').trim(); }
+
+/* STATUS (29 Oktober 2026, siang). Permintaan Iqbal sesudah status lama
+   dibuang: kolom Status di kanan tindak lanjut, Open (merah) atau Close
+   (hijau). Kunci `status` di baris isu, kendala, dan catatan format lama.
+   - Isu/kendala yang dicatat sebelum hari ini tidak punya status: tampil "—"
+     dan tetap begitu sampai seseorang memilih Open atau Close. Tidak
+     dianggap Open, supaya dua bulan catatan lama tidak tiba-tiba merah semua.
+   - Catatan format lama yang masih menyimpan status Baru/Berjalan/Selesai
+     dibaca sebagai Open/Open/Close dan ditulis ulang begitu disimpan.
+   - Kartu baru di Input Data dimulai Open. */
+const STATUS_TL=['Open','Close'];
+function statusTl(r){
+  const s=String((r && r.status) || '').trim().toLowerCase();
+  if(s==='close' || s==='closed' || s==='selesai') return 'Close';
+  if(s==='open' || s==='baru' || s==='berjalan') return 'Open';
+  return '';
+}
+// Sidik isi baris, untuk memastikan baris yang statusnya diganti dari tabel
+// log masih baris yang sama sesudah sinkron latar mengganti data.
+function sidikBaris(r){
+  const s=String((r && r.cat) || '')+'\u0001'+String((r && r.text) || '');
+  let h=5381;
+  for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0;
+  return (h>>>0).toString(36);
+}
+// Pil status yang bisa diganti di tabel log. `r` baris log: entri, jenis, idx, cek, st.
+function pilihStatusLog(r, label){
+  const kelas = r.st==='Open' ? 'st-open' : r.st==='Close' ? 'st-close' : 'st-kosong';
+  return `<select class="st-pilih ${kelas}" data-entri="${escapeHtml(r.entri)}" data-jenis="${r.jenis}" data-idx="${r.idx}" data-cek="${r.cek}"
+      aria-label="Status ${escapeHtml(label)} ${r.date} Shift ${r.shift}">
+      ${r.st ? '' : '<option value="" selected disabled hidden>—</option>'}
+      ${STATUS_TL.map(s=>`<option value="${s}" ${s===r.st?'selected':''}>${s}</option>`).join('')}
+    </select>`;
+}
+
 function jumlahTl(e){
   const baris=[...(e.isuTmm||[]), ...(e.isuOt||[]), ...(e.kendala||[])];
   return baris.filter(r=>teksTl(r)).length + (e.followup||[]).length;
@@ -2814,20 +2876,31 @@ function initDaftarOperator(){
 }
 /* ================= LOG ISU & KENDALA (beserta tindak lanjutnya) =================
    Tiap baris adalah satu isu atau kendala dengan tindak lanjutnya di kolom
-   sebelahnya. Tindak lanjut format lama (lihat teksTl) dilipat di bawah kedua
-   tabel, karena tidak diketahui isu atau kendala mana yang ditindaklanjutinya. */
+   sebelahnya, lalu statusnya (Open/Close, lihat statusTl). Tindak lanjut
+   format lama (lihat teksTl) dilipat di bawah kedua tabel, karena tidak
+   diketahui isu atau kendala mana yang ditindaklanjutinya. Setiap baris
+   membawa letaknya di laporan (entri, jenis, idx) supaya statusnya bisa
+   diganti langsung dari tabel. */
 const KOSONG='<span class="kosong" title="Belum diisi">—</span>';
 function selTeks(s){ return s ? escapeHtml(s) : KOSONG; }
-function cocokCari(r, q){ return [r.text, r.cat, r.tl].some(s=>String(s||'').toLowerCase().includes(q)); }
-function hitungLog(n, nTl, jenis){
-  return n ? `${n.toLocaleString('id-ID')} ${jenis} · ${nTl.toLocaleString('id-ID')} sudah ada tindak lanjutnya` : '';
+// Kotak Cari juga mencocokkan status: ketik "open" untuk yang masih terbuka.
+function cocokCari(r, q){ return [r.text, r.cat, r.tl, r.st].some(s=>String(s||'').toLowerCase().includes(q)); }
+function hitungLog(rows, jenis){
+  if(!rows.length) return '';
+  const n=x=>x.toLocaleString('id-ID');
+  const nTl=rows.filter(r=>r.tl).length, nOpen=rows.filter(r=>r.st==='Open').length, nClose=rows.filter(r=>r.st==='Close').length;
+  return `${n(rows.length)} ${jenis} · ${n(nTl)} sudah ada tindak lanjutnya · ${n(nOpen)} Open · ${n(nClose)} Close`;
+}
+function barisLog(e, jenis, idx, r, tambahan){
+  return Object.assign({ date:e.date, shift:e.shift, entri:e.id, jenis, idx, cek:sidikBaris(r),
+    cat:r.cat, text:r.text, tl:teksTl(r), st:statusTl(r) }, tambahan||{});
 }
 
 function buildIsuRows(){
   const rows=[];
   filteredEntries().forEach(e=>{
-    (e.isuTmm||[]).forEach(i=>rows.push({date:e.date,shift:e.shift,section:'TMM',cat:i.cat,text:i.text,tl:teksTl(i)}));
-    (e.isuOt||[]).forEach(i=>rows.push({date:e.date,shift:e.shift,section:'OT',cat:i.cat,text:i.text,tl:teksTl(i)}));
+    (e.isuTmm||[]).forEach((i,k)=>rows.push(barisLog(e,'isuTmm',k,i,{section:'TMM'})));
+    (e.isuOt||[]).forEach((i,k)=>rows.push(barisLog(e,'isuOt',k,i,{section:'OT'})));
   });
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
@@ -2837,12 +2910,13 @@ function renderLogIsu(){
   const q=document.getElementById('isuSearch').value.trim().toLowerCase();
   if(sec!=='all') rows=rows.filter(r=>r.section===sec);
   if(q) rows=rows.filter(r=>cocokCari(r,q));
-  document.getElementById('isuHitung').textContent = hitungLog(rows.length, rows.filter(r=>r.tl).length, 'isu');
+  document.getElementById('isuHitung').textContent = hitungLog(rows, 'isu');
   document.getElementById('isuTableBody').innerHTML = rows.length
     ? rows.map(r=>`<tr><td class="nw">${r.date}</td><td class="nw">S${r.shift}</td>
         <td class="nw"><span class="cat-chip">${r.section==='TMM'?'Penambangan':'Pengapalan'}</span></td>
-        <td><span class="cat-chip">${escapeHtml(r.cat)}</span></td><td class="teks">${selTeks(r.text)}</td><td class="teks">${selTeks(r.tl)}</td></tr>`).join('')
-    : `<tr><td colspan="6" class="empty-hint">Tidak ada data yang cocok.</td></tr>`;
+        <td><span class="cat-chip">${escapeHtml(r.cat)}</span></td><td class="teks">${selTeks(r.text)}</td><td class="teks">${selTeks(r.tl)}</td>
+        <td class="nw">${pilihStatusLog(r,'isu')}</td></tr>`).join('')
+    : `<tr><td colspan="7" class="empty-hint">Tidak ada data yang cocok.</td></tr>`;
   renderTlLama('isu', q);
 }
 document.querySelectorAll('#isuSectionBtns button').forEach(b=>b.addEventListener('click',()=>{
@@ -2851,20 +2925,24 @@ document.querySelectorAll('#isuSectionBtns button').forEach(b=>b.addEventListene
 }));
 document.getElementById('isuSearch').addEventListener('input', renderLogIsu);
 
+function buildKendalaRows(){
+  const rows=[];
+  filteredEntries().forEach(e=>(e.kendala||[]).forEach((k,i)=>rows.push(barisLog(e,'kendala',i,k,{section:k.section||'-'}))));
+  return rows.sort((a,b)=>b.date.localeCompare(a.date));
+}
 function renderLogKendala(){
-  let rows=[];
-  filteredEntries().forEach(e=>(e.kendala||[]).forEach(k=>rows.push({date:e.date,shift:e.shift,section:k.section||'-',cat:k.cat,text:k.text,tl:teksTl(k)})));
-  rows.sort((a,b)=>b.date.localeCompare(a.date));
+  let rows=buildKendalaRows();
   const sec=document.querySelector('#kendalaSectionBtns button.active').dataset.section;
   const q=document.getElementById('kendalaSearch').value.trim().toLowerCase();
   if(sec!=='all') rows=rows.filter(r=>r.section===sec);
   if(q) rows=rows.filter(r=>cocokCari(r,q));
-  document.getElementById('kendalaHitung').textContent = hitungLog(rows.length, rows.filter(r=>r.tl).length, 'kendala');
+  document.getElementById('kendalaHitung').textContent = hitungLog(rows, 'kendala');
   document.getElementById('kendalaTableBody').innerHTML = rows.length
     ? rows.map(r=>`<tr><td class="nw">${r.date}</td><td class="nw">S${r.shift}</td>
         <td class="nw"><span class="cat-chip">${r.section==='TMM'?'Penambangan':r.section==='OT'?'Pengapalan':'—'}</span></td>
-        <td><span class="cat-chip">${escapeHtml(r.cat)}</span></td><td class="teks">${selTeks(r.text)}</td><td class="teks">${selTeks(r.tl)}</td></tr>`).join('')
-    : `<tr><td colspan="6" class="empty-hint">Tidak ada data yang cocok.</td></tr>`;
+        <td><span class="cat-chip">${escapeHtml(r.cat)}</span></td><td class="teks">${selTeks(r.text)}</td><td class="teks">${selTeks(r.tl)}</td>
+        <td class="nw">${pilihStatusLog(r,'kendala')}</td></tr>`).join('')
+    : `<tr><td colspan="7" class="empty-hint">Tidak ada data yang cocok.</td></tr>`;
   renderTlLama('kendala', q);
 }
 document.querySelectorAll('#kendalaSectionBtns button').forEach(b=>b.addEventListener('click',()=>{
@@ -2879,7 +2957,7 @@ document.getElementById('kendalaSearch').addEventListener('input', renderLogKend
    catatan lama sama sekali. */
 function barisTlLama(){
   const rows=[];
-  filteredEntries().forEach(e=>(e.followup||[]).forEach(f=>rows.push({date:e.date,shift:e.shift,cat:f.cat,text:f.text})));
+  filteredEntries().forEach(e=>(e.followup||[]).forEach((f,i)=>rows.push(barisLog(e,'followup',i,f,{tl:''}))));
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
 function renderTlLama(awalan, q){
@@ -2893,16 +2971,54 @@ function renderTlLama(awalan, q){
     (q ? `${rows.length.toLocaleString('id-ID')} dari ${semua.length.toLocaleString('id-ID')}` : semua.length.toLocaleString('id-ID'))+' catatan';
   document.getElementById(awalan+'LamaBody').innerHTML = rows.length
     ? rows.map(r=>`<tr><td class="nw">${r.date}</td><td class="nw">S${r.shift}</td>
-        <td><span class="cat-chip">${escapeHtml(r.cat||'Lainnya')}</span></td><td class="teks">${selTeks(r.text)}</td></tr>`).join('')
-    : `<tr><td colspan="4" class="empty-hint">Tidak ada yang cocok.</td></tr>`;
+        <td><span class="cat-chip">${escapeHtml(r.cat||'Lainnya')}</span></td><td class="teks">${selTeks(r.text)}</td>
+        <td class="nw">${pilihStatusLog(r,'tindak lanjut')}</td></tr>`).join('')
+    : `<tr><td colspan="5" class="empty-hint">Tidak ada yang cocok.</td></tr>`;
 }
+
+/* Ganti status langsung dari tabel log: laporan disimpan dan dikirim seperti
+   tombol Perbarui Laporan. Baris dicocokkan lagi lewat sidiknya; bila sinkron
+   latar sempat mengubah laporan itu, perubahan dibatalkan dan tabel dimuat
+   ulang. Bila laporan yang sama sedang terbuka di Input Data, pilihan status
+   di kartunya ikut disamakan tanpa menyentuh isian lain yang belum disimpan. */
+function ubahStatusDariLog(sel){
+  const en=ENTRIES.find(e=>e.id===sel.dataset.entri);
+  const jenis=sel.dataset.jenis, idx=+sel.dataset.idx;
+  const baris=en && Array.isArray(en[jenis]) ? en[jenis][idx] : null;
+  const st=STATUS_TL.includes(sel.value) ? sel.value : '';
+  if(!baris || !st || sidikBaris(baris)!==sel.dataset.cek){
+    showToast('Laporan ini baru berubah di perangkat lain. Tabel dimuat ulang, silakan pilih lagi.');
+    renderAll(); return;
+  }
+  baris.status=st;
+  saveEntries(ENTRIES);
+  pushItem(entryKey(en), 'laporan', en);
+  samakanStatusFormulir(en, jenis, idx, baris);
+  const kunci={entri:sel.dataset.entri, jenis, idx:String(idx)};
+  renderAll();
+  // fokus kembali ke pilihan yang sama sesudah tabel digambar ulang
+  const lagi=[...document.querySelectorAll('select.st-pilih')].find(x=>
+    x.dataset.entri===kunci.entri && x.dataset.jenis===kunci.jenis && x.dataset.idx===kunci.idx && x.offsetParent);
+  if(lagi) lagi.focus();
+  showToast(`Status diubah ke ${st} · ${en.date} Shift ${en.shift}`);
+}
+['isuTableBody','kendalaTableBody','isuLamaBody','kendalaLamaBody'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', e=>{
+    const sel=e.target.closest && e.target.closest('select.st-pilih');
+    if(sel) ubahStatusDariLog(sel);
+  });
+});
 
 /* ================= INPUT DATA ================= */
 /* Isu dan kendala diisi sebagai kartu: kepala (bagian, kategori, hapus), lalu
    isinya dan tindak lanjutnya berdampingan. `followup` di sini hanya untuk
    tindak lanjut format lama dari laporan yang sudah ada (lihat teksTl): bisa
    disunting atau dihapus, tidak bisa ditambah. Isian dibaca lewat data-f,
-   bukan urutan elemen, supaya menambah kolom tidak menggeser kolom lain. */
+   bukan urutan elemen, supaya menambah kolom tidak menggeser kolom lain.
+   Status Open/Close (lihat statusTl) ada di kanan tindak lanjut: kartu baru
+   dimulai Open, kartu dari laporan lama tanpa status tidak memilih apa pun.
+   Kartu dari laporan yang dimuat menyimpan letak asalnya (data-asal) supaya
+   status yang diganti dari tabel log bisa disamakan ke kartunya. */
 const LIST_BY_TYPE={isuTmm:'lstIsuTmm', isuOt:'lstIsuOt', kendala:'lstKendala', followup:'lstTlLama'};
 const TIPE_BARU=['isuTmm','isuOt','kendala'];
 const LABEL_TL={
@@ -2923,15 +3039,45 @@ function segarkanKartuTlLama(){
   const k=document.getElementById('kartuTlLama');
   if(k) k.hidden = !document.querySelector('#lstTlLama .tl-item');
 }
-function addRepeatRow(type, data){
+function htmlStatusKartu(st){
+  return `<div class="segmented st-seg" role="group" aria-label="Status">${STATUS_TL.map(s=>
+      `<button type="button" data-st="${s}" class="${s===st?'active':''}" aria-pressed="${s===st}">${s}</button>`).join('')}
+      <input type="hidden" data-f="status" value="${st||''}"></div>`;
+}
+function setStatusKartu(item, st){
+  const h=item.querySelector('input[data-f="status"]');
+  if(!h) return;
+  h.value=st||'';
+  item.querySelectorAll('.st-seg button').forEach(b=>{
+    const on=b.dataset.st===st;
+    b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
+  });
+}
+// Dipanggil ubahStatusDariLog(): bila laporan yang statusnya diganti sedang
+// terbuka di Input Data, kartu yang sama (letak asal dan isinya cocok) ikut
+// berganti. Isian lain di formulir tidak disentuh, dan penanda belum
+// disimpan tidak diubah.
+function samakanStatusFormulir(en, jenis, idx, baris){
+  if(document.getElementById('inDate').value!==en.date || inputShift!==en.shift) return;
+  const wadah=document.getElementById(LIST_BY_TYPE[jenis]);
+  const kartu=wadah && wadah.querySelector('.tl-item[data-asal="'+idx+'"]');
+  if(!kartu) return;
+  const t=kartu.querySelector('[data-f="text"]');
+  if(!t || t.value.trim()!==String(baris.text||'').trim()) return;
+  setStatusKartu(kartu, statusTl(baris));
+}
+function addRepeatRow(type, data, asal){
   const wadah=document.getElementById(LIST_BY_TYPE[type]);
   const d=data||{};
+  const st = data ? statusTl(d) : 'Open';     // kartu baru dimulai Open
   const item=document.createElement('div');
   item.className='tl-item';
+  if(asal!==undefined) item.dataset.asal=asal;
   if(type==='followup'){
     item.classList.add('tl-ringkas');
     item.innerHTML=`<input type="text" data-f="cat" placeholder="Kategori" aria-label="Kategori tindak lanjut lama" value="${escapeHtml(d.cat||'')}">
       <textarea data-f="text" rows="1" placeholder="Uraian tindak lanjut" aria-label="Uraian tindak lanjut lama">${escapeHtml(d.text||'')}</textarea>
+      ${htmlStatusKartu(st)}
       <button type="button" class="icon-btn" aria-label="Hapus tindak lanjut lama ini">✕</button>`;
   } else {
     const L=LABEL_TL[type];
@@ -2944,8 +3090,14 @@ function addRepeatRow(type, data){
       <div class="tl-isi">
         <label class="tl-f"><span>${L.isi}</span><textarea data-f="text" rows="2" placeholder="${L.ph}">${escapeHtml(d.text||'')}</textarea></label>
         <label class="tl-f"><span>Tindak lanjut</span><textarea data-f="tindakLanjut" rows="2" placeholder="Tindak lanjut untuk ${L.isi.toLowerCase()} ini">${escapeHtml(teksTl(d))}</textarea></label>
+        <div class="tl-f tl-st"><span>Status</span>${htmlStatusKartu(st)}</div>
       </div>`;
   }
+  // Tombol tidak memicu input/change, jadi penanda belum disimpan dipasang di sini.
+  item.querySelectorAll('.st-seg button').forEach(b=>b.addEventListener('click',()=>{
+    setStatusKartu(item, b.dataset.st);
+    KOTOR.laporan=true;
+  }));
   item.querySelector('.icon-btn').addEventListener('click',()=>{
     item.remove();
     KOTOR.laporan=true;          // menghapus baris juga perubahan yang belum disimpan
@@ -2958,12 +3110,18 @@ document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()
 function collectRows(type){
   return [...document.querySelectorAll('#'+LIST_BY_TYPE[type]+' .tl-item')].map(it=>{
     const v=f=>{ const el=it.querySelector('[data-f="'+f+'"]'); return el ? el.value.trim() : ''; };
-    if(type==='followup') return {cat:v('cat')||'Lainnya', text:v('text')};
+    const st=STATUS_TL.includes(v('status')) ? v('status') : '';
+    if(type==='followup'){
+      const r={cat:v('cat')||'Lainnya', text:v('text')};
+      if(st) r.status=st;
+      return r;
+    }
     const r = type==='kendala'
       ? {section:v('section'), cat:v('cat'), text:v('text')}
       : {cat:v('cat')||'Lainnya', text:v('text')};
     const tl=v('tindakLanjut');
     if(tl) r.tindakLanjut=tl;
+    if(st) r.status=st;
     return r;
   }).filter(r=>r.text || r.tindakLanjut);
 }
@@ -3011,10 +3169,10 @@ function loadEntryIntoForm(){
       setNum(k+'Actual', ua[k]?ua[k].actual:null);
       setNum(k+'Budget', ua[k]?ua[k].budget:null);
     });
-    (ex.isuTmm||[]).forEach(r=>addRepeatRow('isuTmm',r));
-    (ex.isuOt||[]).forEach(r=>addRepeatRow('isuOt',r));
-    (ex.kendala||[]).forEach(r=>addRepeatRow('kendala',r));
-    (ex.followup||[]).forEach(r=>addRepeatRow('followup',r));
+    (ex.isuTmm||[]).forEach((r,i)=>addRepeatRow('isuTmm',r,i));
+    (ex.isuOt||[]).forEach((r,i)=>addRepeatRow('isuOt',r,i));
+    (ex.kendala||[]).forEach((r,i)=>addRepeatRow('kendala',r,i));
+    (ex.followup||[]).forEach((r,i)=>addRepeatRow('followup',r,i));
     document.getElementById('btnSave').textContent='Perbarui Laporan';
   } else {
     const sd = date ? seedFor(date) : {tmm:null, ot:null};
@@ -3504,32 +3662,35 @@ const LEMBAR_UNDUH = {
     kolom:[D_TGL, D_SHIFT, {judul:'Bagian',kunci:'section',tipe:'teks',lebar:10},
       {judul:'Kategori',kunci:'cat',tipe:'teks',lebar:26},
       {judul:'Keterangan',kunci:'text',tipe:'teks',lebar:60},
-      {judul:'Tindak Lanjut',kunci:'tl',tipe:'teks',lebar:60}],
-    ambil(){ return buildIsuRows().map(r=>({tanggal:r.date, shift:'Shift '+r.shift, section:r.section, cat:r.cat, text:r.text, tl:r.tl})); }
+      {judul:'Tindak Lanjut',kunci:'tl',tipe:'teks',lebar:60},
+      {judul:'Status',kunci:'st',tipe:'teks',lebar:10}],
+    ambil(){ return buildIsuRows().map(r=>({tanggal:r.date, shift:'Shift '+r.shift, section:r.section, cat:r.cat, text:r.text, tl:r.tl, st:r.st})); }
   },
   kendala:{
     nama:'Kendala Digitalisasi',
     kolom:[D_TGL, D_SHIFT, {judul:'Bagian',kunci:'section',tipe:'teks',lebar:10},
       {judul:'Kategori',kunci:'cat',tipe:'teks',lebar:28},
       {judul:'Keterangan',kunci:'text',tipe:'teks',lebar:60},
-      {judul:'Tindak Lanjut',kunci:'tl',tipe:'teks',lebar:60}],
+      {judul:'Tindak Lanjut',kunci:'tl',tipe:'teks',lebar:60},
+      {judul:'Status',kunci:'st',tipe:'teks',lebar:10}],
     ambil(){
       const out=[];
       filteredEntries().forEach(e=>(e.kendala||[]).forEach(k=>out.push({
-        tanggal:e.date, shift:'Shift '+e.shift, section:k.section||'-', cat:k.cat, text:k.text, tl:teksTl(k)})));
+        tanggal:e.date, shift:'Shift '+e.shift, section:k.section||'-', cat:k.cat, text:k.text, tl:teksTl(k), st:statusTl(k)})));
       return out;
     }
   },
-  // Hanya catatan sebelum 29 Oktober 2026 (lihat teksTl). Kolom Status dibuang
-  // bersama pilihan Baru/Berjalan/Selesai.
+  // Hanya catatan sebelum 29 Oktober 2026 (lihat teksTl). Status lama
+  // Baru/Berjalan/Selesai ditulis sebagai Open/Close (lihat statusTl).
   followup:{
     nama:'Tindak Lanjut Format Lama',
     kolom:[D_TGL, D_SHIFT, {judul:'Kategori',kunci:'cat',tipe:'teks',lebar:22},
-      {judul:'Uraian',kunci:'text',tipe:'teks',lebar:60}],
+      {judul:'Uraian',kunci:'text',tipe:'teks',lebar:60},
+      {judul:'Status',kunci:'st',tipe:'teks',lebar:10}],
     ambil(){
       const out=[];
       filteredEntries().forEach(e=>(e.followup||[]).forEach(f=>out.push({
-        tanggal:e.date, shift:'Shift '+e.shift, cat:f.cat, text:f.text})));
+        tanggal:e.date, shift:'Shift '+e.shift, cat:f.cat, text:f.text, st:statusTl(f)})));
       return out;
     }
   }

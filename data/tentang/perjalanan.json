@@ -4,7 +4,7 @@
   "diperbarui": "2026-10-29",
   "awal": "2026-06-16",
   "angka": {"modul": 12},
-  "commit": {"total": 115, "sejak": "2026-08-27"},
+  "commit": {"total": 116, "sejak": "2026-08-27"},
   "periode": [
     {"label": "Juni–Agustus", "dari": "2026-06-01", "sampai": "2026-08-31"}
   ],
@@ -26,6 +26,6 @@
     {"tanggal": "2026-10-26", "judul": "Batas langsung berlaku", "isi": "Batas kecepatan dari Digital Twin kini berlaku di Speed Watcher dalam hitungan detik, dan Setelannya lebih ringkas.", "ikon": "jam"},
     {"tanggal": "2026-10-26", "judul": "Home lebih hidup", "isi": "Home kini bergaya halaman Tentang: kontur Pulau Pakal, angka utama lebih besar, dan grafik deviasi di panel gelap.", "ikon": "kilau"},
     {"tanggal": "2026-10-28", "judul": "Halaman masuk baru", "isi": "Halaman masuk kini bergaya Home dan Tentang, dengan pilihan masuk lewat email dan SSO ANTAM yang segera hadir.", "ikon": "kilau"},
-    {"tanggal": "2026-10-29", "judul": "Tindak lanjut menyatu", "isi": "Di Dispatch Monitoring, tindak lanjut kini ditulis langsung di samping isu atau kendalanya, tanpa status.", "ikon": "truk"}
+    {"tanggal": "2026-10-29", "judul": "Tindak lanjut menyatu", "isi": "Di Dispatch Monitoring, tindak lanjut kini ditulis di samping isu atau kendalanya, dengan status Open atau Close.", "ikon": "truk"}
   ]
 }
