@@ -4,7 +4,7 @@
   "diperbarui": "2026-10-29",
   "awal": "2026-06-16",
   "angka": {"modul": 12},
-  "commit": {"total": 119, "sejak": "2026-08-27"},
+  "commit": {"total": 120, "sejak": "2026-08-27"},
   "periode": [
     {"label": "Juni–Agustus", "dari": "2026-06-01", "sampai": "2026-08-31"}
   ],
@@ -27,6 +27,7 @@
     {"tanggal": "2026-10-26", "judul": "Home lebih hidup", "isi": "Home kini bergaya halaman Tentang: kontur Pulau Pakal, angka utama lebih besar, dan grafik deviasi di panel gelap.", "ikon": "kilau"},
     {"tanggal": "2026-10-28", "judul": "Halaman masuk baru", "isi": "Halaman masuk kini bergaya Home dan Tentang, dengan pilihan masuk lewat email dan SSO ANTAM yang segera hadir.", "ikon": "kilau"},
     {"tanggal": "2026-10-29", "judul": "Tindak lanjut menyatu", "isi": "Di Dispatch Monitoring, tindak lanjut kini ditulis di samping isu atau kendalanya, dengan status Open atau Close.", "ikon": "truk"},
-    {"tanggal": "2026-10-29", "judul": "Operator ikut tercatat", "isi": "Setiap pelanggaran di Speed Watcher kini mencatat operator yang login di unitnya, dengan peringkat di Home dan Excel.", "ikon": "target"}
+    {"tanggal": "2026-10-29", "judul": "Operator ikut tercatat", "isi": "Setiap pelanggaran di Speed Watcher kini mencatat operator yang login di unitnya, dengan peringkat di Home dan Excel.", "ikon": "target"},
+    {"tanggal": "2026-10-29", "judul": "Nyaman di HP", "isi": "Di HP, tombol kini lebih besar, menu bisa dibuka dengan menggeser layar, dan judul halaman selalu tampil di atas.", "ikon": "hp"}
   ]
 }
