@@ -1,7 +1,8 @@
 -- =============================================================================
 -- SPEED WATCHER · OPERATOR PELANGGAR · 02 · PENJADWAL
--- Jalankan SESUDAH Edge Function sw-operator ter-deploy dan lolos uji
--- (README langkah 3). Aman dijalankan ulang.
+-- Jalankan SESUDAH Edge Function sw-operator ter-deploy (README langkah 2).
+-- Berkas ini membuat swo_panggil() dan langsung menjadwalkannya; periksa
+-- hasilnya dengan README langkah 4. Aman dijalankan ulang.
 --
 -- Pencatat berjalan tiap menit: '* * * * *'. Cukup sering untuk menangkap
 -- setiap login baru, karena jam login diambil dari Minerva sendiri, bukan

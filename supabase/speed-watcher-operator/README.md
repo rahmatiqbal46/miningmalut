@@ -26,24 +26,34 @@ Edge Function berlaku untuk semua function di project. Kunci anon di
    tempel isi `sw-operator/index.ts`, **Deploy**. "Verify JWT" dibiarkan menyala.
    Buka **Edge Functions → Secrets** dan pastikan `SYNC_SECRET` dan
    `MINERVA_TOKEN` ada (keduanya sudah dibuat untuk Operator Performance).
-3. **Uji sekali** di SQL Editor:
-   ```sql
-   select public.swo_panggil();
-   ```
-   Tunggu ±15 detik, lalu:
+3. **SQL Editor** → tempel isi `02_jadwal.sql` → **Run** (hasilnya satu angka:
+   nomor jadwal). Berkas ini membuat `swo_panggil()` dan langsung menjadwalkannya
+   tiap menit.
+4. **Periksa** 2–3 menit kemudian:
    ```sql
    select pada, ok, unit_ditanya, unit_dijawab, login_baru, kejadian_baru, ms, pesan
-     from public.swo_putaran order by pada desc limit 1;
+     from public.swo_putaran order by pada desc limit 5;
    ```
-   Yang diharapkan: `ok = true`, `unit_dijawab` sekitar 45, `pesan` kosong.
+   Yang diharapkan: satu baris per menit, `ok = true`, `unit_dijawab` sekitar 45,
+   `pesan` kosong (NULL). Putaran pertama juga mengisi `login_baru` dan
+   `kejadian_baru` (semua kejadian hari ini dan kemarin).
    - `ok = false` dan `pesan` menyebut "saluran" → saluran login Minerva tidak
-     terjangkau dari Supabase. **Berhenti di sini** dan kabari Claude.
+     terjangkau dari Supabase. Hentikan dengan
+     `select cron.unschedule('swo-rekam-tiap-menit');` dan kabari Claude.
+   - `pesan` menyebut "daftar operator Minerva" → nama diambil dari cadangan
+     `op_operators`; pencatat tetap jalan. Kabari Claude.
    - Tidak ada baris sama sekali → lihat jawaban Edge Function:
-     `select status_code, content::text from net._http_response order by created desc limit 1;`
-4. **SQL Editor** → tempel isi `02_jadwal.sql` → **Run**. Sejak itu pencatat
-   berjalan tiap menit.
-5. Halaman `speed-watcher.html` di GitHub. Sebelum langkah 1–4 selesai, halaman
-   diam: tidak ada baris operator, tidak ada pesan galat.
+     `select status_code, content::text from net._http_response order by created desc limit 3;`
+5. Halaman `speed-watcher.html` di GitHub. Sebelum langkah 1, halaman diam: tidak
+   ada baris operator, tidak ada pesan galat. Sesudah langkah 1 tetapi sebelum
+   putaran pertama berhasil, tab Kejadian menulis "Pencatat operator belum
+   berjalan".
+
+Terpasang 29 Oktober 2026: putaran pertama 15.59 WIT, 45 dari 45 unit menjawab,
+45 kejadian hari ini dan kemarin dicocokkan, `pesan` kosong (saluran terjangkau
+dari Supabase, daftar Minerva menerima token).
+
+Uji manual kapan saja (sesudah langkah 3): `select public.swo_panggil();`
 
 ## Pemantauan
 
