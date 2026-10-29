@@ -1,10 +1,10 @@
 {
   "_petunjuk": "Dibaca tentang.html (Tentang MiningMalut › Perjalanan) sebagai linimasa tegak. Setiap pembaruan besar: tambahkan satu entri di AKHIR 'tonggak', lalu ubah 'diperbarui' dan 'commit.total'. Satu entri = satu pembaruan yang terasa oleh pengguna. 'judul' paling banyak empat kata; 'isi' satu atau dua kalimat pendek (±110 huruf), bahasa sehari-hari, tanpa istilah teknis dan tanpa em dash. 'ikon' salah satu dari: tunas, lapis, modul, awan, truk, jam, piala, kilau, hp, gunung, grafik, target, peta, info, bintang. 'label' (opsional) menggantikan tanggal tampil, tanpa tahun (tahun sudah ada di judul kelompok bulan). Panduan lengkap: Dokumentasi Pengembangan §31.3.",
   "versi": 3,
-  "diperbarui": "2026-10-28",
+  "diperbarui": "2026-10-29",
   "awal": "2026-06-16",
   "angka": {"modul": 12},
-  "commit": {"total": 114, "sejak": "2026-08-27"},
+  "commit": {"total": 115, "sejak": "2026-08-27"},
   "periode": [
     {"label": "Juni–Agustus", "dari": "2026-06-01", "sampai": "2026-08-31"}
   ],
@@ -25,6 +25,7 @@
     {"tanggal": "2026-10-24", "judul": "Halaman Tentang", "isi": "Tim, video tur, handbook, dan perjalanan ini kini terkumpul di satu halaman.", "ikon": "info"},
     {"tanggal": "2026-10-26", "judul": "Batas langsung berlaku", "isi": "Batas kecepatan dari Digital Twin kini berlaku di Speed Watcher dalam hitungan detik, dan Setelannya lebih ringkas.", "ikon": "jam"},
     {"tanggal": "2026-10-26", "judul": "Home lebih hidup", "isi": "Home kini bergaya halaman Tentang: kontur Pulau Pakal, angka utama lebih besar, dan grafik deviasi di panel gelap.", "ikon": "kilau"},
-    {"tanggal": "2026-10-28", "judul": "Halaman masuk baru", "isi": "Halaman masuk kini bergaya Home dan Tentang, dengan pilihan masuk lewat email dan SSO ANTAM yang segera hadir.", "ikon": "kilau"}
+    {"tanggal": "2026-10-28", "judul": "Halaman masuk baru", "isi": "Halaman masuk kini bergaya Home dan Tentang, dengan pilihan masuk lewat email dan SSO ANTAM yang segera hadir.", "ikon": "kilau"},
+    {"tanggal": "2026-10-29", "judul": "Tindak lanjut menyatu", "isi": "Di Dispatch Monitoring, tindak lanjut kini ditulis langsung di samping isu atau kendalanya, tanpa status.", "ikon": "truk"}
   ]
 }
