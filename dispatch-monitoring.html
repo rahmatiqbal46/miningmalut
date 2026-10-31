@@ -388,6 +388,12 @@
   .teks-status.belum{background:var(--warn-soft); color:var(--warn);}
   .teks-ket{margin:0 0 14px; font-size:var(--f-callout); line-height:var(--lh-callout);
     color:var(--text-muted); max-width:72ch; text-wrap:pretty;}
+  /* Pilihan tanggal dan shift laporan yang disalin, di bawah kepala kartu. */
+  .teks-pilih{display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 14px; margin:6px 0 12px;}
+  .teks-pilih .field{min-width:0;}
+  .teks-pilih input{height:var(--h-kontrol);}   /* setinggi grup Shift, jadi kedua label sejajar */
+  .teks-pilih-label{font-family:var(--font); font-size:var(--f-sub); line-height:var(--lh-sub);
+    color:var(--text-muted); font-weight:560;}
   .wa-teks{margin:0; max-width:78ch; background:var(--isi); border-radius:var(--r-inner);
     padding:14px 16px; font-family:var(--font); font-size:var(--f-body); line-height:20px;
     color:var(--text); white-space:pre-wrap; overflow-wrap:anywhere;}
@@ -489,12 +495,19 @@
     #view-input .form-grid > .field > input{font-size:16px; min-height:44px;}
     #view-input .form-grid > .field > label{font-size:13px; line-height:17px;}
     .teks-kepala .btn{min-height:44px; padding:0 18px; font-size:15px;}
+    .teks-pilih input{font-size:16px; min-height:48px;}   /* setinggi grup Shift (44 + sisipan 2 × 2) */
+    .teks-pilih label, .teks-pilih-label{font-size:13px; line-height:17px;}
+    #teksShiftBtns button{height:auto; min-height:44px; padding:0 16px; font-size:15px;}
     .teks-status{font-size:12px; line-height:16px; padding:4px 10px;}
     .teks-ket{font-size:14px; line-height:19px;}
     .wa-teks{font-size:15px; line-height:22px; padding:14px;}
   }
   @media(max-width:560px){
     .teks-kepala .btn{flex:1 1 100%; margin-left:0;}
+    .teks-pilih > .field{flex:1 1 150px;}
+    .teks-pilih input{width:100%;}
+    #teksShiftBtns{display:flex;}
+    #teksShiftBtns button{flex:1 1 0;}
   }
 
   /* Pengguna yang meminta transparansi dikurangi mendapat permukaan padat. */
@@ -963,7 +976,19 @@
         <span class="teks-status" id="teksStatus"></span>
         <button type="button" class="btn primary" id="btnSalinTeks">Salin Teks</button>
       </div>
-      <p class="teks-ket">Tersusun sendiri dari isian di atas dan ikut berubah saat isian diubah. Salin, lalu tempel di grup WhatsApp.</p>
+      <!-- Pilihan laporan yang disalin. Bawaannya mengikuti tanggal dan shift
+           formulir; pilihan lain membaca laporan tersimpan tanpa mengubah
+           formulir (lihat PILIH_TEKS di skrip). -->
+      <div class="teks-pilih">
+        <div class="field"><label for="teksTanggal">Tanggal laporan</label><input type="date" id="teksTanggal"></div>
+        <div class="field"><span class="teks-pilih-label" id="teksShiftLabel">Shift</span>
+          <div class="segmented" id="teksShiftBtns" role="group" aria-labelledby="teksShiftLabel">
+            <button type="button" class="active" data-shift="1" aria-pressed="true">Shift 1</button>
+            <button type="button" data-shift="2" aria-pressed="false">Shift 2</button>
+          </div>
+        </div>
+      </div>
+      <p class="teks-ket">Laporan yang sudah tersimpan bisa disalin kapan saja: pilih tanggal dan shiftnya di sini, formulir di atas tidak ikut berganti. Tempel hasilnya di grup WhatsApp.</p>
       <pre class="wa-teks" id="teksLaporan" aria-label="Teks laporan shift"></pre>
     </div>
 
@@ -1854,9 +1879,10 @@ function formulirKepatuhanDipakai(){
     const v=document.getElementById(idView);
     if(!v) return;
     ['input','change'].forEach(ev=>v.addEventListener(ev, e=>{
-      // Panel unduh dan Kelola Daftar Operator ada di tab yang sama tapi bukan
-      // isian laporan/penilaian. Yang kedua menyimpan sendiri saat tombolnya ditekan.
-      if(e.target && e.target.closest && e.target.closest('#kartuUnduh, #kelolaOperator')) return;
+      // Panel unduh, Kelola Daftar Operator, dan pilihan laporan di kartu Teks
+      // Laporan Shift ada di tab yang sama tapi bukan isian laporan/penilaian.
+      // Kelola Daftar Operator menyimpan sendiri saat tombolnya ditekan.
+      if(e.target && e.target.closest && e.target.closest('#kartuUnduh, #kelolaOperator, #kartuTeks')) return;
       tandai();
     }, true));
   };
@@ -3262,6 +3288,7 @@ function loadEntryIntoForm(){
   segarkanKartuTlLama();
   updateDevPreviews();
   tandaiBersihLaporan();
+  PILIH_TEKS=null;            // kartu teks kembali mengikuti formulir
   segarkanTeksLaporan();
 }
 function updateDevPreviews(){
@@ -3351,14 +3378,18 @@ function renderEntryList(){
     if(gone) pushDelete(entryKey(gone));
     renderEntryList(); loadEntryIntoForm(); renderAll(); showToast('Laporan dihapus');
   }));
+  // Daftar laporan berubah (simpan, hapus, sinkron dari perangkat lain): teks
+  // laporan tersimpan dan pil statusnya ikut diperbarui.
+  segarkanTeksLaporan();
 }
 
 /* ================= TEKS LAPORAN SHIFT (31 Oktober 2026) =================
    Permintaan Randy lewat Iqbal: tiap akhir shift dispatcher mengetik ulang
    laporan keberjalanan ke grup WhatsApp, padahal isinya sudah diisi di sini.
-   Teksnya kini disusun dari formulir yang sedang terbuka (bukan dari laporan
+   Bawaannya teks disusun dari formulir yang sedang terbuka (bukan dari laporan
    tersimpan), jadi ikut berubah saat diketik dan bisa disalin sebelum maupun
-   sesudah disimpan. Bentuknya mengikuti pesan dispatch Shift 1 29/10/2026:
+   sesudah disimpan; tanggal/shift lain yang dipilih di kartu dibaca dari
+   laporan tersimpan (PILIH_TEKS). Bentuknya mengikuti pesan dispatch Shift 1 29/10/2026:
    judul, lalu TOTAL MATERIAL MOVEMENT dan ORE TRANSHIPMENT, masing-masing
    berisi angka ritase, Isu Operasional, Kendala, dan Tindak Lanjut.
    - Deviasi = |Minerva − Checker| / Checker, rumus devFrac() yang sama dengan
@@ -3438,14 +3469,17 @@ function blokTeksBagian(judul, angka, isu, kendala){
   L.push('', '*Tindak Lanjut*', ...(tl.length ? tl : ['* Tidak ada']));
   return L;
 }
-function susunTeksLaporan(e){
-  const p=String(e.date||'').split('-').map(Number);
+// "Kamis 29/10/2026" dari "2026-10-29"
+function hariTanggalTeks(date){
+  const p=String(date||'').split('-').map(Number);
   const hari=HARI_ID[new Date(p[0], p[1]-1, p[2]).getDay()] || '';
-  const tgl=String(p[2]).padStart(2,'0')+'/'+String(p[1]).padStart(2,'0')+'/'+p[0];
+  return hari+' '+String(p[2]).padStart(2,'0')+'/'+String(p[1]).padStart(2,'0')+'/'+p[0];
+}
+function susunTeksLaporan(e){
   const tmm=e.tmm||{}, ot=e.ot||{}, kendala=e.kendala||[];
   const angka=(lebih, v)=>[...lebih, ['Data Minerva', angkaTeks(v.minerva)], ['Data Checker', angkaTeks(v.checker)],
                            ['Deviasi', deviasiTeks(v.minerva, v.checker)]];
-  const L=['*Laporan Keberjalanan Dispatch Shift '+e.shift+', '+hari+' '+tgl+'*', ''];
+  const L=['*Laporan Keberjalanan Dispatch Shift '+e.shift+', '+hariTanggalTeks(e.date)+'*', ''];
   L.push(...blokTeksBagian('TOTAL MATERIAL MOVEMENT',
     angka(hasNum(tmm.minemap) ? [['Data Load Count', angkaTeks(tmm.minemap)]] : [], tmm),
     e.isuTmm||[], kendala.filter(k=>k.section!=='OT')));
@@ -3466,19 +3500,70 @@ function htmlTeksWa(t){
     '<span class="wa-b"><span class="wa-m">*</span>$1<span class="wa-m">*</span></span>');
 }
 
-let TEKS_LAPORAN='', teksTersimpan=false;
+/* PILIHAN LAPORAN (31 Oktober 2026, permintaan Iqbal): supaya teks Shift 1
+   masih bisa disalin malam harinya atau besok paginya, kartu punya pilihan
+   tanggal dan shift sendiri.
+   - PILIH_TEKS null: kartu mengikuti tanggal dan shift formulir, teksnya dari
+     isian (termasuk yang belum disimpan), seperti semula.
+   - PILIH_TEKS {date, shift}: tanggal/shift lain dipilih di kartu. Teksnya
+     dari laporan TERSIMPAN slot itu, dan formulir tidak disentuh, jadi isian
+     yang sedang diketik dispatcher shift berikutnya tidak hilang.
+   - Memilih slot yang sama dengan formulir kembali mengikuti formulir;
+     berganti tanggal/shift di formulir, menyimpan, atau menghapus laporan
+     (loadEntryIntoForm) juga mengembalikannya. */
+let TEKS_LAPORAN='', teksTersimpan=false, PILIH_TEKS=null;
+function slotFormulirTeks(){ return {date:document.getElementById('inDate').value, shift:inputShift}; }
+function slotTeks(){ return PILIH_TEKS || slotFormulirTeks(); }
+function samakanPilihanTeks(s){
+  const t=document.getElementById('teksTanggal');
+  if(t && t.value!==s.date) t.value=s.date;
+  document.querySelectorAll('#teksShiftBtns button').forEach(b=>{
+    const on=b.dataset.shift===s.shift;
+    b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
+  });
+}
+function pilihSlotTeks(date, shift){
+  const f=slotFormulirTeks();
+  PILIH_TEKS = (date===f.date && shift===f.shift) ? null : {date, shift};
+  segarkanTeksLaporan();
+}
 function segarkanTeksLaporan(){
   const kotak=document.getElementById('teksLaporan');
   const tombol=document.getElementById('btnSalinTeks');
   const status=document.getElementById('teksStatus');
   if(!kotak || !tombol || !status) return;
-  const date=document.getElementById('inDate').value;
-  if(!date){
+  if(PILIH_TEKS){
+    const f=slotFormulirTeks();
+    if(PILIH_TEKS.date===f.date && PILIH_TEKS.shift===f.shift) PILIH_TEKS=null;
+  }
+  const s=slotTeks();
+  samakanPilihanTeks(s);
+  const pil=(teks, ok)=>{
+    status.hidden=false; status.textContent=teks; status.className='teks-status '+(ok ? 'ok' : 'belum');
+  };
+  const kosong=(pesan)=>{
     TEKS_LAPORAN=''; teksTersimpan=false;
-    kotak.classList.add('kosong');
-    kotak.textContent='Pilih tanggal dan shift di bagian 1, teksnya tersusun di sini.';
+    kotak.classList.add('kosong'); kotak.textContent=pesan;
     tombol.disabled=true;
+  };
+  if(!s.date){
+    kosong('Pilih tanggal dan shift laporan, teksnya tersusun di sini.');
     status.hidden=true;
+    return;
+  }
+  const ada=findEntry(s.date, s.shift);
+  if(PILIH_TEKS){
+    if(!ada){
+      kosong('Belum ada laporan tersimpan untuk Shift '+s.shift+', '+hariTanggalTeks(s.date)+'.');
+      pil('Belum ada laporan', false);
+      return;
+    }
+    TEKS_LAPORAN=susunTeksLaporan(ada);
+    teksTersimpan=true;
+    kotak.classList.remove('kosong');
+    kotak.innerHTML=htmlTeksWa(TEKS_LAPORAN);
+    tombol.disabled=false;
+    pil('Laporan tersimpan', true);
     return;
   }
   TEKS_LAPORAN=susunTeksLaporan(bacaFormulirLaporan());
@@ -3488,12 +3573,12 @@ function segarkanTeksLaporan(){
   // "Tersimpan" hanya bila formulir belum diubah sejak dimuat DAN teksnya sama
   // dengan teks dari laporan tersimpan (Bersihkan Form, misalnya, tidak
   // menandai formulir berubah).
-  const ada=findEntry(date, inputShift);
   teksTersimpan = !!ada && !KOTOR.laporan && susunTeksLaporan(ada)===TEKS_LAPORAN;
-  status.hidden=false;
-  status.textContent = teksTersimpan ? 'Sama dengan laporan tersimpan' : 'Belum disimpan';
-  status.className = 'teks-status '+(teksTersimpan ? 'ok' : 'belum');
+  pil(teksTersimpan ? 'Sama dengan laporan tersimpan' : 'Belum disimpan', teksTersimpan);
 }
+document.getElementById('teksTanggal').addEventListener('change', e=>pilihSlotTeks(e.target.value, slotTeks().shift));
+document.querySelectorAll('#teksShiftBtns button').forEach(b=>
+  b.addEventListener('click', ()=>pilihSlotTeks(slotTeks().date, b.dataset.shift)));
 let teksTunda=0;
 function jadwalkanTeksLaporan(){ clearTimeout(teksTunda); teksTunda=setTimeout(segarkanTeksLaporan, 120); }
 // Setiap ketikan, pilihan, dan klik di Input Data (tambah/hapus kartu, tombol
