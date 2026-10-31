@@ -298,6 +298,19 @@
   .form-grid.cols-2{grid-template-columns:repeat(2,1fr);}
   @media(max-width:900px){.form-grid{grid-template-columns:1fr 1fr;}}
   @media(max-width:560px){.form-grid{grid-template-columns:1fr;}}
+  /* Isian boleh menyusut sampai selebar kolomnya. Tanpa ini <input
+     type="number"> mempertahankan lebar bawaannya dan di HP kolom kedua
+     keluar dari kartu, sehingga halaman bergeser ke samping (§17 butir 88). */
+  .form-grid > .field{min-width:0;}
+  .form-grid > .field > input{width:100%; min-width:0;}
+  /* Ritase TMM dan OT: Minerva, Checker, lalu satu angka opsional (Load Count
+     Minemap / RFID) yang hanya dipakai teks laporan. Tiga kolom sampai HP;
+     di HP Minerva dan Checker tetap berdampingan, yang opsional di bawahnya. */
+  .form-grid.ritase{grid-template-columns:repeat(3,minmax(0,1fr));}
+  @media(max-width:560px){
+    .form-grid.ritase{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .form-grid.ritase > .field.opsional{grid-column:1 / -1;}
+  }
   .subgroup{border:0; background:var(--isi); border-radius:var(--r-inner);
     padding:12px; margin-top:12px;}
   .subgroup-label{font-family:var(--font); font-size:var(--f-sub); line-height:var(--lh-sub);
@@ -359,6 +372,28 @@
     width:var(--h-kontrol); height:var(--h-kontrol); cursor:pointer;
     transition:color .15s var(--ease), box-shadow .15s var(--ease);}
   .icon-btn:hover{color:var(--bad); box-shadow:inset 0 0 0 1px var(--bad);}
+
+  /* ---------- Teks laporan shift (31 Oktober 2026) ----------
+     Pesan akhir shift untuk grup WhatsApp, disusun dari isian formulir. Yang
+     tampil persis teks yang tersalin: tanda bintang tetap terlihat (redup) dan
+     isinya ditebalkan seperti di WhatsApp. Lebarnya dibatasi kira-kira selebar
+     gelembung obrolan; baris panjang turun baris, tidak menggeser halaman.
+     Tombol Salin di kepala kartu supaya tidak perlu menggulir melewati teks. */
+  .teks-kepala{display:flex; align-items:center; gap:10px 12px; flex-wrap:wrap; margin-bottom:8px;}
+  .teks-kepala h3{margin:0;}
+  .teks-kepala .btn{margin-left:auto;}
+  .teks-status{font-size:var(--f-foot); line-height:var(--lh-foot); font-weight:620;
+    padding:3px 9px; border-radius:var(--r-pil); background:var(--isi); color:var(--text-muted);}
+  .teks-status.ok{background:var(--good-soft); color:var(--good);}
+  .teks-status.belum{background:var(--warn-soft); color:var(--warn);}
+  .teks-ket{margin:0 0 14px; font-size:var(--f-callout); line-height:var(--lh-callout);
+    color:var(--text-muted); max-width:72ch; text-wrap:pretty;}
+  .wa-teks{margin:0; max-width:78ch; background:var(--isi); border-radius:var(--r-inner);
+    padding:14px 16px; font-family:var(--font); font-size:var(--f-body); line-height:20px;
+    color:var(--text); white-space:pre-wrap; overflow-wrap:anywhere;}
+  .wa-teks .wa-b{font-weight:680;}
+  .wa-teks .wa-m{color:var(--text-muted); font-weight:400;}
+  .wa-teks.kosong{color:var(--text-muted);}
 
   .entry-list-item{display:flex; justify-content:space-between; align-items:center; padding:10px 14px;
     border-bottom:1px solid var(--border-soft); font-size:var(--f-body); gap:10px; flex-wrap:wrap;}
@@ -444,6 +479,22 @@
     main{padding:18px 12px 64px;}
     .tab-btn{padding:0 10px; font-size:var(--f-sub);}
     :root{--fs-kpi:32px;}
+  }
+
+  /* HP (lebar iframe = lebar layar, §35.8), kueri yang sama dengan mode HP
+     shell supaya HP mendatar ikut. Isian angka dan tanggal Input Data 16 px
+     supaya Safari iOS tidak memperbesar halaman saat disentuh, tinggi 44 px
+     untuk jari. Kartu Teks Laporan: tombol 44 px, teks 15 px. */
+  @media (max-width:860px), (pointer:coarse) and (max-height:500px){
+    #view-input .form-grid > .field > input{font-size:16px; min-height:44px;}
+    #view-input .form-grid > .field > label{font-size:13px; line-height:17px;}
+    .teks-kepala .btn{min-height:44px; padding:0 18px; font-size:15px;}
+    .teks-status{font-size:12px; line-height:16px; padding:4px 10px;}
+    .teks-ket{font-size:14px; line-height:19px;}
+    .wa-teks{font-size:15px; line-height:22px; padding:14px;}
+  }
+  @media(max-width:560px){
+    .teks-kepala .btn{flex:1 1 100%; margin-left:0;}
   }
 
   /* Pengguna yang meminta transparansi dikurangi mendapat permukaan padat. */
@@ -818,18 +869,20 @@
 
     <div class="form-card">
       <h3><span class="n">2</span>Total Material Movement (TMM)</h3>
-      <div class="form-grid cols-2">
-        <div class="field"><label>Ritase Minerva</label><input type="number" id="tmmMinerva" placeholder="kosongkan bila tidak ada data"></div>
-        <div class="field"><label>Ritase Checker</label><input type="number" id="tmmChecker" placeholder="kosongkan bila tidak ada data"></div>
+      <div class="form-grid ritase">
+        <div class="field"><label for="tmmMinerva">Ritase Minerva</label><input type="number" id="tmmMinerva" placeholder="kosongkan bila tidak ada data"></div>
+        <div class="field"><label for="tmmChecker">Ritase Checker</label><input type="number" id="tmmChecker" placeholder="kosongkan bila tidak ada data"></div>
+        <div class="field opsional"><label for="tmmMinemap">Load Count Minemap</label><input type="number" id="tmmMinemap" placeholder="opsional, untuk teks laporan"></div>
       </div>
       <div class="dev-preview" id="tmmDevPreview">Deviasi: —</div>
     </div>
 
     <div class="form-card">
       <h3><span class="n">3</span>Ore Transhipment (OT)</h3>
-      <div class="form-grid cols-2">
-        <div class="field"><label>Ritase Minerva</label><input type="number" id="otMinerva" placeholder="kosongkan bila tidak ada data"></div>
-        <div class="field"><label>Ritase Checker</label><input type="number" id="otChecker" placeholder="kosongkan bila tidak ada data"></div>
+      <div class="form-grid ritase">
+        <div class="field"><label for="otMinerva">Ritase Minerva</label><input type="number" id="otMinerva" placeholder="kosongkan bila tidak ada data"></div>
+        <div class="field"><label for="otChecker">Ritase Checker</label><input type="number" id="otChecker" placeholder="kosongkan bila tidak ada data"></div>
+        <div class="field opsional"><label for="otRfid">Ritase RFID</label><input type="number" id="otRfid" placeholder="opsional, untuk teks laporan"></div>
       </div>
       <div class="dev-preview" id="otDevPreview">Deviasi: —</div>
     </div>
@@ -896,10 +949,22 @@
       <div class="tl-list ringkas" id="lstTlLama"></div>
     </div>
 
-    <div style="display:flex; gap:10px; margin:18px 0 34px; flex-wrap:wrap;">
+    <div style="display:flex; gap:10px; margin:18px 0 18px; flex-wrap:wrap;">
       <button class="btn primary" id="btnSave">Simpan Laporan</button>
       <button class="btn ghost" id="btnReset">Bersihkan Form</button>
       <button class="btn ghost" id="btnDeleteEntry" style="display:none;">Hapus Laporan Ini</button>
+    </div>
+
+    <!-- Teks pesan akhir shift untuk grup WhatsApp, disusun dari isian di atas
+         (lihat TEKS LAPORAN SHIFT di skrip). -->
+    <div class="form-card" id="kartuTeks" style="margin-bottom:34px;">
+      <div class="teks-kepala">
+        <h3>Teks Laporan Shift</h3>
+        <span class="teks-status" id="teksStatus"></span>
+        <button type="button" class="btn primary" id="btnSalinTeks">Salin Teks</button>
+      </div>
+      <p class="teks-ket">Tersusun sendiri dari isian di atas dan ikut berubah saat isian diubah. Salin, lalu tempel di grup WhatsApp.</p>
+      <pre class="wa-teks" id="teksLaporan" aria-label="Teks laporan shift"></pre>
     </div>
 
     <div class="section-head">
@@ -3135,7 +3200,7 @@ document.querySelectorAll('#inShiftBtns button').forEach(b=>{
 });
 document.getElementById('inDate').addEventListener('change', loadEntryIntoForm);
 
-const NUM_FIELDS=['tmmMinerva','tmmChecker','otMinerva','otChecker',
+const NUM_FIELDS=['tmmMinerva','tmmChecker','tmmMinemap','otMinerva','otChecker','otRfid',
   'excaAntamActual','excaAntamBudget','haulerAntamActual','haulerAntamBudget',
   'excaPcmActual','excaPcmBudget','haulerPcmActual','haulerPcmBudget','excaOtActual','excaOtBudget','haulerOtActual','haulerOtBudget'];
 
@@ -3164,6 +3229,7 @@ function loadEntryIntoForm(){
     delBtn.style.display='';
     setNum('tmmMinerva', ex.tmm?ex.tmm.minerva:null); setNum('tmmChecker', ex.tmm?ex.tmm.checker:null);
     setNum('otMinerva', ex.ot?ex.ot.minerva:null);   setNum('otChecker', ex.ot?ex.ot.checker:null);
+    setNum('tmmMinemap', ex.tmm?ex.tmm.minemap:null); setNum('otRfid', ex.ot?ex.ot.rfid:null);
     const ua=ex.unitAlloc||{};
     ['excaAntam','haulerAntam','excaPcm','haulerPcm','excaOt','haulerOt'].forEach(k=>{
       setNum(k+'Actual', ua[k]?ua[k].actual:null);
@@ -3196,6 +3262,7 @@ function loadEntryIntoForm(){
   segarkanKartuTlLama();
   updateDevPreviews();
   tandaiBersihLaporan();
+  segarkanTeksLaporan();
 }
 function updateDevPreviews(){
   [['tmmDevPreview','tmmMinerva','tmmChecker'],['otDevPreview','otMinerva','otChecker']].forEach(([el,a,b])=>{
@@ -3204,24 +3271,35 @@ function updateDevPreviews(){
 }
 ['tmmMinerva','tmmChecker','otMinerva','otChecker'].forEach(id=>document.getElementById(id).addEventListener('input',updateDevPreviews));
 
+/* Isi formulir laporan sebagai satu laporan, tanpa efek samping. Dipakai
+   Simpan Laporan dan teks laporan shift, jadi teks yang disalin selalu sama
+   dengan yang tersimpan. Load Count Minemap dan RFID opsional: kuncinya hanya
+   ditulis bila diisi, jadi laporan yang tidak memakainya tetap berbentuk lama. */
+function bacaFormulirLaporan(){
+  const mk=(k)=>({actual:numOrNull(k+'Actual'), budget:numOrNull(k+'Budget')});
+  const tmm={minerva:numOrNull('tmmMinerva'), checker:numOrNull('tmmChecker')};
+  const ot={minerva:numOrNull('otMinerva'), checker:numOrNull('otChecker')};
+  const minemap=numOrNull('tmmMinemap'), rfid=numOrNull('otRfid');
+  if(hasNum(minemap)) tmm.minemap=minemap;
+  if(hasNum(rfid)) ot.rfid=rfid;
+  return {
+    date:document.getElementById('inDate').value, shift:inputShift, tmm, ot,
+    unitAlloc:{excaAntam:mk('excaAntam'), haulerAntam:mk('haulerAntam'), excaPcm:mk('excaPcm'), haulerPcm:mk('haulerPcm'), excaOt:mk('excaOt'), haulerOt:mk('haulerOt')},
+    isuTmm:collectRows('isuTmm'), isuOt:collectRows('isuOt'), kendala:collectRows('kendala'), followup:collectRows('followup')
+  };
+}
+
 document.getElementById('btnSave').addEventListener('click',()=>{
   const date=document.getElementById('inDate').value;
   if(!date){ showToast('Pilih tanggal terlebih dahulu'); return; }
-  const isuTmm=collectRows('isuTmm'), isuOt=collectRows('isuOt');
-  isuTmm.forEach(r=>learnCategory('isuTmm',r.cat));
-  isuOt.forEach(r=>learnCategory('isuOt',r.cat));
+  const isi=bacaFormulirLaporan();
+  isi.isuTmm.forEach(r=>learnCategory('isuTmm',r.cat));
+  isi.isuOt.forEach(r=>learnCategory('isuOt',r.cat));
   refreshCategoryDatalists();
-  const mk=(k)=>({actual:numOrNull(k+'Actual'), budget:numOrNull(k+'Budget')});
   const existing=findEntry(date,inputShift);
-  const entry={
-    id: existing?existing.id:uid(), date, shift:inputShift,
-    tmm:{minerva:numOrNull('tmmMinerva'), checker:numOrNull('tmmChecker')},
-    ot:{minerva:numOrNull('otMinerva'), checker:numOrNull('otChecker')},
-    unitAlloc:{excaAntam:mk('excaAntam'), haulerAntam:mk('haulerAntam'), excaPcm:mk('excaPcm'), haulerPcm:mk('haulerPcm'), excaOt:mk('excaOt'), haulerOt:mk('haulerOt')},
-    isuTmm, isuOt, kendala:collectRows('kendala'), followup:collectRows('followup')
-  };
-  if(existing){ ENTRIES[ENTRIES.indexOf(existing)]=entry; showToast('Laporan diperbarui'); }
-  else { ENTRIES.push(entry); showToast('Laporan tersimpan'); }
+  const entry=Object.assign({ id: existing?existing.id:uid() }, isi);
+  if(existing){ ENTRIES[ENTRIES.indexOf(existing)]=entry; showToast('Laporan diperbarui · teks laporan siap disalin'); }
+  else { ENTRIES.push(entry); showToast('Laporan tersimpan · teks laporan siap disalin'); }
   saveEntries(ENTRIES);
   pushItem(entryKey(entry), 'laporan', entry);
   renderEntryList(); loadEntryIntoForm(); renderAll();
@@ -3232,6 +3310,7 @@ document.getElementById('btnReset').addEventListener('click',()=>{
   TIPE_BARU.forEach(t=>addRepeatRow(t));
   segarkanKartuTlLama();
   updateDevPreviews();
+  segarkanTeksLaporan();
 });
 document.getElementById('btnDeleteEntry').addEventListener('click',()=>{
   const date=document.getElementById('inDate').value;
@@ -3273,6 +3352,202 @@ function renderEntryList(){
     renderEntryList(); loadEntryIntoForm(); renderAll(); showToast('Laporan dihapus');
   }));
 }
+
+/* ================= TEKS LAPORAN SHIFT (31 Oktober 2026) =================
+   Permintaan Randy lewat Iqbal: tiap akhir shift dispatcher mengetik ulang
+   laporan keberjalanan ke grup WhatsApp, padahal isinya sudah diisi di sini.
+   Teksnya kini disusun dari formulir yang sedang terbuka (bukan dari laporan
+   tersimpan), jadi ikut berubah saat diketik dan bisa disalin sebelum maupun
+   sesudah disimpan. Bentuknya mengikuti pesan dispatch Shift 1 29/10/2026:
+   judul, lalu TOTAL MATERIAL MOVEMENT dan ORE TRANSHIPMENT, masing-masing
+   berisi angka ritase, Isu Operasional, Kendala, dan Tindak Lanjut.
+   - Deviasi = |Minerva − Checker| / Checker, rumus devFrac() yang sama dengan
+     dashboard, ditulis cara Indonesia satu desimal: 6,7% dan 0%.
+   - Load Count Minemap (TMM) dan RFID (OT) opsional; barisnya hanya muncul
+     bila diisi.
+   - Isu "* *Kategori* : uraian"; kategori Lainnya tidak ditulis. Kendala
+     ditulis tanpa kategori, di bagian (TMM/OT) yang dipilih di kartunya.
+   - Baris kedua dan seterusnya dari uraian isu/kendala ditulis apa adanya
+     (mis. rincian "1. DTH 36 …").
+   - Tindak lanjut dikumpulkan dari kendala lalu isu bagian itu, sesuai urutan
+     kartu. Kendala dulu karena di pesan dispatch butir tetap seperti
+     "Validasi ritase tetap akan dilakukan oleh dispatch" selalu di atas, dan
+     butir itu menempel pada kendala update status / data recording. Tiap
+     baris jadi satu butir, kecuali baris bernomor (rincian butir di atasnya).
+     Butir yang sama persis ditulis sekali.
+   - Bagian tanpa isi ditulis "* Tidak ada", angka kosong "-", supaya yang
+     belum diisi kelihatan sebelum dikirim.
+   - Tindak lanjut format lama (sebelum 29 Oktober) tidak menyimpan bagiannya,
+     jadi ditulis di blok Tindak Lanjut Umum di akhir. */
+const HARI_ID=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+// Karakter tak terlihat yang ikut tersalin dari WhatsApp (word joiner, spasi
+// lebar nol, BOM) dibuang; tab dan spasi ganda jadi satu spasi.
+function rapikanBarisTeks(s){
+  return String(s==null?'':s).replace(/[⁠​﻿]/g,'').replace(/[\t ]+/g,' ').trim();
+}
+function barisTeks(s){ return String(s==null?'':s).split(/\r?\n/).map(rapikanBarisTeks).filter(Boolean); }
+// Penanda butir yang diketik sendiri ("* ", "- ", "•") dibuang supaya tidak
+// menjadi "* * …". Bintang tanpa spasi sesudahnya adalah huruf tebal, dibiarkan.
+function tanpaButir(s){ return s.replace(/^(?:[*\-]\s+|[•·▪◦]\s*)/,'').trim(); }
+const RE_RINCIAN=/^\d+[.)]\s/;
+function kategoriTeks(c){
+  const k=rapikanBarisTeks(c).replace(/\*/g,'');
+  return /^lainnya$/i.test(k) ? '' : k;
+}
+// Satu butir isu/kendala: baris pertama diberi "* ", sisanya apa adanya.
+function butirUraian(awal, teks){
+  const b=barisTeks(teks);
+  if(!b.length) return [];
+  return ['* '+awal+tanpaButir(b[0]), ...b.slice(1)];
+}
+// Tindak lanjut: tiap baris satu butir; baris bernomor ikut butir sebelumnya.
+function butirTindakLanjut(teks){
+  const keluar=[];
+  barisTeks(teks).forEach(l=>{
+    if(RE_RINCIAN.test(l) && keluar.length){ keluar[keluar.length-1].push(l); return; }
+    const t=tanpaButir(l);
+    if(t) keluar.push(['* '+t]);
+  });
+  return keluar;
+}
+function angkaTeks(v){ return hasNum(v) ? Number(v).toLocaleString('id-ID') : '-'; }
+function deviasiTeks(m, c){
+  const d=devFrac(m, c);
+  if(d===null) return '-';
+  return (Math.round(d*1000)/10).toLocaleString('id-ID', {maximumFractionDigits:1})+'%';
+}
+function blokTeksBagian(judul, angka, isu, kendala){
+  const L=['*'+judul+'*'];
+  angka.forEach(([label, nilai])=>L.push(label+' : '+nilai));
+
+  const bIsu=[];
+  isu.forEach(r=>{ const k=kategoriTeks(r.cat); bIsu.push(...butirUraian(k ? '*'+k+'* : ' : '', r.text)); });
+  L.push('', '*Isu Operasional*', ...(bIsu.length ? bIsu : ['* Tidak ada']));
+
+  const bKen=[];
+  kendala.forEach(r=>bKen.push(...butirUraian('', r.text)));
+  L.push('', '*Kendala*', ...(bKen.length ? bKen : ['* Tidak ada']));
+
+  const tl=[], sudah=new Set();
+  [...kendala, ...isu].forEach(r=>butirTindakLanjut(r.tindakLanjut).forEach(b=>{
+    const kunci=b.join('\n').toLowerCase().replace(/[\s.]+$/,'');
+    if(sudah.has(kunci)) return;
+    sudah.add(kunci);
+    tl.push(...b);
+  }));
+  L.push('', '*Tindak Lanjut*', ...(tl.length ? tl : ['* Tidak ada']));
+  return L;
+}
+function susunTeksLaporan(e){
+  const p=String(e.date||'').split('-').map(Number);
+  const hari=HARI_ID[new Date(p[0], p[1]-1, p[2]).getDay()] || '';
+  const tgl=String(p[2]).padStart(2,'0')+'/'+String(p[1]).padStart(2,'0')+'/'+p[0];
+  const tmm=e.tmm||{}, ot=e.ot||{}, kendala=e.kendala||[];
+  const angka=(lebih, v)=>[...lebih, ['Data Minerva', angkaTeks(v.minerva)], ['Data Checker', angkaTeks(v.checker)],
+                           ['Deviasi', deviasiTeks(v.minerva, v.checker)]];
+  const L=['*Laporan Keberjalanan Dispatch Shift '+e.shift+', '+hari+' '+tgl+'*', ''];
+  L.push(...blokTeksBagian('TOTAL MATERIAL MOVEMENT',
+    angka(hasNum(tmm.minemap) ? [['Data Load Count', angkaTeks(tmm.minemap)]] : [], tmm),
+    e.isuTmm||[], kendala.filter(k=>k.section!=='OT')));
+  L.push('');
+  L.push(...blokTeksBagian('ORE TRANSHIPMENT',
+    angka(hasNum(ot.rfid) ? [['Data RFID', angkaTeks(ot.rfid)]] : [], ot),
+    e.isuOt||[], kendala.filter(k=>k.section==='OT')));
+  const lama=[];
+  (e.followup||[]).forEach(r=>butirTindakLanjut(r.text).forEach(b=>lama.push(...b)));
+  if(lama.length) L.push('', '*Tindak Lanjut Umum*', ...lama);
+  return L.join('\n');
+}
+// Pratinjau: teks apa adanya, bagian bertanda bintang ditebalkan seperti di
+// WhatsApp (bintang pembuka diikuti huruf, penutup didahului huruf, jadi
+// penanda butir "* " tidak ikut terbaca sebagai tebal).
+function htmlTeksWa(t){
+  return escapeHtml(t).replace(/\*(?=\S)([^*\n]*?\S)\*/g,
+    '<span class="wa-b"><span class="wa-m">*</span>$1<span class="wa-m">*</span></span>');
+}
+
+let TEKS_LAPORAN='', teksTersimpan=false;
+function segarkanTeksLaporan(){
+  const kotak=document.getElementById('teksLaporan');
+  const tombol=document.getElementById('btnSalinTeks');
+  const status=document.getElementById('teksStatus');
+  if(!kotak || !tombol || !status) return;
+  const date=document.getElementById('inDate').value;
+  if(!date){
+    TEKS_LAPORAN=''; teksTersimpan=false;
+    kotak.classList.add('kosong');
+    kotak.textContent='Pilih tanggal dan shift di bagian 1, teksnya tersusun di sini.';
+    tombol.disabled=true;
+    status.hidden=true;
+    return;
+  }
+  TEKS_LAPORAN=susunTeksLaporan(bacaFormulirLaporan());
+  kotak.classList.remove('kosong');
+  kotak.innerHTML=htmlTeksWa(TEKS_LAPORAN);
+  tombol.disabled=false;
+  // "Tersimpan" hanya bila formulir belum diubah sejak dimuat DAN teksnya sama
+  // dengan teks dari laporan tersimpan (Bersihkan Form, misalnya, tidak
+  // menandai formulir berubah).
+  const ada=findEntry(date, inputShift);
+  teksTersimpan = !!ada && !KOTOR.laporan && susunTeksLaporan(ada)===TEKS_LAPORAN;
+  status.hidden=false;
+  status.textContent = teksTersimpan ? 'Sama dengan laporan tersimpan' : 'Belum disimpan';
+  status.className = 'teks-status '+(teksTersimpan ? 'ok' : 'belum');
+}
+let teksTunda=0;
+function jadwalkanTeksLaporan(){ clearTimeout(teksTunda); teksTunda=setTimeout(segarkanTeksLaporan, 120); }
+// Setiap ketikan, pilihan, dan klik di Input Data (tambah/hapus kartu, tombol
+// status) menyusun ulang teks. Panel unduh dan kartu teks sendiri dilewati.
+['input','change','click'].forEach(ev=>document.getElementById('view-input').addEventListener(ev, e=>{
+  if(e.target && e.target.closest && e.target.closest('#kartuTeks, #kartuUnduh')) return;
+  jadwalkanTeksLaporan();
+}, true));
+
+/* Salin: navigator.clipboard butuh konteks aman dan sebagian peramban kantor
+   memblokirnya. Cadangannya execCommand('copy'); bila itu pun gagal, teksnya
+   dipilih supaya bisa disalin manual. Pola yang sama dengan salin alamat di
+   halaman login (index.html). */
+function salinCadanganTeks(teks){
+  const ta=document.createElement('textarea');
+  ta.value=teks;
+  ta.setAttribute('readonly','');
+  ta.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.select();
+  try{ ta.setSelectionRange(0, teks.length); }catch(e){}
+  let ok=false;
+  try{ ok=document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  return ok;
+}
+function pilihTeksLaporan(){
+  try{
+    const r=document.createRange();
+    r.selectNodeContents(document.getElementById('teksLaporan'));
+    const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }catch(e){}
+}
+let salinTunda=0;
+document.getElementById('btnSalinTeks').addEventListener('click', ()=>{
+  segarkanTeksLaporan();               // tunda 120 ms bisa belum berjalan
+  const teks=TEKS_LAPORAN, tombol=document.getElementById('btnSalinTeks');
+  if(!teks) return;
+  const belum=!teksTersimpan;
+  const berhasil=()=>{
+    tombol.textContent='Tersalin';
+    clearTimeout(salinTunda);
+    salinTunda=setTimeout(()=>{ tombol.textContent='Salin Teks'; }, 2000);
+    showToast(belum ? 'Teks tersalin. Laporan ini belum disimpan, tekan Simpan Laporan.'
+                    : 'Teks laporan tersalin, tinggal tempel di WhatsApp');
+  };
+  const gagal=()=>{
+    if(salinCadanganTeks(teks)){ berhasil(); return; }
+    pilihTeksLaporan();
+    showToast('Teks sudah dipilih. Tekan Ctrl+C, atau Salin di HP.');
+  };
+  if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(teks).then(berhasil, gagal);
+  else gagal();
+});
 
 
 /* ---- Tabel kelengkapan data harian (Excel + input manual) ---- */
@@ -3601,13 +3876,18 @@ const LEMBAR_UNDUH = {
       {judul:'Deviasi OT',kunci:'otD',tipe:'persen',lebar:11},
       {judul:'Jumlah Isu',kunci:'nIsu',tipe:'angka',lebar:11},
       {judul:'Jumlah Kendala',kunci:'nKendala',tipe:'angka',lebar:14},
-      {judul:'Jumlah Tindak Lanjut',kunci:'nFollow',tipe:'angka',lebar:19}],
+      {judul:'Jumlah Tindak Lanjut',kunci:'nFollow',tipe:'angka',lebar:19},
+      // 31 Oktober 2026: dua angka opsional untuk teks laporan shift. Ditaruh
+      // di ujung supaya letak kolom lama tidak bergeser.
+      {judul:'TMM Load Count Minemap',kunci:'tmmLc',tipe:'angka',lebar:22},
+      {judul:'OT RFID',kunci:'otRfid',tipe:'angka',lebar:10}],
     ambil(){
       return filteredEntries().map(e=>({
         tanggal:e.date, shift:'Shift '+e.shift,
         tmmM:(e.tmm||{}).minerva, tmmC:(e.tmm||{}).checker, tmmD:devFrac((e.tmm||{}).minerva,(e.tmm||{}).checker),
         otM:(e.ot||{}).minerva,  otC:(e.ot||{}).checker,  otD:devFrac((e.ot||{}).minerva,(e.ot||{}).checker),
-        nIsu:((e.isuTmm||[]).length+(e.isuOt||[]).length), nKendala:(e.kendala||[]).length, nFollow:jumlahTl(e)
+        nIsu:((e.isuTmm||[]).length+(e.isuOt||[]).length), nKendala:(e.kendala||[]).length, nFollow:jumlahTl(e),
+        tmmLc:(e.tmm||{}).minemap, otRfid:(e.ot||{}).rfid
       }));
     }
   },

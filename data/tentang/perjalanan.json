@@ -1,10 +1,10 @@
 {
   "_petunjuk": "Dibaca tentang.html (Tentang MiningMalut › Perjalanan) sebagai linimasa tegak. Setiap pembaruan besar: tambahkan satu entri di AKHIR 'tonggak', lalu ubah 'diperbarui' dan 'commit.total'. Satu entri = satu pembaruan yang terasa oleh pengguna. 'judul' paling banyak empat kata; 'isi' satu atau dua kalimat pendek (±110 huruf), bahasa sehari-hari, tanpa istilah teknis dan tanpa em dash. 'ikon' salah satu dari: tunas, lapis, modul, awan, truk, jam, piala, kilau, hp, gunung, grafik, target, peta, info, bintang. 'label' (opsional) menggantikan tanggal tampil, tanpa tahun (tahun sudah ada di judul kelompok bulan). Panduan lengkap: Dokumentasi Pengembangan §31.3.",
   "versi": 3,
-  "diperbarui": "2026-10-29",
+  "diperbarui": "2026-10-31",
   "awal": "2026-06-16",
   "angka": {"modul": 12},
-  "commit": {"total": 120, "sejak": "2026-08-27"},
+  "commit": {"total": 121, "sejak": "2026-08-27"},
   "periode": [
     {"label": "Juni–Agustus", "dari": "2026-06-01", "sampai": "2026-08-31"}
   ],
@@ -28,6 +28,7 @@
     {"tanggal": "2026-10-28", "judul": "Halaman masuk baru", "isi": "Halaman masuk kini bergaya Home dan Tentang, dengan pilihan masuk lewat email dan SSO ANTAM yang segera hadir.", "ikon": "kilau"},
     {"tanggal": "2026-10-29", "judul": "Tindak lanjut menyatu", "isi": "Di Dispatch Monitoring, tindak lanjut kini ditulis di samping isu atau kendalanya, dengan status Open atau Close.", "ikon": "truk"},
     {"tanggal": "2026-10-29", "judul": "Operator ikut tercatat", "isi": "Setiap pelanggaran di Speed Watcher kini mencatat operator yang login di unitnya, dengan peringkat di Home dan Excel.", "ikon": "target"},
-    {"tanggal": "2026-10-29", "judul": "Nyaman di HP", "isi": "Di HP, tombol kini lebih besar, menu bisa dibuka dengan menggeser layar, dan judul halaman selalu tampil di atas.", "ikon": "hp"}
+    {"tanggal": "2026-10-29", "judul": "Nyaman di HP", "isi": "Di HP, tombol kini lebih besar, menu bisa dibuka dengan menggeser layar, dan judul halaman selalu tampil di atas.", "ikon": "hp"},
+    {"tanggal": "2026-10-31", "judul": "Laporan shift sekali salin", "isi": "Usulan Randy: laporan akhir shift untuk grup WhatsApp kini tersusun sendiri di Dispatch Monitoring, tinggal salin.", "ikon": "truk"}
   ]
 }
